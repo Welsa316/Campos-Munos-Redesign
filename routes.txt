@@ -1,0 +1,25 @@
+/home
+/servicios
+	/servicios/visas-especial-para-Jovenes
+	/servicios/videos
+	/servicios/tramite-consular
+	/servicios/asilo
+	/servicios/daca
+	/servicios/visas-de-prometido
+	/servicios/ead
+	/servicios/ciudadania
+	/servicios/estatus-de-proteccion-temporal
+	/servicios/vawa
+	/servicios/defensa-contra-la-deportacion
+	/servicios/peticione-familiares
+	/servicios/visa-u
+	/servicios/visa-t
+	/servicios/green-card (this should be featured in menu, not in submenu under services like rest, however its still a service)
+/consulta (contact/consultation)
+/pago
+/el-equipo
+	/el-equipo/juan
+	/el-equipo/angenette
+	/el-equipo/diana
+	/el-equipo/rio
+/acerca-de
