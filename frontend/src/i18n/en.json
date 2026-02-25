@@ -1,0 +1,119 @@
+{
+  "brand": {
+    "name": "Campos Muños"
+  },
+  "nav": {
+    "home": "TODO_EN_TRANSLATION",
+    "services": "TODO_EN_TRANSLATION",
+    "greenCard": "Green Card",
+    "team": "TODO_EN_TRANSLATION",
+    "about": "TODO_EN_TRANSLATION",
+    "consultation": "TODO_EN_TRANSLATION",
+    "payment": "TODO_EN_TRANSLATION",
+    "languageEs": "ES",
+    "languageEn": "EN"
+  },
+  "cta": {
+    "consultation": "TODO_EN_TRANSLATION",
+    "callNow": "TODO_EN_TRANSLATION",
+    "seeAllServices": "TODO_EN_TRANSLATION"
+  },
+  "meta": {
+    "home": {
+      "title": "TODO_EN_TRANSLATION",
+      "description": "TODO_EN_TRANSLATION"
+    },
+    "services": {
+      "title": "TODO_EN_TRANSLATION",
+      "description": "TODO_EN_TRANSLATION"
+    },
+    "serviceGeneric": {
+      "title": "TODO_EN_TRANSLATION",
+      "description": "TODO_EN_TRANSLATION"
+    },
+    "consulta": {
+      "title": "TODO_EN_TRANSLATION",
+      "description": "TODO_EN_TRANSLATION"
+    },
+    "pago": {
+      "title": "TODO_EN_TRANSLATION",
+      "description": "TODO_EN_TRANSLATION"
+    },
+    "equipo": {
+      "title": "TODO_EN_TRANSLATION",
+      "description": "TODO_EN_TRANSLATION"
+    },
+    "equipoMember": {
+      "title": "TODO_EN_TRANSLATION",
+      "description": "TODO_EN_TRANSLATION"
+    },
+    "acerca": {
+      "title": "TODO_EN_TRANSLATION",
+      "description": "TODO_EN_TRANSLATION"
+    }
+  },
+  "layout": {
+    "address": "812 Gravier Street, Suite 330, New Orleans, LA 70112",
+    "mailing": "PO Box 6224, Metairie, LA 70009",
+    "phoneLabel": "TODO_EN_TRANSLATION",
+    "phoneNumber": "+1 (504) 910-6508"
+  },
+  "home": {
+    "hero": {
+      "headline": "TODO_EN_TRANSLATION",
+      "subheadline": "TODO_EN_TRANSLATION",
+      "accent": "TODO_EN_TRANSLATION"
+    },
+    "sections": {
+      "introTitle": "TODO_EN_TRANSLATION",
+      "introBody": "TODO_EN_TRANSLATION"
+    }
+  },
+  "services": {
+    "indexTitle": "TODO_EN_TRANSLATION",
+    "indexIntro": "TODO_EN_TRANSLATION",
+    "jovenes": "TODO_EN_TRANSLATION",
+    "videos": "TODO_EN_TRANSLATION",
+    "tramiteConsular": "TODO_EN_TRANSLATION",
+    "asilo": "TODO_EN_TRANSLATION",
+    "daca": "TODO_EN_TRANSLATION",
+    "visasPrometido": "TODO_EN_TRANSLATION",
+    "ead": "TODO_EN_TRANSLATION",
+    "ciudadania": "TODO_EN_TRANSLATION",
+    "estatusTemporal": "TODO_EN_TRANSLATION",
+    "vawa": "TODO_EN_TRANSLATION",
+    "defensaDeportacion": "TODO_EN_TRANSLATION",
+    "peticionesFamiliares": "TODO_EN_TRANSLATION",
+    "visaU": "TODO_EN_TRANSLATION",
+    "visaT": "TODO_EN_TRANSLATION",
+    "greenCard": "Green Card"
+  },
+  "equipo": {
+    "title": "TODO_EN_TRANSLATION",
+    "intro": "TODO_EN_TRANSLATION"
+  },
+  "consulta": {
+    "title": "TODO_EN_TRANSLATION",
+    "intro": "TODO_EN_TRANSLATION"
+  },
+  "pago": {
+    "title": "TODO_EN_TRANSLATION",
+    "intro": "TODO_EN_TRANSLATION"
+  },
+  "about": {
+    "title": "TODO_EN_TRANSLATION",
+    "intro": "TODO_EN_TRANSLATION"
+  },
+  "video": {
+    "comingSoonTitle": "TODO_EN_TRANSLATION",
+    "comingSoonBody": "TODO_EN_TRANSLATION",
+    "close": "TODO_EN_TRANSLATION"
+  },
+  "popup": {
+    "title": "TODO_EN_TRANSLATION",
+    "body": "TODO_EN_TRANSLATION",
+    "primary": "TODO_EN_TRANSLATION",
+    "secondary": "TODO_EN_TRANSLATION"
+  }
+}
+
