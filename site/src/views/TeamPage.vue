@@ -1,39 +1,51 @@
 <template>
   <div>
     <!-- Hero -->
-    <section class="relative py-24 bg-brand-dark">
-      <div class="max-w-4xl mx-auto px-4 text-center">
-        <h1 class="font-[var(--font-heading)] text-4xl md:text-5xl font-bold text-white mb-4">
+    <section class="relative pt-32 pb-20 bg-brand-muted overflow-hidden">
+      <div class="absolute bottom-0 left-0 w-96 h-96 rounded-full bg-brand-red/[0.03] blur-[120px] pointer-events-none"></div>
+      <div class="relative max-w-7xl mx-auto px-6">
+        <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-gold uppercase mb-3">Campos Munos Law</p>
+        <h1 class="font-[var(--font-heading)] text-5xl md:text-7xl font-bold text-white leading-[0.95]">
           {{ $t('team.title') }}
         </h1>
-        <div class="w-20 h-0.5 bg-brand-gold mx-auto"></div>
       </div>
     </section>
 
-    <!-- Team Grid -->
-    <section class="py-16 bg-brand-darker">
-      <div class="max-w-6xl mx-auto px-4">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+    <!-- Team grid - dramatic card layout -->
+    <section class="py-20 bg-brand-darker">
+      <div class="max-w-6xl mx-auto px-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 stagger">
           <router-link v-for="member in teamMembers" :key="member.slug"
             :to="`/el-equipo/${member.slug}`"
-            class="group text-center">
-            <div class="aspect-square rounded-xl overflow-hidden mb-4 bg-brand-gray border-2 border-transparent group-hover:border-brand-gold/40 transition-all">
+            class="reveal group relative">
+            <!-- Photo container -->
+            <div class="relative aspect-[3/4] rounded-2xl overflow-hidden mb-5">
               <img v-if="member.image" :src="member.image" :alt="$t(`team.members.${member.key}.name`)"
-                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-              <div v-else class="w-full h-full flex items-center justify-center">
-                <i class="fa-solid fa-user text-5xl text-white/20"></i>
+                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+              <div v-else class="w-full h-full bg-brand-gray flex items-center justify-center">
+                <i class="fa-solid fa-user text-5xl text-white/10"></i>
               </div>
+
+              <!-- Overlay on hover -->
+              <div class="absolute inset-0 bg-gradient-to-t from-brand-darker via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-500"></div>
+
+              <!-- Gold accent line -->
+              <div class="absolute bottom-0 left-0 right-0 h-1 bg-brand-gold transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></div>
             </div>
-            <h3 class="font-[var(--font-heading)] text-lg text-white group-hover:text-brand-gold transition-colors mb-1">
+
+            <!-- Info -->
+            <h3 class="font-[var(--font-heading)] text-xl text-white group-hover:text-brand-gold transition-colors duration-300 mb-1">
               {{ $t(`team.members.${member.key}.name`) }}
             </h3>
-            <p class="font-[var(--font-ui)] text-sm text-white/50 tracking-wider uppercase mb-3">
+            <p class="font-[var(--font-ui)] text-xs tracking-wider text-white/35 uppercase">
               {{ $t(`team.members.${member.key}.title`) }}
             </p>
-            <span class="inline-flex items-center gap-2 text-brand-gold text-sm font-[var(--font-ui)]">
-              {{ $t('team.viewBio') }}
-              <i class="fa-solid fa-arrow-right text-xs group-hover:translate-x-1 transition-transform"></i>
-            </span>
+
+            <!-- Arrow indicator -->
+            <div class="mt-3 flex items-center gap-2 text-brand-gold/0 group-hover:text-brand-gold transition-all duration-300">
+              <span class="text-xs font-[var(--font-ui)] tracking-wider">{{ $t('team.viewBio') }}</span>
+              <i class="fa-solid fa-arrow-right text-[10px] group-hover:translate-x-1 transition-transform"></i>
+            </div>
           </router-link>
         </div>
       </div>
@@ -42,6 +54,9 @@
 </template>
 
 <script setup>
+import { useScrollReveal } from '../composables/useScrollReveal.js'
+useScrollReveal()
+
 const teamMembers = [
   { key: 'juan', slug: 'juan', image: '/JuanHeadshot.jpg' },
   { key: 'angenette', slug: 'angenette', image: null },

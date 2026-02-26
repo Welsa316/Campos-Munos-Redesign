@@ -1,33 +1,47 @@
 <template>
   <transition name="popup">
-    <div v-if="visible" class="fixed inset-0 z-[100] flex items-center justify-center p-4" @click.self="close">
-      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-      <div class="relative bg-brand-dark rounded-2xl shadow-2xl border border-white/10 overflow-hidden max-w-lg w-full">
-        <!-- Background image -->
-        <div class="h-48 bg-cover bg-center relative" style="background-image: url('/PopupPhoto.jpg')">
-          <div class="absolute inset-0 bg-gradient-to-b from-transparent to-brand-dark"></div>
-          <button @click="close"
-            class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-black/40 text-white/80 hover:text-white transition-colors"
-            :aria-label="$t('backToSite')">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
+    <div v-if="visible" class="fixed inset-0 z-[150] flex items-center justify-center p-4" @click.self="close">
+      <!-- Backdrop -->
+      <div class="absolute inset-0 bg-black/70 backdrop-blur-lg"></div>
+
+      <!-- Modal -->
+      <div class="relative w-full max-w-md overflow-hidden rounded-3xl">
+        <!-- Gradient border effect -->
+        <div class="absolute inset-0 rounded-3xl bg-gradient-to-br from-brand-gold/30 via-transparent to-brand-red/30 p-[1px]">
+          <div class="w-full h-full rounded-3xl bg-brand-dark"></div>
         </div>
 
-        <div class="px-8 pb-8 -mt-8 relative text-center">
-          <h2 class="font-[var(--font-heading)] text-2xl md:text-3xl text-white mb-2">
-            {{ $t('home.popupTitle') }}
-          </h2>
-          <p class="text-white/70 text-lg mb-6">{{ $t('home.popupSubtitle') }}</p>
+        <div class="relative">
+          <!-- Image with overlay -->
+          <div class="relative h-56 overflow-hidden rounded-t-3xl">
+            <img src="/PopupPhoto.jpg" alt="" class="w-full h-full object-cover kenburns" />
+            <div class="absolute inset-0 bg-gradient-to-t from-brand-dark via-brand-dark/40 to-transparent"></div>
+            <button @click="close"
+              class="absolute top-4 right-4 w-8 h-8 rounded-full glass flex items-center justify-center text-white/60 hover:text-white transition-colors">
+              <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
+          </div>
 
-          <p class="text-brand-gold text-lg mb-1">{{ $t('home.popupCta') }}</p>
-          <a href="tel:+15049106508" class="text-3xl font-bold text-white hover:text-brand-gold transition-colors block mb-6">
-            (504) 910-6508
-          </a>
+          <!-- Content -->
+          <div class="px-8 pb-8 -mt-12 relative z-10 text-center">
+            <h2 class="font-[var(--font-heading)] text-2xl text-white mb-2 leading-tight">
+              {{ $t('home.popupTitle') }}
+            </h2>
+            <p class="text-white/50 text-sm font-[var(--font-ui)] mb-6">{{ $t('home.popupSubtitle') }}</p>
 
-          <router-link to="/consulta" @click="close"
-            class="inline-block bg-brand-red hover:bg-brand-red-light text-white font-[var(--font-ui)] font-semibold tracking-wider text-sm px-8 py-3 rounded-lg transition-colors">
-            {{ $t('home.popupBtn') }}
-          </router-link>
+            <div class="space-y-3">
+              <a href="tel:+15049106508"
+                class="flex items-center justify-center gap-3 w-full py-3.5 rounded-xl bg-brand-gold text-brand-darker font-[var(--font-ui)] font-bold text-sm tracking-wider transition-all btn-magnetic">
+                <i class="fa-solid fa-phone"></i>
+                (504) 910-6508
+              </a>
+              <router-link to="/consulta" @click="close"
+                class="flex items-center justify-center gap-2 w-full py-3 rounded-xl border border-white/10 text-white/70 hover:text-white hover:border-brand-gold/30 font-[var(--font-ui)] text-sm tracking-wider transition-all">
+                <i class="fa-solid fa-message text-xs"></i>
+                {{ $t('home.popupBtn') }}
+              </router-link>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -46,43 +60,27 @@ function resetTimer() {
     timer = setTimeout(() => { visible.value = true }, 30000)
   }
 }
-
-function close() {
-  visible.value = false
-  resetTimer()
-}
+function close() { visible.value = false; resetTimer() }
 
 onMounted(() => {
   resetTimer()
-  window.addEventListener('mousemove', resetTimer)
-  window.addEventListener('keydown', resetTimer)
-  window.addEventListener('scroll', resetTimer)
-  window.addEventListener('touchstart', resetTimer)
+  const events = ['mousemove', 'keydown', 'scroll', 'touchstart']
+  events.forEach(e => window.addEventListener(e, resetTimer, { passive: true }))
 })
-
 onUnmounted(() => {
   clearTimeout(timer)
-  window.removeEventListener('mousemove', resetTimer)
-  window.removeEventListener('keydown', resetTimer)
-  window.removeEventListener('scroll', resetTimer)
-  window.removeEventListener('touchstart', resetTimer)
+  const events = ['mousemove', 'keydown', 'scroll', 'touchstart']
+  events.forEach(e => window.removeEventListener(e, resetTimer))
 })
 </script>
 
 <style scoped>
-.popup-enter-active,
-.popup-leave-active {
-  transition: opacity 0.3s ease;
-}
-.popup-enter-active .relative,
-.popup-leave-active .relative {
-  transition: transform 0.3s ease;
-}
-.popup-enter-from,
-.popup-leave-to {
-  opacity: 0;
-}
-.popup-enter-from .relative {
-  transform: scale(0.95) translateY(20px);
-}
+.popup-enter-active { transition: opacity 0.4s ease; }
+.popup-enter-active .relative { transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease; }
+.popup-leave-active { transition: opacity 0.2s ease; }
+.popup-leave-active .relative { transition: transform 0.2s ease; }
+.popup-enter-from { opacity: 0; }
+.popup-enter-from .relative { transform: translateY(30px) scale(0.95); opacity: 0; }
+.popup-leave-to { opacity: 0; }
+.popup-leave-to .relative { transform: scale(0.95); }
 </style>

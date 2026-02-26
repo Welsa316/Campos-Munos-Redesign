@@ -1,189 +1,185 @@
 <template>
-  <header class="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
-    :class="scrolled ? 'bg-brand-darker/95 backdrop-blur-md shadow-lg' : 'bg-transparent'">
-    <!-- Top bar with social + phone -->
-    <div class="bg-brand-red text-white text-sm">
-      <div class="max-w-7xl mx-auto px-4 flex items-center justify-between py-1.5">
-        <div class="flex items-center gap-3">
-          <a href="https://wa.me/15049106508" target="_blank" rel="noopener" aria-label="WhatsApp" class="hover:text-brand-gold transition-colors">
-            <i class="fa-brands fa-whatsapp text-lg"></i>
-          </a>
-          <a href="https://www.instagram.com/juancamposlaw/" target="_blank" rel="noopener" aria-label="Instagram" class="hover:text-brand-gold transition-colors">
-            <i class="fa-brands fa-instagram text-lg"></i>
-          </a>
-          <a href="https://www.facebook.com/Camposmunoslaw" target="_blank" rel="noopener" aria-label="Facebook" class="hover:text-brand-gold transition-colors">
-            <i class="fa-brands fa-facebook-f text-lg"></i>
-          </a>
-          <a href="https://www.youtube.com/@camposmunoslaw6542" target="_blank" rel="noopener" aria-label="YouTube" class="hover:text-brand-gold transition-colors">
-            <i class="fa-brands fa-youtube text-lg"></i>
-          </a>
-          <a href="https://www.tiktok.com/@elabogadohispano" target="_blank" rel="noopener" aria-label="TikTok" class="hover:text-brand-gold transition-colors">
-            <i class="fa-brands fa-tiktok text-lg"></i>
-          </a>
-        </div>
-        <a href="tel:+15049106508" class="flex items-center gap-2 font-[var(--font-ui)] font-medium hover:text-brand-gold transition-colors">
-          <i class="fa-solid fa-phone text-sm"></i>
-          <span class="hidden sm:inline">+1 (504) 910-6508</span>
-        </a>
-      </div>
-    </div>
+  <header class="fixed top-0 left-0 right-0 z-[100] transition-all duration-500"
+    :class="scrolled ? 'py-2' : 'py-4'">
+    <!-- Glass background that fades in on scroll -->
+    <div class="absolute inset-0 transition-all duration-500"
+      :class="scrolled ? 'glass opacity-100 shadow-2xl shadow-black/20' : 'opacity-0'"></div>
 
-    <!-- Main nav -->
-    <nav class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between" aria-label="Sitio">
-      <router-link to="/home" class="flex-shrink-0">
-        <img src="/logo.png" alt="Campos Munos Law" class="h-10 md:h-12" />
+    <nav class="relative max-w-7xl mx-auto px-6 flex items-center justify-between">
+      <!-- Logo -->
+      <router-link to="/home" class="flex-shrink-0 relative group">
+        <img src="/logo.png" alt="Campos Munos Law"
+          class="h-10 transition-all duration-500" :class="scrolled ? 'h-9' : 'h-10'" />
+        <div class="absolute -inset-2 bg-brand-gold/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"></div>
       </router-link>
 
-      <!-- Desktop nav -->
-      <div class="hidden lg:flex items-center gap-1">
-        <!-- Services dropdown -->
-        <div class="relative group" @mouseenter="showServices = true" @mouseleave="showServices = false">
-          <router-link to="/servicios"
-            class="nav-link flex items-center gap-1">
-            {{ $t('nav.servicios') }}
-            <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="showServices ? 'rotate-180' : ''"></i>
+      <!-- Desktop nav - centered -->
+      <div class="hidden lg:flex items-center gap-0.5">
+        <!-- Services mega-dropdown -->
+        <div class="relative" @mouseenter="showServices = true" @mouseleave="showServices = false">
+          <router-link to="/servicios" class="nav-item">
+            <span>{{ $t('nav.servicios') }}</span>
+            <svg class="w-3 h-3 transition-transform duration-300" :class="showServices ? 'rotate-180' : ''"
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path d="M19 9l-7 7-7-7" />
+            </svg>
           </router-link>
-          <transition name="dropdown">
+          <transition name="mega">
             <div v-show="showServices"
-              class="absolute top-full left-0 mt-1 w-72 bg-brand-dark/95 backdrop-blur-md rounded-lg shadow-xl border border-white/10 py-2 z-50">
-              <router-link v-for="service in serviceLinks" :key="service.slug"
-                :to="`/servicios/${service.slug}`"
-                class="block px-4 py-2 text-sm text-white/80 hover:text-brand-gold hover:bg-white/5 transition-colors font-[var(--font-ui)]"
-                @click="showServices = false">
-                {{ $t(`services.${service.key}`) }}
-              </router-link>
+              class="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-[480px] glass rounded-2xl p-6 shadow-2xl shadow-black/30">
+              <!-- Gold accent line at top -->
+              <div class="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-0.5 bg-brand-gold rounded-full"></div>
+              <div class="grid grid-cols-2 gap-1 mt-1">
+                <router-link v-for="service in serviceLinks" :key="service.slug"
+                  :to="`/servicios/${service.slug}`"
+                  class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-white/70 hover:text-brand-gold hover:bg-white/5 transition-all group/item"
+                  @click="showServices = false">
+                  <i :class="service.icon" class="text-sm text-brand-gold/50 group-hover/item:text-brand-gold transition-colors w-4 text-center"></i>
+                  <span class="font-[var(--font-ui)] text-[13px] font-medium">{{ $t(`services.${service.key}`) }}</span>
+                </router-link>
+              </div>
             </div>
           </transition>
         </div>
 
-        <router-link to="/servicios/green-card" class="nav-link">{{ $t('nav.greenCards') }}</router-link>
-        <router-link to="/consulta" class="nav-link">{{ $t('nav.consulta') }}</router-link>
-        <router-link to="/pago" class="nav-link">{{ $t('nav.pago') }}</router-link>
-        <router-link to="/acerca-de" class="nav-link">{{ $t('nav.acercaDe') }}</router-link>
-        <router-link to="/el-equipo" class="nav-link">{{ $t('nav.elEquipo') }}</router-link>
+        <router-link to="/servicios/green-card" class="nav-item"><span>{{ $t('nav.greenCards') }}</span></router-link>
+        <router-link to="/consulta" class="nav-item"><span>{{ $t('nav.consulta') }}</span></router-link>
+        <router-link to="/acerca-de" class="nav-item"><span>{{ $t('nav.acercaDe') }}</span></router-link>
+        <router-link to="/el-equipo" class="nav-item"><span>{{ $t('nav.elEquipo') }}</span></router-link>
       </div>
 
-      <!-- Mobile menu button -->
-      <button @click="mobileOpen = !mobileOpen" class="lg:hidden text-white p-2" aria-label="Menu">
-        <i class="fa-solid text-xl" :class="mobileOpen ? 'fa-xmark' : 'fa-bars'"></i>
+      <!-- Right side: phone + social -->
+      <div class="hidden lg:flex items-center gap-4">
+        <div class="flex items-center gap-2">
+          <a v-for="social in socials" :key="social.label" :href="social.href" target="_blank" rel="noopener"
+            :aria-label="social.label"
+            class="w-7 h-7 rounded-full flex items-center justify-center text-white/40 hover:text-brand-gold hover:bg-white/5 transition-all text-xs">
+            <i :class="social.icon"></i>
+          </a>
+        </div>
+        <a href="tel:+15049106508"
+          class="flex items-center gap-2 px-4 py-2 rounded-full bg-brand-red hover:bg-brand-red-light text-white text-xs font-[var(--font-ui)] font-semibold tracking-wider transition-all btn-magnetic">
+          <i class="fa-solid fa-phone text-[10px]"></i>
+          (504) 910-6508
+        </a>
+      </div>
+
+      <!-- Mobile hamburger -->
+      <button @click="mobileOpen = !mobileOpen" class="lg:hidden relative w-10 h-10 flex items-center justify-center" aria-label="Menu">
+        <span class="sr-only">Menu</span>
+        <div class="flex flex-col items-end gap-1.5 transition-all">
+          <span class="block h-[2px] bg-white rounded-full transition-all duration-300"
+            :class="mobileOpen ? 'w-6 rotate-45 translate-y-[5px]' : 'w-6'"></span>
+          <span class="block h-[2px] bg-white rounded-full transition-all duration-300"
+            :class="mobileOpen ? 'opacity-0 w-4' : 'opacity-100 w-4'"></span>
+          <span class="block h-[2px] bg-white rounded-full transition-all duration-300"
+            :class="mobileOpen ? 'w-6 -rotate-45 -translate-y-[5px]' : 'w-5'"></span>
+        </div>
       </button>
     </nav>
 
-    <!-- Mobile nav -->
-    <transition name="slide">
-      <div v-show="mobileOpen" class="lg:hidden bg-brand-dark/95 backdrop-blur-md border-t border-white/10">
-        <div class="px-4 py-4 space-y-1">
-          <button @click="mobileServicesOpen = !mobileServicesOpen"
-            class="w-full flex items-center justify-between text-white/90 py-2 px-3 rounded hover:bg-white/5 font-[var(--font-ui)] text-sm font-medium tracking-wider">
-            {{ $t('nav.servicios') }}
-            <i class="fa-solid fa-chevron-down text-xs transition-transform" :class="mobileServicesOpen ? 'rotate-180' : ''"></i>
-          </button>
-          <div v-show="mobileServicesOpen" class="pl-4 space-y-1">
-            <router-link v-for="service in serviceLinks" :key="service.slug"
-              :to="`/servicios/${service.slug}`"
-              class="block py-1.5 px-3 text-sm text-white/70 hover:text-brand-gold transition-colors font-[var(--font-ui)]"
-              @click="mobileOpen = false">
-              {{ $t(`services.${service.key}`) }}
-            </router-link>
+    <!-- Mobile full-screen overlay -->
+    <transition name="mobile-nav">
+      <div v-show="mobileOpen" class="lg:hidden fixed inset-0 top-0 bg-brand-darker/98 backdrop-blur-xl z-[-1]">
+        <div class="flex flex-col justify-center items-center h-full gap-6 px-8">
+          <router-link v-for="link in mobileLinks" :key="link.to" :to="link.to"
+            class="text-3xl font-[var(--font-heading)] text-white/80 hover:text-brand-gold transition-colors"
+            @click="mobileOpen = false">
+            {{ link.label }}
+          </router-link>
+          <div class="w-16 h-px bg-brand-gold/30 my-2"></div>
+          <a href="tel:+15049106508" class="text-brand-gold font-[var(--font-ui)] text-lg tracking-wider">
+            (504) 910-6508
+          </a>
+          <div class="flex items-center gap-4 mt-4">
+            <a v-for="social in socials" :key="social.label" :href="social.href" target="_blank" rel="noopener"
+              :aria-label="social.label" class="text-white/40 hover:text-brand-gold text-xl transition-colors">
+              <i :class="social.icon"></i>
+            </a>
           </div>
-
-          <router-link to="/servicios/green-card" class="mobile-link" @click="mobileOpen = false">{{ $t('nav.greenCards') }}</router-link>
-          <router-link to="/consulta" class="mobile-link" @click="mobileOpen = false">{{ $t('nav.consulta') }}</router-link>
-          <router-link to="/pago" class="mobile-link" @click="mobileOpen = false">{{ $t('nav.pago') }}</router-link>
-          <router-link to="/acerca-de" class="mobile-link" @click="mobileOpen = false">{{ $t('nav.acercaDe') }}</router-link>
-          <router-link to="/el-equipo" class="mobile-link" @click="mobileOpen = false">{{ $t('nav.elEquipo') }}</router-link>
         </div>
       </div>
     </transition>
   </header>
-  <!-- Spacer for fixed header -->
-  <div class="h-[88px]"></div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const scrolled = ref(false)
 const showServices = ref(false)
 const mobileOpen = ref(false)
-const mobileServicesOpen = ref(false)
 
-const serviceLinks = [
-  { key: 'visasJovenes', slug: 'visas-especial-para-jovenes' },
-  { key: 'tramiteConsular', slug: 'tramite-consular' },
-  { key: 'asilo', slug: 'asilo' },
-  { key: 'daca', slug: 'daca' },
-  { key: 'visasPrometido', slug: 'visas-de-prometido' },
-  { key: 'ead', slug: 'ead' },
-  { key: 'ciudadania', slug: 'ciudadania' },
-  { key: 'tps', slug: 'estatus-de-proteccion-temporal' },
-  { key: 'vawa', slug: 'vawa' },
-  { key: 'defensaDeportacion', slug: 'defensa-contra-la-deportacion' },
-  { key: 'peticionesFamiliares', slug: 'peticiones-familiares' },
-  { key: 'visaU', slug: 'visa-u' },
-  { key: 'visaT', slug: 'visa-t' },
-  { key: 'greenCard', slug: 'green-card' },
+const socials = [
+  { icon: 'fa-brands fa-whatsapp', href: 'https://wa.me/15049106508', label: 'WhatsApp' },
+  { icon: 'fa-brands fa-instagram', href: 'https://www.instagram.com/juancamposlaw/', label: 'Instagram' },
+  { icon: 'fa-brands fa-facebook-f', href: 'https://www.facebook.com/Camposmunoslaw', label: 'Facebook' },
+  { icon: 'fa-brands fa-youtube', href: 'https://www.youtube.com/@camposmunoslaw6542', label: 'YouTube' },
+  { icon: 'fa-brands fa-tiktok', href: 'https://www.tiktok.com/@elabogadohispano', label: 'TikTok' },
 ]
 
-function onScroll() {
-  scrolled.value = window.scrollY > 20
-}
+const serviceLinks = [
+  { key: 'greenCard', slug: 'green-card', icon: 'fa-solid fa-id-card' },
+  { key: 'ciudadania', slug: 'ciudadania', icon: 'fa-solid fa-certificate' },
+  { key: 'asilo', slug: 'asilo', icon: 'fa-solid fa-hand-holding-heart' },
+  { key: 'vawa', slug: 'vawa', icon: 'fa-solid fa-shield-halved' },
+  { key: 'visaU', slug: 'visa-u', icon: 'fa-solid fa-scale-balanced' },
+  { key: 'visaT', slug: 'visa-t', icon: 'fa-solid fa-link' },
+  { key: 'daca', slug: 'daca', icon: 'fa-solid fa-graduation-cap' },
+  { key: 'tps', slug: 'estatus-de-proteccion-temporal', icon: 'fa-solid fa-umbrella' },
+  { key: 'tramiteConsular', slug: 'tramite-consular', icon: 'fa-solid fa-file-signature' },
+  { key: 'visasPrometido', slug: 'visas-de-prometido', icon: 'fa-solid fa-ring' },
+  { key: 'visasJovenes', slug: 'visas-especial-para-jovenes', icon: 'fa-solid fa-passport' },
+  { key: 'peticionesFamiliares', slug: 'peticiones-familiares', icon: 'fa-solid fa-people-roof' },
+  { key: 'ead', slug: 'ead', icon: 'fa-solid fa-briefcase' },
+  { key: 'defensaDeportacion', slug: 'defensa-contra-la-deportacion', icon: 'fa-solid fa-gavel' },
+]
 
-onMounted(() => window.addEventListener('scroll', onScroll))
+const mobileLinks = computed(() => [
+  { to: '/home', label: 'Home' },
+  { to: '/servicios', label: t('nav.servicios') },
+  { to: '/servicios/green-card', label: t('nav.greenCards') },
+  { to: '/consulta', label: t('nav.consulta') },
+  { to: '/acerca-de', label: t('nav.acercaDe') },
+  { to: '/el-equipo', label: t('nav.elEquipo') },
+  { to: '/pago', label: t('nav.pago') },
+])
+
+function onScroll() { scrolled.value = window.scrollY > 50 }
+onMounted(() => window.addEventListener('scroll', onScroll, { passive: true }))
 onUnmounted(() => window.removeEventListener('scroll', onScroll))
 </script>
 
 <style scoped>
-.nav-link {
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-family: var(--font-ui);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 500;
-  letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.9);
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.375rem;
-  transition: color 0.2s, background-color 0.2s;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.75);
+  padding: 0.5rem 0.875rem;
+  border-radius: 9999px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
 }
-.nav-link:hover,
-.nav-link.router-link-active {
+.nav-item:hover,
+.nav-item.router-link-active {
   color: var(--color-brand-gold);
-  background-color: rgba(255, 255, 255, 0.05);
+  background: rgba(201, 168, 76, 0.08);
 }
 
-.mobile-link {
-  display: block;
-  font-family: var(--font-ui);
-  font-size: 0.875rem;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.9);
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.375rem;
-  transition: color 0.2s;
-}
-.mobile-link:hover {
-  color: var(--color-brand-gold);
-}
+.mega-enter-active { transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.mega-leave-active { transition: all 0.15s ease; }
+.mega-enter-from, .mega-leave-to { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(0.97); }
+.mega-enter-to { transform: translateX(-50%) translateY(0) scale(1); }
 
-.dropdown-enter-active,
-.dropdown-leave-active {
-  transition: opacity 0.2s, transform 0.2s;
-}
-.dropdown-enter-from,
-.dropdown-leave-to {
-  opacity: 0;
-  transform: translateY(-8px);
-}
-
-.slide-enter-active,
-.slide-leave-active {
-  transition: max-height 0.3s ease, opacity 0.3s ease;
-  max-height: 100vh;
-  overflow: hidden;
-}
-.slide-enter-from,
-.slide-leave-to {
-  max-height: 0;
-  opacity: 0;
-}
+.mobile-nav-enter-active { transition: opacity 0.4s ease; }
+.mobile-nav-leave-active { transition: opacity 0.2s ease; }
+.mobile-nav-enter-from, .mobile-nav-leave-to { opacity: 0; }
 </style>
