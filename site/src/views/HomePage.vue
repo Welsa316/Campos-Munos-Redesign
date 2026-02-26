@@ -20,22 +20,22 @@
         <!-- Accent line -->
         <div class="w-16 h-[2px] bg-brand-navy mb-6 hero-reveal" style="transition-delay: 0.2s"></div>
 
-        <p class="font-[var(--font-ui)] text-brand-navy-light text-xs tracking-[0.4em] uppercase mb-4 hero-reveal" style="transition-delay: 0.4s">
+        <p class="font-[var(--font-ui)] text-brand-navy-light text-sm tracking-[0.3em] uppercase mb-4 hero-reveal" style="transition-delay: 0.4s">
           Campos Munos Law, LLC
         </p>
 
-        <h1 class="font-[var(--font-heading)] text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-bold text-white leading-[0.9] mb-4 hero-reveal" style="transition-delay: 0.6s">
+        <h1 class="font-[var(--font-heading)] text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[0.95] mb-4 hero-reveal" style="transition-delay: 0.6s">
           {{ $t('home.heroTitle') }}
         </h1>
 
         <div class="flex items-center gap-4 mb-6 hero-reveal" style="transition-delay: 0.8s">
           <div class="w-12 h-[1px] bg-white/30"></div>
-          <p class="font-[var(--font-heading)] text-2xl md:text-3xl text-white/60 italic">
+          <p class="font-[var(--font-heading)] text-3xl md:text-4xl text-white/60 italic">
             {{ $t('home.heroSubtitle') }}
           </p>
         </div>
 
-        <p class="font-[var(--font-body)] text-lg md:text-xl text-white/50 max-w-lg mb-10 hero-reveal" style="transition-delay: 1s">
+        <p class="font-[var(--font-body)] text-xl md:text-2xl text-white/50 max-w-lg mb-10 hero-reveal" style="transition-delay: 1s">
           {{ $t('home.heroTagline') }}
         </p>
 
@@ -76,14 +76,21 @@
     <section class="py-12 bg-brand-muted border-y border-white/5">
       <div class="max-w-5xl mx-auto px-6">
         <div class="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16">
-          <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-white/30 uppercase">{{ $t('home.recognizedBy') }}</p>
+          <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-white/30 uppercase">{{ $t('home.recognizedBy') }}</p>
           <div class="flex items-center gap-10">
             <div v-for="(badge, i) in badges" :key="i" class="flex items-center gap-2 text-white/20">
               <i class="fa-solid fa-award text-brand-navy/40 text-lg"></i>
-              <span class="font-[var(--font-ui)] text-xs tracking-wider hidden sm:inline">{{ badge }}</span>
+              <span class="font-[var(--font-ui)] text-sm tracking-wider hidden sm:inline">{{ badge }}</span>
             </div>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- ===================== NUMBER COUNTER ===================== -->
+    <section class="py-16 bg-brand-darker">
+      <div class="max-w-7xl mx-auto px-6 reveal">
+        <div class="elfsight-app-6032d238-e359-414a-ac6c-c6a171918a90" data-elfsight-app-lazy></div>
       </div>
     </section>
 
@@ -91,7 +98,7 @@
     <section class="py-24 bg-brand-darker relative noise">
       <div class="relative z-10 max-w-7xl mx-auto px-6">
         <div class="text-center mb-16 reveal">
-          <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-navy uppercase mb-3">{{ $t('nav.servicios') }}</p>
+          <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase mb-3">{{ $t('nav.servicios') }}</p>
           <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-white">
             {{ $t('home.queEsperar').replace('?', '') }}
           </h2>
@@ -108,7 +115,7 @@
               <h3 class="font-[var(--font-heading)] text-3xl text-white mb-2 group-hover:text-brand-navy transition-colors">
                 {{ $t('services.greenCard') }}
               </h3>
-              <p class="text-white/40 text-sm font-[var(--font-ui)] leading-relaxed line-clamp-2">
+              <p class="text-white/40 text-base font-[var(--font-ui)] leading-relaxed line-clamp-2">
                 {{ $t('serviceDescriptions.greenCard') }}
               </p>
               <div class="mt-4 flex items-center gap-2 text-brand-navy text-xs font-[var(--font-ui)] font-semibold tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
@@ -143,37 +150,17 @@
       </div>
     </section>
 
-    <!-- ===================== REVIEWS - HORIZONTAL SCROLL ===================== -->
+    <!-- ===================== GOOGLE REVIEWS ===================== -->
     <section class="py-24 bg-brand-dark relative overflow-hidden">
-      <!-- Floating accent -->
-      <div class="absolute top-12 right-12 w-40 h-40 rounded-full bg-brand-navy/[0.03] blur-3xl float-slow pointer-events-none"></div>
-
       <div class="max-w-7xl mx-auto px-6">
-        <div class="flex items-end justify-between mb-12 reveal">
-          <div>
-            <div class="flex items-center gap-2 mb-3">
-              <i v-for="n in 5" :key="n" class="fa-solid fa-star text-yellow-400 text-sm"></i>
-            </div>
-            <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-white">{{ $t('home.reviewsTitle') }}</h2>
+        <div class="text-center mb-12 reveal">
+          <div class="flex items-center justify-center gap-2 mb-3">
+            <i v-for="n in 5" :key="n" class="fa-solid fa-star text-yellow-400 text-sm"></i>
           </div>
+          <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-white">{{ $t('home.reviewsTitle') }}</h2>
         </div>
-
-        <div class="horizontal-scroll gap-6 pb-4 -mx-6 px-6">
-          <div v-for="(review, i) in reviews" :key="i"
-            class="w-[340px] md:w-[400px] p-8 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-brand-navy/20 transition-all duration-300 flex flex-col">
-            <div class="flex items-center gap-1 mb-5">
-              <i v-for="n in 5" :key="n" class="fa-solid fa-star text-yellow-400 text-xs"></i>
-            </div>
-            <p class="text-white/60 text-[15px] leading-relaxed italic flex-1 mb-6">
-              "{{ review.text }}"
-            </p>
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-brand-navy/10 flex items-center justify-center">
-                <span class="text-brand-navy font-[var(--font-ui)] font-bold text-sm">{{ review.name.charAt(0) }}</span>
-              </div>
-              <span class="text-white/80 text-sm font-[var(--font-ui)] font-medium">{{ review.name }}</span>
-            </div>
-          </div>
+        <div class="reveal elfsight-reviews-wrapper rounded-2xl overflow-hidden">
+          <div class="elfsight-app-02c0cb8e-d132-4834-ae18-93002f5a819a" data-elfsight-app-lazy></div>
         </div>
       </div>
     </section>
@@ -193,17 +180,17 @@
             <!-- Experience badge -->
             <div class="absolute -top-4 -left-4 glass rounded-2xl p-4 text-center">
               <p class="font-[var(--font-heading)] text-3xl font-bold navy-shimmer">20+</p>
-              <p class="font-[var(--font-ui)] text-[10px] tracking-wider text-white/50 uppercase">Years</p>
+              <p class="font-[var(--font-ui)] text-xs tracking-wider text-white/50 uppercase">Years</p>
             </div>
           </div>
 
           <!-- Right: Text -->
           <div class="reveal-right">
-            <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-navy uppercase mb-3">{{ $t('home.quienesSomos') }}</p>
+            <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase mb-3">{{ $t('home.quienesSomos') }}</p>
             <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-white mb-6 leading-tight">
               {{ $t('home.quienesSomos') }}
             </h2>
-            <p class="text-white/60 text-lg leading-relaxed mb-8">
+            <p class="text-white/60 text-xl leading-relaxed mb-8">
               {{ $t('home.quienesSomosText') }}
             </p>
             <router-link to="/acerca-de"
@@ -221,11 +208,11 @@
       <div class="absolute inset-0 bg-cover bg-center bg-fixed" style="background-image: url('/Slideshow3.jpg')"></div>
       <div class="absolute inset-0 bg-brand-darker/85"></div>
       <div class="relative max-w-3xl mx-auto px-6 text-center reveal">
-        <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-navy uppercase mb-4">{{ $t('home.porQueNosotros') }}</p>
+        <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase mb-4">{{ $t('home.porQueNosotros') }}</p>
         <h2 class="font-[var(--font-heading)] text-3xl md:text-5xl text-white mb-8 leading-tight">
           {{ $t('home.porQueNosotros') }}
         </h2>
-        <p class="text-white/60 text-lg md:text-xl leading-relaxed mb-10">
+        <p class="text-white/60 text-xl md:text-2xl leading-relaxed mb-10">
           {{ $t('home.porQueNosotrosText') }}
         </p>
         <router-link to="/el-equipo"
@@ -241,9 +228,9 @@
       <div class="max-w-7xl mx-auto px-6">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div class="reveal-left">
-            <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-navy uppercase mb-3">{{ $t('home.dondeEstamos') }}</p>
+            <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase mb-3">{{ $t('home.dondeEstamos') }}</p>
             <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-white mb-6 leading-tight">{{ $t('home.dondeEstamos') }}</h2>
-            <p class="text-white/60 text-lg leading-relaxed mb-8">
+            <p class="text-white/60 text-xl leading-relaxed mb-8">
               {{ $t('home.dondeEstamosText') }}
             </p>
             <router-link to="/consulta"
@@ -264,16 +251,20 @@
       </div>
     </section>
 
-    <!-- ===================== INSTAGRAM CTA ===================== -->
+    <!-- ===================== INSTAGRAM FEED ===================== -->
     <section class="py-20 bg-brand-dark relative overflow-hidden">
-      <div class="absolute inset-0 bg-gradient-to-r from-brand-navy/[0.03] to-transparent pointer-events-none"></div>
-      <div class="relative max-w-4xl mx-auto px-6 text-center reveal">
-        <i class="fa-brands fa-instagram text-5xl text-brand-navy/20 mb-6"></i>
-        <h2 class="font-[var(--font-heading)] text-2xl md:text-3xl text-white mb-3">{{ $t('home.instagramTitle') }}</h2>
-        <a href="https://www.instagram.com/juancamposlaw/" target="_blank" rel="noopener"
-          class="navy-shimmer text-2xl font-[var(--font-heading)] font-bold">
-          {{ $t('home.instagramHandle') }}
-        </a>
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="text-center mb-10 reveal">
+          <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase mb-3">{{ $t('home.instagramTitle') }}</p>
+          <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-white mb-2">
+            <a href="https://www.instagram.com/juancamposlaw/" target="_blank" rel="noopener" class="navy-shimmer">
+              {{ $t('home.instagramHandle') }}
+            </a>
+          </h2>
+        </div>
+        <div class="reveal">
+          <div class="elfsight-app-0e227880-d4a2-4817-98ac-2a5ed69f20a7" data-elfsight-app-lazy></div>
+        </div>
       </div>
     </section>
   </div>
@@ -301,12 +292,6 @@ const bentoServices = [
   { key: 'asilo', slug: 'asilo', icon: 'fa-solid fa-hand-holding-heart' },
   { key: 'daca', slug: 'daca', icon: 'fa-solid fa-graduation-cap' },
   { key: 'visaT', slug: 'visa-t', icon: 'fa-solid fa-link' },
-]
-
-const reviews = [
-  { text: 'Excelente servicio. Me ayudaron con todo mi proceso de inmigración de manera profesional y eficiente.', name: 'Maria G.' },
-  { text: 'Los mejores abogados de inmigración en Nueva Orleans. Siempre disponibles para responder preguntas.', name: 'Carlos R.' },
-  { text: 'Muy agradecido por su ayuda. Lograron resolver mi caso cuando otros abogados no pudieron.', name: 'Ana L.' },
 ]
 
 onMounted(() => {

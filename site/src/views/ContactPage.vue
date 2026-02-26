@@ -6,11 +6,11 @@
       <div class="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-brand-navy/[0.03] to-transparent pointer-events-none"></div>
       <div class="relative max-w-7xl mx-auto px-6">
         <div class="reveal">
-          <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-navy uppercase mb-3">{{ $t('contact.subtitleAlt') }}</p>
+          <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase mb-3">{{ $t('contact.subtitleAlt') }}</p>
           <h1 class="font-[var(--font-heading)] text-5xl md:text-7xl font-bold text-white leading-[0.95]">
             {{ $t('contact.title') }}
           </h1>
-          <p class="text-white/40 text-lg mt-4 max-w-lg">{{ $t('contact.subtitle') }}</p>
+          <p class="text-white/40 text-xl mt-4 max-w-lg">{{ $t('contact.subtitle') }}</p>
         </div>
       </div>
     </section>
@@ -108,7 +108,7 @@
                   </div>
                   <div>
                     <h3 class="font-[var(--font-heading)] text-lg text-white mb-1">{{ $t(`contact.${item.titleKey}`) }}</h3>
-                    <div class="text-white/50 text-sm space-y-0.5" v-html="item.content"></div>
+                    <div class="text-white/50 text-base space-y-0.5" v-html="item.content"></div>
                   </div>
                 </div>
               </div>
@@ -133,7 +133,7 @@
                   </div>
                   <div>
                     <h3 class="font-[var(--font-heading)] text-lg text-white mb-2">{{ $t('contact.horario') }}</h3>
-                    <div class="text-white/50 text-sm space-y-1">
+                    <div class="text-white/50 text-base space-y-1">
                       <div class="flex justify-between gap-6">
                         <span>{{ $t('contact.lunesViernes') }}</span>
                         <span class="text-white/70">{{ $t('contact.horarioSemana') }}</span>
@@ -148,6 +148,21 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Google Reviews Carousel -->
+    <section class="py-20 bg-brand-dark">
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="text-center mb-10 reveal">
+          <div class="flex items-center justify-center gap-2 mb-3">
+            <i v-for="n in 5" :key="n" class="fa-solid fa-star text-yellow-400 text-base"></i>
+          </div>
+          <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-white">{{ $t('home.reviewsTitle') }}</h2>
+        </div>
+        <div class="reveal elfsight-reviews-wrapper rounded-2xl overflow-hidden">
+          <div class="elfsight-app-924b81dc-21bf-470e-b66f-9137cae00590" data-elfsight-app-lazy></div>
         </div>
       </div>
     </section>
