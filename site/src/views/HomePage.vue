@@ -16,11 +16,11 @@
       </div>
 
       <!-- Hero content - left-aligned for dramatic asymmetry -->
-      <div class="relative h-full max-w-7xl mx-auto px-6 flex flex-col justify-end pb-24 md:pb-32">
+      <div class="relative h-full max-w-7xl mx-auto px-6 flex flex-col justify-center pt-20">
         <!-- Accent line -->
         <div class="w-20 h-[3px] bg-brand-navy mb-6 hero-reveal" style="transition-delay: 0.2s"></div>
 
-        <p class="font-[var(--font-ui)] text-brand-navy-light text-base md:text-lg tracking-[0.3em] uppercase mb-4 hero-reveal" style="transition-delay: 0.4s">
+        <p class="font-[var(--font-ui)] text-white/80 text-base md:text-lg tracking-[0.3em] uppercase mb-4 hero-reveal" style="transition-delay: 0.4s">
           Campos Munos Law, LLC
         </p>
 
@@ -31,22 +31,18 @@
         <div class="flex items-center gap-4 mb-6 hero-reveal" style="transition-delay: 0.8s">
           <div class="w-12 h-[1px] bg-white/30"></div>
           <p class="font-[var(--font-heading)] text-2xl md:text-3xl lg:text-4xl text-white/70 italic">
-            {{ slides[currentSlide].subtitle }}
+            {{ $t(slides[currentSlide].subtitleKey) }}
           </p>
         </div>
 
-        <p class="font-[var(--font-body)] text-2xl md:text-3xl text-white/50 max-w-xl mb-10 hero-reveal" style="transition-delay: 1s">
-          {{ $t('home.heroTagline') }}
-        </p>
-
-        <div class="flex flex-col sm:flex-row items-start gap-4 hero-reveal" style="transition-delay: 1.2s">
+        <div class="flex flex-col sm:flex-row items-start gap-4 hero-reveal" style="transition-delay: 1s">
           <router-link to="/consulta"
             class="group flex items-center gap-3 bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-base px-10 py-5 rounded-xl btn-magnetic">
             {{ $t('home.consultaBtn') }}
             <i class="fa-solid fa-arrow-right text-sm transition-transform group-hover:translate-x-1"></i>
           </router-link>
           <router-link to="/servicios"
-            class="flex items-center gap-3 border border-white/20 text-white/80 hover:text-white hover:border-white/40 font-[var(--font-ui)] font-medium tracking-wider text-base px-10 py-5 rounded-xl transition-all">
+            class="flex items-center gap-3 border border-white/20 text-white/80 hover:text-white hover:border-white/40 font-[var(--font-ui)] font-bold tracking-wider text-base px-10 py-5 rounded-xl transition-all">
             {{ $t('home.serviciosBtn') }}
           </router-link>
         </div>
@@ -63,11 +59,11 @@
       </div>
 
       <!-- Bottom info strip -->
-      <div class="absolute bottom-0 left-0 right-0 py-4 bg-gradient-to-t from-brand-darker to-transparent">
-        <div class="max-w-7xl mx-auto px-6 flex flex-wrap items-center gap-8 text-white/40 text-sm font-[var(--font-ui)] tracking-wider">
-          <span class="flex items-center gap-2"><i class="fa-solid fa-location-dot text-brand-navy/60"></i> New Orleans, LA</span>
-          <a href="tel:+15049106508" class="flex items-center gap-2 hover:text-white transition-colors"><i class="fa-solid fa-phone text-brand-red/60"></i> <span class="text-base font-semibold">(504) 910-6508</span></a>
-          <span class="flex items-center gap-2"><i class="fa-solid fa-video text-brand-navy/60"></i> {{ $t('home.virtualAvailable') }}</span>
+      <div class="absolute bottom-0 left-0 right-0 py-5 bg-gradient-to-t from-brand-darker to-transparent">
+        <div class="max-w-7xl mx-auto px-6 flex flex-wrap items-center gap-10 text-white/70 text-base font-[var(--font-ui)] tracking-wider">
+          <span class="flex items-center gap-2"><i class="fa-solid fa-location-dot text-brand-navy"></i> New Orleans, LA</span>
+          <a href="tel:+15049106508" class="flex items-center gap-2 hover:text-white transition-colors"><i class="fa-solid fa-phone text-brand-red"></i> <span class="text-lg font-semibold">(504) 910-6508</span></a>
+          <span class="flex items-center gap-2"><i class="fa-solid fa-video text-brand-navy"></i> {{ $t('home.virtualAvailable') }}</span>
         </div>
       </div>
     </section>
@@ -148,9 +144,9 @@
 
         <div class="text-center mt-14 reveal">
           <router-link to="/servicios"
-            class="inline-flex items-center gap-3 text-brand-navy hover:text-brand-navy-light font-[var(--font-ui)] font-semibold tracking-wider text-lg transition-colors group">
+            class="inline-flex items-center gap-3 border-2 border-brand-navy text-brand-navy hover:bg-brand-navy hover:text-white font-[var(--font-ui)] font-bold tracking-wider text-base px-10 py-5 rounded-xl transition-all btn-magnetic">
             {{ $t('home.serviciosBtn') }}
-            <i class="fa-solid fa-arrow-right text-sm group-hover:translate-x-1 transition-transform"></i>
+            <i class="fa-solid fa-arrow-right text-sm"></i>
           </router-link>
         </div>
       </div>
@@ -161,7 +157,7 @@
       <div class="max-w-7xl mx-auto px-6">
         <div class="text-center mb-12 reveal">
           <div class="flex items-center justify-center gap-2 mb-3">
-            <i v-for="n in 5" :key="n" class="fa-solid fa-star text-yellow-400 text-lg"></i>
+            <i v-for="n in 5" :key="n" class="fa-solid fa-star text-yellow-400 text-xl"></i>
           </div>
           <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-brand-navy">{{ $t('home.reviewsTitle') }}</h2>
         </div>
@@ -171,40 +167,27 @@
       </div>
     </section>
 
-    <!-- ===================== ABOUT SPLIT SECTION ===================== -->
+    <!-- ===================== ABOUT SECTION ===================== -->
     <section class="py-24 bg-brand-light">
-      <div class="max-w-7xl mx-auto px-6">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          <!-- Left: Image placeholder area -->
-          <div class="relative reveal-left">
-<!--            <div class="rounded-2xl overflow-hidden">-->
-<!--              <img src="/AbogadosSlideshowPic.jpg" alt="Campos Munos Law Team"-->
-<!--                class="w-full aspect-[4/3] object-cover" />-->
-<!--            </div>-->
-          </div>
-
-          <!-- Right: Text -->
-          <div class="reveal-right">
-            <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-brand-navy mb-6 leading-tight">
-              {{ $t('home.quienesSomos') }}
-            </h2>
-            <p class="text-gray-600 text-xl md:text-2xl leading-relaxed mb-8">
-              {{ $t('home.quienesSomosText') }}
-            </p>
-            <router-link to="/acerca-de"
-              class="inline-flex items-center gap-3 text-brand-navy hover:text-brand-navy-light font-[var(--font-ui)] font-semibold tracking-wider text-lg transition-colors group">
-              {{ $t('home.sobreNosotros') }}
-              <i class="fa-solid fa-arrow-right text-sm group-hover:translate-x-1 transition-transform"></i>
-            </router-link>
-          </div>
-        </div>
+      <div class="max-w-3xl mx-auto px-6 text-center reveal">
+        <h2 class="font-[var(--font-heading)] text-4xl md:text-6xl text-brand-navy mb-8 leading-tight">
+          {{ $t('home.quienesSomos') }}
+        </h2>
+        <p class="text-gray-600 text-xl md:text-2xl leading-relaxed mb-10">
+          {{ $t('home.quienesSomosText') }}
+        </p>
+        <router-link to="/acerca-de"
+          class="inline-flex items-center gap-3 border-2 border-brand-navy text-brand-navy hover:bg-brand-navy hover:text-white font-[var(--font-ui)] font-bold tracking-wider text-base px-10 py-5 rounded-xl transition-all btn-magnetic">
+          {{ $t('home.sobreNosotros') }}
+          <i class="fa-solid fa-arrow-right text-sm"></i>
+        </router-link>
       </div>
     </section>
 
-    <!-- ===================== WHY US - FULL WIDTH PARALLAX ===================== -->
+    <!-- ===================== WHY US - FULL WIDTH DARK ===================== -->
     <section class="relative py-32 overflow-hidden">
-      <div class="absolute inset-0 bg-cover bg-center bg-fixed" style="background-image: url('/Slideshow3.jpg')"></div>
-      <div class="absolute inset-0 bg-brand-darker/85"></div>
+      <div class="absolute inset-0 bg-brand-darker"></div>
+      <div class="absolute inset-0 bg-gradient-to-br from-brand-navy/20 via-transparent to-brand-red/5"></div>
       <div class="relative max-w-3xl mx-auto px-6 text-center reveal">
         <h2 class="font-[var(--font-heading)] text-4xl md:text-6xl text-white mb-8 leading-tight">
           {{ $t('home.porQueNosotros') }}
@@ -230,8 +213,9 @@
               {{ $t('home.dondeEstamosText') }}
             </p>
             <router-link to="/consulta"
-              class="inline-flex items-center gap-3 border-2 border-brand-navy text-brand-navy hover:bg-brand-navy hover:text-white font-[var(--font-ui)] font-semibold tracking-wider text-base px-10 py-4 rounded-xl transition-all btn-magnetic">
+              class="inline-flex items-center gap-3 border-2 border-brand-navy text-brand-navy hover:bg-brand-navy hover:text-white font-[var(--font-ui)] font-bold tracking-wider text-base px-10 py-5 rounded-xl transition-all btn-magnetic">
               {{ $t('home.contactenosBtn') }}
+              <i class="fa-solid fa-arrow-right text-sm"></i>
             </router-link>
           </div>
 
@@ -268,16 +252,18 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useScrollReveal } from '../composables/useScrollReveal.js'
 
 useScrollReveal()
+const { t } = useI18n()
 
 const slides = [
-  { img: '/Slideshow1.jpg', subtitle: 'Ayudando a los inmigrantes en los 50 estados' },
-  { img: '/Slideshow2.jpg', subtitle: 'Abogados que sirven a su comunidad' },
-  { img: '/Slideshow3.jpg', subtitle: 'Te ayudamos a hacerte ciudadano' },
-  { img: '/Slideshow4.jpg', subtitle: 'Ayudando a sobrevivientes' },
-  { img: '/Slideshow5.png', subtitle: 'Visas para esposos' },
+  { img: '/Slideshow1.jpg', subtitleKey: 'home.slideSubtitle1' },
+  { img: '/Slideshow2.jpg', subtitleKey: 'home.slideSubtitle2' },
+  { img: '/Slideshow3.jpg', subtitleKey: 'home.slideSubtitle3' },
+  { img: '/Slideshow4.jpg', subtitleKey: 'home.slideSubtitle4' },
+  { img: '/Slideshow5.png', subtitleKey: 'home.slideSubtitle5' },
 ]
 const currentSlide = ref(0)
 let slideTimer = null

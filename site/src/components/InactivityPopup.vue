@@ -7,15 +7,15 @@
       <!-- Modal -->
       <div class="relative w-full max-w-xl overflow-hidden rounded-3xl">
         <!-- Gradient border effect -->
-        <div class="absolute inset-0 rounded-3xl bg-gradient-to-br from-brand-navy/30 via-transparent to-brand-red/30 p-[1px]">
-          <div class="w-full h-full rounded-3xl bg-brand-dark"></div>
+        <div class="absolute inset-0 rounded-3xl bg-gradient-to-br from-brand-navy-light/30 via-transparent to-brand-red/30 p-[1px]">
+          <div class="w-full h-full rounded-3xl bg-brand-navy"></div>
         </div>
 
         <div class="relative">
           <!-- Image with overlay -->
           <div class="relative h-80 overflow-hidden rounded-t-3xl">
             <img src="/PopupPhoto.jpg" alt="" class="w-full h-full object-cover object-top kenburns" />
-            <div class="absolute inset-0 bg-gradient-to-t from-brand-dark via-brand-dark/40 to-transparent"></div>
+            <div class="absolute inset-0 bg-gradient-to-t from-brand-navy via-brand-navy/20 to-transparent"></div>
             <button @click="close"
               class="absolute top-4 right-4 w-10 h-10 rounded-full glass-dark flex items-center justify-center text-white/60 hover:text-white transition-colors">
               <i class="fa-solid fa-xmark text-base"></i>
@@ -36,7 +36,7 @@
                 (504) 910-6508
               </a>
               <router-link to="/consulta" @click="close"
-                class="flex items-center justify-center gap-2 w-full py-4 rounded-xl border border-white/10 text-white/70 hover:text-white hover:border-brand-navy/30 font-[var(--font-ui)] text-base tracking-wider transition-all">
+                class="flex items-center justify-center gap-3 w-full py-5 rounded-xl border border-white/20 text-white/80 hover:bg-white hover:text-brand-navy hover:border-white font-[var(--font-ui)] font-bold text-lg tracking-wider transition-all">
                 <i class="fa-solid fa-message text-sm"></i>
                 {{ $t('home.popupBtn') }}
               </router-link>
