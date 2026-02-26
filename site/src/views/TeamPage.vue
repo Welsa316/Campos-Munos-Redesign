@@ -4,7 +4,7 @@
     <section class="relative pt-32 pb-20 bg-brand-muted overflow-hidden">
       <div class="absolute bottom-0 left-0 w-96 h-96 rounded-full bg-brand-red/[0.03] blur-[120px] pointer-events-none"></div>
       <div class="relative max-w-7xl mx-auto px-6">
-        <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-gold uppercase mb-3">Campos Munos Law</p>
+        <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-navy uppercase mb-3">Campos Munos Law</p>
         <h1 class="font-[var(--font-heading)] text-5xl md:text-7xl font-bold text-white leading-[0.95]">
           {{ $t('team.title') }}
         </h1>
@@ -30,11 +30,11 @@
               <div class="absolute inset-0 bg-gradient-to-t from-brand-darker via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-500"></div>
 
               <!-- Gold accent line -->
-              <div class="absolute bottom-0 left-0 right-0 h-1 bg-brand-gold transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></div>
+              <div class="absolute bottom-0 left-0 right-0 h-1 bg-brand-navy transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></div>
             </div>
 
             <!-- Info -->
-            <h3 class="font-[var(--font-heading)] text-xl text-white group-hover:text-brand-gold transition-colors duration-300 mb-1">
+            <h3 class="font-[var(--font-heading)] text-xl text-white group-hover:text-brand-navy transition-colors duration-300 mb-1">
               {{ $t(`team.members.${member.key}.name`) }}
             </h3>
             <p class="font-[var(--font-ui)] text-xs tracking-wider text-white/35 uppercase">
@@ -42,7 +42,7 @@
             </p>
 
             <!-- Arrow indicator -->
-            <div class="mt-3 flex items-center gap-2 text-brand-gold/0 group-hover:text-brand-gold transition-all duration-300">
+            <div class="mt-3 flex items-center gap-2 text-brand-navy/0 group-hover:text-brand-navy transition-all duration-300">
               <span class="text-xs font-[var(--font-ui)] tracking-wider">{{ $t('team.viewBio') }}</span>
               <i class="fa-solid fa-arrow-right text-[10px] group-hover:translate-x-1 transition-transform"></i>
             </div>

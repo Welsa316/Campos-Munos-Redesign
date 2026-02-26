@@ -3,7 +3,7 @@
     <!-- Hero -->
     <section class="relative pt-32 pb-20 bg-brand-muted overflow-hidden">
       <div class="relative max-w-7xl mx-auto px-6">
-        <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-gold uppercase mb-3">Campos Munos Law</p>
+        <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-navy uppercase mb-3">Campos Munos Law</p>
         <h1 class="font-[var(--font-heading)] text-5xl md:text-7xl font-bold text-white leading-[0.95]">
           {{ $t('nav.pago') }}
         </h1>
@@ -18,8 +18,8 @@
       <div class="max-w-lg mx-auto px-6">
         <div class="reveal rounded-2xl overflow-hidden gradient-border">
           <div class="bg-brand-dark p-10 text-center">
-            <div class="w-20 h-20 rounded-2xl bg-brand-gold/10 flex items-center justify-center mx-auto mb-8">
-              <i class="fa-solid fa-credit-card text-3xl text-brand-gold"></i>
+            <div class="w-20 h-20 rounded-2xl bg-brand-navy/10 flex items-center justify-center mx-auto mb-8">
+              <i class="fa-solid fa-credit-card text-3xl text-brand-navy"></i>
             </div>
 
             <h2 class="font-[var(--font-heading)] text-2xl text-white mb-3">
@@ -33,12 +33,12 @@
 
             <div class="space-y-4">
               <a href="tel:+15049106508"
-                class="flex items-center justify-center gap-3 w-full py-4 rounded-xl bg-brand-gold text-brand-darker font-[var(--font-ui)] font-bold tracking-wider text-sm btn-magnetic">
+                class="flex items-center justify-center gap-3 w-full py-4 rounded-xl bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-sm btn-magnetic">
                 <i class="fa-solid fa-phone text-xs"></i>
                 (504) 910-6508
               </a>
               <a href="mailto:office@camulaw.com"
-                class="flex items-center justify-center gap-3 w-full py-4 rounded-xl border border-white/10 text-white/60 hover:text-white hover:border-brand-gold/30 font-[var(--font-ui)] font-medium tracking-wider text-sm transition-all">
+                class="flex items-center justify-center gap-3 w-full py-4 rounded-xl border border-white/10 text-white/60 hover:text-white hover:border-brand-navy/30 font-[var(--font-ui)] font-medium tracking-wider text-sm transition-all">
                 <i class="fa-solid fa-envelope text-xs"></i>
                 office@camulaw.com
               </a>

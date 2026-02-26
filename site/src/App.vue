@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen flex flex-col relative">
     <!-- Scroll progress bar -->
-    <div class="fixed top-0 left-0 h-[2px] bg-brand-gold z-[200] transition-all duration-75"
+    <div class="fixed top-0 left-0 h-[2px] bg-brand-navy z-[200] transition-all duration-75"
       :style="{ width: scrollProgress + '%' }"></div>
 
     <SiteHeader />

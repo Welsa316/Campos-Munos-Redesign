@@ -18,9 +18,9 @@
       <!-- Hero content - left-aligned for dramatic asymmetry -->
       <div class="relative h-full max-w-7xl mx-auto px-6 flex flex-col justify-end pb-24 md:pb-32">
         <!-- Accent line -->
-        <div class="w-16 h-[2px] bg-brand-gold mb-6 hero-reveal" style="transition-delay: 0.2s"></div>
+        <div class="w-16 h-[2px] bg-brand-navy mb-6 hero-reveal" style="transition-delay: 0.2s"></div>
 
-        <p class="font-[var(--font-ui)] text-brand-gold text-xs tracking-[0.4em] uppercase mb-4 hero-reveal" style="transition-delay: 0.4s">
+        <p class="font-[var(--font-ui)] text-brand-navy-light text-xs tracking-[0.4em] uppercase mb-4 hero-reveal" style="transition-delay: 0.4s">
           Campos Munos Law, LLC
         </p>
 
@@ -41,7 +41,7 @@
 
         <div class="flex flex-col sm:flex-row items-start gap-4 hero-reveal" style="transition-delay: 1.2s">
           <router-link to="/consulta"
-            class="group flex items-center gap-3 bg-brand-gold text-brand-darker font-[var(--font-ui)] font-bold tracking-wider text-sm px-8 py-4 rounded-xl btn-magnetic">
+            class="group flex items-center gap-3 bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-sm px-8 py-4 rounded-xl btn-magnetic">
             {{ $t('home.consultaBtn') }}
             <i class="fa-solid fa-arrow-right text-xs transition-transform group-hover:translate-x-1"></i>
           </router-link>
@@ -58,16 +58,16 @@
           class="group relative w-3 h-3 flex items-center justify-center"
           :aria-label="`Slide ${i + 1}`">
           <span class="block rounded-full transition-all duration-500"
-            :class="currentSlide === i ? 'w-3 h-3 bg-brand-gold' : 'w-1.5 h-1.5 bg-white/30 group-hover:bg-white/60'"></span>
+            :class="currentSlide === i ? 'w-3 h-3 bg-white' : 'w-1.5 h-1.5 bg-white/30 group-hover:bg-white/60'"></span>
         </button>
       </div>
 
       <!-- Bottom info strip -->
       <div class="absolute bottom-0 left-0 right-0 py-4 bg-gradient-to-t from-brand-darker to-transparent">
         <div class="max-w-7xl mx-auto px-6 flex flex-wrap items-center gap-8 text-white/40 text-xs font-[var(--font-ui)] tracking-wider">
-          <span class="flex items-center gap-2"><i class="fa-solid fa-location-dot text-brand-gold/60"></i> New Orleans, LA</span>
-          <span class="flex items-center gap-2"><i class="fa-solid fa-phone text-brand-gold/60"></i> (504) 910-6508</span>
-          <span class="flex items-center gap-2"><i class="fa-solid fa-video text-brand-gold/60"></i> {{ $t('home.virtualAvailable') }}</span>
+          <span class="flex items-center gap-2"><i class="fa-solid fa-location-dot text-brand-navy/60"></i> New Orleans, LA</span>
+          <a href="tel:+15049106508" class="flex items-center gap-2 hover:text-white transition-colors"><i class="fa-solid fa-phone text-brand-red/60"></i> <span class="text-sm font-semibold">(504) 910-6508</span></a>
+          <span class="flex items-center gap-2"><i class="fa-solid fa-video text-brand-navy/60"></i> {{ $t('home.virtualAvailable') }}</span>
         </div>
       </div>
     </section>
@@ -79,7 +79,7 @@
           <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-white/30 uppercase">{{ $t('home.recognizedBy') }}</p>
           <div class="flex items-center gap-10">
             <div v-for="(badge, i) in badges" :key="i" class="flex items-center gap-2 text-white/20">
-              <i class="fa-solid fa-award text-brand-gold/40 text-lg"></i>
+              <i class="fa-solid fa-award text-brand-navy/40 text-lg"></i>
               <span class="font-[var(--font-ui)] text-xs tracking-wider hidden sm:inline">{{ badge }}</span>
             </div>
           </div>
@@ -91,7 +91,7 @@
     <section class="py-24 bg-brand-darker relative noise">
       <div class="relative z-10 max-w-7xl mx-auto px-6">
         <div class="text-center mb-16 reveal">
-          <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-gold uppercase mb-3">{{ $t('nav.servicios') }}</p>
+          <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-navy uppercase mb-3">{{ $t('nav.servicios') }}</p>
           <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-white">
             {{ $t('home.queEsperar').replace('?', '') }}
           </h2>
@@ -104,14 +104,14 @@
             class="reveal col-span-2 row-span-2 group relative rounded-2xl overflow-hidden min-h-[320px] gradient-border">
             <div class="absolute inset-0 bg-gradient-to-br from-brand-red/20 to-brand-dark group-hover:from-brand-red/30 transition-all duration-500"></div>
             <div class="relative h-full p-8 flex flex-col justify-end">
-              <i class="fa-solid fa-id-card text-5xl text-brand-gold/30 mb-auto group-hover:text-brand-gold/50 transition-colors duration-500"></i>
-              <h3 class="font-[var(--font-heading)] text-3xl text-white mb-2 group-hover:text-brand-gold transition-colors">
+              <i class="fa-solid fa-id-card text-5xl text-brand-navy/30 mb-auto group-hover:text-brand-navy/50 transition-colors duration-500"></i>
+              <h3 class="font-[var(--font-heading)] text-3xl text-white mb-2 group-hover:text-brand-navy transition-colors">
                 {{ $t('services.greenCard') }}
               </h3>
               <p class="text-white/40 text-sm font-[var(--font-ui)] leading-relaxed line-clamp-2">
                 {{ $t('serviceDescriptions.greenCard') }}
               </p>
-              <div class="mt-4 flex items-center gap-2 text-brand-gold text-xs font-[var(--font-ui)] font-semibold tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
+              <div class="mt-4 flex items-center gap-2 text-brand-navy text-xs font-[var(--font-ui)] font-semibold tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
                 {{ $t('readMore') }} <i class="fa-solid fa-arrow-right text-[10px]"></i>
               </div>
             </div>
@@ -123,9 +123,9 @@
             class="reveal group relative rounded-2xl overflow-hidden min-h-[160px] gradient-border">
             <div class="absolute inset-0 bg-brand-gray/50 group-hover:bg-brand-gray/80 transition-all duration-500"></div>
             <div class="relative h-full p-5 flex flex-col justify-between">
-              <i :class="service.icon" class="text-2xl text-brand-gold/40 group-hover:text-brand-gold transition-colors duration-300"></i>
+              <i :class="service.icon" class="text-2xl text-brand-navy/40 group-hover:text-brand-navy transition-colors duration-300"></i>
               <div>
-                <h3 class="font-[var(--font-heading)] text-base text-white group-hover:text-brand-gold transition-colors leading-tight">
+                <h3 class="font-[var(--font-heading)] text-base text-white group-hover:text-brand-navy transition-colors leading-tight">
                   {{ $t(`services.${service.key}`) }}
                 </h3>
               </div>
@@ -135,7 +135,7 @@
 
         <div class="text-center mt-12 reveal">
           <router-link to="/servicios"
-            class="inline-flex items-center gap-3 text-brand-gold hover:text-brand-gold-light font-[var(--font-ui)] font-medium tracking-wider text-sm transition-colors group">
+            class="inline-flex items-center gap-3 text-brand-navy hover:text-brand-navy-light font-[var(--font-ui)] font-medium tracking-wider text-sm transition-colors group">
             {{ $t('home.serviciosBtn') }}
             <i class="fa-solid fa-arrow-right text-xs group-hover:translate-x-1 transition-transform"></i>
           </router-link>
@@ -146,13 +146,13 @@
     <!-- ===================== REVIEWS - HORIZONTAL SCROLL ===================== -->
     <section class="py-24 bg-brand-dark relative overflow-hidden">
       <!-- Floating accent -->
-      <div class="absolute top-12 right-12 w-40 h-40 rounded-full bg-brand-gold/[0.03] blur-3xl float-slow pointer-events-none"></div>
+      <div class="absolute top-12 right-12 w-40 h-40 rounded-full bg-brand-navy/[0.03] blur-3xl float-slow pointer-events-none"></div>
 
       <div class="max-w-7xl mx-auto px-6">
         <div class="flex items-end justify-between mb-12 reveal">
           <div>
             <div class="flex items-center gap-2 mb-3">
-              <i v-for="n in 5" :key="n" class="fa-solid fa-star text-brand-gold text-sm"></i>
+              <i v-for="n in 5" :key="n" class="fa-solid fa-star text-yellow-400 text-sm"></i>
             </div>
             <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-white">{{ $t('home.reviewsTitle') }}</h2>
           </div>
@@ -160,16 +160,16 @@
 
         <div class="horizontal-scroll gap-6 pb-4 -mx-6 px-6">
           <div v-for="(review, i) in reviews" :key="i"
-            class="w-[340px] md:w-[400px] p-8 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-brand-gold/20 transition-all duration-300 flex flex-col">
+            class="w-[340px] md:w-[400px] p-8 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-brand-navy/20 transition-all duration-300 flex flex-col">
             <div class="flex items-center gap-1 mb-5">
-              <i v-for="n in 5" :key="n" class="fa-solid fa-star text-brand-gold text-xs"></i>
+              <i v-for="n in 5" :key="n" class="fa-solid fa-star text-yellow-400 text-xs"></i>
             </div>
             <p class="text-white/60 text-[15px] leading-relaxed italic flex-1 mb-6">
               "{{ review.text }}"
             </p>
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-brand-gold/10 flex items-center justify-center">
-                <span class="text-brand-gold font-[var(--font-ui)] font-bold text-sm">{{ review.name.charAt(0) }}</span>
+              <div class="w-10 h-10 rounded-full bg-brand-navy/10 flex items-center justify-center">
+                <span class="text-brand-navy font-[var(--font-ui)] font-bold text-sm">{{ review.name.charAt(0) }}</span>
               </div>
               <span class="text-white/80 text-sm font-[var(--font-ui)] font-medium">{{ review.name }}</span>
             </div>
@@ -184,22 +184,22 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <!-- Left: Image with overlapping accent -->
           <div class="relative reveal-left">
-<!--            <div class="rounded-2xl overflow-hidden">-->
-<!--              <img src="/AbogadosSlideshowPic.jpg" alt="Campos Munos Law Team"-->
-<!--                class="w-full aspect-[4/3] object-cover" />-->
-<!--            </div>-->
-            <!-- Overlapping gold accent block -->
-            <div class="absolute -bottom-6 -right-6 w-32 h-32 border-2 border-brand-gold/20 rounded-2xl float-medium"></div>
+            <div class="rounded-2xl overflow-hidden">
+              <img src="/AbogadosSlideshowPic.jpg" alt="Campos Munos Law Team"
+                class="w-full aspect-[4/3] object-cover" />
+            </div>
+            <!-- Overlapping accent block -->
+            <div class="absolute -bottom-6 -right-6 w-32 h-32 border-2 border-brand-navy/20 rounded-2xl float-medium"></div>
             <!-- Experience badge -->
             <div class="absolute -top-4 -left-4 glass rounded-2xl p-4 text-center">
-              <p class="font-[var(--font-heading)] text-3xl font-bold gold-shimmer">20+</p>
+              <p class="font-[var(--font-heading)] text-3xl font-bold navy-shimmer">20+</p>
               <p class="font-[var(--font-ui)] text-[10px] tracking-wider text-white/50 uppercase">Years</p>
             </div>
           </div>
 
           <!-- Right: Text -->
           <div class="reveal-right">
-            <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-gold uppercase mb-3">{{ $t('home.quienesSomos') }}</p>
+            <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-navy uppercase mb-3">{{ $t('home.quienesSomos') }}</p>
             <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-white mb-6 leading-tight">
               {{ $t('home.quienesSomos') }}
             </h2>
@@ -207,7 +207,7 @@
               {{ $t('home.quienesSomosText') }}
             </p>
             <router-link to="/acerca-de"
-              class="inline-flex items-center gap-3 text-brand-gold hover:text-brand-gold-light font-[var(--font-ui)] font-medium tracking-wider text-sm transition-colors group">
+              class="inline-flex items-center gap-3 text-brand-navy hover:text-brand-navy-light font-[var(--font-ui)] font-medium tracking-wider text-sm transition-colors group">
               {{ $t('home.sobreNosotros') }}
               <i class="fa-solid fa-arrow-right text-xs group-hover:translate-x-1 transition-transform"></i>
             </router-link>
@@ -221,7 +221,7 @@
       <div class="absolute inset-0 bg-cover bg-center bg-fixed" style="background-image: url('/Slideshow3.jpg')"></div>
       <div class="absolute inset-0 bg-brand-darker/85"></div>
       <div class="relative max-w-3xl mx-auto px-6 text-center reveal">
-        <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-gold uppercase mb-4">{{ $t('home.porQueNosotros') }}</p>
+        <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-navy uppercase mb-4">{{ $t('home.porQueNosotros') }}</p>
         <h2 class="font-[var(--font-heading)] text-3xl md:text-5xl text-white mb-8 leading-tight">
           {{ $t('home.porQueNosotros') }}
         </h2>
@@ -229,7 +229,7 @@
           {{ $t('home.porQueNosotrosText') }}
         </p>
         <router-link to="/el-equipo"
-          class="inline-flex items-center gap-3 bg-brand-gold text-brand-darker font-[var(--font-ui)] font-bold tracking-wider text-sm px-8 py-4 rounded-xl btn-magnetic">
+          class="inline-flex items-center gap-3 bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-sm px-8 py-4 rounded-xl btn-magnetic">
           {{ $t('home.perfilesBtn') }}
           <i class="fa-solid fa-arrow-right text-xs"></i>
         </router-link>
@@ -241,13 +241,13 @@
       <div class="max-w-7xl mx-auto px-6">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div class="reveal-left">
-            <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-gold uppercase mb-3">{{ $t('home.dondeEstamos') }}</p>
+            <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-navy uppercase mb-3">{{ $t('home.dondeEstamos') }}</p>
             <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-white mb-6 leading-tight">{{ $t('home.dondeEstamos') }}</h2>
             <p class="text-white/60 text-lg leading-relaxed mb-8">
               {{ $t('home.dondeEstamosText') }}
             </p>
             <router-link to="/consulta"
-              class="inline-flex items-center gap-3 border border-brand-gold text-brand-gold hover:bg-brand-gold hover:text-brand-darker font-[var(--font-ui)] font-semibold tracking-wider text-sm px-8 py-3.5 rounded-xl transition-all btn-magnetic">
+              class="inline-flex items-center gap-3 border border-brand-navy text-brand-navy hover:bg-brand-navy hover:text-white font-[var(--font-ui)] font-semibold tracking-wider text-sm px-8 py-3.5 rounded-xl transition-all btn-magnetic">
               {{ $t('home.contactenosBtn') }}
             </router-link>
           </div>
@@ -266,12 +266,12 @@
 
     <!-- ===================== INSTAGRAM CTA ===================== -->
     <section class="py-20 bg-brand-dark relative overflow-hidden">
-      <div class="absolute inset-0 bg-gradient-to-r from-brand-gold/[0.03] to-transparent pointer-events-none"></div>
+      <div class="absolute inset-0 bg-gradient-to-r from-brand-navy/[0.03] to-transparent pointer-events-none"></div>
       <div class="relative max-w-4xl mx-auto px-6 text-center reveal">
-        <i class="fa-brands fa-instagram text-5xl text-brand-gold/20 mb-6"></i>
+        <i class="fa-brands fa-instagram text-5xl text-brand-navy/20 mb-6"></i>
         <h2 class="font-[var(--font-heading)] text-2xl md:text-3xl text-white mb-3">{{ $t('home.instagramTitle') }}</h2>
         <a href="https://www.instagram.com/juancamposlaw/" target="_blank" rel="noopener"
-          class="gold-shimmer text-2xl font-[var(--font-heading)] font-bold">
+          class="navy-shimmer text-2xl font-[var(--font-heading)] font-bold">
           {{ $t('home.instagramHandle') }}
         </a>
       </div>
@@ -285,9 +285,12 @@ import { useScrollReveal } from '../composables/useScrollReveal.js'
 
 useScrollReveal()
 
-const slides = ['/Slideshow1.jpg', '/Slideshow2.jpg', '/Slideshow3.jpg', '/Slideshow4.jpg', '/Slideshow5.jpg']
+const slides = ['/Slideshow1.jpg', '/Slideshow2.jpg', '/Slideshow3.jpg', '/Slideshow4.jpg', '/Slideshow5.png']
 const currentSlide = ref(0)
 let slideTimer = null
+
+function goToSlide(i) { currentSlide.value = i }
+function nextSlide() { currentSlide.value = (currentSlide.value + 1) % slides.length }
 
 const badges = ['Bar Association', 'Small Business', 'SBM', 'AILA']
 
@@ -306,12 +309,8 @@ const reviews = [
   { text: 'Muy agradecido por su ayuda. Lograron resolver mi caso cuando otros abogados no pudieron.', name: 'Ana L.' },
 ]
 
-function goToSlide(i) { currentSlide.value = i }
-function nextSlide() { currentSlide.value = (currentSlide.value + 1) % slides.length }
-
 onMounted(() => {
   slideTimer = setInterval(nextSlide, 6000)
-  // Trigger hero reveal animations
   nextTick(() => {
     document.querySelectorAll('.hero-reveal').forEach((el, i) => {
       el.style.opacity = '0'

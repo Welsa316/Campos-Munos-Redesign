@@ -1,7 +1,7 @@
 <template>
   <footer class="relative bg-brand-muted overflow-hidden">
     <!-- Decorative top border gradient -->
-    <div class="h-px bg-gradient-to-r from-transparent via-brand-gold/40 to-transparent"></div>
+    <div class="h-px bg-gradient-to-r from-transparent via-brand-navy/40 to-transparent"></div>
 
     <!-- Main footer content -->
     <div class="max-w-7xl mx-auto px-6 pt-20 pb-12">
@@ -18,7 +18,7 @@
           <div class="flex items-center gap-3 mt-6">
             <a v-for="social in socials" :key="social.label" :href="social.href" target="_blank" rel="noopener"
               :aria-label="social.label"
-              class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:text-brand-gold hover:bg-brand-gold/10 transition-all duration-300">
+              class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:text-brand-navy hover:bg-brand-navy/10 transition-all duration-300">
               <i :class="social.icon"></i>
             </a>
           </div>
@@ -26,7 +26,7 @@
 
         <!-- Navigation -->
         <div class="md:col-span-2">
-          <h4 class="font-[var(--font-ui)] text-xs tracking-[0.2em] text-brand-gold uppercase mb-5">
+          <h4 class="font-[var(--font-ui)] text-xs tracking-[0.2em] text-brand-navy uppercase mb-5">
             {{ $t('nav.servicios') }}
           </h4>
           <div class="space-y-3">
@@ -38,7 +38,7 @@
         </div>
 
         <div class="md:col-span-2">
-          <h4 class="font-[var(--font-ui)] text-xs tracking-[0.2em] text-brand-gold uppercase mb-5">
+          <h4 class="font-[var(--font-ui)] text-xs tracking-[0.2em] text-brand-navy uppercase mb-5">
             {{ $t('nav.acercaDe') }}
           </h4>
           <div class="space-y-3">
@@ -49,29 +49,29 @@
 
         <!-- Contact info -->
         <div class="md:col-span-4">
-          <h4 class="font-[var(--font-ui)] text-xs tracking-[0.2em] text-brand-gold uppercase mb-5">
+          <h4 class="font-[var(--font-ui)] text-xs tracking-[0.2em] text-brand-navy uppercase mb-5">
             {{ $t('contact.direccion') }}
           </h4>
           <div class="space-y-4 text-white/50 text-sm font-[var(--font-ui)]">
             <div class="flex items-start gap-3">
-              <i class="fa-solid fa-location-dot text-brand-gold/50 mt-1"></i>
+              <i class="fa-solid fa-location-dot text-brand-navy/50 mt-1"></i>
               <div>
                 <p>812 Gravier Street, Suite 330</p>
                 <p>New Orleans, LA 70112</p>
               </div>
             </div>
             <div class="flex items-start gap-3">
-              <i class="fa-solid fa-envelope text-brand-gold/50 mt-1"></i>
+              <i class="fa-solid fa-envelope text-brand-navy/50 mt-1"></i>
               <div>
                 <p class="text-white/30 text-xs mb-0.5">PO Box 6224, Metairie, LA 70009</p>
               </div>
             </div>
-            <a href="tel:+15049106508" class="flex items-center gap-3 hover:text-brand-gold transition-colors">
-              <i class="fa-solid fa-phone text-brand-gold/50"></i>
+            <a href="tel:+15049106508" class="flex items-center gap-3 hover:text-brand-navy transition-colors text-base font-semibold">
+              <i class="fa-solid fa-phone text-brand-red/60"></i>
               (504) 910-6508
             </a>
-            <a href="mailto:office@camulaw.com" class="flex items-center gap-3 hover:text-brand-gold transition-colors">
-              <i class="fa-solid fa-at text-brand-gold/50"></i>
+            <a href="mailto:office@camulaw.com" class="flex items-center gap-3 hover:text-brand-navy transition-colors">
+              <i class="fa-solid fa-at text-brand-navy/50"></i>
               office@camulaw.com
             </a>
           </div>
@@ -90,7 +90,7 @@
     </div>
 
     <!-- Decorative floating gold circle -->
-    <div class="absolute -bottom-32 -right-32 w-64 h-64 rounded-full bg-brand-gold/[0.02] blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-32 -right-32 w-64 h-64 rounded-full bg-brand-navy/[0.02] blur-3xl pointer-events-none"></div>
   </footer>
 </template>
 

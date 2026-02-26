@@ -4,7 +4,7 @@
     <section class="min-h-[80vh] bg-brand-muted">
       <div class="max-w-7xl mx-auto px-6 pt-28 pb-20">
         <router-link to="/el-equipo"
-          class="inline-flex items-center gap-2 text-white/30 hover:text-brand-gold text-xs font-[var(--font-ui)] tracking-wider uppercase mb-12 transition-colors group">
+          class="inline-flex items-center gap-2 text-white/30 hover:text-brand-navy text-xs font-[var(--font-ui)] tracking-wider uppercase mb-12 transition-colors group">
           <i class="fa-solid fa-arrow-left text-[10px] group-hover:-translate-x-1 transition-transform"></i>
           {{ $t('team.title') }}
         </router-link>
@@ -20,18 +20,18 @@
               </div>
             </div>
             <!-- Decorative accent -->
-            <div class="absolute -bottom-4 -right-4 w-24 h-24 border-2 border-brand-gold/15 rounded-2xl -z-10"></div>
+            <div class="absolute -bottom-4 -right-4 w-24 h-24 border-2 border-brand-navy/15 rounded-2xl -z-10"></div>
           </div>
 
           <!-- Bio content -->
           <div class="md:col-span-3">
-            <p class="font-[var(--font-ui)] text-xs tracking-[0.2em] text-brand-gold uppercase mb-3">
+            <p class="font-[var(--font-ui)] text-xs tracking-[0.2em] text-brand-navy uppercase mb-3">
               {{ $t(`team.members.${memberData.key}.title`) }}
             </p>
             <h1 class="font-[var(--font-heading)] text-4xl md:text-5xl font-bold text-white leading-tight mb-6">
               {{ $t(`team.members.${memberData.key}.name`) }}
             </h1>
-            <div class="w-16 h-[2px] bg-brand-gold mb-8"></div>
+            <div class="w-16 h-[2px] bg-brand-navy mb-8"></div>
             <p class="text-white/60 text-lg leading-relaxed font-[var(--font-body)]">
               {{ memberData.bio }}
             </p>
@@ -39,7 +39,7 @@
             <!-- CTA -->
             <div class="mt-10 flex flex-wrap gap-4">
               <router-link to="/consulta"
-                class="inline-flex items-center gap-3 bg-brand-gold text-brand-darker font-[var(--font-ui)] font-bold tracking-wider text-sm px-8 py-4 rounded-xl btn-magnetic">
+                class="inline-flex items-center gap-3 bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-sm px-8 py-4 rounded-xl btn-magnetic">
                 {{ $t('home.consultaBtn') }} <i class="fa-solid fa-arrow-right text-xs"></i>
               </router-link>
               <a href="tel:+15049106508"

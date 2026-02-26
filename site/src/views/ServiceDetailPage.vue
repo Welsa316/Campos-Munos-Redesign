@@ -3,20 +3,20 @@
     <!-- Hero with large icon -->
     <section class="relative pt-32 pb-24 bg-brand-muted overflow-hidden">
       <!-- Decorative -->
-      <div class="absolute top-1/2 right-0 -translate-y-1/2 text-[300px] text-brand-gold/[0.03] pointer-events-none select-none">
+      <div class="absolute top-1/2 right-0 -translate-y-1/2 text-[300px] text-brand-navy/[0.03] pointer-events-none select-none">
         <i :class="serviceIcon"></i>
       </div>
 
       <div class="relative max-w-7xl mx-auto px-6">
         <router-link to="/servicios"
-          class="inline-flex items-center gap-2 text-white/30 hover:text-brand-gold text-xs font-[var(--font-ui)] tracking-wider uppercase mb-8 transition-colors group">
+          class="inline-flex items-center gap-2 text-white/30 hover:text-brand-navy text-xs font-[var(--font-ui)] tracking-wider uppercase mb-8 transition-colors group">
           <i class="fa-solid fa-arrow-left text-[10px] group-hover:-translate-x-1 transition-transform"></i>
           {{ $t('nav.servicios') }}
         </router-link>
 
         <div class="flex items-start gap-6">
-          <div class="w-16 h-16 rounded-2xl bg-brand-gold/10 flex items-center justify-center flex-shrink-0">
-            <i :class="serviceIcon" class="text-2xl text-brand-gold"></i>
+          <div class="w-16 h-16 rounded-2xl bg-brand-navy/10 flex items-center justify-center flex-shrink-0">
+            <i :class="serviceIcon" class="text-2xl text-brand-navy"></i>
           </div>
           <div>
             <h1 class="font-[var(--font-heading)] text-4xl md:text-6xl font-bold text-white leading-[0.95]">
@@ -39,8 +39,8 @@
           <div v-if="hasVideo" class="rounded-2xl overflow-hidden mb-12 gradient-border">
             <div class="aspect-video bg-brand-dark flex items-center justify-center group cursor-pointer">
               <div class="text-center">
-                <div class="w-20 h-20 rounded-full bg-brand-gold/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-brand-gold/20 transition-colors">
-                  <i class="fa-solid fa-play text-brand-gold text-xl ml-1"></i>
+                <div class="w-20 h-20 rounded-full bg-brand-navy/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-brand-navy/20 transition-colors">
+                  <i class="fa-solid fa-play text-brand-navy text-xl ml-1"></i>
                 </div>
                 <p class="text-white/30 text-sm font-[var(--font-ui)] tracking-wider">Video</p>
               </div>
@@ -53,7 +53,7 @@
           <p class="text-white/50 text-lg mb-6 font-[var(--font-body)]">{{ $t('home.popupTitle') }}</p>
           <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
             <router-link to="/consulta"
-              class="inline-flex items-center gap-3 bg-brand-gold text-brand-darker font-[var(--font-ui)] font-bold tracking-wider text-sm px-8 py-4 rounded-xl btn-magnetic">
+              class="inline-flex items-center gap-3 bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-sm px-8 py-4 rounded-xl btn-magnetic">
               {{ $t('home.consultaBtn') }} <i class="fa-solid fa-arrow-right text-xs"></i>
             </router-link>
             <a href="tel:+15049106508"
