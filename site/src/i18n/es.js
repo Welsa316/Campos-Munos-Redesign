@@ -38,6 +38,9 @@ export default {
     visasJovenes: 'La Visa Especial para Jóvenes (SIJS) brinda protección migratoria a jóvenes menores de 21 años que han sido abandonados, maltratados o descuidados, y permite solicitar la residencia permanente en EE. UU.',
     peticionesFamiliares: 'Las peticiones familiares permiten a ciudadanos y residentes permanentes solicitar a ciertos familiares para obtener estatus legal y residencia permanente en EE. UU.',
     ead: 'El permiso de trabajo permite a ciertos inmigrantes trabajar legalmente en Estados Unidos mientras su caso migratorio está en proceso o bajo una categoría elegible. Le ayudamos a solicitarlo correctamente para que pueda trabajar sin preocupaciones.',
+    defensaDeportacion: 'Representamos a personas que enfrentan procedimientos de deportación ante los tribunales de inmigración. Nuestros abogados preparan defensas sólidas para proteger su derecho a permanecer en los Estados Unidos.',
+    visaT: 'La Visa T está diseñada para víctimas de tráfico humano. Brindamos representación legal confidencial para ayudarle a obtener estatus legal y protección en los Estados Unidos.',
+    videos: 'Contenido educativo en video sobre procesos migratorios y sus derechos legales.',
   },
   home: {
     heroTitle: 'Abogados de Inmigración',

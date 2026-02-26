@@ -38,6 +38,9 @@ export default {
     visasJovenes: 'The Special Immigrant Juvenile Status (SIJS) provides immigration protection to minors under 21 who have been abandoned, abused, or neglected, and allows them to apply for permanent residence in the U.S.',
     peticionesFamiliares: 'Family petitions allow citizens and permanent residents to petition certain family members to obtain legal status and permanent residence in the U.S.',
     ead: 'The employment authorization document allows certain immigrants to work legally in the United States while their immigration case is in process or under an eligible category. We help you apply correctly so you can work without worry.',
+    defensaDeportacion: 'We represent individuals facing deportation proceedings in immigration court. Our attorneys prepare strong defenses to protect your right to remain in the United States.',
+    visaT: 'The T Visa is designed for victims of human trafficking. We provide confidential legal representation to help you obtain legal status and protection in the United States.',
+    videos: 'Educational video content about immigration processes and your legal rights.',
   },
   home: {
     heroTitle: 'Immigration Attorneys',
