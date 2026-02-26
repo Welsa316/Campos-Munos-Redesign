@@ -3,10 +3,10 @@
     <!-- Hero strip -->
     <section class="relative pt-32 pb-20 overflow-hidden">
       <div class="absolute inset-0 bg-brand-muted"></div>
-      <div class="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-brand-gold/[0.03] to-transparent pointer-events-none"></div>
+      <div class="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-brand-navy/[0.03] to-transparent pointer-events-none"></div>
       <div class="relative max-w-7xl mx-auto px-6">
         <div class="reveal">
-          <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-gold uppercase mb-3">{{ $t('contact.subtitleAlt') }}</p>
+          <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-navy uppercase mb-3">{{ $t('contact.subtitleAlt') }}</p>
           <h1 class="font-[var(--font-heading)] text-5xl md:text-7xl font-bold text-white leading-[0.95]">
             {{ $t('contact.title') }}
           </h1>
@@ -73,7 +73,7 @@
               </div>
 
               <button type="submit"
-                class="w-full bg-brand-gold text-brand-darker font-[var(--font-ui)] font-bold tracking-wider text-sm py-4 rounded-xl btn-magnetic">
+                class="w-full bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-sm py-4 rounded-xl btn-magnetic">
                 {{ $t('contact.submit') }}
                 <i class="fa-solid fa-paper-plane ml-2 text-xs"></i>
               </button>
@@ -89,7 +89,7 @@
 
             <div class="mt-8">
               <router-link to="/pago"
-                class="inline-flex items-center gap-2 text-white/30 hover:text-brand-gold text-sm font-[var(--font-ui)] transition-colors">
+                class="inline-flex items-center gap-2 text-white/30 hover:text-brand-navy text-sm font-[var(--font-ui)] transition-colors">
                 <i class="fa-solid fa-credit-card text-xs"></i>
                 {{ $t('contact.paymentBtn') }}
               </router-link>
@@ -101,10 +101,10 @@
             <div class="sticky top-32 space-y-8">
               <!-- Contact cards -->
               <div v-for="item in contactCards" :key="item.titleKey"
-                class="group p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-brand-gold/15 transition-all duration-300">
+                class="group p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-brand-navy/15 transition-all duration-300">
                 <div class="flex items-start gap-4">
-                  <div class="w-12 h-12 rounded-xl bg-brand-gold/10 flex items-center justify-center flex-shrink-0 group-hover:bg-brand-gold/20 transition-colors">
-                    <i :class="item.icon" class="text-brand-gold"></i>
+                  <div class="w-12 h-12 rounded-xl bg-brand-navy/10 flex items-center justify-center flex-shrink-0 group-hover:bg-brand-navy/20 transition-colors">
+                    <i :class="item.icon" class="text-brand-navy"></i>
                   </div>
                   <div>
                     <h3 class="font-[var(--font-heading)] text-lg text-white mb-1">{{ $t(`contact.${item.titleKey}`) }}</h3>
@@ -119,7 +119,7 @@
                 <div class="flex gap-3">
                   <a v-for="social in socials" :key="social.label" :href="social.href" target="_blank" rel="noopener"
                     :aria-label="social.label"
-                    class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:text-brand-gold hover:bg-brand-gold/10 transition-all">
+                    class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:text-brand-navy hover:bg-brand-navy/10 transition-all">
                     <i :class="social.icon"></i>
                   </a>
                 </div>
@@ -128,8 +128,8 @@
               <!-- Hours -->
               <div class="p-6 rounded-2xl bg-white/[0.02] border border-white/5">
                 <div class="flex items-start gap-4">
-                  <div class="w-12 h-12 rounded-xl bg-brand-gold/10 flex items-center justify-center flex-shrink-0">
-                    <i class="fa-solid fa-clock text-brand-gold"></i>
+                  <div class="w-12 h-12 rounded-xl bg-brand-navy/10 flex items-center justify-center flex-shrink-0">
+                    <i class="fa-solid fa-clock text-brand-navy"></i>
                   </div>
                   <div>
                     <h3 class="font-[var(--font-heading)] text-lg text-white mb-2">{{ $t('contact.horario') }}</h3>
@@ -185,8 +185,8 @@ const socials = [
 
 const contactCards = computed(() => [
   { titleKey: 'direccion', icon: 'fa-solid fa-location-dot', content: '<p>812 Gravier Street, Office 330</p><p>New Orleans, LA 70112</p><p class="text-white/30 text-xs mt-1">PO Box 6224, Metairie, LA 70009</p>' },
-  { titleKey: 'telefono', icon: 'fa-solid fa-phone', content: '<a href="tel:+15049106508" class="hover:text-[var(--color-brand-gold)] transition-colors">+1 (504) 910-6508</a>' },
-  { titleKey: 'correo', icon: 'fa-solid fa-envelope', content: '<a href="mailto:office@camulaw.com" class="hover:text-[var(--color-brand-gold)] transition-colors">office@camulaw.com</a>' },
+  { titleKey: 'telefono', icon: 'fa-solid fa-phone', content: '<a href="tel:+15049106508" class="hover:text-[var(--color-brand-navy)] transition-colors">+1 (504) 910-6508</a>' },
+  { titleKey: 'correo', icon: 'fa-solid fa-envelope', content: '<a href="mailto:office@camulaw.com" class="hover:text-[var(--color-brand-navy)] transition-colors">office@camulaw.com</a>' },
 ])
 
 function submitForm() {
@@ -220,8 +220,8 @@ function submitForm() {
 }
 .form-input:focus {
   outline: none;
-  border-color: var(--color-brand-gold);
-  box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.1);
+  border-color: var(--color-brand-navy);
+  box-shadow: 0 0 0 3px rgba(0, 63, 141, 0.1);
   background: rgba(255,255,255,0.05);
 }
 .form-input::placeholder { color: rgba(255,255,255,0.2); }
