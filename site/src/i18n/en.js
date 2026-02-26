@@ -46,7 +46,7 @@ export default {
     heroTitle: 'Immigration Attorneys',
     heroSubtitle: 'New Orleans',
     heroTagline: 'Helping Survivors',
-    consultaBtn: 'FREE CONSULTATION',
+    consultaBtn: 'CONSULTATION HERE',
     virtualAvailable: 'Virtual consultation available',
     recognizedBy: 'Recognized By',
     reviewsTitle: 'Only 5-Star Reviews!',
