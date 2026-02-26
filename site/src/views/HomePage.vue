@@ -35,10 +35,6 @@
           </p>
         </div>
 
-        <p class="font-[var(--font-body)] text-2xl md:text-3xl text-white/50 max-w-xl mb-10 hero-reveal" style="transition-delay: 1s">
-          {{ $t('home.heroTagline') }}
-        </p>
-
         <div class="flex flex-col sm:flex-row items-start gap-4 hero-reveal" style="transition-delay: 1.2s">
           <router-link to="/consulta"
             class="group flex items-center gap-3 bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-base px-10 py-5 rounded-xl btn-magnetic">
@@ -178,7 +174,7 @@
           <!-- Left: Team photo -->
           <div class="relative reveal-left">
             <div class="rounded-2xl overflow-hidden shadow-lg">
-              <img src="/AbogadosSlideshowPic.jpg" alt="Campos Munos Law Team"
+              <img src="/PopupPhoto.jpg" alt="Campos Munos Law Team"
                 class="w-full aspect-[4/3] object-cover" />
             </div>
             <div class="absolute -bottom-4 -right-4 w-24 h-24 border-2 border-brand-navy/15 rounded-2xl -z-10"></div>
