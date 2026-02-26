@@ -174,7 +174,7 @@
           <!-- Left: Team photo -->
           <div class="relative reveal-left">
             <div class="rounded-2xl overflow-hidden shadow-lg">
-              <img src="/PopupPhoto.jpg" alt="Campos Munos Law Team"
+              <img src="/Team.jpg" alt="Campos Munos Law Team"
                 class="w-full aspect-[4/3] object-cover" />
             </div>
             <div class="absolute -bottom-4 -right-4 w-24 h-24 border-2 border-brand-navy/15 rounded-2xl -z-10"></div>
