@@ -21,17 +21,17 @@
     </section>
 
     <!-- Intro with large pull quote -->
-    <section class="py-24 bg-brand-darker relative">
-      <div class="absolute left-6 top-0 text-[200px] font-[var(--font-heading)] text-brand-navy/[0.04] leading-none select-none pointer-events-none">"</div>
+    <section class="py-24 bg-white relative">
+      <div class="absolute left-6 top-0 text-[200px] font-[var(--font-heading)] text-brand-navy/[0.06] leading-none select-none pointer-events-none">"</div>
       <div class="relative max-w-4xl mx-auto px-6 reveal">
-        <p class="text-white/70 text-2xl md:text-3xl leading-relaxed font-[var(--font-body)]">
+        <p class="text-gray-700 text-2xl md:text-3xl leading-relaxed font-[var(--font-body)]">
           {{ $t('about.introText') }}
         </p>
       </div>
     </section>
 
     <!-- Mission & Vision - Alternating layout -->
-    <section class="bg-brand-muted">
+    <section class="bg-brand-light">
       <!-- Mission -->
       <div class="max-w-7xl mx-auto px-6 py-24">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
@@ -42,18 +42,18 @@
               </div>
               <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase">01</p>
             </div>
-            <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-white mb-4">{{ $t('about.mision') }}</h2>
+            <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-gray-900 mb-4">{{ $t('about.mision') }}</h2>
             <div class="w-16 h-[2px] bg-brand-navy"></div>
           </div>
           <div class="space-y-6 reveal-right">
-            <p class="text-white/60 text-xl leading-relaxed">{{ $t('about.misionText1') }}</p>
-            <p class="text-white/60 text-xl leading-relaxed">{{ $t('about.misionText2') }}</p>
-            <p class="text-white/60 text-xl leading-relaxed">{{ $t('about.misionText3') }}</p>
+            <p class="text-gray-600 text-xl leading-relaxed">{{ $t('about.misionText1') }}</p>
+            <p class="text-gray-600 text-xl leading-relaxed">{{ $t('about.misionText2') }}</p>
+            <p class="text-gray-600 text-xl leading-relaxed">{{ $t('about.misionText3') }}</p>
           </div>
         </div>
       </div>
 
-      <div class="max-w-5xl mx-auto px-6"><div class="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div></div>
+      <div class="max-w-5xl mx-auto px-6"><div class="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div></div>
 
       <!-- Vision -->
       <div class="max-w-7xl mx-auto px-6 py-24">
@@ -65,13 +65,13 @@
               </div>
               <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase">02</p>
             </div>
-            <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-white mb-4">{{ $t('about.vision') }}</h2>
+            <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-gray-900 mb-4">{{ $t('about.vision') }}</h2>
             <div class="w-16 h-[2px] bg-brand-navy"></div>
           </div>
           <div class="lg:order-1 space-y-6 reveal-left">
-            <p class="text-white/60 text-xl leading-relaxed">{{ $t('about.visionText1') }}</p>
-            <p class="text-white/60 text-xl leading-relaxed">{{ $t('about.visionText2') }}</p>
-            <p class="text-white/60 text-xl leading-relaxed">{{ $t('about.visionText3') }}</p>
+            <p class="text-gray-600 text-xl leading-relaxed">{{ $t('about.visionText1') }}</p>
+            <p class="text-gray-600 text-xl leading-relaxed">{{ $t('about.visionText2') }}</p>
+            <p class="text-gray-600 text-xl leading-relaxed">{{ $t('about.visionText3') }}</p>
           </div>
         </div>
       </div>

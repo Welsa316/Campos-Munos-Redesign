@@ -73,33 +73,32 @@
     </section>
 
     <!-- ===================== RECOGNITION BAR ===================== -->
-    <section class="py-12 bg-brand-muted border-y border-white/5">
+    <section class="py-12 bg-brand-surface border-y border-gray-200">
       <div class="max-w-5xl mx-auto px-6">
-        <div class="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16">
-          <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-white/30 uppercase">{{ $t('home.recognizedBy') }}</p>
-          <div class="flex items-center gap-10">
-            <div v-for="(badge, i) in badges" :key="i" class="flex items-center gap-2 text-white/20">
-              <i class="fa-solid fa-award text-brand-navy/40 text-lg"></i>
-              <span class="font-[var(--font-ui)] text-sm tracking-wider hidden sm:inline">{{ badge }}</span>
-            </div>
+        <div class="flex flex-col items-center gap-8">
+          <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-gray-400 uppercase">{{ $t('home.recognizedBy') }}</p>
+          <div class="flex flex-wrap items-center justify-center gap-10 md:gap-16">
+            <img v-for="(badge, i) in badges" :key="i"
+              :src="badge.src" :alt="badge.alt"
+              class="h-16 md:h-20 w-auto object-contain opacity-70 hover:opacity-100 transition-opacity duration-300" />
           </div>
         </div>
       </div>
     </section>
 
     <!-- ===================== NUMBER COUNTER ===================== -->
-    <section class="py-16 bg-brand-darker">
+    <section class="py-16 bg-white">
       <div class="max-w-7xl mx-auto px-6 reveal">
         <div class="elfsight-app-6032d238-e359-414a-ac6c-c6a171918a90" data-elfsight-app-lazy></div>
       </div>
     </section>
 
     <!-- ===================== BENTO SERVICES GRID ===================== -->
-    <section class="py-24 bg-brand-darker relative noise">
+    <section class="py-24 bg-brand-light relative">
       <div class="relative z-10 max-w-7xl mx-auto px-6">
         <div class="text-center mb-16 reveal">
           <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase mb-3">{{ $t('nav.servicios') }}</p>
-          <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-white">
+          <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-gray-900">
             {{ $t('home.queEsperar').replace('?', '') }}
           </h2>
         </div>
@@ -108,14 +107,14 @@
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 stagger">
           <!-- Large featured card -->
           <router-link to="/servicios/green-card"
-            class="reveal col-span-2 row-span-2 group relative rounded-2xl overflow-hidden min-h-[320px] gradient-border">
-            <div class="absolute inset-0 bg-gradient-to-br from-brand-red/20 to-brand-dark group-hover:from-brand-red/30 transition-all duration-500"></div>
+            class="reveal col-span-2 row-span-2 group relative rounded-2xl overflow-hidden min-h-[320px] border border-gray-200 shadow-sm hover:shadow-lg transition-shadow duration-500">
+            <div class="absolute inset-0 bg-gradient-to-br from-brand-navy/5 to-white group-hover:from-brand-navy/10 transition-all duration-500"></div>
             <div class="relative h-full p-8 flex flex-col justify-end">
-              <i class="fa-solid fa-id-card text-5xl text-brand-navy/30 mb-auto group-hover:text-brand-navy/50 transition-colors duration-500"></i>
-              <h3 class="font-[var(--font-heading)] text-3xl text-white mb-2 group-hover:text-brand-navy transition-colors">
+              <i class="fa-solid fa-id-card text-5xl text-brand-navy/20 mb-auto group-hover:text-brand-navy/40 transition-colors duration-500"></i>
+              <h3 class="font-[var(--font-heading)] text-3xl text-gray-900 mb-2 group-hover:text-brand-navy transition-colors">
                 {{ $t('services.greenCard') }}
               </h3>
-              <p class="text-white/40 text-base font-[var(--font-ui)] leading-relaxed line-clamp-2">
+              <p class="text-gray-500 text-base font-[var(--font-ui)] leading-relaxed line-clamp-2">
                 {{ $t('serviceDescriptions.greenCard') }}
               </p>
               <div class="mt-4 flex items-center gap-2 text-brand-navy text-xs font-[var(--font-ui)] font-semibold tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
@@ -127,12 +126,11 @@
           <!-- Regular bento cards -->
           <router-link v-for="service in bentoServices" :key="service.slug"
             :to="`/servicios/${service.slug}`"
-            class="reveal group relative rounded-2xl overflow-hidden min-h-[160px] gradient-border">
-            <div class="absolute inset-0 bg-brand-gray/50 group-hover:bg-brand-gray/80 transition-all duration-500"></div>
+            class="reveal group relative rounded-2xl overflow-hidden min-h-[160px] border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow duration-500">
             <div class="relative h-full p-5 flex flex-col justify-between">
-              <i :class="service.icon" class="text-2xl text-brand-navy/40 group-hover:text-brand-navy transition-colors duration-300"></i>
+              <i :class="service.icon" class="text-2xl text-brand-navy/30 group-hover:text-brand-navy transition-colors duration-300"></i>
               <div>
-                <h3 class="font-[var(--font-heading)] text-base text-white group-hover:text-brand-navy transition-colors leading-tight">
+                <h3 class="font-[var(--font-heading)] text-base text-gray-900 group-hover:text-brand-navy transition-colors leading-tight">
                   {{ $t(`services.${service.key}`) }}
                 </h3>
               </div>
@@ -151,13 +149,13 @@
     </section>
 
     <!-- ===================== GOOGLE REVIEWS ===================== -->
-    <section class="py-24 bg-brand-dark relative overflow-hidden">
+    <section class="py-24 bg-white relative overflow-hidden">
       <div class="max-w-7xl mx-auto px-6">
         <div class="text-center mb-12 reveal">
           <div class="flex items-center justify-center gap-2 mb-3">
             <i v-for="n in 5" :key="n" class="fa-solid fa-star text-yellow-400 text-sm"></i>
           </div>
-          <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-white">{{ $t('home.reviewsTitle') }}</h2>
+          <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-gray-900">{{ $t('home.reviewsTitle') }}</h2>
         </div>
         <div class="reveal elfsight-reviews-wrapper rounded-2xl overflow-hidden">
           <div class="elfsight-app-02c0cb8e-d132-4834-ae18-93002f5a819a" data-elfsight-app-lazy></div>
@@ -166,7 +164,7 @@
     </section>
 
     <!-- ===================== ABOUT SPLIT SECTION ===================== -->
-    <section class="py-24 bg-brand-darker">
+    <section class="py-24 bg-brand-light">
       <div class="max-w-7xl mx-auto px-6">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <!-- Left: Image with overlapping accent -->
@@ -176,21 +174,21 @@
 <!--                class="w-full aspect-[4/3] object-cover" />-->
 <!--            </div>-->
             <!-- Overlapping accent block -->
-            <div class="absolute -bottom-6 -right-6 w-32 h-32 border-2 border-brand-navy/20 rounded-2xl float-medium"></div>
+            <div class="absolute -bottom-6 -right-6 w-32 h-32 border-2 border-brand-navy/15 rounded-2xl float-medium"></div>
             <!-- Experience badge -->
-            <div class="absolute -top-4 -left-4 glass rounded-2xl p-4 text-center">
+            <div class="absolute -top-4 -left-4 bg-white shadow-lg rounded-2xl p-4 text-center border border-gray-100">
               <p class="font-[var(--font-heading)] text-3xl font-bold navy-shimmer">20+</p>
-              <p class="font-[var(--font-ui)] text-xs tracking-wider text-white/50 uppercase">Years</p>
+              <p class="font-[var(--font-ui)] text-xs tracking-wider text-gray-400 uppercase">Years</p>
             </div>
           </div>
 
           <!-- Right: Text -->
           <div class="reveal-right">
             <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase mb-3">{{ $t('home.quienesSomos') }}</p>
-            <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-white mb-6 leading-tight">
+            <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-gray-900 mb-6 leading-tight">
               {{ $t('home.quienesSomos') }}
             </h2>
-            <p class="text-white/60 text-xl leading-relaxed mb-8">
+            <p class="text-gray-600 text-xl leading-relaxed mb-8">
               {{ $t('home.quienesSomosText') }}
             </p>
             <router-link to="/acerca-de"
@@ -224,13 +222,13 @@
     </section>
 
     <!-- ===================== LOCATION ===================== -->
-    <section class="py-24 bg-brand-darker">
+    <section class="py-24 bg-white">
       <div class="max-w-7xl mx-auto px-6">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div class="reveal-left">
             <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase mb-3">{{ $t('home.dondeEstamos') }}</p>
-            <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-white mb-6 leading-tight">{{ $t('home.dondeEstamos') }}</h2>
-            <p class="text-white/60 text-xl leading-relaxed mb-8">
+            <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-gray-900 mb-6 leading-tight">{{ $t('home.dondeEstamos') }}</h2>
+            <p class="text-gray-600 text-xl leading-relaxed mb-8">
               {{ $t('home.dondeEstamosText') }}
             </p>
             <router-link to="/consulta"
@@ -239,7 +237,7 @@
             </router-link>
           </div>
 
-          <div class="reveal-right rounded-2xl overflow-hidden h-[400px]">
+          <div class="reveal-right rounded-2xl overflow-hidden h-[400px] shadow-lg">
             <iframe
               src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3457.0!2d-90.0715!3d29.9511!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8620a67b1f0b7d2f%3A0x4b7a8c8b3b8b8b8b!2s812%20Gravier%20St%2C%20New%20Orleans%2C%20LA%2070112!5e0!3m2!1ses!2sus!4v1700000000000"
               class="w-full h-full border-0 rounded-2xl"
@@ -252,11 +250,11 @@
     </section>
 
     <!-- ===================== INSTAGRAM FEED ===================== -->
-    <section class="py-20 bg-brand-dark relative overflow-hidden">
+    <section class="py-20 bg-brand-light relative overflow-hidden">
       <div class="max-w-7xl mx-auto px-6">
         <div class="text-center mb-10 reveal">
           <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase mb-3">{{ $t('home.instagramTitle') }}</p>
-          <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-white mb-2">
+          <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-gray-900 mb-2">
             <a href="https://www.instagram.com/juancamposlaw/" target="_blank" rel="noopener" class="navy-shimmer">
               {{ $t('home.instagramHandle') }}
             </a>
@@ -283,7 +281,12 @@ let slideTimer = null
 function goToSlide(i) { currentSlide.value = i }
 function nextSlide() { currentSlide.value = (currentSlide.value + 1) % slides.length }
 
-const badges = ['Bar Association', 'Small Business', 'SBM', 'AILA']
+const badges = [
+  { src: '/LSBA113502.png', alt: 'Louisiana State Bar Association' },
+  { src: '/SBM.png', alt: 'State Bar of Michigan' },
+  { src: '/Goldman-Sachs-Small-Business-Alumni.png', alt: 'Goldman Sachs 10,000 Small Businesses Alumni' },
+  { src: '/American_Immigration_Lawyers_Association_Logo.png', alt: 'American Immigration Lawyers Association' },
+]
 
 const bentoServices = [
   { key: 'visaU', slug: 'visa-u', icon: 'fa-solid fa-scale-balanced' },

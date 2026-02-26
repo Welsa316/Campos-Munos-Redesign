@@ -1,15 +1,15 @@
 <template>
   <div>
     <!-- Hero with large icon -->
-    <section class="relative pt-32 pb-24 bg-brand-muted overflow-hidden">
+    <section class="relative pt-32 pb-24 bg-brand-surface overflow-hidden">
       <!-- Decorative -->
-      <div class="absolute top-1/2 right-0 -translate-y-1/2 text-[300px] text-brand-navy/[0.03] pointer-events-none select-none">
+      <div class="absolute top-1/2 right-0 -translate-y-1/2 text-[300px] text-brand-navy/[0.04] pointer-events-none select-none">
         <i :class="serviceIcon"></i>
       </div>
 
       <div class="relative max-w-7xl mx-auto px-6">
         <router-link to="/servicios"
-          class="inline-flex items-center gap-2 text-white/30 hover:text-brand-navy text-sm font-[var(--font-ui)] tracking-wider uppercase mb-8 transition-colors group">
+          class="inline-flex items-center gap-2 text-gray-400 hover:text-brand-navy text-sm font-[var(--font-ui)] tracking-wider uppercase mb-8 transition-colors group">
           <i class="fa-solid fa-arrow-left text-[10px] group-hover:-translate-x-1 transition-transform"></i>
           {{ $t('nav.servicios') }}
         </router-link>
@@ -19,7 +19,7 @@
             <i :class="serviceIcon" class="text-2xl text-brand-navy"></i>
           </div>
           <div>
-            <h1 class="font-[var(--font-heading)] text-4xl md:text-6xl font-bold text-white leading-[0.95]">
+            <h1 class="font-[var(--font-heading)] text-4xl md:text-6xl font-bold text-gray-900 leading-[0.95]">
               {{ serviceTitle }}
             </h1>
           </div>
@@ -28,36 +28,36 @@
     </section>
 
     <!-- Content -->
-    <section class="py-20 bg-brand-darker">
+    <section class="py-20 bg-white">
       <div class="max-w-4xl mx-auto px-6">
         <div class="reveal">
-          <p class="text-white/65 text-xl md:text-2xl leading-relaxed font-[var(--font-body)] mb-12">
+          <p class="text-gray-600 text-xl md:text-2xl leading-relaxed font-[var(--font-body)] mb-12">
             {{ serviceDescription }}
           </p>
 
           <!-- Video placeholder -->
-          <div v-if="hasVideo" class="rounded-2xl overflow-hidden mb-12 gradient-border">
-            <div class="aspect-video bg-brand-dark flex items-center justify-center group cursor-pointer">
+          <div v-if="hasVideo" class="rounded-2xl overflow-hidden mb-12 border border-gray-200 shadow-sm">
+            <div class="aspect-video bg-brand-surface flex items-center justify-center group cursor-pointer">
               <div class="text-center">
                 <div class="w-20 h-20 rounded-full bg-brand-navy/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-brand-navy/20 transition-colors">
                   <i class="fa-solid fa-play text-brand-navy text-xl ml-1"></i>
                 </div>
-                <p class="text-white/30 text-sm font-[var(--font-ui)] tracking-wider">Video</p>
+                <p class="text-gray-400 text-sm font-[var(--font-ui)] tracking-wider">Video</p>
               </div>
             </div>
           </div>
         </div>
 
         <!-- CTA -->
-        <div class="reveal mt-8 p-8 rounded-2xl bg-white/[0.02] border border-white/5 text-center">
-          <p class="text-white/50 text-xl mb-6 font-[var(--font-body)]">{{ $t('home.popupTitle') }}</p>
+        <div class="reveal mt-8 p-8 rounded-2xl bg-brand-surface border border-gray-200 text-center">
+          <p class="text-gray-500 text-xl mb-6 font-[var(--font-body)]">{{ $t('home.popupTitle') }}</p>
           <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
             <router-link to="/consulta"
               class="inline-flex items-center gap-3 bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-sm px-8 py-4 rounded-xl btn-magnetic">
               {{ $t('home.consultaBtn') }} <i class="fa-solid fa-arrow-right text-xs"></i>
             </router-link>
             <a href="tel:+15049106508"
-              class="inline-flex items-center gap-3 border border-white/15 text-white/60 hover:text-white hover:border-white/30 font-[var(--font-ui)] font-medium tracking-wider text-sm px-8 py-4 rounded-xl transition-all">
+              class="inline-flex items-center gap-3 border border-gray-300 text-gray-500 hover:text-brand-navy hover:border-brand-navy/30 font-[var(--font-ui)] font-medium tracking-wider text-sm px-8 py-4 rounded-xl transition-all">
               <i class="fa-solid fa-phone text-xs"></i> (504) 910-6508
             </a>
           </div>
