@@ -16,11 +16,11 @@
       </div>
 
       <!-- Hero content - left-aligned for dramatic asymmetry -->
-      <div class="relative h-full max-w-7xl mx-auto px-6 flex flex-col justify-end pb-24 md:pb-32">
+      <div class="relative h-full max-w-7xl mx-auto px-6 flex flex-col justify-center pt-20">
         <!-- Accent line -->
         <div class="w-20 h-[3px] bg-brand-navy mb-6 hero-reveal" style="transition-delay: 0.2s"></div>
 
-        <p class="font-[var(--font-ui)] text-brand-navy-light text-base md:text-lg tracking-[0.3em] uppercase mb-4 hero-reveal" style="transition-delay: 0.4s">
+        <p class="font-[var(--font-ui)] text-white/80 text-base md:text-lg tracking-[0.3em] uppercase mb-4 hero-reveal" style="transition-delay: 0.4s">
           Campos Munos Law, LLC
         </p>
 
@@ -31,7 +31,7 @@
         <div class="flex items-center gap-4 mb-6 hero-reveal" style="transition-delay: 0.8s">
           <div class="w-12 h-[1px] bg-white/30"></div>
           <p class="font-[var(--font-heading)] text-2xl md:text-3xl lg:text-4xl text-white/70 italic">
-            {{ slides[currentSlide].subtitle }}
+            {{ $t(slides[currentSlide].subtitleKey) }}
           </p>
         </div>
 
@@ -46,7 +46,7 @@
             <i class="fa-solid fa-arrow-right text-sm transition-transform group-hover:translate-x-1"></i>
           </router-link>
           <router-link to="/servicios"
-            class="flex items-center gap-3 border border-white/20 text-white/80 hover:text-white hover:border-white/40 font-[var(--font-ui)] font-medium tracking-wider text-base px-10 py-5 rounded-xl transition-all">
+            class="flex items-center gap-3 border border-white/20 text-white/80 hover:text-white hover:border-white/40 font-[var(--font-ui)] font-bold tracking-wider text-base px-10 py-5 rounded-xl transition-all">
             {{ $t('home.serviciosBtn') }}
           </router-link>
         </div>
@@ -175,12 +175,13 @@
     <section class="py-24 bg-brand-light">
       <div class="max-w-7xl mx-auto px-6">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          <!-- Left: Image placeholder area -->
+          <!-- Left: Team photo -->
           <div class="relative reveal-left">
-<!--            <div class="rounded-2xl overflow-hidden">-->
-<!--              <img src="/AbogadosSlideshowPic.jpg" alt="Campos Munos Law Team"-->
-<!--                class="w-full aspect-[4/3] object-cover" />-->
-<!--            </div>-->
+            <div class="rounded-2xl overflow-hidden shadow-lg">
+              <img src="/AbogadosSlideshowPic.jpg" alt="Campos Munos Law Team"
+                class="w-full aspect-[4/3] object-cover" />
+            </div>
+            <div class="absolute -bottom-4 -right-4 w-24 h-24 border-2 border-brand-navy/15 rounded-2xl -z-10"></div>
           </div>
 
           <!-- Right: Text -->
@@ -268,16 +269,18 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useScrollReveal } from '../composables/useScrollReveal.js'
 
 useScrollReveal()
+const { t } = useI18n()
 
 const slides = [
-  { img: '/Slideshow1.jpg', subtitle: 'Ayudando a los inmigrantes en los 50 estados' },
-  { img: '/Slideshow2.jpg', subtitle: 'Abogados que sirven a su comunidad' },
-  { img: '/Slideshow3.jpg', subtitle: 'Te ayudamos a hacerte ciudadano' },
-  { img: '/Slideshow4.jpg', subtitle: 'Ayudando a sobrevivientes' },
-  { img: '/Slideshow5.png', subtitle: 'Visas para esposos' },
+  { img: '/Slideshow1.jpg', subtitleKey: 'home.slideSubtitle1' },
+  { img: '/Slideshow2.jpg', subtitleKey: 'home.slideSubtitle2' },
+  { img: '/Slideshow3.jpg', subtitleKey: 'home.slideSubtitle3' },
+  { img: '/Slideshow4.jpg', subtitleKey: 'home.slideSubtitle4' },
+  { img: '/Slideshow5.png', subtitleKey: 'home.slideSubtitle5' },
 ]
 const currentSlide = ref(0)
 let slideTimer = null

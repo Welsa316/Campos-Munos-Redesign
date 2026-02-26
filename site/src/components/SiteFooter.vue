@@ -9,7 +9,7 @@
         <!-- Brand column -->
         <div class="md:col-span-4">
           <router-link to="/home" class="inline-block mb-6">
-            <img src="/logo.png" alt="Campos Munos Law" class="h-20" />
+            <img src="/logo.png" alt="Campos Munos Law" class="h-20 brightness-0 invert" />
           </router-link>
           <p class="text-white/70 text-base font-[var(--font-ui)] leading-relaxed max-w-xs">
             {{ $t('about.introText').substring(0, 150) }}...

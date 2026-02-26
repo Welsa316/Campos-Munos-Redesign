@@ -7,7 +7,7 @@
 
     <nav class="relative max-w-7xl mx-auto px-6 flex items-center justify-between">
       <!-- Logo - fades in on scroll -->
-      <router-link to="/home" class="flex-shrink-0 relative group transition-all duration-500"
+      <router-link to="/home" class="flex-shrink-0 relative group transition-all duration-500 mr-8"
         :class="scrolled ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'">
         <img src="/logo.png" alt="Campos Munos Law"
           class="h-16 transition-all duration-500" />
@@ -67,7 +67,7 @@
         <div class="flex items-center gap-3">
           <a v-for="social in socials" :key="social.label" :href="social.href" target="_blank" rel="noopener"
             :aria-label="social.label"
-            class="w-9 h-9 rounded-full flex items-center justify-center transition-all text-base"
+            class="w-10 h-10 rounded-full flex items-center justify-center transition-all text-lg"
             :class="scrolled
               ? 'text-gray-400 hover:text-brand-navy hover:bg-brand-navy/5'
               : 'text-white/50 hover:text-brand-navy hover:bg-white/5'">
@@ -75,7 +75,7 @@
           </a>
         </div>
         <a href="tel:+15049106508"
-          class="flex items-center gap-3 px-7 py-3.5 rounded-full bg-brand-red hover:bg-brand-red-light text-white text-base font-[var(--font-ui)] font-semibold tracking-wider transition-all btn-magnetic">
+          class="flex items-center gap-3 whitespace-nowrap px-8 py-3 rounded-full bg-brand-red hover:bg-brand-red-light text-white text-base font-[var(--font-ui)] font-semibold tracking-wider transition-all btn-magnetic">
           <i class="fa-solid fa-phone text-sm"></i>
           (504) 910-6508
         </a>
@@ -174,6 +174,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
   display: flex;
   align-items: center;
   gap: 5px;
+  white-space: nowrap;
   font-family: var(--font-ui);
   font-size: 0.875rem;
   font-weight: 600;

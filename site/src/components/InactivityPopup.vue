@@ -7,15 +7,15 @@
       <!-- Modal -->
       <div class="relative w-full max-w-xl overflow-hidden rounded-3xl">
         <!-- Gradient border effect -->
-        <div class="absolute inset-0 rounded-3xl bg-gradient-to-br from-brand-navy/30 via-transparent to-brand-red/30 p-[1px]">
-          <div class="w-full h-full rounded-3xl bg-brand-dark"></div>
+        <div class="absolute inset-0 rounded-3xl bg-gradient-to-br from-brand-navy-light/30 via-transparent to-brand-red/30 p-[1px]">
+          <div class="w-full h-full rounded-3xl bg-brand-navy"></div>
         </div>
 
         <div class="relative">
           <!-- Image with overlay -->
           <div class="relative h-80 overflow-hidden rounded-t-3xl">
             <img src="/PopupPhoto.jpg" alt="" class="w-full h-full object-cover object-top kenburns" />
-            <div class="absolute inset-0 bg-gradient-to-t from-brand-dark via-brand-dark/40 to-transparent"></div>
+            <div class="absolute inset-0 bg-gradient-to-t from-brand-navy via-brand-navy/40 to-transparent"></div>
             <button @click="close"
               class="absolute top-4 right-4 w-10 h-10 rounded-full glass-dark flex items-center justify-center text-white/60 hover:text-white transition-colors">
               <i class="fa-solid fa-xmark text-base"></i>
