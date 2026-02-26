@@ -3,7 +3,7 @@
     <div class="flex flex-col gap-4 sm:flex-row">
       <div class="hidden w-32 flex-shrink-0 overflow-hidden rounded-xl bg-slate-100 sm:block">
         <img
-          src="/assets/popup-group.jpg"
+          src="/src/assets/popup-group.jpg"
           alt=""
           class="h-full w-full object-cover"
           loading="lazy"
