@@ -70,6 +70,11 @@ export default {
     popupBtn: 'CONTACT US',
     casosResueltos: 'Cases Resolved',
     anosExperiencia: 'Years of Experience',
+    slideSubtitle1: 'Helping immigrants in all 50 states',
+    slideSubtitle2: 'Attorneys who serve their community',
+    slideSubtitle3: 'We help you become a citizen',
+    slideSubtitle4: 'Helping survivors',
+    slideSubtitle5: 'Visas for spouses',
   },
   contact: {
     title: 'Get In Touch',
