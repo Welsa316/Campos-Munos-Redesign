@@ -2,10 +2,14 @@
   <div>
     <!-- ===================== CINEMATIC HERO ===================== -->
     <section class="relative h-screen min-h-[700px] overflow-hidden">
-      <!-- Single hero image with Ken Burns -->
+      <!-- Slideshow with Ken Burns -->
       <div class="absolute inset-0">
-        <div class="absolute inset-0 bg-cover bg-center kenburns"
-          :style="{ backgroundImage: `url('/AbogadosSlideshowPic.jpg')` }"></div>
+        <div v-for="(slide, i) in slides" :key="i"
+          class="absolute inset-0 transition-opacity duration-[2000ms]"
+          :class="currentSlide === i ? 'opacity-100' : 'opacity-0'">
+          <div class="absolute inset-0 bg-cover bg-center kenburns"
+            :style="{ backgroundImage: `url('${slide}')`, animationDelay: `${i * -4}s` }"></div>
+        </div>
         <!-- Layered overlays for depth -->
         <div class="absolute inset-0 bg-gradient-to-b from-brand-darker/60 via-black/40 to-brand-darker"></div>
         <div class="absolute inset-0 bg-gradient-to-r from-brand-darker/80 via-transparent to-transparent"></div>
@@ -46,6 +50,16 @@
             {{ $t('home.serviciosBtn') }}
           </router-link>
         </div>
+      </div>
+
+      <!-- Slide progress dots - vertical on right -->
+      <div class="absolute right-6 top-1/2 -translate-y-1/2 flex flex-col gap-3 z-10">
+        <button v-for="(_, i) in slides" :key="i" @click="goToSlide(i)"
+          class="group relative w-3 h-3 flex items-center justify-center"
+          :aria-label="`Slide ${i + 1}`">
+          <span class="block rounded-full transition-all duration-500"
+            :class="currentSlide === i ? 'w-3 h-3 bg-white' : 'w-1.5 h-1.5 bg-white/30 group-hover:bg-white/60'"></span>
+        </button>
       </div>
 
       <!-- Bottom info strip -->
@@ -204,7 +218,7 @@
 
     <!-- ===================== WHY US - FULL WIDTH PARALLAX ===================== -->
     <section class="relative py-32 overflow-hidden">
-      <div class="absolute inset-0 bg-cover bg-center bg-fixed" style="background-image: url('/AbogadosSlideshowPic.jpg')"></div>
+      <div class="absolute inset-0 bg-cover bg-center bg-fixed" style="background-image: url('/Slideshow3.jpg')"></div>
       <div class="absolute inset-0 bg-brand-darker/85"></div>
       <div class="relative max-w-3xl mx-auto px-6 text-center reveal">
         <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-navy uppercase mb-4">{{ $t('home.porQueNosotros') }}</p>
@@ -266,10 +280,17 @@
 </template>
 
 <script setup>
-import { onMounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useScrollReveal } from '../composables/useScrollReveal.js'
 
 useScrollReveal()
+
+const slides = ['/Slideshow1.jpg', '/Slideshow2.jpg', '/Slideshow3.jpg', '/Slideshow4.jpg', '/Slideshow5.jpg']
+const currentSlide = ref(0)
+let slideTimer = null
+
+function goToSlide(i) { currentSlide.value = i }
+function nextSlide() { currentSlide.value = (currentSlide.value + 1) % slides.length }
 
 const badges = ['Bar Association', 'Small Business', 'SBM', 'AILA']
 
@@ -289,6 +310,7 @@ const reviews = [
 ]
 
 onMounted(() => {
+  slideTimer = setInterval(nextSlide, 6000)
   nextTick(() => {
     document.querySelectorAll('.hero-reveal').forEach((el, i) => {
       el.style.opacity = '0'
@@ -301,4 +323,5 @@ onMounted(() => {
     })
   })
 })
+onUnmounted(() => clearInterval(slideTimer))
 </script>
