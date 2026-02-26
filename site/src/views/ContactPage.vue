@@ -119,7 +119,8 @@
                 <div class="flex gap-3">
                   <a v-for="social in socials" :key="social.label" :href="social.href" target="_blank" rel="noopener"
                     :aria-label="social.label"
-                    class="w-12 h-12 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-brand-navy hover:border-brand-navy/20 transition-all text-lg">
+                    class="w-12 h-12 rounded-xl bg-white border border-gray-200 flex items-center justify-center hover:scale-110 hover:border-gray-300 transition-all text-lg"
+                    :style="{ color: social.color }">
                     <i :class="social.icon"></i>
                   </a>
                 </div>
@@ -157,7 +158,7 @@
       <div class="max-w-7xl mx-auto px-6">
         <div class="text-center mb-10 reveal">
           <div class="flex items-center justify-center gap-2 mb-3">
-            <i v-for="n in 5" :key="n" class="fa-solid fa-star text-yellow-400 text-lg"></i>
+            <i v-for="n in 5" :key="n" class="fa-solid fa-star text-yellow-400 text-xl"></i>
           </div>
           <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-brand-navy">{{ $t('home.reviewsTitle') }}</h2>
         </div>
@@ -191,11 +192,11 @@ const form = ref({ firstName: '', lastName: '', email: '', consultationType: '',
 const submitted = ref(false)
 
 const socials = [
-  { icon: 'fa-brands fa-whatsapp', href: 'https://wa.me/15049106508', label: 'WhatsApp' },
-  { icon: 'fa-brands fa-instagram', href: 'https://www.instagram.com/juancamposlaw/', label: 'Instagram' },
-  { icon: 'fa-brands fa-facebook-f', href: 'https://www.facebook.com/Camposmunoslaw', label: 'Facebook' },
-  { icon: 'fa-brands fa-youtube', href: 'https://www.youtube.com/@camposmunoslaw6542', label: 'YouTube' },
-  { icon: 'fa-brands fa-tiktok', href: 'https://www.tiktok.com/@elabogadohispano', label: 'TikTok' },
+  { icon: 'fa-brands fa-whatsapp', href: 'https://wa.me/15049106508', label: 'WhatsApp', color: '#25D366' },
+  { icon: 'fa-brands fa-instagram', href: 'https://www.instagram.com/juancamposlaw/', label: 'Instagram', color: '#E4405F' },
+  { icon: 'fa-brands fa-facebook-f', href: 'https://www.facebook.com/Camposmunoslaw', label: 'Facebook', color: '#1877F2' },
+  { icon: 'fa-brands fa-youtube', href: 'https://www.youtube.com/@camposmunoslaw6542', label: 'YouTube', color: '#FF0000' },
+  { icon: 'fa-brands fa-tiktok', href: 'https://www.tiktok.com/@elabogadohispano', label: 'TikTok', color: '#69C9D0' },
 ]
 
 const contactCards = computed(() => [

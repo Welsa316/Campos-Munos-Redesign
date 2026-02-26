@@ -9,7 +9,7 @@
       </div>
       <div class="relative max-w-7xl mx-auto px-6 pb-20 w-full">
         <div class="max-w-2xl">
-          <p class="font-[var(--font-ui)] text-base tracking-[0.2em] text-brand-navy-light uppercase mb-4 hero-reveal" style="transition-delay: 0.3s">
+          <p class="font-[var(--font-ui)] text-base tracking-[0.2em] text-white/80 uppercase mb-4 hero-reveal" style="transition-delay: 0.3s">
             {{ $t('about.firmName') }}
           </p>
           <h1 class="font-[var(--font-heading)] text-5xl md:text-7xl lg:text-8xl font-bold text-white leading-[0.95] mb-6 hero-reveal" style="transition-delay: 0.5s">
@@ -88,8 +88,9 @@
             {{ $t('home.consultaBtn') }} <i class="fa-solid fa-arrow-right text-sm"></i>
           </router-link>
           <router-link to="/el-equipo"
-            class="inline-flex items-center gap-3 border border-white/15 text-white/70 hover:text-white hover:border-white/30 font-[var(--font-ui)] font-medium tracking-wider text-base px-10 py-5 rounded-xl transition-all">
+            class="inline-flex items-center gap-3 border border-white/20 text-white/80 hover:bg-white hover:text-brand-navy hover:border-white font-[var(--font-ui)] font-bold tracking-wider text-base px-10 py-5 rounded-xl transition-all">
             {{ $t('home.perfilesBtn') }}
+            <i class="fa-solid fa-arrow-right text-sm"></i>
           </router-link>
         </div>
       </div>

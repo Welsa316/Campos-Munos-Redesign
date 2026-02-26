@@ -1,14 +1,14 @@
 <template>
   <header class="fixed top-0 left-0 right-0 z-[100] transition-all duration-500"
     :class="scrolled ? 'py-2' : 'py-5'">
-    <!-- Background: transparent at top, white on scroll -->
+    <!-- Background: transparent on home at top, white otherwise -->
     <div class="absolute inset-0 transition-all duration-500"
-      :class="scrolled ? 'bg-white shadow-lg opacity-100' : 'opacity-0'"></div>
+      :class="navSolid ? 'bg-white shadow-lg opacity-100' : 'opacity-0'"></div>
 
     <nav class="relative max-w-7xl mx-auto px-6 flex items-center justify-between">
-      <!-- Logo - fades in on scroll -->
+      <!-- Logo - visible on scroll or non-home pages -->
       <router-link to="/home" class="flex-shrink-0 relative group transition-all duration-500 mr-8"
-        :class="scrolled ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'">
+        :class="navSolid ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'">
         <img src="/logo.png" alt="Campos Munos Law"
           class="h-16 transition-all duration-500" />
       </router-link>
@@ -17,7 +17,7 @@
       <div class="hidden lg:flex items-center gap-1">
         <!-- Services mega-dropdown -->
         <div class="relative" @mouseenter="showServices = true" @mouseleave="showServices = false">
-          <router-link to="/servicios" class="nav-item" :class="scrolled ? 'nav-scrolled' : 'nav-top'">
+          <router-link to="/servicios" class="nav-item" :class="navSolid ? 'nav-scrolled' : 'nav-top'">
             <span>{{ $t('nav.servicios') }}</span>
             <svg class="w-3.5 h-3.5 transition-transform duration-300" :class="showServices ? 'rotate-180' : ''"
               fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -27,18 +27,18 @@
           <transition name="mega">
             <div v-show="showServices"
               class="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-[520px] rounded-2xl p-6 shadow-2xl"
-              :class="scrolled ? 'bg-white shadow-gray-200/50 border border-gray-100' : 'glass-dark shadow-black/30'">
+              :class="navSolid ? 'bg-white shadow-gray-200/50 border border-gray-100' : 'glass-dark shadow-black/30'">
               <!-- Accent line at top -->
               <div class="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-0.5 bg-brand-navy rounded-full"></div>
               <div class="grid grid-cols-2 gap-1 mt-1">
                 <router-link v-for="service in serviceLinks" :key="service.slug"
                   :to="`/servicios/${service.slug}`"
                   class="flex items-center gap-3 px-3 py-3 rounded-xl transition-all group/item"
-                  :class="scrolled
+                  :class="navSolid
                     ? 'text-gray-500 hover:text-brand-navy hover:bg-brand-navy/5'
                     : 'text-white/70 hover:text-brand-navy hover:bg-white/5'"
                   @click="showServices = false">
-                  <i :class="[service.icon, 'text-base transition-colors w-5 text-center', scrolled
+                  <i :class="[service.icon, 'text-base transition-colors w-5 text-center', navSolid
                       ? 'text-brand-navy/40 group-hover/item:text-brand-navy'
                       : 'text-brand-navy/50 group-hover/item:text-brand-navy']"></i>
                   <span class="font-[var(--font-ui)] text-sm font-medium">{{ $t(`services.${service.key}`) }}</span>
@@ -48,16 +48,16 @@
           </transition>
         </div>
 
-        <router-link to="/servicios/green-card" class="nav-item" :class="scrolled ? 'nav-scrolled' : 'nav-top'">
+        <router-link to="/servicios/green-card" class="nav-item" :class="navSolid ? 'nav-scrolled' : 'nav-top'">
           <span>{{ $t('nav.greenCards') }}</span>
         </router-link>
-        <router-link to="/consulta" class="nav-item" :class="scrolled ? 'nav-scrolled' : 'nav-top'">
+        <router-link to="/consulta" class="nav-item" :class="navSolid ? 'nav-scrolled' : 'nav-top'">
           <span>{{ $t('nav.consulta') }}</span>
         </router-link>
-        <router-link to="/acerca-de" class="nav-item" :class="scrolled ? 'nav-scrolled' : 'nav-top'">
+        <router-link to="/acerca-de" class="nav-item" :class="navSolid ? 'nav-scrolled' : 'nav-top'">
           <span>{{ $t('nav.acercaDe') }}</span>
         </router-link>
-        <router-link to="/el-equipo" class="nav-item" :class="scrolled ? 'nav-scrolled' : 'nav-top'">
+        <router-link to="/el-equipo" class="nav-item" :class="navSolid ? 'nav-scrolled' : 'nav-top'">
           <span>{{ $t('nav.elEquipo') }}</span>
         </router-link>
       </div>
@@ -67,10 +67,8 @@
         <div class="flex items-center gap-3">
           <a v-for="social in socials" :key="social.label" :href="social.href" target="_blank" rel="noopener"
             :aria-label="social.label"
-            class="w-10 h-10 rounded-full flex items-center justify-center transition-all text-lg"
-            :class="scrolled
-              ? 'text-gray-400 hover:text-brand-navy hover:bg-brand-navy/5'
-              : 'text-white/50 hover:text-brand-navy hover:bg-white/5'">
+            class="w-10 h-10 rounded-full flex items-center justify-center transition-all text-lg hover:scale-110 hover:opacity-80"
+            :style="{ color: social.color }">
             <i :class="social.icon"></i>
           </a>
         </div>
@@ -86,11 +84,11 @@
         <span class="sr-only">Menu</span>
         <div class="flex flex-col items-end gap-1.5 transition-all">
           <span class="block h-[2px] rounded-full transition-all duration-300"
-            :class="[scrolled ? 'bg-gray-800' : 'bg-white', mobileOpen ? 'w-7 rotate-45 translate-y-[5px]' : 'w-7']"></span>
+            :class="[navSolid ? 'bg-gray-800' : 'bg-white', mobileOpen ? 'w-7 rotate-45 translate-y-[5px]' : 'w-7']"></span>
           <span class="block h-[2px] rounded-full transition-all duration-300"
-            :class="[scrolled ? 'bg-gray-800' : 'bg-white', mobileOpen ? 'opacity-0 w-5' : 'opacity-100 w-5']"></span>
+            :class="[navSolid ? 'bg-gray-800' : 'bg-white', mobileOpen ? 'opacity-0 w-5' : 'opacity-100 w-5']"></span>
           <span class="block h-[2px] rounded-full transition-all duration-300"
-            :class="[scrolled ? 'bg-gray-800' : 'bg-white', mobileOpen ? 'w-7 -rotate-45 -translate-y-[5px]' : 'w-6']"></span>
+            :class="[navSolid ? 'bg-gray-800' : 'bg-white', mobileOpen ? 'w-7 -rotate-45 -translate-y-[5px]' : 'w-6']"></span>
         </div>
       </button>
     </nav>
@@ -110,7 +108,8 @@
           </a>
           <div class="flex items-center gap-5 mt-4">
             <a v-for="social in socials" :key="social.label" :href="social.href" target="_blank" rel="noopener"
-              :aria-label="social.label" class="text-gray-400 hover:text-brand-navy text-2xl transition-colors">
+              :aria-label="social.label" class="text-2xl transition-colors hover:opacity-70"
+              :style="{ color: social.color }">
               <i :class="social.icon"></i>
             </a>
           </div>
@@ -123,18 +122,23 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 
 const { t } = useI18n()
+const route = useRoute()
 const scrolled = ref(false)
 const showServices = ref(false)
 const mobileOpen = ref(false)
 
+const isHome = computed(() => route.path === '/home' || route.path === '/')
+const navSolid = computed(() => scrolled.value || !isHome.value)
+
 const socials = [
-  { icon: 'fa-brands fa-whatsapp', href: 'https://wa.me/15049106508', label: 'WhatsApp' },
-  { icon: 'fa-brands fa-instagram', href: 'https://www.instagram.com/juancamposlaw/', label: 'Instagram' },
-  { icon: 'fa-brands fa-facebook-f', href: 'https://www.facebook.com/Camposmunoslaw', label: 'Facebook' },
-  { icon: 'fa-brands fa-youtube', href: 'https://www.youtube.com/@camposmunoslaw6542', label: 'YouTube' },
-  { icon: 'fa-brands fa-tiktok', href: 'https://www.tiktok.com/@elabogadohispano', label: 'TikTok' },
+  { icon: 'fa-brands fa-whatsapp', href: 'https://wa.me/15049106508', label: 'WhatsApp', color: '#25D366' },
+  { icon: 'fa-brands fa-instagram', href: 'https://www.instagram.com/juancamposlaw/', label: 'Instagram', color: '#E4405F' },
+  { icon: 'fa-brands fa-facebook-f', href: 'https://www.facebook.com/Camposmunoslaw', label: 'Facebook', color: '#1877F2' },
+  { icon: 'fa-brands fa-youtube', href: 'https://www.youtube.com/@camposmunoslaw6542', label: 'YouTube', color: '#FF0000' },
+  { icon: 'fa-brands fa-tiktok', href: 'https://www.tiktok.com/@elabogadohispano', label: 'TikTok', color: '#69C9D0' },
 ]
 
 const serviceLinks = [
