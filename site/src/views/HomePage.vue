@@ -184,10 +184,10 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <!-- Left: Image with overlapping accent -->
           <div class="relative reveal-left">
-            <div class="rounded-2xl overflow-hidden">
-              <img src="/AbogadosSlideshowPic.jpg" alt="Campos Munos Law Team"
-                class="w-full aspect-[4/3] object-cover" />
-            </div>
+<!--            <div class="rounded-2xl overflow-hidden">-->
+<!--              <img src="/AbogadosSlideshowPic.jpg" alt="Campos Munos Law Team"-->
+<!--                class="w-full aspect-[4/3] object-cover" />-->
+<!--            </div>-->
             <!-- Overlapping accent block -->
             <div class="absolute -bottom-6 -right-6 w-32 h-32 border-2 border-brand-navy/20 rounded-2xl float-medium"></div>
             <!-- Experience badge -->
