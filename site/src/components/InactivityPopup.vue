@@ -4,16 +4,16 @@
       <!-- Backdrop -->
       <div class="absolute inset-0 bg-black/70 backdrop-blur-lg"></div>
 
-      <!-- Modal -->
-      <div class="relative w-full max-w-md overflow-hidden rounded-3xl">
+      <!-- Modal - bigger -->
+      <div class="relative w-full max-w-xl overflow-hidden rounded-3xl">
         <!-- Gradient border effect -->
-        <div class="absolute inset-0 rounded-3xl bg-gradient-to-br from-brand-gold/30 via-transparent to-brand-red/30 p-[1px]">
+        <div class="absolute inset-0 rounded-3xl bg-gradient-to-br from-brand-navy/30 via-transparent to-brand-red/30 p-[1px]">
           <div class="w-full h-full rounded-3xl bg-brand-dark"></div>
         </div>
 
         <div class="relative">
-          <!-- Image with overlay -->
-          <div class="relative h-56 overflow-hidden rounded-t-3xl">
+          <!-- Image with overlay - taller -->
+          <div class="relative h-72 overflow-hidden rounded-t-3xl">
             <img src="/PopupPhoto.jpg" alt="" class="w-full h-full object-cover kenburns" />
             <div class="absolute inset-0 bg-gradient-to-t from-brand-dark via-brand-dark/40 to-transparent"></div>
             <button @click="close"
@@ -23,20 +23,20 @@
           </div>
 
           <!-- Content -->
-          <div class="px-8 pb-8 -mt-12 relative z-10 text-center">
-            <h2 class="font-[var(--font-heading)] text-2xl text-white mb-2 leading-tight">
+          <div class="px-10 pb-10 -mt-12 relative z-10 text-center">
+            <h2 class="font-[var(--font-heading)] text-3xl text-white mb-3 leading-tight">
               {{ $t('home.popupTitle') }}
             </h2>
-            <p class="text-white/50 text-sm font-[var(--font-ui)] mb-6">{{ $t('home.popupSubtitle') }}</p>
+            <p class="text-white/50 text-sm font-[var(--font-ui)] mb-8">{{ $t('home.popupSubtitle') }}</p>
 
-            <div class="space-y-3">
+            <div class="space-y-4">
               <a href="tel:+15049106508"
-                class="flex items-center justify-center gap-3 w-full py-3.5 rounded-xl bg-brand-gold text-brand-darker font-[var(--font-ui)] font-bold text-sm tracking-wider transition-all btn-magnetic">
-                <i class="fa-solid fa-phone"></i>
+                class="flex items-center justify-center gap-3 w-full py-4 rounded-xl bg-brand-red text-white font-[var(--font-ui)] font-bold text-lg tracking-wider transition-all btn-magnetic">
+                <i class="fa-solid fa-phone text-sm"></i>
                 (504) 910-6508
               </a>
               <router-link to="/consulta" @click="close"
-                class="flex items-center justify-center gap-2 w-full py-3 rounded-xl border border-white/10 text-white/70 hover:text-white hover:border-brand-gold/30 font-[var(--font-ui)] text-sm tracking-wider transition-all">
+                class="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border border-white/10 text-white/70 hover:text-white hover:border-brand-navy/30 font-[var(--font-ui)] text-sm tracking-wider transition-all">
                 <i class="fa-solid fa-message text-xs"></i>
                 {{ $t('home.popupBtn') }}
               </router-link>

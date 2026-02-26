@@ -2,13 +2,13 @@
 @import "@fortawesome/fontawesome-free/css/all.css";
 
 @theme {
-  --color-brand-gold: #c9a84c;
-  --color-brand-gold-light: #d4b96a;
-  --color-brand-gold-dark: #a68a3a;
+  --color-brand-navy: #003F8D;
+  --color-brand-navy-light: #1a5ab8;
+  --color-brand-navy-dark: #002d66;
   --color-brand-dark: #1a1a1a;
   --color-brand-darker: #0d0d0d;
-  --color-brand-red: #8b2332;
-  --color-brand-red-light: #a42d3f;
+  --color-brand-red: #CE1D1D;
+  --color-brand-red-light: #e53535;
   --color-brand-cream: #f5f0e8;
   --color-brand-gray: #2a2a2a;
   --color-brand-muted: #161616;
@@ -21,7 +21,7 @@
   html {
     scroll-behavior: smooth;
     scrollbar-width: thin;
-    scrollbar-color: var(--color-brand-gold) var(--color-brand-darker);
+    scrollbar-color: var(--color-brand-navy) var(--color-brand-darker);
   }
 
   body {
@@ -44,8 +44,8 @@
   }
 
   ::selection {
-    background-color: var(--color-brand-gold);
-    color: var(--color-brand-darker);
+    background-color: var(--color-brand-navy);
+    color: white;
   }
 }
 
@@ -129,20 +129,20 @@
   animation-delay: -2s;
 }
 
-/* Shimmer effect for gold elements */
+/* Shimmer effect for navy elements */
 @keyframes shimmer {
   0% { background-position: -200% center; }
   100% { background-position: 200% center; }
 }
-.gold-shimmer {
+.navy-shimmer {
   background: linear-gradient(
     110deg,
-    var(--color-brand-gold) 0%,
-    var(--color-brand-gold-light) 20%,
-    #e8d5a0 40%,
-    var(--color-brand-gold-light) 60%,
-    var(--color-brand-gold) 80%,
-    var(--color-brand-gold) 100%
+    var(--color-brand-navy) 0%,
+    var(--color-brand-navy-light) 20%,
+    #4d8fd9 40%,
+    var(--color-brand-navy-light) 60%,
+    var(--color-brand-navy) 80%,
+    var(--color-brand-navy) 100%
   );
   background-size: 200% auto;
   -webkit-background-clip: text;
@@ -169,7 +169,7 @@
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, var(--color-brand-gold), transparent 50%, var(--color-brand-red));
+  background: linear-gradient(135deg, var(--color-brand-navy), transparent 50%, var(--color-brand-red));
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
@@ -192,7 +192,7 @@
 }
 .btn-magnetic:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 40px -8px rgba(201, 168, 76, 0.3);
+  box-shadow: 0 12px 40px -8px rgba(0, 63, 141, 0.3);
 }
 .btn-magnetic:active {
   transform: translateY(0);
@@ -238,7 +238,7 @@
 .cursor-blink::after {
   content: '|';
   animation: blink 1s step-end infinite;
-  color: var(--color-brand-gold);
+  color: var(--color-brand-navy);
   margin-left: 2px;
 }
 
