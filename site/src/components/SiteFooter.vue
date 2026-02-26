@@ -85,7 +85,7 @@
           {{ $t('footer.firmName') }}
         </p>
         <p class="font-[var(--font-ui)] text-sm text-white/40">
-          &copy; {{ new Date().getFullYear() }} Campos Munos Law, LLC
+          &copy; Campos Munos Law, LLC
         </p>
       </div>
     </div>

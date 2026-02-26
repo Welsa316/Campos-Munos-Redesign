@@ -35,7 +35,7 @@
           </p>
         </div>
 
-        <div class="flex flex-col sm:flex-row items-start gap-4 hero-reveal" style="transition-delay: 1s">
+        <div class="flex flex-col sm:flex-row items-start gap-4 hero-reveal" style="transition-delay: 1.2s">
           <router-link to="/consulta"
             class="group flex items-center gap-3 bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-base px-10 py-5 rounded-xl btn-magnetic">
             {{ $t('home.consultaBtn') }}
@@ -59,11 +59,11 @@
       </div>
 
       <!-- Bottom info strip -->
-      <div class="absolute bottom-0 left-0 right-0 py-5 bg-gradient-to-t from-brand-darker to-transparent">
-        <div class="max-w-7xl mx-auto px-6 flex flex-wrap items-center gap-10 text-white/70 text-base font-[var(--font-ui)] tracking-wider">
-          <span class="flex items-center gap-2"><i class="fa-solid fa-location-dot text-brand-navy"></i> New Orleans, LA</span>
-          <a href="tel:+15049106508" class="flex items-center gap-2 hover:text-white transition-colors"><i class="fa-solid fa-phone text-brand-red"></i> <span class="text-lg font-semibold">(504) 910-6508</span></a>
-          <span class="flex items-center gap-2"><i class="fa-solid fa-video text-brand-navy"></i> {{ $t('home.virtualAvailable') }}</span>
+      <div class="absolute bottom-0 left-0 right-0 py-4 bg-gradient-to-t from-brand-darker to-transparent">
+        <div class="max-w-7xl mx-auto px-6 flex flex-wrap items-center gap-8 text-white/40 text-sm font-[var(--font-ui)] tracking-wider">
+          <span class="flex items-center gap-2"><i class="fa-solid fa-location-dot text-brand-navy/60"></i> New Orleans, LA</span>
+          <a href="tel:+15049106508" class="flex items-center gap-2 hover:text-white transition-colors"><i class="fa-solid fa-phone text-brand-red/60"></i> <span class="text-base font-semibold">(504) 910-6508</span></a>
+          <span class="flex items-center gap-2"><i class="fa-solid fa-video text-brand-navy/60"></i> {{ $t('home.virtualAvailable') }}</span>
         </div>
       </div>
     </section>
@@ -144,9 +144,9 @@
 
         <div class="text-center mt-14 reveal">
           <router-link to="/servicios"
-            class="inline-flex items-center gap-3 border-2 border-brand-navy text-brand-navy hover:bg-brand-navy hover:text-white font-[var(--font-ui)] font-bold tracking-wider text-base px-10 py-5 rounded-xl transition-all btn-magnetic">
+            class="inline-flex items-center gap-3 text-brand-navy hover:text-brand-navy-light font-[var(--font-ui)] font-semibold tracking-wider text-lg transition-colors group">
             {{ $t('home.serviciosBtn') }}
-            <i class="fa-solid fa-arrow-right text-sm"></i>
+            <i class="fa-solid fa-arrow-right text-sm group-hover:translate-x-1 transition-transform"></i>
           </router-link>
         </div>
       </div>
@@ -157,7 +157,7 @@
       <div class="max-w-7xl mx-auto px-6">
         <div class="text-center mb-12 reveal">
           <div class="flex items-center justify-center gap-2 mb-3">
-            <i v-for="n in 5" :key="n" class="fa-solid fa-star text-yellow-400 text-xl"></i>
+            <i v-for="n in 5" :key="n" class="fa-solid fa-star text-yellow-400 text-lg"></i>
           </div>
           <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-brand-navy">{{ $t('home.reviewsTitle') }}</h2>
         </div>
@@ -167,27 +167,41 @@
       </div>
     </section>
 
-    <!-- ===================== ABOUT SECTION ===================== -->
+    <!-- ===================== ABOUT SPLIT SECTION ===================== -->
     <section class="py-24 bg-brand-light">
-      <div class="max-w-3xl mx-auto px-6 text-center reveal">
-        <h2 class="font-[var(--font-heading)] text-4xl md:text-6xl text-brand-navy mb-8 leading-tight">
-          {{ $t('home.quienesSomos') }}
-        </h2>
-        <p class="text-gray-600 text-xl md:text-2xl leading-relaxed mb-10">
-          {{ $t('home.quienesSomosText') }}
-        </p>
-        <router-link to="/acerca-de"
-          class="inline-flex items-center gap-3 border-2 border-brand-navy text-brand-navy hover:bg-brand-navy hover:text-white font-[var(--font-ui)] font-bold tracking-wider text-base px-10 py-5 rounded-xl transition-all btn-magnetic">
-          {{ $t('home.sobreNosotros') }}
-          <i class="fa-solid fa-arrow-right text-sm"></i>
-        </router-link>
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <!-- Left: Team photo -->
+          <div class="relative reveal-left">
+            <div class="rounded-2xl overflow-hidden shadow-lg">
+              <img src="/Team.jpg" alt="Campos Munos Law Team"
+                class="w-full aspect-[4/3] object-cover" />
+            </div>
+            <div class="absolute -bottom-4 -right-4 w-24 h-24 border-2 border-brand-navy/15 rounded-2xl -z-10"></div>
+          </div>
+
+          <!-- Right: Text -->
+          <div class="reveal-right">
+            <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-brand-navy mb-6 leading-tight">
+              {{ $t('home.quienesSomos') }}
+            </h2>
+            <p class="text-gray-600 text-xl md:text-2xl leading-relaxed mb-8">
+              {{ $t('home.quienesSomosText') }}
+            </p>
+            <router-link to="/acerca-de"
+              class="inline-flex items-center gap-3 text-brand-navy hover:text-brand-navy-light font-[var(--font-ui)] font-semibold tracking-wider text-lg transition-colors group">
+              {{ $t('home.sobreNosotros') }}
+              <i class="fa-solid fa-arrow-right text-sm group-hover:translate-x-1 transition-transform"></i>
+            </router-link>
+          </div>
+        </div>
       </div>
     </section>
 
-    <!-- ===================== WHY US - FULL WIDTH DARK ===================== -->
+    <!-- ===================== WHY US - FULL WIDTH PARALLAX ===================== -->
     <section class="relative py-32 overflow-hidden">
-      <div class="absolute inset-0 bg-brand-darker"></div>
-      <div class="absolute inset-0 bg-gradient-to-br from-brand-navy/20 via-transparent to-brand-red/5"></div>
+      <div class="absolute inset-0 bg-cover bg-center bg-fixed" style="background-image: url('/Slideshow3.jpg')"></div>
+      <div class="absolute inset-0 bg-brand-darker/85"></div>
       <div class="relative max-w-3xl mx-auto px-6 text-center reveal">
         <h2 class="font-[var(--font-heading)] text-4xl md:text-6xl text-white mb-8 leading-tight">
           {{ $t('home.porQueNosotros') }}
@@ -213,9 +227,8 @@
               {{ $t('home.dondeEstamosText') }}
             </p>
             <router-link to="/consulta"
-              class="inline-flex items-center gap-3 border-2 border-brand-navy text-brand-navy hover:bg-brand-navy hover:text-white font-[var(--font-ui)] font-bold tracking-wider text-base px-10 py-5 rounded-xl transition-all btn-magnetic">
+              class="inline-flex items-center gap-3 border-2 border-brand-navy text-brand-navy hover:bg-brand-navy hover:text-white font-[var(--font-ui)] font-semibold tracking-wider text-base px-10 py-4 rounded-xl transition-all btn-magnetic">
               {{ $t('home.contactenosBtn') }}
-              <i class="fa-solid fa-arrow-right text-sm"></i>
             </router-link>
           </div>
 
