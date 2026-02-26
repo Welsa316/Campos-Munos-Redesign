@@ -75,13 +75,12 @@
     <!-- ===================== RECOGNITION BAR ===================== -->
     <section class="py-12 bg-brand-muted border-y border-white/5">
       <div class="max-w-5xl mx-auto px-6">
-        <div class="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16">
+        <div class="flex flex-col items-center gap-8">
           <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-white/30 uppercase">{{ $t('home.recognizedBy') }}</p>
-          <div class="flex items-center gap-10">
-            <div v-for="(badge, i) in badges" :key="i" class="flex items-center gap-2 text-white/20">
-              <i class="fa-solid fa-award text-brand-navy/40 text-lg"></i>
-              <span class="font-[var(--font-ui)] text-sm tracking-wider hidden sm:inline">{{ badge }}</span>
-            </div>
+          <div class="flex flex-wrap items-center justify-center gap-10 md:gap-16">
+            <img v-for="(badge, i) in badges" :key="i"
+              :src="badge.src" :alt="badge.alt"
+              class="h-16 md:h-20 w-auto object-contain brightness-0 invert opacity-60 hover:opacity-100 transition-opacity duration-300" />
           </div>
         </div>
       </div>
@@ -283,7 +282,12 @@ let slideTimer = null
 function goToSlide(i) { currentSlide.value = i }
 function nextSlide() { currentSlide.value = (currentSlide.value + 1) % slides.length }
 
-const badges = ['Bar Association', 'Small Business', 'SBM', 'AILA']
+const badges = [
+  { src: '/LSBA113502.png', alt: 'Louisiana State Bar Association' },
+  { src: '/SBM.png', alt: 'State Bar of Michigan' },
+  { src: '/Goldman-Sachs-Small-Business-Alumni.png', alt: 'Goldman Sachs 10,000 Small Businesses Alumni' },
+  { src: '/American_Immigration_Lawyers_Association_Logo.png', alt: 'American Immigration Lawyers Association' },
+]
 
 const bentoServices = [
   { key: 'visaU', slug: 'visa-u', icon: 'fa-solid fa-scale-balanced' },
