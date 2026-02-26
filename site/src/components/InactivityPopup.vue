@@ -13,8 +13,8 @@
 
         <div class="relative">
           <!-- Image with overlay - taller -->
-          <div class="relative h-72 overflow-hidden rounded-t-3xl">
-            <img src="/PopupPhoto.jpg" alt="" class="w-full h-full object-cover kenburns" />
+          <div class="relative h-80 overflow-hidden rounded-t-3xl">
+            <img src="/PopupPhoto.jpg" alt="" class="w-full h-full object-cover object-top kenburns" />
             <div class="absolute inset-0 bg-gradient-to-t from-brand-dark via-brand-dark/40 to-transparent"></div>
             <button @click="close"
               class="absolute top-4 right-4 w-8 h-8 rounded-full glass flex items-center justify-center text-white/60 hover:text-white transition-colors">
@@ -27,7 +27,7 @@
             <h2 class="font-[var(--font-heading)] text-3xl text-white mb-3 leading-tight">
               {{ $t('home.popupTitle') }}
             </h2>
-            <p class="text-white/50 text-sm font-[var(--font-ui)] mb-8">{{ $t('home.popupSubtitle') }}</p>
+            <p class="text-white/50 text-base font-[var(--font-ui)] mb-8">{{ $t('home.popupSubtitle') }}</p>
 
             <div class="space-y-4">
               <a href="tel:+15049106508"

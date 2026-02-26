@@ -4,7 +4,7 @@
     <section class="relative pt-32 pb-20 bg-brand-muted overflow-hidden">
       <div class="absolute top-0 right-0 w-96 h-96 rounded-full bg-brand-navy/[0.02] blur-[120px] pointer-events-none"></div>
       <div class="relative max-w-7xl mx-auto px-6">
-        <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-navy uppercase mb-3">Campos Munos Law</p>
+        <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase mb-3">Campos Munos Law</p>
         <h1 class="font-[var(--font-heading)] text-5xl md:text-7xl font-bold text-white leading-[0.95]">
           {{ $t('nav.servicios') }}
         </h1>
@@ -48,7 +48,7 @@
     <!-- Bottom CTA -->
     <section class="py-16 bg-brand-dark">
       <div class="max-w-3xl mx-auto px-6 text-center reveal">
-        <p class="text-white/40 text-lg mb-6 font-[var(--font-body)]">{{ $t('home.popupTitle') }}</p>
+        <p class="text-white/40 text-xl mb-6 font-[var(--font-body)]">{{ $t('home.popupTitle') }}</p>
         <router-link to="/consulta"
           class="inline-flex items-center gap-3 bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-sm px-8 py-4 rounded-xl btn-magnetic">
           {{ $t('home.consultaBtn') }} <i class="fa-solid fa-arrow-right text-xs"></i>

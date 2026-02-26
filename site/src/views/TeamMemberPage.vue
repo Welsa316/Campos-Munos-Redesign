@@ -4,7 +4,7 @@
     <section class="min-h-[80vh] bg-brand-muted">
       <div class="max-w-7xl mx-auto px-6 pt-28 pb-20">
         <router-link to="/el-equipo"
-          class="inline-flex items-center gap-2 text-white/30 hover:text-brand-navy text-xs font-[var(--font-ui)] tracking-wider uppercase mb-12 transition-colors group">
+          class="inline-flex items-center gap-2 text-white/30 hover:text-brand-navy text-sm font-[var(--font-ui)] tracking-wider uppercase mb-12 transition-colors group">
           <i class="fa-solid fa-arrow-left text-[10px] group-hover:-translate-x-1 transition-transform"></i>
           {{ $t('team.title') }}
         </router-link>
@@ -25,14 +25,14 @@
 
           <!-- Bio content -->
           <div class="md:col-span-3">
-            <p class="font-[var(--font-ui)] text-xs tracking-[0.2em] text-brand-navy uppercase mb-3">
+            <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase mb-3">
               {{ $t(`team.members.${memberData.key}.title`) }}
             </p>
             <h1 class="font-[var(--font-heading)] text-4xl md:text-5xl font-bold text-white leading-tight mb-6">
               {{ $t(`team.members.${memberData.key}.name`) }}
             </h1>
             <div class="w-16 h-[2px] bg-brand-navy mb-8"></div>
-            <p class="text-white/60 text-lg leading-relaxed font-[var(--font-body)]">
+            <p class="text-white/60 text-xl leading-relaxed font-[var(--font-body)]">
               {{ memberData.bio }}
             </p>
 

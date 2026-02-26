@@ -9,7 +9,7 @@
       </div>
       <div class="relative max-w-7xl mx-auto px-6 pb-20 w-full">
         <div class="max-w-2xl">
-          <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-navy uppercase mb-4 hero-reveal" style="transition-delay: 0.3s">
+          <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase mb-4 hero-reveal" style="transition-delay: 0.3s">
             {{ $t('about.firmName') }}
           </p>
           <h1 class="font-[var(--font-heading)] text-5xl md:text-7xl font-bold text-white leading-[0.95] mb-6 hero-reveal" style="transition-delay: 0.5s">
@@ -24,7 +24,7 @@
     <section class="py-24 bg-brand-darker relative">
       <div class="absolute left-6 top-0 text-[200px] font-[var(--font-heading)] text-brand-navy/[0.04] leading-none select-none pointer-events-none">"</div>
       <div class="relative max-w-4xl mx-auto px-6 reveal">
-        <p class="text-white/70 text-xl md:text-2xl leading-relaxed font-[var(--font-body)]">
+        <p class="text-white/70 text-2xl md:text-3xl leading-relaxed font-[var(--font-body)]">
           {{ $t('about.introText') }}
         </p>
       </div>
@@ -40,15 +40,15 @@
               <div class="w-12 h-12 rounded-xl bg-brand-navy/10 flex items-center justify-center">
                 <i class="fa-solid fa-compass text-brand-navy text-lg"></i>
               </div>
-              <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-navy uppercase">01</p>
+              <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase">01</p>
             </div>
             <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-white mb-4">{{ $t('about.mision') }}</h2>
             <div class="w-16 h-[2px] bg-brand-navy"></div>
           </div>
           <div class="space-y-6 reveal-right">
-            <p class="text-white/60 text-lg leading-relaxed">{{ $t('about.misionText1') }}</p>
-            <p class="text-white/60 text-lg leading-relaxed">{{ $t('about.misionText2') }}</p>
-            <p class="text-white/60 text-lg leading-relaxed">{{ $t('about.misionText3') }}</p>
+            <p class="text-white/60 text-xl leading-relaxed">{{ $t('about.misionText1') }}</p>
+            <p class="text-white/60 text-xl leading-relaxed">{{ $t('about.misionText2') }}</p>
+            <p class="text-white/60 text-xl leading-relaxed">{{ $t('about.misionText3') }}</p>
           </div>
         </div>
       </div>
@@ -63,15 +63,15 @@
               <div class="w-12 h-12 rounded-xl bg-brand-navy/10 flex items-center justify-center">
                 <i class="fa-solid fa-eye text-brand-navy text-lg"></i>
               </div>
-              <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-navy uppercase">02</p>
+              <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase">02</p>
             </div>
             <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-white mb-4">{{ $t('about.vision') }}</h2>
             <div class="w-16 h-[2px] bg-brand-navy"></div>
           </div>
           <div class="lg:order-1 space-y-6 reveal-left">
-            <p class="text-white/60 text-lg leading-relaxed">{{ $t('about.visionText1') }}</p>
-            <p class="text-white/60 text-lg leading-relaxed">{{ $t('about.visionText2') }}</p>
-            <p class="text-white/60 text-lg leading-relaxed">{{ $t('about.visionText3') }}</p>
+            <p class="text-white/60 text-xl leading-relaxed">{{ $t('about.visionText1') }}</p>
+            <p class="text-white/60 text-xl leading-relaxed">{{ $t('about.visionText2') }}</p>
+            <p class="text-white/60 text-xl leading-relaxed">{{ $t('about.visionText3') }}</p>
           </div>
         </div>
       </div>

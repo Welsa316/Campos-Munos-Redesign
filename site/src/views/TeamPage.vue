@@ -4,7 +4,7 @@
     <section class="relative pt-32 pb-20 bg-brand-muted overflow-hidden">
       <div class="absolute bottom-0 left-0 w-96 h-96 rounded-full bg-brand-red/[0.03] blur-[120px] pointer-events-none"></div>
       <div class="relative max-w-7xl mx-auto px-6">
-        <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-navy uppercase mb-3">Campos Munos Law</p>
+        <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase mb-3">Campos Munos Law</p>
         <h1 class="font-[var(--font-heading)] text-5xl md:text-7xl font-bold text-white leading-[0.95]">
           {{ $t('team.title') }}
         </h1>
@@ -37,7 +37,7 @@
             <h3 class="font-[var(--font-heading)] text-xl text-white group-hover:text-brand-navy transition-colors duration-300 mb-1">
               {{ $t(`team.members.${member.key}.name`) }}
             </h3>
-            <p class="font-[var(--font-ui)] text-xs tracking-wider text-white/35 uppercase">
+            <p class="font-[var(--font-ui)] text-sm tracking-wider text-white/35 uppercase">
               {{ $t(`team.members.${member.key}.title`) }}
             </p>
 

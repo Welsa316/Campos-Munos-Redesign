@@ -247,3 +247,13 @@
   will-change: transform;
   transition: transform 0.1s linear;
 }
+
+/* Elfsight Google Reviews dark theme override attempt */
+.elfsight-reviews-wrapper {
+  background: var(--color-brand-dark);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+.elfsight-reviews-wrapper iframe {
+  filter: invert(1) hue-rotate(180deg);
+}

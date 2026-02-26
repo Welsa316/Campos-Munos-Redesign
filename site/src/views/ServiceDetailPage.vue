@@ -9,7 +9,7 @@
 
       <div class="relative max-w-7xl mx-auto px-6">
         <router-link to="/servicios"
-          class="inline-flex items-center gap-2 text-white/30 hover:text-brand-navy text-xs font-[var(--font-ui)] tracking-wider uppercase mb-8 transition-colors group">
+          class="inline-flex items-center gap-2 text-white/30 hover:text-brand-navy text-sm font-[var(--font-ui)] tracking-wider uppercase mb-8 transition-colors group">
           <i class="fa-solid fa-arrow-left text-[10px] group-hover:-translate-x-1 transition-transform"></i>
           {{ $t('nav.servicios') }}
         </router-link>
@@ -50,7 +50,7 @@
 
         <!-- CTA -->
         <div class="reveal mt-8 p-8 rounded-2xl bg-white/[0.02] border border-white/5 text-center">
-          <p class="text-white/50 text-lg mb-6 font-[var(--font-body)]">{{ $t('home.popupTitle') }}</p>
+          <p class="text-white/50 text-xl mb-6 font-[var(--font-body)]">{{ $t('home.popupTitle') }}</p>
           <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
             <router-link to="/consulta"
               class="inline-flex items-center gap-3 bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-sm px-8 py-4 rounded-xl btn-magnetic">
