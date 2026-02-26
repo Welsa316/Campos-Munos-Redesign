@@ -2,21 +2,21 @@
   <div>
     <!-- Hero strip -->
     <section class="relative pt-32 pb-20 overflow-hidden">
-      <div class="absolute inset-0 bg-brand-muted"></div>
+      <div class="absolute inset-0 bg-brand-surface"></div>
       <div class="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-brand-navy/[0.03] to-transparent pointer-events-none"></div>
       <div class="relative max-w-7xl mx-auto px-6">
         <div class="reveal">
           <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase mb-3">{{ $t('contact.subtitleAlt') }}</p>
-          <h1 class="font-[var(--font-heading)] text-5xl md:text-7xl font-bold text-white leading-[0.95]">
+          <h1 class="font-[var(--font-heading)] text-5xl md:text-7xl font-bold text-gray-900 leading-[0.95]">
             {{ $t('contact.title') }}
           </h1>
-          <p class="text-white/40 text-xl mt-4 max-w-lg">{{ $t('contact.subtitle') }}</p>
+          <p class="text-gray-500 text-xl mt-4 max-w-lg">{{ $t('contact.subtitle') }}</p>
         </div>
       </div>
     </section>
 
     <!-- Form + Info split layout -->
-    <section class="py-20 bg-brand-darker">
+    <section class="py-20 bg-white">
       <div class="max-w-7xl mx-auto px-6">
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-16">
           <!-- Form - takes 7 cols -->
@@ -79,8 +79,8 @@
               </button>
 
               <transition name="fade">
-                <div v-if="submitted" class="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-center">
-                  <p class="text-green-400 text-sm font-[var(--font-ui)]">
+                <div v-if="submitted" class="p-4 rounded-xl bg-green-50 border border-green-200 text-center">
+                  <p class="text-green-600 text-sm font-[var(--font-ui)]">
                     <i class="fa-solid fa-check-circle mr-2"></i>{{ $t('contact.successMessage') }}
                   </p>
                 </div>
@@ -89,7 +89,7 @@
 
             <div class="mt-8">
               <router-link to="/pago"
-                class="inline-flex items-center gap-2 text-white/30 hover:text-brand-navy text-sm font-[var(--font-ui)] transition-colors">
+                class="inline-flex items-center gap-2 text-gray-400 hover:text-brand-navy text-sm font-[var(--font-ui)] transition-colors">
                 <i class="fa-solid fa-credit-card text-xs"></i>
                 {{ $t('contact.paymentBtn') }}
               </router-link>
@@ -101,46 +101,46 @@
             <div class="sticky top-32 space-y-8">
               <!-- Contact cards -->
               <div v-for="item in contactCards" :key="item.titleKey"
-                class="group p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-brand-navy/15 transition-all duration-300">
+                class="group p-6 rounded-2xl bg-brand-light border border-gray-200 hover:border-brand-navy/20 transition-all duration-300">
                 <div class="flex items-start gap-4">
                   <div class="w-12 h-12 rounded-xl bg-brand-navy/10 flex items-center justify-center flex-shrink-0 group-hover:bg-brand-navy/20 transition-colors">
                     <i :class="item.icon" class="text-brand-navy"></i>
                   </div>
                   <div>
-                    <h3 class="font-[var(--font-heading)] text-lg text-white mb-1">{{ $t(`contact.${item.titleKey}`) }}</h3>
-                    <div class="text-white/50 text-base space-y-0.5" v-html="item.content"></div>
+                    <h3 class="font-[var(--font-heading)] text-lg text-gray-900 mb-1">{{ $t(`contact.${item.titleKey}`) }}</h3>
+                    <div class="text-gray-500 text-base space-y-0.5" v-html="item.content"></div>
                   </div>
                 </div>
               </div>
 
               <!-- Social strip -->
-              <div class="p-6 rounded-2xl bg-white/[0.02] border border-white/5">
-                <h3 class="font-[var(--font-heading)] text-lg text-white mb-4">{{ $t('contact.conectese') }}</h3>
+              <div class="p-6 rounded-2xl bg-brand-light border border-gray-200">
+                <h3 class="font-[var(--font-heading)] text-lg text-gray-900 mb-4">{{ $t('contact.conectese') }}</h3>
                 <div class="flex gap-3">
                   <a v-for="social in socials" :key="social.label" :href="social.href" target="_blank" rel="noopener"
                     :aria-label="social.label"
-                    class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:text-brand-navy hover:bg-brand-navy/10 transition-all">
+                    class="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-brand-navy hover:border-brand-navy/20 transition-all">
                     <i :class="social.icon"></i>
                   </a>
                 </div>
               </div>
 
               <!-- Hours -->
-              <div class="p-6 rounded-2xl bg-white/[0.02] border border-white/5">
+              <div class="p-6 rounded-2xl bg-brand-light border border-gray-200">
                 <div class="flex items-start gap-4">
                   <div class="w-12 h-12 rounded-xl bg-brand-navy/10 flex items-center justify-center flex-shrink-0">
                     <i class="fa-solid fa-clock text-brand-navy"></i>
                   </div>
                   <div>
-                    <h3 class="font-[var(--font-heading)] text-lg text-white mb-2">{{ $t('contact.horario') }}</h3>
-                    <div class="text-white/50 text-base space-y-1">
+                    <h3 class="font-[var(--font-heading)] text-lg text-gray-900 mb-2">{{ $t('contact.horario') }}</h3>
+                    <div class="text-gray-500 text-base space-y-1">
                       <div class="flex justify-between gap-6">
                         <span>{{ $t('contact.lunesViernes') }}</span>
-                        <span class="text-white/70">{{ $t('contact.horarioSemana') }}</span>
+                        <span class="text-gray-700">{{ $t('contact.horarioSemana') }}</span>
                       </div>
                       <div class="flex justify-between gap-6">
                         <span>{{ $t('contact.sabadoDomingo') }}</span>
-                        <span class="text-white/70">{{ $t('contact.conCita') }}</span>
+                        <span class="text-gray-700">{{ $t('contact.conCita') }}</span>
                       </div>
                     </div>
                   </div>
@@ -153,13 +153,13 @@
     </section>
 
     <!-- Google Reviews Carousel -->
-    <section class="py-20 bg-brand-dark">
+    <section class="py-20 bg-brand-light">
       <div class="max-w-7xl mx-auto px-6">
         <div class="text-center mb-10 reveal">
           <div class="flex items-center justify-center gap-2 mb-3">
             <i v-for="n in 5" :key="n" class="fa-solid fa-star text-yellow-400 text-base"></i>
           </div>
-          <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-white">{{ $t('home.reviewsTitle') }}</h2>
+          <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-gray-900">{{ $t('home.reviewsTitle') }}</h2>
         </div>
         <div class="reveal elfsight-reviews-wrapper rounded-2xl overflow-hidden">
           <div class="elfsight-app-924b81dc-21bf-470e-b66f-9137cae00590" data-elfsight-app-lazy></div>
@@ -169,7 +169,7 @@
 
     <!-- Map - edge to edge -->
     <section class="h-[450px] relative">
-      <div class="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-brand-darker to-transparent z-10 pointer-events-none"></div>
+      <div class="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-brand-light to-transparent z-10 pointer-events-none"></div>
       <iframe
         src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3457.0!2d-90.0715!3d29.9511!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8620a67b1f0b7d2f%3A0x4b7a8c8b3b8b8b8b!2s812%20Gravier%20St%2C%20New%20Orleans%2C%20LA%2070112!5e0!3m2!1ses!2sus!4v1700000000000"
         class="w-full h-full border-0" allowfullscreen loading="lazy"
@@ -199,7 +199,7 @@ const socials = [
 ]
 
 const contactCards = computed(() => [
-  { titleKey: 'direccion', icon: 'fa-solid fa-location-dot', content: '<p>812 Gravier Street, Office 330</p><p>New Orleans, LA 70112</p><p class="text-white/30 text-xs mt-1">PO Box 6224, Metairie, LA 70009</p>' },
+  { titleKey: 'direccion', icon: 'fa-solid fa-location-dot', content: '<p>812 Gravier Street, Office 330</p><p>New Orleans, LA 70112</p><p class="text-gray-400 text-xs mt-1">PO Box 6224, Metairie, LA 70009</p>' },
   { titleKey: 'telefono', icon: 'fa-solid fa-phone', content: '<a href="tel:+15049106508" class="hover:text-[var(--color-brand-navy)] transition-colors">+1 (504) 910-6508</a>' },
   { titleKey: 'correo', icon: 'fa-solid fa-envelope', content: '<a href="mailto:office@camulaw.com" class="hover:text-[var(--color-brand-navy)] transition-colors">office@camulaw.com</a>' },
 ])
@@ -219,16 +219,16 @@ function submitForm() {
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.4);
+  color: rgba(107,114,128,1);
   margin-bottom: 0.5rem;
 }
 .form-input {
   width: 100%;
   padding: 0.875rem 1.25rem;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: white;
+  border: 1px solid rgba(209,213,219,1);
   border-radius: 0.75rem;
-  color: white;
+  color: #1a1a1a;
   font-family: var(--font-ui);
   font-size: 0.875rem;
   transition: all 0.3s;
@@ -237,9 +237,9 @@ function submitForm() {
   outline: none;
   border-color: var(--color-brand-navy);
   box-shadow: 0 0 0 3px rgba(0, 63, 141, 0.1);
-  background: rgba(255,255,255,0.05);
+  background: white;
 }
-.form-input::placeholder { color: rgba(255,255,255,0.2); }
+.form-input::placeholder { color: rgba(156,163,175,1); }
 .fade-enter-active { transition: all 0.4s ease; }
 .fade-leave-active { transition: all 0.2s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(8px); }

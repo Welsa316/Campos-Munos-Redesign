@@ -97,10 +97,10 @@
 
     <!-- Mobile full-screen overlay -->
     <transition name="mobile-nav">
-      <div v-show="mobileOpen" class="lg:hidden fixed inset-0 top-0 bg-brand-darker/98 backdrop-blur-xl z-[-1]">
+      <div v-show="mobileOpen" class="lg:hidden fixed inset-0 top-0 bg-white/98 backdrop-blur-xl z-[-1]">
         <div class="flex flex-col justify-center items-center h-full gap-6 px-8">
           <router-link v-for="link in mobileLinks" :key="link.to" :to="link.to"
-            class="text-3xl font-[var(--font-heading)] text-white/80 hover:text-brand-navy transition-colors"
+            class="text-3xl font-[var(--font-heading)] text-gray-800 hover:text-brand-navy transition-colors"
             @click="mobileOpen = false">
             {{ link.label }}
           </router-link>
@@ -110,7 +110,7 @@
           </a>
           <div class="flex items-center gap-4 mt-4">
             <a v-for="social in socials" :key="social.label" :href="social.href" target="_blank" rel="noopener"
-              :aria-label="social.label" class="text-white/40 hover:text-brand-navy text-xl transition-colors">
+              :aria-label="social.label" class="text-gray-400 hover:text-brand-navy text-xl transition-colors">
               <i :class="social.icon"></i>
             </a>
           </div>
