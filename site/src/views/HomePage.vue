@@ -218,7 +218,7 @@
 
     <!-- ===================== WHY US - FULL WIDTH PARALLAX ===================== -->
     <section class="relative py-32 overflow-hidden">
-      <div class="absolute inset-0 bg-cover bg-center bg-fixed" style="background-image: url('/Slideshow3.jpg')"></div>
+      <div class="absolute inset-0 bg-cover bg-center bg-fixed" style="background-image: url('/Slideshow3.png')"></div>
       <div class="absolute inset-0 bg-brand-darker/85"></div>
       <div class="relative max-w-3xl mx-auto px-6 text-center reveal">
         <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-navy uppercase mb-4">{{ $t('home.porQueNosotros') }}</p>
@@ -285,7 +285,7 @@ import { useScrollReveal } from '../composables/useScrollReveal.js'
 
 useScrollReveal()
 
-const slides = ['/Slideshow1.jpg', '/Slideshow2.jpg', '/Slideshow3.jpg', '/Slideshow4.jpg', '/Slideshow5.jpg']
+const slides = ['/Slideshow1.png', '/Slideshow2.png', '/Slideshow3.png', '/Slideshow4.png', '/Slideshow5.png']
 const currentSlide = ref(0)
 let slideTimer = null
 
