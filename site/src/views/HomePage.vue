@@ -1,181 +1,303 @@
 <template>
   <div>
-    <!-- Hero Slideshow -->
-    <section class="relative h-[90vh] min-h-[600px] overflow-hidden">
+    <!-- ===================== CINEMATIC HERO ===================== -->
+    <section class="relative h-screen min-h-[700px] overflow-hidden">
+      <!-- Slideshow with Ken Burns -->
       <div class="absolute inset-0">
-        <transition-group name="slide-fade">
-          <div v-for="(slide, i) in slides" :key="i" v-show="currentSlide === i"
-            class="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
-            :style="{ backgroundImage: `url('${slide}')` }">
-          </div>
-        </transition-group>
-        <div class="absolute inset-0 bg-black/55"></div>
+        <div v-for="(slide, i) in slides" :key="i"
+          class="absolute inset-0 transition-opacity duration-[2000ms]"
+          :class="currentSlide === i ? 'opacity-100' : 'opacity-0'">
+          <div class="absolute inset-0 bg-cover bg-center kenburns"
+            :style="{ backgroundImage: `url('${slide}')`, animationDelay: `${i * -4}s` }"></div>
+        </div>
+        <!-- Layered overlays for depth -->
+        <div class="absolute inset-0 bg-gradient-to-b from-brand-darker/60 via-black/40 to-brand-darker"></div>
+        <div class="absolute inset-0 bg-gradient-to-r from-brand-darker/80 via-transparent to-transparent"></div>
       </div>
 
-      <div class="relative h-full flex flex-col items-center justify-center text-center px-4">
-        <p class="font-[var(--font-ui)] text-brand-gold text-sm tracking-[0.3em] uppercase mb-4">
+      <!-- Hero content - left-aligned for dramatic asymmetry -->
+      <div class="relative h-full max-w-7xl mx-auto px-6 flex flex-col justify-end pb-24 md:pb-32">
+        <!-- Accent line -->
+        <div class="w-16 h-[2px] bg-brand-gold mb-6 hero-reveal" style="transition-delay: 0.2s"></div>
+
+        <p class="font-[var(--font-ui)] text-brand-gold text-xs tracking-[0.4em] uppercase mb-4 hero-reveal" style="transition-delay: 0.4s">
           Campos Munos Law, LLC
         </p>
-        <h1 class="font-[var(--font-heading)] text-5xl md:text-7xl lg:text-8xl font-bold text-white leading-tight mb-2">
+
+        <h1 class="font-[var(--font-heading)] text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-bold text-white leading-[0.9] mb-4 hero-reveal" style="transition-delay: 0.6s">
           {{ $t('home.heroTitle') }}
         </h1>
-        <h2 class="font-[var(--font-heading)] text-3xl md:text-5xl lg:text-6xl text-white/90 mb-4">
-          {{ $t('home.heroSubtitle') }}
-        </h2>
-        <div class="w-24 h-0.5 bg-brand-gold mb-4"></div>
-        <p class="font-[var(--font-heading)] text-xl md:text-2xl text-white/80 italic mb-8">
+
+        <div class="flex items-center gap-4 mb-6 hero-reveal" style="transition-delay: 0.8s">
+          <div class="w-12 h-[1px] bg-white/30"></div>
+          <p class="font-[var(--font-heading)] text-2xl md:text-3xl text-white/60 italic">
+            {{ $t('home.heroSubtitle') }}
+          </p>
+        </div>
+
+        <p class="font-[var(--font-body)] text-lg md:text-xl text-white/50 max-w-lg mb-10 hero-reveal" style="transition-delay: 1s">
           {{ $t('home.heroTagline') }}
         </p>
 
-        <div class="flex flex-col sm:flex-row items-center gap-4 mb-8">
+        <div class="flex flex-col sm:flex-row items-start gap-4 hero-reveal" style="transition-delay: 1.2s">
           <router-link to="/consulta"
-            class="bg-brand-red hover:bg-brand-red-light text-white font-[var(--font-ui)] font-semibold tracking-wider text-sm px-8 py-3.5 rounded-lg transition-colors">
+            class="group flex items-center gap-3 bg-brand-gold text-brand-darker font-[var(--font-ui)] font-bold tracking-wider text-sm px-8 py-4 rounded-xl btn-magnetic">
             {{ $t('home.consultaBtn') }}
+            <i class="fa-solid fa-arrow-right text-xs transition-transform group-hover:translate-x-1"></i>
           </router-link>
-        </div>
-
-        <!-- Info badges -->
-        <div class="flex flex-wrap items-center justify-center gap-6 text-white/70 text-sm font-[var(--font-ui)]">
-          <span class="flex items-center gap-2">
-            <i class="fa-solid fa-location-dot text-brand-gold"></i> New Orleans, LA
-          </span>
-          <span class="flex items-center gap-2">
-            <i class="fa-solid fa-phone text-brand-gold"></i> (504) 910-6508
-          </span>
-          <span class="flex items-center gap-2">
-            <i class="fa-solid fa-video text-brand-gold"></i> {{ $t('home.virtualAvailable') }}
-          </span>
+          <router-link to="/servicios"
+            class="flex items-center gap-3 border border-white/20 text-white/80 hover:text-white hover:border-white/40 font-[var(--font-ui)] font-medium tracking-wider text-sm px-8 py-4 rounded-xl transition-all">
+            {{ $t('home.serviciosBtn') }}
+          </router-link>
         </div>
       </div>
 
-      <!-- Slide indicators -->
-      <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-        <button v-for="(_, i) in slides" :key="i"
-          @click="currentSlide = i"
-          class="w-2.5 h-2.5 rounded-full transition-all duration-300"
-          :class="currentSlide === i ? 'bg-brand-gold w-8' : 'bg-white/40 hover:bg-white/60'"
+      <!-- Slide progress dots - vertical on right -->
+      <div class="absolute right-6 top-1/2 -translate-y-1/2 flex flex-col gap-3 z-10">
+        <button v-for="(_, i) in slides" :key="i" @click="goToSlide(i)"
+          class="group relative w-3 h-3 flex items-center justify-center"
           :aria-label="`Slide ${i + 1}`">
+          <span class="block rounded-full transition-all duration-500"
+            :class="currentSlide === i ? 'w-3 h-3 bg-brand-gold' : 'w-1.5 h-1.5 bg-white/30 group-hover:bg-white/60'"></span>
         </button>
       </div>
+
+      <!-- Bottom info strip -->
+      <div class="absolute bottom-0 left-0 right-0 py-4 bg-gradient-to-t from-brand-darker to-transparent">
+        <div class="max-w-7xl mx-auto px-6 flex flex-wrap items-center gap-8 text-white/40 text-xs font-[var(--font-ui)] tracking-wider">
+          <span class="flex items-center gap-2"><i class="fa-solid fa-location-dot text-brand-gold/60"></i> New Orleans, LA</span>
+          <span class="flex items-center gap-2"><i class="fa-solid fa-phone text-brand-gold/60"></i> (504) 910-6508</span>
+          <span class="flex items-center gap-2"><i class="fa-solid fa-video text-brand-gold/60"></i> {{ $t('home.virtualAvailable') }}</span>
+        </div>
+      </div>
     </section>
 
-    <!-- Recognized By -->
-    <section class="py-16 bg-brand-dark">
-      <div class="max-w-5xl mx-auto px-4 text-center">
-        <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-white mb-10">
-          {{ $t('home.recognizedBy') }}
-        </h2>
-        <div class="flex flex-wrap items-center justify-center gap-12">
-          <div v-for="badge in badges" :key="badge" class="w-24 h-24 bg-white/10 rounded-xl flex items-center justify-center">
-            <i class="fa-solid fa-award text-3xl text-brand-gold"></i>
+    <!-- ===================== RECOGNITION BAR ===================== -->
+    <section class="py-12 bg-brand-muted border-y border-white/5">
+      <div class="max-w-5xl mx-auto px-6">
+        <div class="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16">
+          <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-white/30 uppercase">{{ $t('home.recognizedBy') }}</p>
+          <div class="flex items-center gap-10">
+            <div v-for="(badge, i) in badges" :key="i" class="flex items-center gap-2 text-white/20">
+              <i class="fa-solid fa-award text-brand-gold/40 text-lg"></i>
+              <span class="font-[var(--font-ui)] text-xs tracking-wider hidden sm:inline">{{ badge }}</span>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Services Grid -->
-    <section class="py-20 bg-brand-darker">
-      <div class="max-w-6xl mx-auto px-4">
-        <div class="w-20 h-0.5 bg-brand-gold mx-auto mb-12"></div>
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
-          <router-link v-for="service in featuredServices" :key="service.slug"
-            :to="`/servicios/${service.slug}`"
-            class="group p-6 bg-brand-gray/50 rounded-xl border border-white/5 hover:border-brand-gold/30 transition-all hover:-translate-y-1">
-            <div class="w-14 h-14 rounded-lg bg-brand-red/20 flex items-center justify-center mb-4 group-hover:bg-brand-red/30 transition-colors">
-              <i :class="service.icon" class="text-2xl text-brand-gold"></i>
+    <!-- ===================== BENTO SERVICES GRID ===================== -->
+    <section class="py-24 bg-brand-darker relative noise">
+      <div class="relative z-10 max-w-7xl mx-auto px-6">
+        <div class="text-center mb-16 reveal">
+          <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-gold uppercase mb-3">{{ $t('nav.servicios') }}</p>
+          <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-white">
+            {{ $t('home.queEsperar').replace('?', '') }}
+          </h2>
+        </div>
+
+        <!-- Bento grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 stagger">
+          <!-- Large featured card -->
+          <router-link to="/servicios/green-card"
+            class="reveal col-span-2 row-span-2 group relative rounded-2xl overflow-hidden min-h-[320px] gradient-border">
+            <div class="absolute inset-0 bg-gradient-to-br from-brand-red/20 to-brand-dark group-hover:from-brand-red/30 transition-all duration-500"></div>
+            <div class="relative h-full p-8 flex flex-col justify-end">
+              <i class="fa-solid fa-id-card text-5xl text-brand-gold/30 mb-auto group-hover:text-brand-gold/50 transition-colors duration-500"></i>
+              <h3 class="font-[var(--font-heading)] text-3xl text-white mb-2 group-hover:text-brand-gold transition-colors">
+                {{ $t('services.greenCard') }}
+              </h3>
+              <p class="text-white/40 text-sm font-[var(--font-ui)] leading-relaxed line-clamp-2">
+                {{ $t('serviceDescriptions.greenCard') }}
+              </p>
+              <div class="mt-4 flex items-center gap-2 text-brand-gold text-xs font-[var(--font-ui)] font-semibold tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
+                {{ $t('readMore') }} <i class="fa-solid fa-arrow-right text-[10px]"></i>
+              </div>
             </div>
-            <h3 class="font-[var(--font-heading)] text-lg text-white group-hover:text-brand-gold transition-colors">
-              {{ $t(`services.${service.key}`) }}
-            </h3>
+          </router-link>
+
+          <!-- Regular bento cards -->
+          <router-link v-for="service in bentoServices" :key="service.slug"
+            :to="`/servicios/${service.slug}`"
+            class="reveal group relative rounded-2xl overflow-hidden min-h-[160px] gradient-border">
+            <div class="absolute inset-0 bg-brand-gray/50 group-hover:bg-brand-gray/80 transition-all duration-500"></div>
+            <div class="relative h-full p-5 flex flex-col justify-between">
+              <i :class="service.icon" class="text-2xl text-brand-gold/40 group-hover:text-brand-gold transition-colors duration-300"></i>
+              <div>
+                <h3 class="font-[var(--font-heading)] text-base text-white group-hover:text-brand-gold transition-colors leading-tight">
+                  {{ $t(`services.${service.key}`) }}
+                </h3>
+              </div>
+            </div>
+          </router-link>
+        </div>
+
+        <div class="text-center mt-12 reveal">
+          <router-link to="/servicios"
+            class="inline-flex items-center gap-3 text-brand-gold hover:text-brand-gold-light font-[var(--font-ui)] font-medium tracking-wider text-sm transition-colors group">
+            {{ $t('home.serviciosBtn') }}
+            <i class="fa-solid fa-arrow-right text-xs group-hover:translate-x-1 transition-transform"></i>
           </router-link>
         </div>
       </div>
     </section>
 
-    <!-- Reviews -->
-    <section class="py-16 bg-brand-dark">
-      <div class="max-w-4xl mx-auto px-4 text-center">
-        <h2 class="font-[var(--font-heading)] text-2xl md:text-3xl text-white mb-2">
-          {{ $t('home.reviewsTitle') }}
-        </h2>
-        <div class="flex items-center justify-center gap-1 mb-8">
-          <i v-for="n in 5" :key="n" class="fa-solid fa-star text-brand-gold text-xl"></i>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div v-for="(review, i) in reviews" :key="i"
-            class="bg-brand-gray/50 rounded-xl p-6 border border-white/5">
-            <div class="flex items-center gap-1 mb-3">
+    <!-- ===================== REVIEWS - HORIZONTAL SCROLL ===================== -->
+    <section class="py-24 bg-brand-dark relative overflow-hidden">
+      <!-- Floating accent -->
+      <div class="absolute top-12 right-12 w-40 h-40 rounded-full bg-brand-gold/[0.03] blur-3xl float-slow pointer-events-none"></div>
+
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="flex items-end justify-between mb-12 reveal">
+          <div>
+            <div class="flex items-center gap-2 mb-3">
               <i v-for="n in 5" :key="n" class="fa-solid fa-star text-brand-gold text-sm"></i>
             </div>
-            <p class="text-white/70 text-sm italic mb-4">"{{ review.text }}"</p>
-            <p class="text-brand-gold text-sm font-medium">— {{ review.name }}</p>
+            <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-white">{{ $t('home.reviewsTitle') }}</h2>
+          </div>
+        </div>
+
+        <div class="horizontal-scroll gap-6 pb-4 -mx-6 px-6">
+          <div v-for="(review, i) in reviews" :key="i"
+            class="w-[340px] md:w-[400px] p-8 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-brand-gold/20 transition-all duration-300 flex flex-col">
+            <div class="flex items-center gap-1 mb-5">
+              <i v-for="n in 5" :key="n" class="fa-solid fa-star text-brand-gold text-xs"></i>
+            </div>
+            <p class="text-white/60 text-[15px] leading-relaxed italic flex-1 mb-6">
+              "{{ review.text }}"
+            </p>
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-brand-gold/10 flex items-center justify-center">
+                <span class="text-brand-gold font-[var(--font-ui)] font-bold text-sm">{{ review.name.charAt(0) }}</span>
+              </div>
+              <span class="text-white/80 text-sm font-[var(--font-ui)] font-medium">{{ review.name }}</span>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Info Sections -->
-    <section v-for="section in infoSections" :key="section.titleKey"
-      class="py-20" :class="section.bg">
-      <div class="max-w-4xl mx-auto px-4 text-center">
-        <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-white mb-6">
-          {{ $t(`home.${section.titleKey}`) }}
+    <!-- ===================== ABOUT SPLIT SECTION ===================== -->
+    <section class="py-24 bg-brand-darker">
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <!-- Left: Image with overlapping accent -->
+          <div class="relative reveal-left">
+            <div class="rounded-2xl overflow-hidden">
+              <img src="/AbogadosSlideshowPic.jpg" alt="Campos Munos Law Team"
+                class="w-full aspect-[4/3] object-cover" />
+            </div>
+            <!-- Overlapping gold accent block -->
+            <div class="absolute -bottom-6 -right-6 w-32 h-32 border-2 border-brand-gold/20 rounded-2xl float-medium"></div>
+            <!-- Experience badge -->
+            <div class="absolute -top-4 -left-4 glass rounded-2xl p-4 text-center">
+              <p class="font-[var(--font-heading)] text-3xl font-bold gold-shimmer">20+</p>
+              <p class="font-[var(--font-ui)] text-[10px] tracking-wider text-white/50 uppercase">Years</p>
+            </div>
+          </div>
+
+          <!-- Right: Text -->
+          <div class="reveal-right">
+            <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-gold uppercase mb-3">{{ $t('home.quienesSomos') }}</p>
+            <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-white mb-6 leading-tight">
+              {{ $t('home.quienesSomos') }}
+            </h2>
+            <p class="text-white/60 text-lg leading-relaxed mb-8">
+              {{ $t('home.quienesSomosText') }}
+            </p>
+            <router-link to="/acerca-de"
+              class="inline-flex items-center gap-3 text-brand-gold hover:text-brand-gold-light font-[var(--font-ui)] font-medium tracking-wider text-sm transition-colors group">
+              {{ $t('home.sobreNosotros') }}
+              <i class="fa-solid fa-arrow-right text-xs group-hover:translate-x-1 transition-transform"></i>
+            </router-link>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== WHY US - FULL WIDTH PARALLAX ===================== -->
+    <section class="relative py-32 overflow-hidden">
+      <div class="absolute inset-0 bg-cover bg-center bg-fixed" style="background-image: url('/Slideshow3.jpg')"></div>
+      <div class="absolute inset-0 bg-brand-darker/85"></div>
+      <div class="relative max-w-3xl mx-auto px-6 text-center reveal">
+        <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-gold uppercase mb-4">{{ $t('home.porQueNosotros') }}</p>
+        <h2 class="font-[var(--font-heading)] text-3xl md:text-5xl text-white mb-8 leading-tight">
+          {{ $t('home.porQueNosotros') }}
         </h2>
-        <div class="w-16 h-0.5 bg-brand-gold mx-auto mb-6"></div>
-        <p class="text-white/75 text-lg leading-relaxed mb-8 max-w-2xl mx-auto">
-          {{ $t(`home.${section.textKey}`) }}
+        <p class="text-white/60 text-lg md:text-xl leading-relaxed mb-10">
+          {{ $t('home.porQueNosotrosText') }}
         </p>
-        <router-link :to="section.link"
-          class="inline-block border-2 border-brand-gold text-brand-gold hover:bg-brand-gold hover:text-brand-dark font-[var(--font-ui)] font-semibold tracking-wider text-sm px-8 py-3 rounded-lg transition-all">
-          {{ $t(`home.${section.btnKey}`) }}
+        <router-link to="/el-equipo"
+          class="inline-flex items-center gap-3 bg-brand-gold text-brand-darker font-[var(--font-ui)] font-bold tracking-wider text-sm px-8 py-4 rounded-xl btn-magnetic">
+          {{ $t('home.perfilesBtn') }}
+          <i class="fa-solid fa-arrow-right text-xs"></i>
         </router-link>
       </div>
     </section>
 
-    <!-- Instagram -->
-    <section class="py-16 bg-brand-dark">
-      <div class="max-w-4xl mx-auto px-4 text-center">
-        <h2 class="font-[var(--font-heading)] text-2xl md:text-3xl text-white mb-2">
-          {{ $t('home.instagramTitle') }}
-        </h2>
-        <a href="https://www.instagram.com/juancamposlaw/" target="_blank" rel="noopener"
-          class="text-brand-gold hover:text-brand-gold-light text-xl transition-colors">
-          {{ $t('home.instagramHandle') }}
-        </a>
-        <div class="mt-8 grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div v-for="n in 4" :key="n" class="aspect-square bg-brand-gray/50 rounded-lg overflow-hidden">
-            <div class="w-full h-full flex items-center justify-center text-white/20">
-              <i class="fa-brands fa-instagram text-4xl"></i>
-            </div>
+    <!-- ===================== LOCATION ===================== -->
+    <section class="py-24 bg-brand-darker">
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div class="reveal-left">
+            <p class="font-[var(--font-ui)] text-xs tracking-[0.3em] text-brand-gold uppercase mb-3">{{ $t('home.dondeEstamos') }}</p>
+            <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-white mb-6 leading-tight">{{ $t('home.dondeEstamos') }}</h2>
+            <p class="text-white/60 text-lg leading-relaxed mb-8">
+              {{ $t('home.dondeEstamosText') }}
+            </p>
+            <router-link to="/consulta"
+              class="inline-flex items-center gap-3 border border-brand-gold text-brand-gold hover:bg-brand-gold hover:text-brand-darker font-[var(--font-ui)] font-semibold tracking-wider text-sm px-8 py-3.5 rounded-xl transition-all btn-magnetic">
+              {{ $t('home.contactenosBtn') }}
+            </router-link>
+          </div>
+
+          <div class="reveal-right rounded-2xl overflow-hidden h-[400px]">
+            <iframe
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3457.0!2d-90.0715!3d29.9511!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8620a67b1f0b7d2f%3A0x4b7a8c8b3b8b8b8b!2s812%20Gravier%20St%2C%20New%20Orleans%2C%20LA%2070112!5e0!3m2!1ses!2sus!4v1700000000000"
+              class="w-full h-full border-0 rounded-2xl"
+              allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+              title="Campos Munos Law Office Location">
+            </iframe>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- ===================== INSTAGRAM CTA ===================== -->
+    <section class="py-20 bg-brand-dark relative overflow-hidden">
+      <div class="absolute inset-0 bg-gradient-to-r from-brand-gold/[0.03] to-transparent pointer-events-none"></div>
+      <div class="relative max-w-4xl mx-auto px-6 text-center reveal">
+        <i class="fa-brands fa-instagram text-5xl text-brand-gold/20 mb-6"></i>
+        <h2 class="font-[var(--font-heading)] text-2xl md:text-3xl text-white mb-3">{{ $t('home.instagramTitle') }}</h2>
+        <a href="https://www.instagram.com/juancamposlaw/" target="_blank" rel="noopener"
+          class="gold-shimmer text-2xl font-[var(--font-heading)] font-bold">
+          {{ $t('home.instagramHandle') }}
+        </a>
       </div>
     </section>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { useScrollReveal } from '../composables/useScrollReveal.js'
 
-const slides = [
-  '/Slideshow1.jpg',
-  '/Slideshow2.jpg',
-  '/Slideshow3.jpg',
-  '/Slideshow4.jpg',
-  '/Slideshow5.jpg',
-]
+useScrollReveal()
+
+const slides = ['/Slideshow1.jpg', '/Slideshow2.jpg', '/Slideshow3.jpg', '/Slideshow4.jpg', '/Slideshow5.jpg']
 const currentSlide = ref(0)
 let slideTimer = null
 
-const badges = ['Bar Association', 'Small Business', 'SBM', 'American Immigration']
+const badges = ['Bar Association', 'Small Business', 'SBM', 'AILA']
 
-const featuredServices = [
-  { key: 'greenCard', slug: 'green-card', icon: 'fa-solid fa-id-card' },
+const bentoServices = [
   { key: 'visaU', slug: 'visa-u', icon: 'fa-solid fa-scale-balanced' },
   { key: 'ciudadania', slug: 'ciudadania', icon: 'fa-solid fa-certificate' },
-  { key: 'visaT', slug: 'visa-t', icon: 'fa-solid fa-link' },
   { key: 'vawa', slug: 'vawa', icon: 'fa-solid fa-shield-halved' },
-  { key: 'visasJovenes', slug: 'visas-especial-para-jovenes', icon: 'fa-solid fa-passport' },
+  { key: 'asilo', slug: 'asilo', icon: 'fa-solid fa-hand-holding-heart' },
+  { key: 'daca', slug: 'daca', icon: 'fa-solid fa-graduation-cap' },
+  { key: 'visaT', slug: 'visa-t', icon: 'fa-solid fa-link' },
 ]
 
 const reviews = [
@@ -184,33 +306,23 @@ const reviews = [
   { text: 'Muy agradecido por su ayuda. Lograron resolver mi caso cuando otros abogados no pudieron.', name: 'Ana L.' },
 ]
 
-const infoSections = [
-  { titleKey: 'quienesSomos', textKey: 'quienesSomosText', btnKey: 'sobreNosotros', link: '/acerca-de', bg: 'bg-brand-darker' },
-  { titleKey: 'queEsperar', textKey: 'queEsperarText', btnKey: 'serviciosBtn', link: '/servicios', bg: 'bg-brand-dark' },
-  { titleKey: 'porQueNosotros', textKey: 'porQueNosotrosText', btnKey: 'perfilesBtn', link: '/el-equipo', bg: 'bg-brand-darker' },
-  { titleKey: 'dondeEstamos', textKey: 'dondeEstamosText', btnKey: 'contactenosBtn', link: '/consulta', bg: 'bg-brand-dark' },
-]
-
-function nextSlide() {
-  currentSlide.value = (currentSlide.value + 1) % slides.length
-}
+function goToSlide(i) { currentSlide.value = i }
+function nextSlide() { currentSlide.value = (currentSlide.value + 1) % slides.length }
 
 onMounted(() => {
-  slideTimer = setInterval(nextSlide, 5000)
+  slideTimer = setInterval(nextSlide, 6000)
+  // Trigger hero reveal animations
+  nextTick(() => {
+    document.querySelectorAll('.hero-reveal').forEach((el, i) => {
+      el.style.opacity = '0'
+      el.style.transform = 'translateY(30px)'
+      el.style.transition = `opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${el.style.transitionDelay}, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${el.style.transitionDelay}`
+      requestAnimationFrame(() => {
+        el.style.opacity = '1'
+        el.style.transform = 'translateY(0)'
+      })
+    })
+  })
 })
-
-onUnmounted(() => {
-  clearInterval(slideTimer)
-})
+onUnmounted(() => clearInterval(slideTimer))
 </script>
-
-<style scoped>
-.slide-fade-enter-active,
-.slide-fade-leave-active {
-  transition: opacity 1s ease;
-}
-.slide-fade-enter-from,
-.slide-fade-leave-to {
-  opacity: 0;
-}
-</style>

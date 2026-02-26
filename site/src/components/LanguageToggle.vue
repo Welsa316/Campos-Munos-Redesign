@@ -1,9 +1,13 @@
 <template>
-  <div class="fixed bottom-6 left-6 z-50">
+  <div class="fixed bottom-8 left-8 z-[90]">
     <button @click="toggleLang"
-      class="flex items-center gap-2 px-3 py-2 bg-brand-dark/90 backdrop-blur-md border border-white/20 rounded-full text-sm font-[var(--font-ui)] text-white/80 hover:text-white hover:border-brand-gold transition-all shadow-lg">
-      <span class="text-base">{{ currentLang === 'es' ? '🇪🇸' : '🇺🇸' }}</span>
-      <span class="font-medium tracking-wider">{{ currentLang.toUpperCase() }}</span>
+      class="group relative w-12 h-12 rounded-2xl glass flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-brand-gold/10">
+      <!-- Rotating ring -->
+      <div class="absolute inset-0 rounded-2xl border border-brand-gold/20 group-hover:border-brand-gold/50 transition-all duration-500 group-hover:rotate-90"></div>
+      <span class="font-[var(--font-ui)] text-xs font-bold tracking-wider"
+        :class="currentLang === 'es' ? 'text-brand-gold' : 'text-white'">
+        {{ currentLang.toUpperCase() }}
+      </span>
     </button>
   </div>
 </template>
@@ -14,8 +18,5 @@ import { useI18n } from 'vue-i18n'
 
 const { locale } = useI18n()
 const currentLang = computed(() => locale.value)
-
-function toggleLang() {
-  locale.value = locale.value === 'es' ? 'en' : 'es'
-}
+function toggleLang() { locale.value = locale.value === 'es' ? 'en' : 'es' }
 </script>

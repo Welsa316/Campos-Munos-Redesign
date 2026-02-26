@@ -1,45 +1,65 @@
 <template>
   <div>
-    <!-- Hero -->
-    <section class="relative py-24 bg-brand-dark">
-      <div class="max-w-4xl mx-auto px-4 text-center">
-        <router-link to="/servicios" class="inline-flex items-center gap-2 text-brand-gold hover:text-brand-gold-light text-sm font-[var(--font-ui)] mb-6 transition-colors">
-          <i class="fa-solid fa-arrow-left text-xs"></i>
+    <!-- Hero with large icon -->
+    <section class="relative pt-32 pb-24 bg-brand-muted overflow-hidden">
+      <!-- Decorative -->
+      <div class="absolute top-1/2 right-0 -translate-y-1/2 text-[300px] text-brand-gold/[0.03] pointer-events-none select-none">
+        <i :class="serviceIcon"></i>
+      </div>
+
+      <div class="relative max-w-7xl mx-auto px-6">
+        <router-link to="/servicios"
+          class="inline-flex items-center gap-2 text-white/30 hover:text-brand-gold text-xs font-[var(--font-ui)] tracking-wider uppercase mb-8 transition-colors group">
+          <i class="fa-solid fa-arrow-left text-[10px] group-hover:-translate-x-1 transition-transform"></i>
           {{ $t('nav.servicios') }}
         </router-link>
-        <h1 class="font-[var(--font-heading)] text-4xl md:text-5xl font-bold text-white mb-4">
-          {{ serviceTitle }}
-        </h1>
-        <div class="w-20 h-0.5 bg-brand-gold mx-auto"></div>
+
+        <div class="flex items-start gap-6">
+          <div class="w-16 h-16 rounded-2xl bg-brand-gold/10 flex items-center justify-center flex-shrink-0">
+            <i :class="serviceIcon" class="text-2xl text-brand-gold"></i>
+          </div>
+          <div>
+            <h1 class="font-[var(--font-heading)] text-4xl md:text-6xl font-bold text-white leading-[0.95]">
+              {{ serviceTitle }}
+            </h1>
+          </div>
+        </div>
       </div>
     </section>
 
     <!-- Content -->
-    <section class="py-16 bg-brand-darker">
-      <div class="max-w-3xl mx-auto px-4">
-        <div class="bg-brand-gray/30 rounded-xl p-8 md:p-12 border border-white/5">
-          <div class="flex items-center justify-center mb-8">
-            <div class="w-20 h-20 rounded-2xl bg-brand-red/20 flex items-center justify-center">
-              <i :class="serviceIcon" class="text-4xl text-brand-gold"></i>
-            </div>
-          </div>
-          <p class="text-white/80 text-lg leading-relaxed text-center mb-8">
+    <section class="py-20 bg-brand-darker">
+      <div class="max-w-4xl mx-auto px-6">
+        <div class="reveal">
+          <p class="text-white/65 text-xl md:text-2xl leading-relaxed font-[var(--font-body)] mb-12">
             {{ serviceDescription }}
           </p>
 
           <!-- Video placeholder -->
-          <div v-if="hasVideo" class="aspect-video bg-brand-dark rounded-lg flex items-center justify-center mb-8">
-            <div class="text-center">
-              <i class="fa-solid fa-play-circle text-5xl text-brand-gold/50 mb-3"></i>
-              <p class="text-white/40 text-sm font-[var(--font-ui)]">Video</p>
+          <div v-if="hasVideo" class="rounded-2xl overflow-hidden mb-12 gradient-border">
+            <div class="aspect-video bg-brand-dark flex items-center justify-center group cursor-pointer">
+              <div class="text-center">
+                <div class="w-20 h-20 rounded-full bg-brand-gold/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-brand-gold/20 transition-colors">
+                  <i class="fa-solid fa-play text-brand-gold text-xl ml-1"></i>
+                </div>
+                <p class="text-white/30 text-sm font-[var(--font-ui)] tracking-wider">Video</p>
+              </div>
             </div>
           </div>
+        </div>
 
-          <div class="text-center">
+        <!-- CTA -->
+        <div class="reveal mt-8 p-8 rounded-2xl bg-white/[0.02] border border-white/5 text-center">
+          <p class="text-white/50 text-lg mb-6 font-[var(--font-body)]">{{ $t('home.popupTitle') }}</p>
+          <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
             <router-link to="/consulta"
-              class="inline-block bg-brand-red hover:bg-brand-red-light text-white font-[var(--font-ui)] font-semibold tracking-wider text-sm px-8 py-3.5 rounded-lg transition-colors">
-              {{ $t('home.consultaBtn') }}
+              class="inline-flex items-center gap-3 bg-brand-gold text-brand-darker font-[var(--font-ui)] font-bold tracking-wider text-sm px-8 py-4 rounded-xl btn-magnetic">
+              {{ $t('home.consultaBtn') }} <i class="fa-solid fa-arrow-right text-xs"></i>
             </router-link>
+            <a href="tel:+15049106508"
+              class="inline-flex items-center gap-3 border border-white/15 text-white/60 hover:text-white hover:border-white/30 font-[var(--font-ui)] font-medium tracking-wider text-sm px-8 py-4 rounded-xl transition-all">
+              <i class="fa-solid fa-phone text-xs"></i> (504) 910-6508
+            </a>
           </div>
         </div>
       </div>
@@ -50,11 +70,10 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useScrollReveal } from '../composables/useScrollReveal.js'
 
-const props = defineProps({
-  slug: String,
-})
-
+useScrollReveal()
+const props = defineProps({ slug: String })
 const { t } = useI18n()
 
 const serviceMap = {
