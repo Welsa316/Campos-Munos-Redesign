@@ -68,6 +68,8 @@ export default {
     popupSubtitle: 'Nuestro equipo está aquí para ayudarle.',
     popupCta: 'Llámenos',
     popupBtn: 'CONTÁCTENOS',
+    casosResueltos: 'Casos Resueltos',
+    anosExperiencia: 'Años de Experiencia',
   },
   contact: {
     title: 'Póngase En Contacto',

@@ -1,7 +1,7 @@
 <template>
-  <footer class="relative bg-brand-muted overflow-hidden">
+  <footer class="relative bg-brand-navy overflow-hidden">
     <!-- Decorative top border gradient -->
-    <div class="h-px bg-gradient-to-r from-transparent via-brand-navy/40 to-transparent"></div>
+    <div class="h-1 bg-gradient-to-r from-brand-navy-dark via-brand-navy-light to-brand-navy-dark"></div>
 
     <!-- Main footer content -->
     <div class="max-w-7xl mx-auto px-6 pt-20 pb-12">
@@ -9,16 +9,16 @@
         <!-- Brand column -->
         <div class="md:col-span-4">
           <router-link to="/home" class="inline-block mb-6">
-            <img src="/logo.png" alt="Campos Munos Law" class="h-14" />
+            <img src="/logo.png" alt="Campos Munos Law" class="h-20" />
           </router-link>
-          <p class="text-white/50 text-sm font-[var(--font-ui)] leading-relaxed max-w-xs">
+          <p class="text-white/70 text-base font-[var(--font-ui)] leading-relaxed max-w-xs">
             {{ $t('about.introText').substring(0, 150) }}...
           </p>
           <!-- Social icons -->
           <div class="flex items-center gap-3 mt-6">
             <a v-for="social in socials" :key="social.label" :href="social.href" target="_blank" rel="noopener"
               :aria-label="social.label"
-              class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:text-brand-navy hover:bg-brand-navy/10 transition-all duration-300">
+              class="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 transition-all duration-300 text-lg">
               <i :class="social.icon"></i>
             </a>
           </div>
@@ -26,7 +26,7 @@
 
         <!-- Navigation -->
         <div class="md:col-span-2">
-          <h4 class="font-[var(--font-ui)] text-xs tracking-[0.2em] text-brand-navy uppercase mb-5">
+          <h4 class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-white/40 uppercase mb-5">
             {{ $t('nav.servicios') }}
           </h4>
           <div class="space-y-3">
@@ -38,7 +38,7 @@
         </div>
 
         <div class="md:col-span-2">
-          <h4 class="font-[var(--font-ui)] text-xs tracking-[0.2em] text-brand-navy uppercase mb-5">
+          <h4 class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-white/40 uppercase mb-5">
             {{ $t('nav.acercaDe') }}
           </h4>
           <div class="space-y-3">
@@ -49,29 +49,29 @@
 
         <!-- Contact info -->
         <div class="md:col-span-4">
-          <h4 class="font-[var(--font-ui)] text-xs tracking-[0.2em] text-brand-navy uppercase mb-5">
+          <h4 class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-white/40 uppercase mb-5">
             {{ $t('contact.direccion') }}
           </h4>
-          <div class="space-y-4 text-white/50 text-sm font-[var(--font-ui)]">
+          <div class="space-y-4 text-white/70 text-base font-[var(--font-ui)]">
             <div class="flex items-start gap-3">
-              <i class="fa-solid fa-location-dot text-brand-navy/50 mt-1"></i>
+              <i class="fa-solid fa-location-dot text-white/40 mt-1"></i>
               <div>
                 <p>812 Gravier Street, Suite 330</p>
                 <p>New Orleans, LA 70112</p>
               </div>
             </div>
             <div class="flex items-start gap-3">
-              <i class="fa-solid fa-envelope text-brand-navy/50 mt-1"></i>
+              <i class="fa-solid fa-envelope text-white/40 mt-1"></i>
               <div>
-                <p class="text-white/30 text-xs mb-0.5">PO Box 6224, Metairie, LA 70009</p>
+                <p class="text-white/50 text-sm mb-0.5">PO Box 6224, Metairie, LA 70009</p>
               </div>
             </div>
-            <a href="tel:+15049106508" class="flex items-center gap-3 hover:text-brand-navy transition-colors text-base font-semibold">
-              <i class="fa-solid fa-phone text-brand-red/60"></i>
+            <a href="tel:+15049106508" class="flex items-center gap-3 text-white hover:text-white/80 transition-colors text-xl font-semibold">
+              <i class="fa-solid fa-phone text-brand-red-light"></i>
               (504) 910-6508
             </a>
-            <a href="mailto:office@camulaw.com" class="flex items-center gap-3 hover:text-brand-navy transition-colors">
-              <i class="fa-solid fa-at text-brand-navy/50"></i>
+            <a href="mailto:office@camulaw.com" class="flex items-center gap-3 text-white/70 hover:text-white transition-colors text-base">
+              <i class="fa-solid fa-at text-white/40"></i>
               office@camulaw.com
             </a>
           </div>
@@ -79,18 +79,18 @@
       </div>
 
       <!-- Bottom bar -->
-      <div class="border-t border-white/5 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-        <p class="font-[var(--font-ui)] text-[11px] tracking-[0.2em] text-white/25 uppercase">
+      <div class="border-t border-white/15 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+        <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-white/50 uppercase">
           {{ $t('footer.firmName') }}
         </p>
-        <p class="font-[var(--font-ui)] text-[11px] text-white/20">
+        <p class="font-[var(--font-ui)] text-sm text-white/40">
           &copy; {{ new Date().getFullYear() }} Campos Munos Law, LLC
         </p>
       </div>
     </div>
 
-    <!-- Decorative floating gold circle -->
-    <div class="absolute -bottom-32 -right-32 w-64 h-64 rounded-full bg-brand-navy/[0.02] blur-3xl pointer-events-none"></div>
+    <!-- Decorative floating circle -->
+    <div class="absolute -bottom-32 -right-32 w-64 h-64 rounded-full bg-white/[0.03] blur-3xl pointer-events-none"></div>
   </footer>
 </template>
 
@@ -108,12 +108,12 @@ const socials = [
 .footer-link {
   display: block;
   font-family: var(--font-ui);
-  font-size: 0.8125rem;
-  color: rgba(255,255,255,0.45);
+  font-size: 0.9375rem;
+  color: rgba(255,255,255,0.6);
   transition: color 0.3s, transform 0.3s;
 }
 .footer-link:hover {
-  color: rgba(255,255,255,0.9);
+  color: rgba(255,255,255,0.95);
   transform: translateX(4px);
 }
 </style>

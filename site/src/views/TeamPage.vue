@@ -1,17 +1,17 @@
 <template>
   <div>
     <!-- Hero -->
-    <section class="relative pt-32 pb-20 bg-brand-surface overflow-hidden">
+    <section class="relative pt-36 pb-24 bg-brand-surface overflow-hidden">
       <div class="absolute bottom-0 left-0 w-96 h-96 rounded-full bg-brand-red/[0.03] blur-[120px] pointer-events-none"></div>
       <div class="relative max-w-7xl mx-auto px-6">
-        <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase mb-3">Campos Munos Law</p>
-        <h1 class="font-[var(--font-heading)] text-5xl md:text-7xl font-bold text-gray-900 leading-[0.95]">
+        <p class="font-[var(--font-ui)] text-base tracking-[0.2em] text-brand-navy uppercase mb-4">Campos Munos Law</p>
+        <h1 class="font-[var(--font-heading)] text-5xl md:text-7xl lg:text-8xl font-bold text-brand-navy leading-[0.95]">
           {{ $t('team.title') }}
         </h1>
       </div>
     </section>
 
-    <!-- Team grid - dramatic card layout -->
+    <!-- Team grid -->
     <section class="py-20 bg-white">
       <div class="max-w-6xl mx-auto px-6">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 stagger">
@@ -34,17 +34,17 @@
             </div>
 
             <!-- Info -->
-            <h3 class="font-[var(--font-heading)] text-xl text-gray-900 group-hover:text-brand-navy transition-colors duration-300 mb-1">
+            <h3 class="font-[var(--font-heading)] text-2xl text-gray-900 group-hover:text-brand-navy transition-colors duration-300 mb-1">
               {{ $t(`team.members.${member.key}.name`) }}
             </h3>
-            <p class="font-[var(--font-ui)] text-sm tracking-wider text-gray-400 uppercase">
+            <p class="font-[var(--font-ui)] text-base tracking-wider text-gray-400 uppercase">
               {{ $t(`team.members.${member.key}.title`) }}
             </p>
 
             <!-- Arrow indicator -->
             <div class="mt-3 flex items-center gap-2 text-brand-navy/0 group-hover:text-brand-navy transition-all duration-300">
-              <span class="text-xs font-[var(--font-ui)] tracking-wider">{{ $t('team.viewBio') }}</span>
-              <i class="fa-solid fa-arrow-right text-[10px] group-hover:translate-x-1 transition-transform"></i>
+              <span class="text-sm font-[var(--font-ui)] tracking-wider">{{ $t('team.viewBio') }}</span>
+              <i class="fa-solid fa-arrow-right text-xs group-hover:translate-x-1 transition-transform"></i>
             </div>
           </router-link>
         </div>
