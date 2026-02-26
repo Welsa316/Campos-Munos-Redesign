@@ -32,9 +32,16 @@
               {{ $t(`team.members.${memberData.key}.name`) }}
             </h1>
             <div class="w-16 h-[2px] bg-brand-navy mb-8"></div>
-            <p class="text-gray-600 text-2xl leading-relaxed font-[var(--font-body)]">
-              {{ memberData.bio }}
+            <!-- Short bio intro -->
+            <p class="text-gray-800 text-2xl leading-relaxed font-[var(--font-body)] font-semibold mb-6">
+              {{ $t(`team.members.${memberData.key}.shortBio`) }}
             </p>
+            <!-- Full bio with paragraph breaks -->
+            <div class="text-gray-600 text-xl leading-relaxed font-[var(--font-body)] space-y-4">
+              <p v-for="(paragraph, i) in $t(`team.members.${memberData.key}.bio`).split('\n\n')" :key="i">
+                {{ paragraph }}
+              </p>
+            </div>
 
             <!-- CTA -->
             <div class="mt-10 flex flex-wrap gap-4">
