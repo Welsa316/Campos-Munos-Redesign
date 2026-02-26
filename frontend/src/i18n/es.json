@@ -1,0 +1,119 @@
+{
+  "brand": {
+    "name": "Campos Muños"
+  },
+  "nav": {
+    "home": "Inicio",
+    "services": "Servicios",
+    "greenCard": "Green Card",
+    "team": "El equipo",
+    "about": "Acerca de",
+    "consultation": "Consulta",
+    "payment": "Pago",
+    "languageEs": "ES",
+    "languageEn": "EN"
+  },
+  "cta": {
+    "consultation": "Agendar consulta",
+    "callNow": "Llamar ahora",
+    "seeAllServices": "Ver todos los servicios"
+  },
+  "meta": {
+    "home": {
+      "title": "Campos Muños - Abogados de inmigración",
+      "description": "Firma de abogados de inmigración en New Orleans dedicada a la comunidad inmigrante."
+    },
+    "services": {
+      "title": "Servicios de inmigración - Campos Muños",
+      "description": "Explora los servicios de inmigración que ofrece Campos Muños."
+    },
+    "serviceGeneric": {
+      "title": "Servicio de inmigración - Campos Muños",
+      "description": "Detalles del servicio de inmigración."
+    },
+    "consulta": {
+      "title": "Consulta - Campos Muños",
+      "description": "Programa una consulta con Campos Muños."
+    },
+    "pago": {
+      "title": "Pago - Campos Muños",
+      "description": "Opciones de pago en línea."
+    },
+    "equipo": {
+      "title": "Nuestro equipo - Campos Muños",
+      "description": "Conoce al equipo de Campos Muños."
+    },
+    "equipoMember": {
+      "title": "Miembro del equipo - Campos Muños",
+      "description": "Perfil del miembro del equipo."
+    },
+    "acerca": {
+      "title": "Acerca de Campos Muños",
+      "description": "Conoce más sobre Campos Muños."
+    }
+  },
+  "layout": {
+    "address": "812 Gravier Street, Suite 330, New Orleans, LA 70112",
+    "mailing": "PO Box 6224, Metairie, LA 70009",
+    "phoneLabel": "Llámanos",
+    "phoneNumber": "+1 (504) 910-6508"
+  },
+  "home": {
+    "hero": {
+      "headline": "MISSING_SOURCE_CONTENT_HERO_HEADLINE",
+      "subheadline": "MISSING_SOURCE_CONTENT_HERO_SUBHEADLINE",
+      "accent": "MISSING_SOURCE_CONTENT_HERO_ACCENT"
+    },
+    "sections": {
+      "introTitle": "MISSING_SOURCE_CONTENT_HOME_INTRO_TITLE",
+      "introBody": "MISSING_SOURCE_CONTENT_HOME_INTRO_BODY"
+    }
+  },
+  "services": {
+    "indexTitle": "Servicios de inmigración",
+    "indexIntro": "MISSING_SOURCE_CONTENT_SERVICES_INTRO",
+    "jovenes": "Visas especial para Jóvenes",
+    "videos": "Videos",
+    "tramiteConsular": "Trámite consular",
+    "asilo": "Asilo",
+    "daca": "DACA",
+    "visasPrometido": "Visas de prometido",
+    "ead": "EAD (Permiso de trabajo)",
+    "ciudadania": "Ciudadanía",
+    "estatusTemporal": "Estatus de protección temporal",
+    "vawa": "VAWA",
+    "defensaDeportacion": "Defensa contra la deportación",
+    "peticionesFamiliares": "Peticiones familiares",
+    "visaU": "Visa U",
+    "visaT": "Visa T",
+    "greenCard": "Green Card"
+  },
+  "equipo": {
+    "title": "Nuestro equipo",
+    "intro": "MISSING_SOURCE_CONTENT_TEAM_INTRO"
+  },
+  "consulta": {
+    "title": "Consulta",
+    "intro": "MISSING_SOURCE_CONTENT_CONSULTA_INTRO"
+  },
+  "pago": {
+    "title": "Pago",
+    "intro": "MISSING_SOURCE_CONTENT_PAGO_INTRO"
+  },
+  "about": {
+    "title": "Acerca de Campos Muños",
+    "intro": "MISSING_SOURCE_CONTENT_ACERCA_INTRO"
+  },
+  "video": {
+    "comingSoonTitle": "Video próximamente",
+    "comingSoonBody": "El contenido de video estará disponible pronto.",
+    "close": "Cerrar"
+  },
+  "popup": {
+    "title": "¿Necesitas ayuda con tu caso de inmigración?",
+    "body": "Programa una consulta con nuestro equipo para revisar tu situación.",
+    "primary": "Ir a consulta",
+    "secondary": "No ahora"
+  }
+}
+
