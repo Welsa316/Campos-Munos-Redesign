@@ -1,6 +1,6 @@
 <template>
   <header class="fixed top-0 left-0 right-0 z-[100] transition-all duration-500"
-    :class="scrolled ? 'py-2' : 'py-4'">
+    :class="scrolled ? 'py-2' : 'py-5'">
     <!-- Background: transparent at top, white on scroll -->
     <div class="absolute inset-0 transition-all duration-500"
       :class="scrolled ? 'bg-white shadow-lg opacity-100' : 'opacity-0'"></div>
@@ -10,38 +10,38 @@
       <router-link to="/home" class="flex-shrink-0 relative group transition-all duration-500"
         :class="scrolled ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'">
         <img src="/logo.png" alt="Campos Munos Law"
-          class="h-9 transition-all duration-500" />
+          class="h-16 transition-all duration-500" />
       </router-link>
 
       <!-- Desktop nav - centered -->
-      <div class="hidden lg:flex items-center gap-0.5">
+      <div class="hidden lg:flex items-center gap-1">
         <!-- Services mega-dropdown -->
         <div class="relative" @mouseenter="showServices = true" @mouseleave="showServices = false">
           <router-link to="/servicios" class="nav-item" :class="scrolled ? 'nav-scrolled' : 'nav-top'">
             <span>{{ $t('nav.servicios') }}</span>
-            <svg class="w-3 h-3 transition-transform duration-300" :class="showServices ? 'rotate-180' : ''"
+            <svg class="w-3.5 h-3.5 transition-transform duration-300" :class="showServices ? 'rotate-180' : ''"
               fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path d="M19 9l-7 7-7-7" />
             </svg>
           </router-link>
           <transition name="mega">
             <div v-show="showServices"
-              class="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-[480px] rounded-2xl p-6 shadow-2xl"
-              :class="scrolled ? 'bg-white shadow-gray-200/50 border border-gray-100' : 'glass shadow-black/30'">
+              class="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-[520px] rounded-2xl p-6 shadow-2xl"
+              :class="scrolled ? 'bg-white shadow-gray-200/50 border border-gray-100' : 'glass-dark shadow-black/30'">
               <!-- Accent line at top -->
               <div class="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-0.5 bg-brand-navy rounded-full"></div>
               <div class="grid grid-cols-2 gap-1 mt-1">
                 <router-link v-for="service in serviceLinks" :key="service.slug"
                   :to="`/servicios/${service.slug}`"
-                  class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group/item"
+                  class="flex items-center gap-3 px-3 py-3 rounded-xl transition-all group/item"
                   :class="scrolled
                     ? 'text-gray-500 hover:text-brand-navy hover:bg-brand-navy/5'
                     : 'text-white/70 hover:text-brand-navy hover:bg-white/5'"
                   @click="showServices = false">
-                  <i :class="[service.icon, 'text-sm transition-colors w-4 text-center', scrolled
+                  <i :class="[service.icon, 'text-base transition-colors w-5 text-center', scrolled
                       ? 'text-brand-navy/40 group-hover/item:text-brand-navy'
                       : 'text-brand-navy/50 group-hover/item:text-brand-navy']"></i>
-                  <span class="font-[var(--font-ui)] text-[13px] font-medium">{{ $t(`services.${service.key}`) }}</span>
+                  <span class="font-[var(--font-ui)] text-sm font-medium">{{ $t(`services.${service.key}`) }}</span>
                 </router-link>
               </div>
             </div>
@@ -63,34 +63,34 @@
       </div>
 
       <!-- Right side: phone + social -->
-      <div class="hidden lg:flex items-center gap-4">
-        <div class="flex items-center gap-2">
+      <div class="hidden lg:flex items-center gap-5">
+        <div class="flex items-center gap-3">
           <a v-for="social in socials" :key="social.label" :href="social.href" target="_blank" rel="noopener"
             :aria-label="social.label"
-            class="w-7 h-7 rounded-full flex items-center justify-center transition-all text-xs"
+            class="w-9 h-9 rounded-full flex items-center justify-center transition-all text-base"
             :class="scrolled
               ? 'text-gray-400 hover:text-brand-navy hover:bg-brand-navy/5'
-              : 'text-white/40 hover:text-brand-navy hover:bg-white/5'">
+              : 'text-white/50 hover:text-brand-navy hover:bg-white/5'">
             <i :class="social.icon"></i>
           </a>
         </div>
         <a href="tel:+15049106508"
-          class="flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-brand-red hover:bg-brand-red-light text-white text-sm font-[var(--font-ui)] font-semibold tracking-wider transition-all btn-magnetic">
-          <i class="fa-solid fa-phone text-xs"></i>
+          class="flex items-center gap-3 px-7 py-3.5 rounded-full bg-brand-red hover:bg-brand-red-light text-white text-base font-[var(--font-ui)] font-semibold tracking-wider transition-all btn-magnetic">
+          <i class="fa-solid fa-phone text-sm"></i>
           (504) 910-6508
         </a>
       </div>
 
       <!-- Mobile hamburger -->
-      <button @click="mobileOpen = !mobileOpen" class="lg:hidden relative w-10 h-10 flex items-center justify-center" aria-label="Menu">
+      <button @click="mobileOpen = !mobileOpen" class="lg:hidden relative w-12 h-12 flex items-center justify-center" aria-label="Menu">
         <span class="sr-only">Menu</span>
         <div class="flex flex-col items-end gap-1.5 transition-all">
           <span class="block h-[2px] rounded-full transition-all duration-300"
-            :class="[scrolled ? 'bg-gray-800' : 'bg-white', mobileOpen ? 'w-6 rotate-45 translate-y-[5px]' : 'w-6']"></span>
+            :class="[scrolled ? 'bg-gray-800' : 'bg-white', mobileOpen ? 'w-7 rotate-45 translate-y-[5px]' : 'w-7']"></span>
           <span class="block h-[2px] rounded-full transition-all duration-300"
-            :class="[scrolled ? 'bg-gray-800' : 'bg-white', mobileOpen ? 'opacity-0 w-4' : 'opacity-100 w-4']"></span>
+            :class="[scrolled ? 'bg-gray-800' : 'bg-white', mobileOpen ? 'opacity-0 w-5' : 'opacity-100 w-5']"></span>
           <span class="block h-[2px] rounded-full transition-all duration-300"
-            :class="[scrolled ? 'bg-gray-800' : 'bg-white', mobileOpen ? 'w-6 -rotate-45 -translate-y-[5px]' : 'w-5']"></span>
+            :class="[scrolled ? 'bg-gray-800' : 'bg-white', mobileOpen ? 'w-7 -rotate-45 -translate-y-[5px]' : 'w-6']"></span>
         </div>
       </button>
     </nav>
@@ -98,19 +98,19 @@
     <!-- Mobile full-screen overlay -->
     <transition name="mobile-nav">
       <div v-show="mobileOpen" class="lg:hidden fixed inset-0 top-0 bg-white/98 backdrop-blur-xl z-[-1]">
-        <div class="flex flex-col justify-center items-center h-full gap-6 px-8">
+        <div class="flex flex-col justify-center items-center h-full gap-8 px-8">
           <router-link v-for="link in mobileLinks" :key="link.to" :to="link.to"
-            class="text-3xl font-[var(--font-heading)] text-gray-800 hover:text-brand-navy transition-colors"
+            class="text-4xl font-[var(--font-heading)] text-gray-800 hover:text-brand-navy transition-colors"
             @click="mobileOpen = false">
             {{ link.label }}
           </router-link>
           <div class="w-16 h-px bg-brand-navy/30 my-2"></div>
-          <a href="tel:+15049106508" class="text-brand-red font-[var(--font-ui)] text-2xl tracking-wider font-bold">
+          <a href="tel:+15049106508" class="text-brand-red font-[var(--font-ui)] text-3xl tracking-wider font-bold">
             (504) 910-6508
           </a>
-          <div class="flex items-center gap-4 mt-4">
+          <div class="flex items-center gap-5 mt-4">
             <a v-for="social in socials" :key="social.label" :href="social.href" target="_blank" rel="noopener"
-              :aria-label="social.label" class="text-gray-400 hover:text-brand-navy text-xl transition-colors">
+              :aria-label="social.label" class="text-gray-400 hover:text-brand-navy text-2xl transition-colors">
               <i :class="social.icon"></i>
             </a>
           </div>
@@ -173,13 +173,13 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   font-family: var(--font-ui);
-  font-size: 0.75rem;
-  font-weight: 500;
+  font-size: 0.875rem;
+  font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  padding: 0.5rem 0.875rem;
+  padding: 0.625rem 1rem;
   border-radius: 9999px;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
@@ -187,7 +187,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 
 /* At top of page - white text on transparent/dark bg */
 .nav-top {
-  color: rgba(255,255,255,0.75);
+  color: rgba(255,255,255,0.8);
 }
 .nav-top:hover,
 .nav-top.router-link-active {

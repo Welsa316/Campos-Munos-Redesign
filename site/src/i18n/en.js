@@ -68,6 +68,8 @@ export default {
     popupSubtitle: 'Our team is here to help you.',
     popupCta: 'Call Us',
     popupBtn: 'CONTACT US',
+    casosResueltos: 'Cases Resolved',
+    anosExperiencia: 'Years of Experience',
   },
   contact: {
     title: 'Get In Touch',

@@ -1,11 +1,11 @@
 <template>
   <div>
     <!-- Hero -->
-    <section class="relative pt-32 pb-20 bg-brand-surface overflow-hidden">
+    <section class="relative pt-36 pb-24 bg-brand-surface overflow-hidden">
       <div class="absolute top-0 right-0 w-96 h-96 rounded-full bg-brand-navy/[0.03] blur-[120px] pointer-events-none"></div>
       <div class="relative max-w-7xl mx-auto px-6">
-        <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase mb-3">Campos Munos Law</p>
-        <h1 class="font-[var(--font-heading)] text-5xl md:text-7xl font-bold text-gray-900 leading-[0.95]">
+        <p class="font-[var(--font-ui)] text-base tracking-[0.2em] text-brand-navy uppercase mb-4">Campos Munos Law</p>
+        <h1 class="font-[var(--font-heading)] text-5xl md:text-7xl lg:text-8xl font-bold text-brand-navy leading-[0.95]">
           {{ $t('nav.servicios') }}
         </h1>
       </div>
@@ -24,17 +24,17 @@
               <div :class="['absolute inset-0 rounded-2xl transition-all duration-500']"
                 :style="{ background: `linear-gradient(135deg, ${service.gradient})` }"></div>
 
-              <div class="relative h-full p-7 flex flex-col justify-between">
+              <div class="relative h-full p-8 flex flex-col justify-between">
                 <div class="flex items-center justify-between">
-                  <i :class="[service.icon, 'text-brand-navy/30 group-hover:text-brand-navy transition-colors duration-300', i === 0 ? 'text-4xl' : 'text-2xl']"></i>
-                  <i class="fa-solid fa-arrow-up-right text-gray-300/0 group-hover:text-brand-navy/60 transition-all duration-300 text-xs"></i>
+                  <i :class="[service.icon, 'text-brand-navy/30 group-hover:text-brand-navy transition-colors duration-300', i === 0 ? 'text-5xl' : 'text-3xl']"></i>
+                  <i class="fa-solid fa-arrow-up-right text-gray-300/0 group-hover:text-brand-navy/60 transition-all duration-300 text-sm"></i>
                 </div>
 
                 <div class="mt-auto">
-                  <h3 :class="['font-[var(--font-heading)] text-gray-900 group-hover:text-brand-navy transition-colors duration-300', i === 0 ? 'text-3xl mb-3' : 'text-lg mb-1']">
+                  <h3 :class="['font-[var(--font-heading)] text-gray-900 group-hover:text-brand-navy transition-colors duration-300', i === 0 ? 'text-3xl md:text-4xl mb-3' : 'text-xl md:text-2xl mb-2']">
                     {{ $t(`services.${service.key}`) }}
                   </h3>
-                  <p v-if="i < 4" :class="['text-gray-500 text-sm leading-relaxed font-[var(--font-ui)]', i === 0 ? 'line-clamp-3' : 'line-clamp-2']">
+                  <p v-if="i < 4" :class="['text-gray-500 leading-relaxed font-[var(--font-ui)]', i === 0 ? 'text-lg line-clamp-3' : 'text-base line-clamp-2']">
                     {{ $t(`serviceDescriptions.${service.key}`) }}
                   </p>
                 </div>
@@ -46,12 +46,12 @@
     </section>
 
     <!-- Bottom CTA -->
-    <section class="py-16 bg-brand-surface">
+    <section class="py-20 bg-brand-surface">
       <div class="max-w-3xl mx-auto px-6 text-center reveal">
-        <p class="text-gray-500 text-xl mb-6 font-[var(--font-body)]">{{ $t('home.popupTitle') }}</p>
+        <p class="text-gray-500 text-2xl mb-8 font-[var(--font-body)]">{{ $t('home.popupTitle') }}</p>
         <router-link to="/consulta"
-          class="inline-flex items-center gap-3 bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-sm px-8 py-4 rounded-xl btn-magnetic">
-          {{ $t('home.consultaBtn') }} <i class="fa-solid fa-arrow-right text-xs"></i>
+          class="inline-flex items-center gap-3 bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-base px-10 py-5 rounded-xl btn-magnetic">
+          {{ $t('home.consultaBtn') }} <i class="fa-solid fa-arrow-right text-sm"></i>
         </router-link>
       </div>
     </section>

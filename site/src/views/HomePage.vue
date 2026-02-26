@@ -8,7 +8,7 @@
           class="absolute inset-0 transition-opacity duration-[2000ms]"
           :class="currentSlide === i ? 'opacity-100' : 'opacity-0'">
           <div class="absolute inset-0 bg-cover bg-center kenburns"
-            :style="{ backgroundImage: `url('${slide}')`, animationDelay: `${i * -4}s` }"></div>
+            :style="{ backgroundImage: `url('${slide.img}')`, animationDelay: `${i * -4}s` }"></div>
         </div>
         <!-- Layered overlays for depth -->
         <div class="absolute inset-0 bg-gradient-to-b from-brand-darker/60 via-black/40 to-brand-darker"></div>
@@ -18,35 +18,35 @@
       <!-- Hero content - left-aligned for dramatic asymmetry -->
       <div class="relative h-full max-w-7xl mx-auto px-6 flex flex-col justify-end pb-24 md:pb-32">
         <!-- Accent line -->
-        <div class="w-16 h-[2px] bg-brand-navy mb-6 hero-reveal" style="transition-delay: 0.2s"></div>
+        <div class="w-20 h-[3px] bg-brand-navy mb-6 hero-reveal" style="transition-delay: 0.2s"></div>
 
-        <p class="font-[var(--font-ui)] text-brand-navy-light text-sm tracking-[0.3em] uppercase mb-4 hero-reveal" style="transition-delay: 0.4s">
+        <p class="font-[var(--font-ui)] text-brand-navy-light text-base md:text-lg tracking-[0.3em] uppercase mb-4 hero-reveal" style="transition-delay: 0.4s">
           Campos Munos Law, LLC
         </p>
 
-        <h1 class="font-[var(--font-heading)] text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[0.95] mb-4 hero-reveal" style="transition-delay: 0.6s">
+        <h1 class="font-[var(--font-heading)] text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white leading-[0.95] mb-4 hero-reveal" style="transition-delay: 0.6s">
           {{ $t('home.heroTitle') }}
         </h1>
 
         <div class="flex items-center gap-4 mb-6 hero-reveal" style="transition-delay: 0.8s">
           <div class="w-12 h-[1px] bg-white/30"></div>
-          <p class="font-[var(--font-heading)] text-3xl md:text-4xl text-white/60 italic">
-            {{ $t('home.heroSubtitle') }}
+          <p class="font-[var(--font-heading)] text-2xl md:text-3xl lg:text-4xl text-white/70 italic">
+            {{ slides[currentSlide].subtitle }}
           </p>
         </div>
 
-        <p class="font-[var(--font-body)] text-xl md:text-2xl text-white/50 max-w-lg mb-10 hero-reveal" style="transition-delay: 1s">
+        <p class="font-[var(--font-body)] text-2xl md:text-3xl text-white/50 max-w-xl mb-10 hero-reveal" style="transition-delay: 1s">
           {{ $t('home.heroTagline') }}
         </p>
 
         <div class="flex flex-col sm:flex-row items-start gap-4 hero-reveal" style="transition-delay: 1.2s">
           <router-link to="/consulta"
-            class="group flex items-center gap-3 bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-sm px-8 py-4 rounded-xl btn-magnetic">
+            class="group flex items-center gap-3 bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-base px-10 py-5 rounded-xl btn-magnetic">
             {{ $t('home.consultaBtn') }}
-            <i class="fa-solid fa-arrow-right text-xs transition-transform group-hover:translate-x-1"></i>
+            <i class="fa-solid fa-arrow-right text-sm transition-transform group-hover:translate-x-1"></i>
           </router-link>
           <router-link to="/servicios"
-            class="flex items-center gap-3 border border-white/20 text-white/80 hover:text-white hover:border-white/40 font-[var(--font-ui)] font-medium tracking-wider text-sm px-8 py-4 rounded-xl transition-all">
+            class="flex items-center gap-3 border border-white/20 text-white/80 hover:text-white hover:border-white/40 font-[var(--font-ui)] font-medium tracking-wider text-base px-10 py-5 rounded-xl transition-all">
             {{ $t('home.serviciosBtn') }}
           </router-link>
         </div>
@@ -64,32 +64,41 @@
 
       <!-- Bottom info strip -->
       <div class="absolute bottom-0 left-0 right-0 py-4 bg-gradient-to-t from-brand-darker to-transparent">
-        <div class="max-w-7xl mx-auto px-6 flex flex-wrap items-center gap-8 text-white/40 text-xs font-[var(--font-ui)] tracking-wider">
+        <div class="max-w-7xl mx-auto px-6 flex flex-wrap items-center gap-8 text-white/40 text-sm font-[var(--font-ui)] tracking-wider">
           <span class="flex items-center gap-2"><i class="fa-solid fa-location-dot text-brand-navy/60"></i> New Orleans, LA</span>
-          <a href="tel:+15049106508" class="flex items-center gap-2 hover:text-white transition-colors"><i class="fa-solid fa-phone text-brand-red/60"></i> <span class="text-sm font-semibold">(504) 910-6508</span></a>
+          <a href="tel:+15049106508" class="flex items-center gap-2 hover:text-white transition-colors"><i class="fa-solid fa-phone text-brand-red/60"></i> <span class="text-base font-semibold">(504) 910-6508</span></a>
           <span class="flex items-center gap-2"><i class="fa-solid fa-video text-brand-navy/60"></i> {{ $t('home.virtualAvailable') }}</span>
         </div>
       </div>
     </section>
 
     <!-- ===================== RECOGNITION BAR ===================== -->
-    <section class="py-12 bg-brand-surface border-y border-gray-200">
-      <div class="max-w-5xl mx-auto px-6">
-        <div class="flex flex-col items-center gap-8">
-          <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-gray-400 uppercase">{{ $t('home.recognizedBy') }}</p>
-          <div class="flex flex-wrap items-center justify-center gap-10 md:gap-16">
+    <section class="py-14 bg-brand-surface border-y border-gray-200">
+      <div class="max-w-6xl mx-auto px-6">
+        <div class="flex flex-col items-center gap-10">
+          <p class="font-[var(--font-ui)] text-base tracking-[0.2em] text-gray-400 uppercase">{{ $t('home.recognizedBy') }}</p>
+          <div class="flex flex-wrap items-center justify-center gap-12 md:gap-20">
             <img v-for="(badge, i) in badges" :key="i"
               :src="badge.src" :alt="badge.alt"
-              class="h-16 md:h-20 w-auto object-contain opacity-70 hover:opacity-100 transition-opacity duration-300" />
+              class="h-24 md:h-32 w-auto object-contain opacity-70 hover:opacity-100 transition-opacity duration-300" />
           </div>
         </div>
       </div>
     </section>
 
-    <!-- ===================== NUMBER COUNTER ===================== -->
-    <section class="py-16 bg-white">
-      <div class="max-w-7xl mx-auto px-6 reveal">
-        <div class="elfsight-app-6032d238-e359-414a-ac6c-c6a171918a90" data-elfsight-app-lazy></div>
+    <!-- ===================== STATISTICS ===================== -->
+    <section class="py-20 bg-white">
+      <div class="max-w-5xl mx-auto px-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-12 text-center reveal">
+          <div class="p-8">
+            <p class="font-[var(--font-heading)] text-7xl md:text-8xl font-bold text-brand-navy mb-3">3,000+</p>
+            <p class="font-[var(--font-ui)] text-xl md:text-2xl text-gray-500 tracking-wide">{{ $t('home.casosResueltos') }}</p>
+          </div>
+          <div class="p-8">
+            <p class="font-[var(--font-heading)] text-7xl md:text-8xl font-bold text-brand-navy mb-3">25+</p>
+            <p class="font-[var(--font-ui)] text-xl md:text-2xl text-gray-500 tracking-wide">{{ $t('home.anosExperiencia') }}</p>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -97,28 +106,27 @@
     <section class="py-24 bg-brand-light relative">
       <div class="relative z-10 max-w-7xl mx-auto px-6">
         <div class="text-center mb-16 reveal">
-          <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase mb-3">{{ $t('nav.servicios') }}</p>
-          <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-gray-900">
-            {{ $t('home.queEsperar').replace('?', '') }}
+          <h2 class="font-[var(--font-heading)] text-4xl md:text-6xl text-brand-navy">
+            {{ $t('nav.servicios') }}
           </h2>
         </div>
 
         <!-- Bento grid -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 stagger">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-5 stagger">
           <!-- Large featured card -->
           <router-link to="/servicios/green-card"
-            class="reveal col-span-2 row-span-2 group relative rounded-2xl overflow-hidden min-h-[320px] border border-gray-200 shadow-sm hover:shadow-lg transition-shadow duration-500">
+            class="reveal col-span-2 row-span-2 group relative rounded-2xl overflow-hidden min-h-[380px] border border-gray-200 shadow-sm hover:shadow-lg transition-shadow duration-500">
             <div class="absolute inset-0 bg-gradient-to-br from-brand-navy/5 to-white group-hover:from-brand-navy/10 transition-all duration-500"></div>
-            <div class="relative h-full p-8 flex flex-col justify-end">
-              <i class="fa-solid fa-id-card text-5xl text-brand-navy/20 mb-auto group-hover:text-brand-navy/40 transition-colors duration-500"></i>
-              <h3 class="font-[var(--font-heading)] text-3xl text-gray-900 mb-2 group-hover:text-brand-navy transition-colors">
+            <div class="relative h-full p-10 flex flex-col justify-end">
+              <i class="fa-solid fa-id-card text-6xl text-brand-navy/20 mb-auto group-hover:text-brand-navy/40 transition-colors duration-500"></i>
+              <h3 class="font-[var(--font-heading)] text-3xl md:text-4xl text-gray-900 mb-3 group-hover:text-brand-navy transition-colors">
                 {{ $t('services.greenCard') }}
               </h3>
-              <p class="text-gray-500 text-base font-[var(--font-ui)] leading-relaxed line-clamp-2">
+              <p class="text-gray-500 text-lg md:text-xl font-[var(--font-ui)] leading-relaxed line-clamp-3">
                 {{ $t('serviceDescriptions.greenCard') }}
               </p>
-              <div class="mt-4 flex items-center gap-2 text-brand-navy text-xs font-[var(--font-ui)] font-semibold tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
-                {{ $t('readMore') }} <i class="fa-solid fa-arrow-right text-[10px]"></i>
+              <div class="mt-5 flex items-center gap-2 text-brand-navy text-base font-[var(--font-ui)] font-semibold tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
+                {{ $t('readMore') }} <i class="fa-solid fa-arrow-right text-sm"></i>
               </div>
             </div>
           </router-link>
@@ -126,11 +134,11 @@
           <!-- Regular bento cards -->
           <router-link v-for="service in bentoServices" :key="service.slug"
             :to="`/servicios/${service.slug}`"
-            class="reveal group relative rounded-2xl overflow-hidden min-h-[160px] border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow duration-500">
-            <div class="relative h-full p-5 flex flex-col justify-between">
-              <i :class="service.icon" class="text-2xl text-brand-navy/30 group-hover:text-brand-navy transition-colors duration-300"></i>
+            class="reveal group relative rounded-2xl overflow-hidden min-h-[180px] border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow duration-500">
+            <div class="relative h-full p-6 flex flex-col justify-between">
+              <i :class="service.icon" class="text-3xl text-brand-navy/30 group-hover:text-brand-navy transition-colors duration-300"></i>
               <div>
-                <h3 class="font-[var(--font-heading)] text-base text-gray-900 group-hover:text-brand-navy transition-colors leading-tight">
+                <h3 class="font-[var(--font-heading)] text-xl md:text-2xl text-gray-900 group-hover:text-brand-navy transition-colors leading-tight">
                   {{ $t(`services.${service.key}`) }}
                 </h3>
               </div>
@@ -138,11 +146,11 @@
           </router-link>
         </div>
 
-        <div class="text-center mt-12 reveal">
+        <div class="text-center mt-14 reveal">
           <router-link to="/servicios"
-            class="inline-flex items-center gap-3 text-brand-navy hover:text-brand-navy-light font-[var(--font-ui)] font-medium tracking-wider text-sm transition-colors group">
+            class="inline-flex items-center gap-3 text-brand-navy hover:text-brand-navy-light font-[var(--font-ui)] font-semibold tracking-wider text-lg transition-colors group">
             {{ $t('home.serviciosBtn') }}
-            <i class="fa-solid fa-arrow-right text-xs group-hover:translate-x-1 transition-transform"></i>
+            <i class="fa-solid fa-arrow-right text-sm group-hover:translate-x-1 transition-transform"></i>
           </router-link>
         </div>
       </div>
@@ -153,9 +161,9 @@
       <div class="max-w-7xl mx-auto px-6">
         <div class="text-center mb-12 reveal">
           <div class="flex items-center justify-center gap-2 mb-3">
-            <i v-for="n in 5" :key="n" class="fa-solid fa-star text-yellow-400 text-sm"></i>
+            <i v-for="n in 5" :key="n" class="fa-solid fa-star text-yellow-400 text-lg"></i>
           </div>
-          <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-gray-900">{{ $t('home.reviewsTitle') }}</h2>
+          <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-brand-navy">{{ $t('home.reviewsTitle') }}</h2>
         </div>
         <div class="reveal elfsight-reviews-wrapper rounded-2xl overflow-hidden">
           <div class="elfsight-app-02c0cb8e-d132-4834-ae18-93002f5a819a" data-elfsight-app-lazy></div>
@@ -167,34 +175,26 @@
     <section class="py-24 bg-brand-light">
       <div class="max-w-7xl mx-auto px-6">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          <!-- Left: Image with overlapping accent -->
+          <!-- Left: Image placeholder area -->
           <div class="relative reveal-left">
 <!--            <div class="rounded-2xl overflow-hidden">-->
 <!--              <img src="/AbogadosSlideshowPic.jpg" alt="Campos Munos Law Team"-->
 <!--                class="w-full aspect-[4/3] object-cover" />-->
 <!--            </div>-->
-            <!-- Overlapping accent block -->
-            <div class="absolute -bottom-6 -right-6 w-32 h-32 border-2 border-brand-navy/15 rounded-2xl float-medium"></div>
-            <!-- Experience badge -->
-            <div class="absolute -top-4 -left-4 bg-white shadow-lg rounded-2xl p-4 text-center border border-gray-100">
-              <p class="font-[var(--font-heading)] text-3xl font-bold navy-shimmer">20+</p>
-              <p class="font-[var(--font-ui)] text-xs tracking-wider text-gray-400 uppercase">Years</p>
-            </div>
           </div>
 
           <!-- Right: Text -->
           <div class="reveal-right">
-            <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase mb-3">{{ $t('home.quienesSomos') }}</p>
-            <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-gray-900 mb-6 leading-tight">
+            <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-brand-navy mb-6 leading-tight">
               {{ $t('home.quienesSomos') }}
             </h2>
-            <p class="text-gray-600 text-xl leading-relaxed mb-8">
+            <p class="text-gray-600 text-xl md:text-2xl leading-relaxed mb-8">
               {{ $t('home.quienesSomosText') }}
             </p>
             <router-link to="/acerca-de"
-              class="inline-flex items-center gap-3 text-brand-navy hover:text-brand-navy-light font-[var(--font-ui)] font-medium tracking-wider text-sm transition-colors group">
+              class="inline-flex items-center gap-3 text-brand-navy hover:text-brand-navy-light font-[var(--font-ui)] font-semibold tracking-wider text-lg transition-colors group">
               {{ $t('home.sobreNosotros') }}
-              <i class="fa-solid fa-arrow-right text-xs group-hover:translate-x-1 transition-transform"></i>
+              <i class="fa-solid fa-arrow-right text-sm group-hover:translate-x-1 transition-transform"></i>
             </router-link>
           </div>
         </div>
@@ -206,17 +206,16 @@
       <div class="absolute inset-0 bg-cover bg-center bg-fixed" style="background-image: url('/Slideshow3.jpg')"></div>
       <div class="absolute inset-0 bg-brand-darker/85"></div>
       <div class="relative max-w-3xl mx-auto px-6 text-center reveal">
-        <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase mb-4">{{ $t('home.porQueNosotros') }}</p>
-        <h2 class="font-[var(--font-heading)] text-3xl md:text-5xl text-white mb-8 leading-tight">
+        <h2 class="font-[var(--font-heading)] text-4xl md:text-6xl text-white mb-8 leading-tight">
           {{ $t('home.porQueNosotros') }}
         </h2>
-        <p class="text-white/60 text-xl md:text-2xl leading-relaxed mb-10">
+        <p class="text-white/70 text-xl md:text-3xl leading-relaxed mb-12">
           {{ $t('home.porQueNosotrosText') }}
         </p>
         <router-link to="/el-equipo"
-          class="inline-flex items-center gap-3 bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-sm px-8 py-4 rounded-xl btn-magnetic">
+          class="inline-flex items-center gap-3 bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-base px-10 py-5 rounded-xl btn-magnetic">
           {{ $t('home.perfilesBtn') }}
-          <i class="fa-solid fa-arrow-right text-xs"></i>
+          <i class="fa-solid fa-arrow-right text-sm"></i>
         </router-link>
       </div>
     </section>
@@ -226,13 +225,12 @@
       <div class="max-w-7xl mx-auto px-6">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div class="reveal-left">
-            <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase mb-3">{{ $t('home.dondeEstamos') }}</p>
-            <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-gray-900 mb-6 leading-tight">{{ $t('home.dondeEstamos') }}</h2>
-            <p class="text-gray-600 text-xl leading-relaxed mb-8">
+            <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-brand-navy mb-6 leading-tight">{{ $t('home.dondeEstamos') }}</h2>
+            <p class="text-gray-600 text-xl md:text-2xl leading-relaxed mb-8">
               {{ $t('home.dondeEstamosText') }}
             </p>
             <router-link to="/consulta"
-              class="inline-flex items-center gap-3 border border-brand-navy text-brand-navy hover:bg-brand-navy hover:text-white font-[var(--font-ui)] font-semibold tracking-wider text-sm px-8 py-3.5 rounded-xl transition-all btn-magnetic">
+              class="inline-flex items-center gap-3 border-2 border-brand-navy text-brand-navy hover:bg-brand-navy hover:text-white font-[var(--font-ui)] font-semibold tracking-wider text-base px-10 py-4 rounded-xl transition-all btn-magnetic">
               {{ $t('home.contactenosBtn') }}
             </router-link>
           </div>
@@ -253,8 +251,8 @@
     <section class="py-20 bg-brand-light relative overflow-hidden">
       <div class="max-w-7xl mx-auto px-6">
         <div class="text-center mb-10 reveal">
-          <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-brand-navy uppercase mb-3">{{ $t('home.instagramTitle') }}</p>
-          <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-gray-900 mb-2">
+          <p class="font-[var(--font-ui)] text-base tracking-[0.2em] text-brand-navy uppercase mb-3">{{ $t('home.instagramTitle') }}</p>
+          <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-gray-900 mb-2">
             <a href="https://www.instagram.com/juancamposlaw/" target="_blank" rel="noopener" class="navy-shimmer">
               {{ $t('home.instagramHandle') }}
             </a>
@@ -274,7 +272,13 @@ import { useScrollReveal } from '../composables/useScrollReveal.js'
 
 useScrollReveal()
 
-const slides = ['/Slideshow1.jpg', '/Slideshow2.jpg', '/Slideshow3.jpg', '/Slideshow4.jpg', '/Slideshow5.png']
+const slides = [
+  { img: '/Slideshow1.jpg', subtitle: 'Ayudando a los inmigrantes en los 50 estados' },
+  { img: '/Slideshow2.jpg', subtitle: 'Abogados que sirven a su comunidad' },
+  { img: '/Slideshow3.jpg', subtitle: 'Te ayudamos a hacerte ciudadano' },
+  { img: '/Slideshow4.jpg', subtitle: 'Ayudando a sobrevivientes' },
+  { img: '/Slideshow5.png', subtitle: 'Visas para esposos' },
+]
 const currentSlide = ref(0)
 let slideTimer = null
 
