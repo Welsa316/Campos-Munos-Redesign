@@ -59,8 +59,8 @@ useScrollReveal()
 
 const teamMembers = [
   { key: 'juan', slug: 'juan', image: '/JuanHeadshot.jpg' },
-  { key: 'angenette', slug: 'angenette', image: null },
+  { key: 'angenette', slug: 'angenette', image: '/AngenetteHeadshot.jpg' },
   { key: 'diana', slug: 'diana', image: '/DianaHeadshot.jpg' },
-  { key: 'rio', slug: 'rio', image: null },
+  { key: 'rio', slug: 'rio', image: '/RioHeadshot.jpg' },
 ]
 </script>

@@ -32,9 +32,16 @@
               {{ $t(`team.members.${memberData.key}.name`) }}
             </h1>
             <div class="w-16 h-[2px] bg-brand-navy mb-8"></div>
-            <p class="text-gray-600 text-2xl leading-relaxed font-[var(--font-body)]">
-              {{ memberData.bio }}
+            <!-- Short bio intro -->
+            <p class="text-gray-800 text-2xl leading-relaxed font-[var(--font-body)] font-semibold mb-6">
+              {{ $t(`team.members.${memberData.key}.shortBio`) }}
             </p>
+            <!-- Full bio with paragraph breaks -->
+            <div class="text-gray-600 text-xl leading-relaxed font-[var(--font-body)] space-y-4">
+              <p v-for="(paragraph, i) in $t(`team.members.${memberData.key}.bio`).split('\n\n')" :key="i">
+                {{ paragraph }}
+              </p>
+            </div>
 
             <!-- CTA -->
             <div class="mt-10 flex flex-wrap gap-4">
@@ -60,22 +67,10 @@ import { computed } from 'vue'
 const props = defineProps({ member: String })
 
 const members = {
-  juan: {
-    key: 'juan', image: '/JuanHeadshot.jpg',
-    bio: 'Juan Campos-Gutierrez es el socio fundador de Campos Munos Law, LLC. Con más de veinte años de experiencia en derecho de inmigración, Juan ha dedicado su carrera a representar y defender los derechos de los inmigrantes en el sureste de los Estados Unidos. Su compromiso con la comunidad inmigrante y su profundo conocimiento de las leyes migratorias lo convierten en un defensor excepcional para sus clientes.',
-  },
-  angenette: {
-    key: 'angenette', image: null,
-    bio: 'Angenette Van Lieu-Munos es la socia fundadora de Campos Munos Law, LLC. Con títulos de J.D. y LL.M., Angenette aporta una formación académica excepcional al equipo. Su experiencia en derecho de inmigración y su dedicación al servicio de la comunidad inmigrante la convierten en una pieza fundamental del bufete.',
-  },
-  diana: {
-    key: 'diana', image: '/DianaHeadshot.jpg',
-    bio: 'Diana Arreaga sirve como Paralegal Senior en Campos Munos Law, LLC. Su dedicación y atención al detalle aseguran que cada caso reciba el cuidado y la preparación necesarios. Diana es un recurso invaluable para el equipo y para los clientes del bufete.',
-  },
-  rio: {
-    key: 'rio', image: null,
-    bio: 'Rio Shattuck es Asistente Legal en Campos Munos Law, LLC. Rio apoya al equipo legal en la preparación de documentos, investigación y comunicación con los clientes. Su dedicación al servicio contribuye significativamente al éxito del bufete.',
-  },
+  juan: { key: 'juan', image: '/JuanHeadshot.jpg' },
+  angenette: { key: 'angenette', image: '/AngenetteHeadshot.jpg' },
+  diana: { key: 'diana', image: '/DianaHeadshot.jpg' },
+  rio: { key: 'rio', image: '/RioHeadshot.jpg' },
 }
 
 const memberData = computed(() => members[props.member] || members.juan)
