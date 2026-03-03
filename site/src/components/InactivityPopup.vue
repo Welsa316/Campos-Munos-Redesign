@@ -27,13 +27,7 @@
             <h2 class="font-[var(--font-heading)] text-4xl text-white mb-4 leading-tight">
               {{ $t('home.popupTitle') }}
             </h2>
-            <p class="text-white/80 text-xl font-[var(--font-ui)] mb-6">{{ $t('home.popupSubtitle') }}</p>
-
-            <div class="flex flex-col items-center gap-1.5 mb-8">
-              <p class="text-white text-2xl font-[var(--font-heading)] font-semibold">{{ $t('home.heroSubtitle') }}</p>
-              <p class="text-white/90 text-xl font-[var(--font-ui)] font-bold tracking-wider">(504) 910-6508</p>
-              <p class="text-white/85 text-lg font-[var(--font-ui)]">{{ $t('home.virtualAvailable') }}</p>
-            </div>
+            <p class="text-white/80 text-xl font-[var(--font-ui)] mb-8">{{ $t('home.popupSubtitle') }}</p>
 
             <div class="space-y-4">
               <a href="tel:+15049106508"

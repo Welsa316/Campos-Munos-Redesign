@@ -60,10 +60,10 @@
 
       <!-- Bottom info strip -->
       <div class="absolute bottom-0 left-0 right-0 py-4 bg-gradient-to-t from-brand-darker to-transparent">
-        <div class="max-w-7xl mx-auto px-6 flex flex-wrap items-center gap-8 text-white/40 text-sm font-[var(--font-ui)] tracking-wider">
-          <span class="flex items-center gap-2"><i class="fa-solid fa-location-dot text-brand-navy/60"></i> New Orleans, LA</span>
-          <a href="tel:+15049106508" class="flex items-center gap-2 hover:text-white transition-colors"><i class="fa-solid fa-phone text-brand-red/60"></i> <span class="text-base font-semibold">(504) 910-6508</span></a>
-          <span class="flex items-center gap-2"><i class="fa-solid fa-video text-brand-navy/60"></i> {{ $t('home.virtualAvailable') }}</span>
+        <div class="max-w-7xl mx-auto px-6 flex flex-wrap items-center gap-8 text-white/60 text-base font-[var(--font-ui)] tracking-wider">
+          <span class="flex items-center gap-2"><i class="fa-solid fa-location-dot text-brand-navy/80"></i> New Orleans, LA</span>
+          <a href="tel:+15049106508" class="flex items-center gap-2 hover:text-white transition-colors"><i class="fa-solid fa-phone text-brand-red/80"></i> <span class="text-lg font-semibold">(504) 910-6508</span></a>
+          <span class="flex items-center gap-2"><i class="fa-solid fa-video text-brand-navy/80"></i> {{ $t('home.virtualAvailable') }}</span>
         </div>
       </div>
     </section>
