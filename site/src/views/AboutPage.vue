@@ -1,11 +1,11 @@
 <template>
   <div>
     <!-- Immersive hero -->
-    <section class="relative min-h-[70vh] flex items-end overflow-hidden">
+    <section class="relative min-h-screen pt-24 flex items-end overflow-hidden">
       <div class="absolute inset-0">
         <img src="/Team.jpg" alt="" class="w-full h-full object-cover" />
-        <div class="absolute inset-0 bg-gradient-to-t from-brand-darker via-brand-darker/60 to-brand-darker/30"></div>
-        <div class="absolute inset-0 bg-gradient-to-r from-brand-darker/80 to-transparent"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-brand-darker via-brand-darker/30 to-transparent"></div>
+        <div class="absolute inset-0 bg-gradient-to-r from-brand-darker/50 to-transparent"></div>
       </div>
       <div class="relative max-w-7xl mx-auto px-6 pb-20 w-full">
         <div class="max-w-2xl">
