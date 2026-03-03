@@ -5,7 +5,7 @@
       <!-- Slideshow with Ken Burns -->
       <div class="absolute inset-0">
         <div v-for="(slide, i) in slides" :key="i"
-          class="absolute inset-0 transition-opacity duration-[2000ms]"
+          class="absolute inset-0 transition-opacity duration-[3500ms] ease-in-out"
           :class="currentSlide === i ? 'opacity-100' : 'opacity-0'">
           <div class="absolute inset-0 bg-cover bg-center kenburns"
             :style="{ backgroundImage: `url('${slide.img}')`, animationDelay: `${i * -4}s` }"></div>
@@ -30,20 +30,18 @@
 
         <div class="flex items-center gap-4 mb-6 hero-reveal" style="transition-delay: 0.8s">
           <div class="w-12 h-[1px] bg-white/30"></div>
-          <p class="font-[var(--font-heading)] text-2xl md:text-3xl lg:text-4xl text-white/70 italic">
-            {{ $t(slides[currentSlide].subtitleKey) }}
-          </p>
+          <transition name="subtitle-fade" mode="out-in">
+            <p :key="currentSlide" class="font-[var(--font-heading)] text-2xl md:text-3xl lg:text-4xl text-white/70 italic">
+              {{ $t(slides[currentSlide].subtitleKey) }}
+            </p>
+          </transition>
         </div>
 
-        <div class="flex flex-col sm:flex-row items-start gap-4 hero-reveal" style="transition-delay: 1.2s">
+        <div class="hero-reveal" style="transition-delay: 1.2s">
           <router-link to="/consulta"
-            class="group flex items-center gap-3 bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-base px-10 py-5 rounded-xl btn-magnetic">
+            class="group inline-flex items-center gap-3 bg-brand-navy text-white font-[var(--font-body)] font-bold tracking-wider text-xl px-10 py-5 rounded-xl btn-magnetic">
             {{ $t('home.consultaBtn') }}
             <i class="fa-solid fa-arrow-right text-sm transition-transform group-hover:translate-x-1"></i>
-          </router-link>
-          <router-link to="/servicios"
-            class="flex items-center gap-3 border border-white/20 text-white/80 hover:text-white hover:border-white/40 font-[var(--font-ui)] font-bold tracking-wider text-base px-10 py-5 rounded-xl transition-all">
-            {{ $t('home.serviciosBtn') }}
           </router-link>
         </div>
       </div>
@@ -301,7 +299,7 @@ const bentoServices = [
 ]
 
 onMounted(() => {
-  slideTimer = setInterval(nextSlide, 6000)
+  slideTimer = setInterval(nextSlide, 8000)
   nextTick(() => {
     document.querySelectorAll('.hero-reveal').forEach((el, i) => {
       el.style.opacity = '0'
@@ -316,3 +314,10 @@ onMounted(() => {
 })
 onUnmounted(() => clearInterval(slideTimer))
 </script>
+
+<style scoped>
+.subtitle-fade-enter-active { transition: opacity 1.2s ease; }
+.subtitle-fade-leave-active { transition: opacity 0.8s ease; }
+.subtitle-fade-enter-from,
+.subtitle-fade-leave-to { opacity: 0; }
+</style>
