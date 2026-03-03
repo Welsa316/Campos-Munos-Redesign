@@ -165,34 +165,20 @@
       </div>
     </section>
 
-    <!-- ===================== ABOUT SPLIT SECTION ===================== -->
+    <!-- ===================== ABOUT SECTION ===================== -->
     <section class="py-24 bg-brand-light">
-      <div class="max-w-7xl mx-auto px-6">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          <!-- Left: Team photo -->
-          <div class="relative reveal-left">
-            <div class="rounded-2xl overflow-hidden shadow-lg">
-              <img src="/Team.jpg" alt="Campos Munos Law Team"
-                class="w-full aspect-[4/3] object-cover" />
-            </div>
-            <div class="absolute -bottom-4 -right-4 w-24 h-24 border-2 border-brand-navy/15 rounded-2xl -z-10"></div>
-          </div>
-
-          <!-- Right: Text -->
-          <div class="reveal-right">
-            <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-brand-navy mb-6 leading-tight">
-              {{ $t('home.quienesSomos') }}
-            </h2>
-            <p class="text-gray-600 text-xl md:text-2xl leading-relaxed mb-8">
-              {{ $t('home.quienesSomosText') }}
-            </p>
-            <router-link to="/acerca-de"
-              class="inline-flex items-center gap-3 text-brand-navy hover:text-brand-navy-light font-[var(--font-ui)] font-semibold tracking-wider text-lg transition-colors group">
-              {{ $t('home.sobreNosotros') }}
-              <i class="fa-solid fa-arrow-right text-sm group-hover:translate-x-1 transition-transform"></i>
-            </router-link>
-          </div>
-        </div>
+      <div class="max-w-3xl mx-auto px-6 text-center reveal">
+        <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-brand-navy mb-6 leading-tight">
+          {{ $t('home.quienesSomos') }}
+        </h2>
+        <p class="text-gray-600 text-xl md:text-2xl leading-relaxed mb-8">
+          {{ $t('home.quienesSomosText') }}
+        </p>
+        <router-link to="/acerca-de"
+          class="inline-flex items-center gap-3 text-brand-navy hover:text-brand-navy-light font-[var(--font-ui)] font-semibold tracking-wider text-lg transition-colors group">
+          {{ $t('home.sobreNosotros') }}
+          <i class="fa-solid fa-arrow-right text-sm group-hover:translate-x-1 transition-transform"></i>
+        </router-link>
       </div>
     </section>
 
