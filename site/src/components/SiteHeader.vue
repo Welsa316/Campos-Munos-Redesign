@@ -14,7 +14,7 @@
       </router-link>
 
       <!-- Desktop nav - centered -->
-      <div class="hidden lg:flex items-center gap-1">
+      <div class="hidden xl:flex items-center gap-1">
         <!-- Services mega-dropdown -->
         <div class="relative" @mouseenter="showServices = true" @mouseleave="showServices = false">
           <router-link to="/servicios" class="nav-item" :class="navSolid ? 'nav-scrolled' : 'nav-top'">
@@ -60,15 +60,18 @@
         <router-link to="/el-equipo" class="nav-item" :class="navSolid ? 'nav-scrolled' : 'nav-top'">
           <span>{{ $t('nav.elEquipo') }}</span>
         </router-link>
+        <router-link to="/pago" class="nav-item" :class="navSolid ? 'nav-scrolled' : 'nav-top'">
+          <span>{{ $t('nav.pago') }}</span>
+        </router-link>
       </div>
 
       <!-- Right side: phone + social -->
-      <div class="hidden lg:flex items-center gap-5">
+      <div class="hidden xl:flex items-center gap-5">
         <div class="flex items-center gap-3">
           <a v-for="social in socials" :key="social.label" :href="social.href" target="_blank" rel="noopener"
             :aria-label="social.label"
-            class="w-10 h-10 rounded-full flex items-center justify-center transition-all text-lg hover:scale-110 hover:opacity-80"
-            :style="{ color: social.color }">
+            class="w-12 h-12 rounded-full flex items-center justify-center transition-all text-xl hover:scale-110 hover:opacity-80"
+            :style="{ color: navSolid ? social.color : (social.colorAlt || social.color) }">
             <i :class="social.icon"></i>
           </a>
         </div>
@@ -80,7 +83,7 @@
       </div>
 
       <!-- Mobile hamburger -->
-      <button @click="mobileOpen = !mobileOpen" class="lg:hidden relative w-12 h-12 flex items-center justify-center" aria-label="Menu">
+      <button @click="mobileOpen = !mobileOpen" class="xl:hidden relative w-12 h-12 flex items-center justify-center" aria-label="Menu">
         <span class="sr-only">Menu</span>
         <div class="flex flex-col items-end gap-1.5 transition-all">
           <span class="block h-[2px] rounded-full transition-all duration-300"
@@ -95,7 +98,7 @@
 
     <!-- Mobile full-screen overlay -->
     <transition name="mobile-nav">
-      <div v-show="mobileOpen" class="lg:hidden fixed inset-0 top-0 bg-white/98 backdrop-blur-xl z-[-1]">
+      <div v-show="mobileOpen" class="xl:hidden fixed inset-0 top-0 bg-white/98 backdrop-blur-xl z-[-1]">
         <div class="flex flex-col justify-center items-center h-full gap-8 px-8">
           <router-link v-for="link in mobileLinks" :key="link.to" :to="link.to"
             class="text-4xl font-[var(--font-heading)] text-gray-800 hover:text-brand-navy transition-colors"
@@ -138,7 +141,7 @@ const socials = [
   { icon: 'fa-brands fa-instagram', href: 'https://www.instagram.com/juancamposlaw/', label: 'Instagram', color: '#E4405F' },
   { icon: 'fa-brands fa-facebook-f', href: 'https://www.facebook.com/Camposmunoslaw', label: 'Facebook', color: '#1877F2' },
   { icon: 'fa-brands fa-youtube', href: 'https://www.youtube.com/@camposmunoslaw6542', label: 'YouTube', color: '#FF0000' },
-  { icon: 'fa-brands fa-tiktok', href: 'https://www.tiktok.com/@elabogadohispano', label: 'TikTok', color: '#69C9D0' },
+  { icon: 'fa-brands fa-tiktok', href: 'https://www.tiktok.com/@elabogadohispano', label: 'TikTok', color: '#000000', colorAlt: '#ffffff' },
 ]
 
 const serviceLinks = [
