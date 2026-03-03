@@ -26,22 +26,25 @@
           </router-link>
           <transition name="mega">
             <div v-show="showServices"
-              class="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-[520px] rounded-2xl p-6 shadow-2xl"
+              class="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-[700px] rounded-2xl p-8 shadow-2xl"
               :class="navSolid ? 'bg-white shadow-gray-200/50 border border-gray-100' : 'glass-dark shadow-black/30'">
               <!-- Accent line at top -->
-              <div class="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-0.5 bg-brand-navy rounded-full"></div>
-              <div class="grid grid-cols-2 gap-1 mt-1">
+              <div class="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-brand-navy rounded-full"></div>
+              <div class="grid grid-cols-2 gap-2 mt-2">
                 <router-link v-for="service in serviceLinks" :key="service.slug"
                   :to="`/servicios/${service.slug}`"
-                  class="flex items-center gap-3 px-3 py-3 rounded-xl transition-all group/item"
+                  class="flex items-center gap-4 px-5 py-4 rounded-xl transition-all group/item"
                   :class="navSolid
-                    ? 'text-gray-500 hover:text-brand-navy hover:bg-brand-navy/5'
+                    ? 'text-gray-600 hover:text-brand-navy hover:bg-brand-navy/5'
                     : 'text-white/70 hover:text-brand-navy hover:bg-white/5'"
                   @click="showServices = false">
-                  <i :class="[service.icon, 'text-base transition-colors w-5 text-center', navSolid
-                      ? 'text-brand-navy/40 group-hover/item:text-brand-navy'
-                      : 'text-brand-navy/50 group-hover/item:text-brand-navy']"></i>
-                  <span class="font-[var(--font-ui)] text-sm font-medium">{{ $t(`services.${service.key}`) }}</span>
+                  <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors"
+                    :class="navSolid ? 'bg-brand-navy/8' : 'bg-white/8'">
+                    <i :class="[service.icon, 'text-lg transition-colors', navSolid
+                        ? 'text-brand-navy/50 group-hover/item:text-brand-navy'
+                        : 'text-brand-navy/60 group-hover/item:text-brand-navy']"></i>
+                  </div>
+                  <span class="font-[var(--font-ui)] text-base font-semibold">{{ $t(`services.${service.key}`) }}</span>
                 </router-link>
               </div>
             </div>

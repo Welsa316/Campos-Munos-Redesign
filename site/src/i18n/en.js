@@ -75,6 +75,7 @@ export default {
     slideSubtitle3: 'We help you become a citizen',
     slideSubtitle4: 'Helping survivors',
     slideSubtitle5: 'Visas for spouses',
+    translateBtn: 'En Español',
   },
   contact: {
     title: 'Get In Touch',
