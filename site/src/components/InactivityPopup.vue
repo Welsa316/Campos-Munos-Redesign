@@ -68,7 +68,7 @@ function resetTimer() {
     visible.value = true
     hasTriggered = true
     stopListening()
-  }, 20000)
+  }, 10000)
 }
 
 function close() {
