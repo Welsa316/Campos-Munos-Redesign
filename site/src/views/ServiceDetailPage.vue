@@ -42,7 +42,9 @@
                 <div class="w-24 h-24 rounded-full bg-brand-navy/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-brand-navy/20 transition-colors">
                   <i class="fa-solid fa-play text-brand-navy text-2xl ml-1"></i>
                 </div>
-                <p class="text-gray-400 text-base font-[var(--font-ui)] tracking-wider">Video</p>
+                <p class="text-gray-400 text-base font-[var(--font-ui)] tracking-wider">
+                  {{ locale === 'es' ? 'Presione play para aprender sobre' : 'Press play to learn about' }} {{ serviceTitle.toLowerCase() }}
+                </p>
               </div>
             </div>
           </div>
@@ -74,7 +76,7 @@ import { useScrollReveal } from '../composables/useScrollReveal.js'
 
 useScrollReveal()
 const props = defineProps({ slug: String })
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const serviceMap = {
   'visas-especial-para-jovenes': { key: 'visasJovenes', icon: 'fa-solid fa-passport', video: false },

@@ -27,22 +27,16 @@
             </h2>
             <p class="text-gray-500 text-lg font-[var(--font-ui)] mb-10 max-w-sm mx-auto leading-relaxed">
               {{ currentLang === 'es'
-                ? 'Para realizar un pago, por favor comuníquese con nuestra oficina para obtener las instrucciones de pago.'
-                : 'To make a payment, please contact our office for payment instructions.' }}
+                ? 'Haga clic a continuación para realizar su pago de forma segura.'
+                : 'Click below to make your payment securely.' }}
             </p>
 
-            <div class="space-y-4">
-              <a href="tel:+15049106508"
-                class="flex items-center justify-center gap-3 w-full py-5 rounded-xl bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-base btn-magnetic">
-                <i class="fa-solid fa-phone text-sm"></i>
-                (504) 910-6508
-              </a>
-              <a href="mailto:office@camulaw.com"
-                class="flex items-center justify-center gap-3 w-full py-5 rounded-xl border border-gray-300 text-gray-500 hover:text-brand-navy hover:border-brand-navy/30 font-[var(--font-ui)] font-medium tracking-wider text-base transition-all">
-                <i class="fa-solid fa-envelope text-sm"></i>
-                office@camulaw.com
-              </a>
-            </div>
+            <a href="https://secure.lawpay.com/pages/goldenmunoslaw/operating?qr_used=true"
+              target="_blank" rel="noopener"
+              class="flex items-center justify-center gap-3 w-full py-5 rounded-xl bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-base btn-magnetic">
+              <i class="fa-solid fa-lock text-sm"></i>
+              {{ currentLang === 'es' ? 'Realizar Pago' : 'Make Payment' }}
+            </a>
           </div>
         </div>
       </div>
