@@ -2,7 +2,7 @@
   <transition name="popup">
     <div v-if="visible" class="fixed inset-0 z-[150] flex items-center justify-center p-4" @click.self="close">
       <!-- Backdrop -->
-      <div class="absolute inset-0 bg-black/70 backdrop-blur-lg"></div>
+      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
 
       <!-- Modal -->
       <div class="relative w-full max-w-xl overflow-hidden rounded-3xl">
@@ -12,10 +12,10 @@
         </div>
 
         <div class="relative">
-          <!-- Image with overlay -->
+          <!-- Image with subtle bottom fade -->
           <div class="relative h-80 overflow-hidden rounded-t-3xl">
-            <img src="/PopupPhoto.jpg" alt="" class="w-full h-full object-cover object-top kenburns" />
-            <div class="absolute inset-0 bg-gradient-to-t from-brand-navy via-brand-navy/20 to-transparent"></div>
+            <img src="/PopupPhoto.jpg" alt="" class="w-full h-full object-cover object-top" />
+            <div class="absolute inset-0 bg-gradient-to-t from-brand-navy via-transparent to-transparent"></div>
             <button @click="close"
               class="absolute top-4 right-4 w-10 h-10 rounded-full glass-dark flex items-center justify-center text-white/60 hover:text-white transition-colors">
               <i class="fa-solid fa-xmark text-base"></i>
@@ -27,7 +27,13 @@
             <h2 class="font-[var(--font-heading)] text-4xl text-white mb-4 leading-tight">
               {{ $t('home.popupTitle') }}
             </h2>
-            <p class="text-white/60 text-xl font-[var(--font-ui)] mb-8">{{ $t('home.popupSubtitle') }}</p>
+            <p class="text-white/80 text-xl font-[var(--font-ui)] mb-6">{{ $t('home.popupSubtitle') }}</p>
+
+            <div class="flex flex-col items-center gap-1.5 mb-8">
+              <p class="text-white text-2xl font-[var(--font-heading)] font-semibold">{{ $t('home.heroSubtitle') }}</p>
+              <p class="text-white/90 text-xl font-[var(--font-ui)] font-bold tracking-wider">(504) 910-6508</p>
+              <p class="text-white/85 text-lg font-[var(--font-ui)]">{{ $t('home.virtualAvailable') }}</p>
+            </div>
 
             <div class="space-y-4">
               <a href="tel:+15049106508"
@@ -53,24 +59,34 @@ import { ref, onMounted, onUnmounted } from 'vue'
 
 const visible = ref(false)
 let timer = null
+let hasTriggered = false
+const events = ['mousemove', 'keydown', 'scroll', 'touchstart']
+
+function stopListening() {
+  clearTimeout(timer)
+  events.forEach(e => window.removeEventListener(e, resetTimer))
+}
 
 function resetTimer() {
   clearTimeout(timer)
-  if (!visible.value) {
-    timer = setTimeout(() => { visible.value = true }, 30000)
-  }
+  if (hasTriggered) return
+  timer = setTimeout(() => {
+    visible.value = true
+    hasTriggered = true
+    stopListening()
+  }, 20000)
 }
-function close() { visible.value = false; resetTimer() }
+
+function close() {
+  visible.value = false
+}
 
 onMounted(() => {
   resetTimer()
-  const events = ['mousemove', 'keydown', 'scroll', 'touchstart']
   events.forEach(e => window.addEventListener(e, resetTimer, { passive: true }))
 })
 onUnmounted(() => {
-  clearTimeout(timer)
-  const events = ['mousemove', 'keydown', 'scroll', 'touchstart']
-  events.forEach(e => window.removeEventListener(e, resetTimer))
+  stopListening()
 })
 </script>
 
