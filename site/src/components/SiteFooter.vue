@@ -34,7 +34,6 @@
             <router-link to="/servicios" class="footer-link">{{ $t('nav.servicios') }}</router-link>
             <router-link to="/servicios/green-card" class="footer-link">{{ $t('nav.greenCards') }}</router-link>
             <router-link to="/consulta" class="footer-link">{{ $t('nav.consulta') }}</router-link>
-            <router-link to="/pago" class="footer-link">{{ $t('nav.pago') }}</router-link>
           </div>
         </div>
 
