@@ -36,17 +36,22 @@
           </p>
 
           <!-- Video -->
-          <div v-if="hasVideo" class="rounded-2xl overflow-hidden mb-12 border border-gray-200 shadow-sm">
-            <div class="aspect-video bg-brand-surface relative">
-              <!-- Play overlay -->
+          <div v-if="hasVideo" class="rounded-2xl overflow-hidden mb-12 shadow-lg">
+            <div class="aspect-video relative">
+              <!-- Play overlay / Video cover -->
               <div v-if="!videoPlaying" @click="playVideo"
-                class="absolute inset-0 flex items-center justify-center cursor-pointer group z-10">
-                <div class="text-center">
-                  <div class="w-24 h-24 rounded-full bg-brand-navy/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-brand-navy/20 transition-colors">
-                    <i class="fa-solid fa-play text-brand-navy text-2xl ml-1"></i>
+                class="absolute inset-0 flex items-center justify-center cursor-pointer group z-10 bg-brand-navy">
+                <!-- Background logo watermark -->
+                <img src="/logo.png" alt="" class="absolute inset-0 m-auto w-64 md:w-80 opacity-10 pointer-events-none select-none" />
+                <div class="text-center relative z-10">
+                  <div class="w-28 h-28 md:w-36 md:h-36 rounded-full bg-white/15 flex items-center justify-center mx-auto mb-6 group-hover:bg-white/25 group-hover:scale-110 transition-all duration-300 ring-2 ring-white/30">
+                    <i class="fa-solid fa-play text-white text-4xl md:text-5xl ml-2"></i>
                   </div>
-                  <p class="text-gray-400 text-base font-[var(--font-ui)] tracking-wider">
-                    {{ locale === 'es' ? 'Presione play para aprender sobre' : 'Press play to learn about' }} {{ serviceTitle.toLowerCase() }}
+                  <p class="text-white text-xl md:text-2xl font-[var(--font-ui)] font-semibold tracking-wider uppercase">
+                    {{ locale === 'es' ? 'Ver Video' : 'Watch Video' }}
+                  </p>
+                  <p class="text-white/60 text-base md:text-lg font-[var(--font-ui)] mt-2">
+                    {{ serviceTitle }}
                   </p>
                 </div>
               </div>

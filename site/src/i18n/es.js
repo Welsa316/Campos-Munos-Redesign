@@ -75,6 +75,7 @@ export default {
     slideSubtitle3: 'Te ayudamos a hacerte ciudadano',
     slideSubtitle4: 'Ayudando a sobrevivientes',
     slideSubtitle5: 'Visas para esposos',
+    translateBtn: 'In English',
   },
   contact: {
     title: 'Póngase En Contacto',

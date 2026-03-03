@@ -5,25 +5,19 @@
       <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
 
       <!-- Modal -->
-      <div class="relative w-full max-w-xl overflow-hidden rounded-3xl">
-        <!-- Gradient border effect -->
-        <div class="absolute inset-0 rounded-3xl bg-gradient-to-br from-brand-navy-light/30 via-transparent to-brand-red/30 p-[1px]">
-          <div class="w-full h-full rounded-3xl bg-brand-navy"></div>
-        </div>
-
+      <div class="relative w-full max-w-2xl overflow-hidden rounded-3xl">
         <div class="relative">
-          <!-- Image with subtle bottom fade -->
-          <div class="relative h-80 overflow-hidden rounded-t-3xl">
-            <img src="/PopupPhoto.jpg" alt="" class="w-full h-full object-cover object-top" />
-            <div class="absolute inset-0 bg-gradient-to-t from-brand-navy via-transparent to-transparent"></div>
+          <!-- Image section - no gradient, clean separation -->
+          <div class="relative overflow-hidden rounded-t-3xl">
+            <img src="/PopupPhoto.jpg" alt="" class="w-full h-[420px] object-cover object-top" />
             <button @click="close"
-              class="absolute top-4 right-4 w-10 h-10 rounded-full glass-dark flex items-center justify-center text-white/60 hover:text-white transition-colors">
+              class="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white/80 hover:text-white hover:bg-black/60 transition-all">
               <i class="fa-solid fa-xmark text-base"></i>
             </button>
           </div>
 
-          <!-- Content -->
-          <div class="px-10 pb-10 -mt-12 relative z-10 text-center">
+          <!-- Content - solid blue, completely separate from image -->
+          <div class="px-10 py-10 bg-brand-navy text-center rounded-b-3xl">
             <h2 class="font-[var(--font-heading)] text-4xl text-white mb-4 leading-tight">
               {{ $t('home.popupTitle') }}
             </h2>

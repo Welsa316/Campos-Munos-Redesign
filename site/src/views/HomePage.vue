@@ -37,12 +37,17 @@
           </transition>
         </div>
 
-        <div class="hero-reveal" style="transition-delay: 1.2s">
+        <div class="hero-reveal flex flex-wrap items-center gap-4" style="transition-delay: 1.2s">
           <router-link to="/consulta"
             class="group inline-flex items-center gap-3 bg-brand-navy text-white font-[var(--font-body)] font-bold tracking-wider text-xl px-10 py-5 rounded-xl btn-magnetic">
             {{ $t('home.consultaBtn') }}
             <i class="fa-solid fa-arrow-right text-sm transition-transform group-hover:translate-x-1"></i>
           </router-link>
+          <button @click="toggleLang"
+            class="group inline-flex items-center gap-3 border-2 border-white/40 text-white font-[var(--font-ui)] font-semibold tracking-wider text-lg px-8 py-5 rounded-xl hover:bg-white hover:text-brand-navy transition-all duration-300">
+            <i class="fa-solid fa-globe text-xl"></i>
+            {{ $t('home.translateBtn') }}
+          </button>
         </div>
       </div>
 
@@ -253,7 +258,9 @@ import { useI18n } from 'vue-i18n'
 import { useScrollReveal } from '../composables/useScrollReveal.js'
 
 useScrollReveal()
-const { t } = useI18n()
+const { t, locale } = useI18n()
+
+function toggleLang() { locale.value = locale.value === 'es' ? 'en' : 'es' }
 
 const slides = [
   { img: '/Slideshow1.jpg', subtitleKey: 'home.slideSubtitle1' },
