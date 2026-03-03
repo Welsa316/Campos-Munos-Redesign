@@ -35,17 +35,30 @@
             {{ serviceDescription }}
           </p>
 
-          <!-- Video placeholder -->
+          <!-- Video -->
           <div v-if="hasVideo" class="rounded-2xl overflow-hidden mb-12 border border-gray-200 shadow-sm">
-            <div class="aspect-video bg-brand-surface flex items-center justify-center group cursor-pointer">
-              <div class="text-center">
-                <div class="w-24 h-24 rounded-full bg-brand-navy/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-brand-navy/20 transition-colors">
-                  <i class="fa-solid fa-play text-brand-navy text-2xl ml-1"></i>
+            <div class="aspect-video bg-brand-surface relative">
+              <!-- Play overlay -->
+              <div v-if="!videoPlaying" @click="playVideo"
+                class="absolute inset-0 flex items-center justify-center cursor-pointer group z-10">
+                <div class="text-center">
+                  <div class="w-24 h-24 rounded-full bg-brand-navy/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-brand-navy/20 transition-colors">
+                    <i class="fa-solid fa-play text-brand-navy text-2xl ml-1"></i>
+                  </div>
+                  <p class="text-gray-400 text-base font-[var(--font-ui)] tracking-wider">
+                    {{ locale === 'es' ? 'Presione play para aprender sobre' : 'Press play to learn about' }} {{ serviceTitle.toLowerCase() }}
+                  </p>
                 </div>
-                <p class="text-gray-400 text-base font-[var(--font-ui)] tracking-wider">
-                  {{ locale === 'es' ? 'Presione play para aprender sobre' : 'Press play to learn about' }} {{ serviceTitle.toLowerCase() }}
-                </p>
               </div>
+              <!-- Video element -->
+              <video
+                v-if="videoPlaying"
+                ref="videoRef"
+                :src="videoFile"
+                class="w-full h-full object-contain bg-black"
+                controls
+                playsinline
+              ></video>
             </div>
           </div>
         </div>
@@ -70,7 +83,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useScrollReveal } from '../composables/useScrollReveal.js'
 
@@ -79,20 +92,20 @@ const props = defineProps({ slug: String })
 const { t, locale } = useI18n()
 
 const serviceMap = {
-  'visas-especial-para-jovenes': { key: 'visasJovenes', icon: 'fa-solid fa-passport', video: false },
-  'tramite-consular': { key: 'tramiteConsular', icon: 'fa-solid fa-file-signature', video: false },
+  'visas-especial-para-jovenes': { key: 'visasJovenes', icon: 'fa-solid fa-passport', video: true, videoFile: '/Jovenes.mp4' },
+  'tramite-consular': { key: 'tramiteConsular', icon: 'fa-solid fa-file-signature', video: true, videoFile: '/Listo Proceso consullar fx listo.mp4' },
   'asilo': { key: 'asilo', icon: 'fa-solid fa-hand-holding-heart', video: false },
-  'daca': { key: 'daca', icon: 'fa-solid fa-graduation-cap', video: false },
+  'daca': { key: 'daca', icon: 'fa-solid fa-graduation-cap', video: true, videoFile: '/Listo DACA Fx LIsto.mp4' },
   'visas-de-prometido': { key: 'visasPrometido', icon: 'fa-solid fa-ring', video: false },
-  'ead': { key: 'ead', icon: 'fa-solid fa-briefcase', video: false },
-  'ciudadania': { key: 'ciudadania', icon: 'fa-solid fa-certificate', video: false },
+  'ead': { key: 'ead', icon: 'fa-solid fa-briefcase', video: true, videoFile: '/2 Listo Permiso de Trabajo FX Listo.mp4' },
+  'ciudadania': { key: 'ciudadania', icon: 'fa-solid fa-certificate', video: true, videoFile: '/Ciudadania.mp4' },
   'estatus-de-proteccion-temporal': { key: 'tps', icon: 'fa-solid fa-umbrella', video: false },
-  'vawa': { key: 'vawa', icon: 'fa-solid fa-shield-halved', video: false },
-  'defensa-contra-la-deportacion': { key: 'defensaDeportacion', icon: 'fa-solid fa-gavel', video: false },
-  'peticiones-familiares': { key: 'peticionesFamiliares', icon: 'fa-solid fa-people-roof', video: false },
-  'visa-u': { key: 'visaU', icon: 'fa-solid fa-scale-balanced', video: false },
-  'visa-t': { key: 'visaT', icon: 'fa-solid fa-link', video: false },
-  'green-card': { key: 'greenCard', icon: 'fa-solid fa-id-card', video: true },
+  'vawa': { key: 'vawa', icon: 'fa-solid fa-shield-halved', video: true, videoFile: '/VAWA.mp4' },
+  'defensa-contra-la-deportacion': { key: 'defensaDeportacion', icon: 'fa-solid fa-gavel', video: true, videoFile: '/1 listo defensa en corte FX listo.mp4' },
+  'peticiones-familiares': { key: 'peticionesFamiliares', icon: 'fa-solid fa-people-roof', video: true, videoFile: '/Peticiones Familiares.mp4' },
+  'visa-u': { key: 'visaU', icon: 'fa-solid fa-scale-balanced', video: true, videoFile: '/Visa U Listo YT.mp4' },
+  'visa-t': { key: 'visaT', icon: 'fa-solid fa-link', video: true, videoFile: '/3 Listo Visa T fx Listo.mp4' },
+  'green-card': { key: 'greenCard', icon: 'fa-solid fa-id-card', video: true, videoFile: '/Green Card.mp4' },
 }
 
 const service = computed(() => serviceMap[props.slug] || { key: 'greenCard', icon: 'fa-solid fa-id-card', video: false })
@@ -100,4 +113,17 @@ const serviceTitle = computed(() => t(`services.${service.value.key}`))
 const serviceDescription = computed(() => t(`serviceDescriptions.${service.value.key}`))
 const serviceIcon = computed(() => service.value.icon)
 const hasVideo = computed(() => service.value.video)
+const videoFile = computed(() => service.value.videoFile || '')
+
+const videoPlaying = ref(false)
+const videoRef = ref(null)
+
+function playVideo() {
+  videoPlaying.value = true
+  nextTick(() => {
+    if (videoRef.value) {
+      videoRef.value.play()
+    }
+  })
+}
 </script>
