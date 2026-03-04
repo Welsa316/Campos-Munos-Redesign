@@ -33,7 +33,7 @@
 
     <!-- Content -->
     <section class="py-16 bg-white">
-      <div class="max-w-4xl mx-auto px-6 service-content">
+      <div ref="contentRef" class="max-w-4xl mx-auto px-6">
 
         <!-- Location service area note -->
         <p v-if="locationData" class="reveal text-gray-500 text-lg font-[var(--font-ui)] mb-6 flex items-center gap-2">
@@ -82,16 +82,16 @@
                   class="absolute inset-0 w-full h-full object-cover" />
                 <div v-if="!videoPlaying" @click="playVideo"
                   class="absolute inset-0 flex items-center justify-center cursor-pointer group z-10">
-                  <div class="w-20 h-20 md:w-24 md:h-24 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center group-hover:bg-black/50 group-hover:scale-110 transition-all duration-300 ring-2 ring-white/30 shadow-2xl">
-                    <i class="fa-solid fa-play text-white text-2xl md:text-3xl ml-1"></i>
+                  <div class="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-all duration-300 shadow-2xl">
+                    <i class="fa-solid fa-play text-brand-navy text-xl md:text-2xl ml-1"></i>
                   </div>
                 </div>
                 <video
                   v-if="videoPlaying"
-                  ref="videoRef"
                   :src="videoFile"
                   class="w-full h-full object-contain bg-black"
                   controls
+                  autoplay
                   playsinline
                 ></video>
               </div>
@@ -107,16 +107,16 @@
                 class="absolute inset-0 w-full h-full object-cover" />
               <div v-if="!videoPlaying" @click="playVideo"
                 class="absolute inset-0 flex items-center justify-center cursor-pointer group z-10">
-                <div class="w-20 h-20 md:w-24 md:h-24 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center group-hover:bg-black/50 group-hover:scale-110 transition-all duration-300 ring-2 ring-white/30 shadow-2xl">
-                  <i class="fa-solid fa-play text-white text-2xl md:text-3xl ml-1"></i>
+                <div class="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-all duration-300 shadow-2xl">
+                  <i class="fa-solid fa-play text-brand-navy text-xl md:text-2xl ml-1"></i>
                 </div>
               </div>
               <video
                 v-if="videoPlaying"
-                ref="videoRef"
                 :src="videoFile"
                 class="w-full h-full object-contain bg-black"
                 controls
+                autoplay
                 playsinline
               ></video>
             </div>
@@ -185,9 +185,8 @@
 </template>
 
 <script setup>
-import { computed, ref, nextTick, watch, watchEffect } from 'vue'
+import { computed, ref, nextTick, watch, watchEffect, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useScrollReveal } from '../composables/useScrollReveal.js'
 import {
   resolveServiceSlug,
   generateSeoMeta,
@@ -196,11 +195,36 @@ import {
 } from '../data/seoServices.js'
 import { serviceContent } from '../data/serviceContent.js'
 
-useScrollReveal()
 const props = defineProps({ slug: String, service: String, location: String })
 const { t, locale } = useI18n()
 
-// Resolve slug to service + optional location
+// --- Scroll reveal (local, re-observes on content change) ---
+const contentRef = ref(null)
+let revealObserver = null
+
+function observeRevealElements() {
+  if (revealObserver) revealObserver.disconnect()
+  revealObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible')
+        }
+      })
+    },
+    { threshold: 0.08, rootMargin: '0px 0px -20px 0px' }
+  )
+  if (contentRef.value) {
+    contentRef.value.querySelectorAll('.reveal').forEach((el) => {
+      revealObserver.observe(el)
+    })
+  }
+}
+
+onMounted(() => { nextTick(observeRevealElements) })
+onUnmounted(() => { if (revealObserver) revealObserver.disconnect() })
+
+// --- Route resolution ---
 const resolved = computed(() => {
   if (props.service && props.location) {
     return resolveServiceSlug(props.service, props.location) || { service: { key: 'greenCard', icon: 'fa-solid fa-id-card', video: false }, location: null, baseSlug: 'green-card' }
@@ -222,25 +246,23 @@ const thumbnailSrc = computed(() => serviceData.value.thumbnail || '/logo.png')
 // Structured content blocks from .txt files
 const contentBlocks = computed(() => serviceContent[serviceData.value.key] || [])
 
-// SEO-aware title and description
+// SEO
 const seoMeta = computed(() => generateSeoMeta(serviceData.value.key, locationData.value, locale.value, t))
 const pageH1 = computed(() => seoMeta.value.h1)
 
-// Dynamic head meta (native DOM)
 watchEffect(() => {
   document.title = seoMeta.value.title
   const meta = document.querySelector('meta[name="description"]')
   if (meta) meta.setAttribute('content', seoMeta.value.metaDescription)
 })
 
-// FAQs for the current service
+// FAQs
 const faqs = computed(() => {
   const faqData = serviceFaqs[serviceData.value.key]
   if (!faqData) return []
   return faqData[locale.value] || faqData.es || []
 })
 
-// FAQ Schema.org JSON-LD
 const faqSchema = computed(() => {
   if (!faqs.value.length) return ''
   return JSON.stringify({
@@ -249,44 +271,35 @@ const faqSchema = computed(() => {
     mainEntity: faqs.value.map(faq => ({
       '@type': 'Question',
       name: faq.q,
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: faq.a,
-      },
+      acceptedAnswer: { '@type': 'Answer', text: faq.a },
     })),
   })
 })
 
-// Related services for internal linking
+// Related services
 const relatedServices = computed(() => {
   const service = baseServices[baseSlug.value]
   if (!service || !service.relatedSlugs) return []
   return service.relatedSlugs.map(slug => {
     const related = baseServices[slug]
     if (!related) return null
-    return {
-      slug,
-      name: t(`services.${related.key}`),
-      icon: related.icon,
-    }
+    return { slug, name: t(`services.${related.key}`), icon: related.icon }
   }).filter(Boolean)
 })
 
 // Video player
 const videoPlaying = ref(false)
-const videoRef = ref(null)
 
 function playVideo() {
   videoPlaying.value = true
-  nextTick(() => {
-    if (videoRef.value) {
-      videoRef.value.play()
-    }
-  })
 }
 
-// Reset video when route changes
-watch(() => [props.slug, props.service, props.location], () => {
-  videoPlaying.value = false
-})
+// Reset video + re-observe reveals when route changes
+watch(
+  () => [props.slug, props.service, props.location],
+  () => {
+    videoPlaying.value = false
+    nextTick(observeRevealElements)
+  }
+)
 </script>
