@@ -5,15 +5,16 @@
       <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="close"></div>
 
       <!-- Modal -->
-      <div class="relative w-full max-w-2xl overflow-hidden rounded-3xl my-auto">
-        <div class="relative">
-          <!-- Image section - no gradient, clean separation -->
-          <div class="relative overflow-hidden rounded-t-3xl">
+      <div class="relative w-full max-w-2xl rounded-3xl my-auto">
+        <!-- Close button — outside overflow-hidden so it never gets clipped -->
+        <button @click="close" type="button"
+          class="absolute top-3 right-3 sm:top-4 sm:right-4 w-11 h-11 sm:w-10 sm:h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-all active:scale-95 touch-manipulation z-20">
+          <i class="fa-solid fa-xmark text-lg sm:text-base"></i>
+        </button>
+        <div class="relative overflow-hidden rounded-3xl">
+          <!-- Image section -->
+          <div class="relative">
             <img src="/PopupPhoto.jpg" alt="" class="w-full h-[220px] sm:h-[420px] object-cover object-top" />
-            <button @click="close" type="button"
-              class="absolute top-3 right-3 sm:top-4 sm:right-4 w-11 h-11 sm:w-10 sm:h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-all active:scale-95 touch-manipulation z-10">
-              <i class="fa-solid fa-xmark text-lg sm:text-base"></i>
-            </button>
           </div>
 
           <!-- Content - solid blue, completely separate from image -->

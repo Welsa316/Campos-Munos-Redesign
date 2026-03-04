@@ -92,6 +92,7 @@
                   class="w-full h-full object-contain bg-black"
                   controls
                   playsinline
+                  @canplay="onVideoReady"
                 ></video>
               </div>
             </div>
@@ -291,10 +292,10 @@ const videoPlaying = ref(false)
 
 function playVideo() {
   videoPlaying.value = true
-  nextTick(() => {
-    const video = contentRef.value?.querySelector('video')
-    if (video) video.play().catch(() => {})
-  })
+}
+
+function onVideoReady(e) {
+  e.target.play().catch(() => {})
 }
 
 // Reset video + re-observe reveals when route changes
