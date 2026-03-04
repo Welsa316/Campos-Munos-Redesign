@@ -216,10 +216,10 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
   background: rgba(0,63,141,0.06);
 }
 
-.mega-enter-active { transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
-.mega-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
-.mega-enter-from, .mega-leave-to { opacity: 0; transform: translateX(-50%) translateY(6px); }
-.mega-enter-to, .mega-leave-from { opacity: 1; transform: translateX(-50%) translateY(0); }
+.mega-enter-active { transition: opacity 0.15s ease; }
+.mega-leave-active { transition: opacity 0.1s ease; }
+.mega-enter-from, .mega-leave-to { opacity: 0; }
+.mega-enter-to, .mega-leave-from { opacity: 1; }
 
 .mobile-nav-enter-active { transition: opacity 0.4s ease; }
 .mobile-nav-leave-active { transition: opacity 0.2s ease; }
