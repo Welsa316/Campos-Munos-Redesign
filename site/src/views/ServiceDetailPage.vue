@@ -81,9 +81,9 @@
                 <img v-if="!videoPlaying" :src="thumbnailSrc" :alt="serviceName"
                   class="absolute inset-0 w-full h-full object-cover" />
                 <div v-if="!videoPlaying" @click="playVideo"
-                  class="absolute inset-0 flex items-center justify-center cursor-pointer group z-10">
-                  <div class="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-all duration-300 shadow-2xl">
-                    <i class="fa-solid fa-play text-brand-navy text-xl md:text-2xl ml-1"></i>
+                  class="absolute inset-0 cursor-pointer group z-10">
+                  <div class="absolute bottom-4 right-4 w-14 h-14 rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-all duration-300 shadow-2xl">
+                    <i class="fa-solid fa-play text-brand-navy text-lg ml-0.5"></i>
                   </div>
                 </div>
                 <video
@@ -91,8 +91,8 @@
                   :src="videoFile"
                   class="w-full h-full object-contain bg-black"
                   controls
+                  autoplay
                   playsinline
-                  @canplay="onVideoReady"
                 ></video>
               </div>
             </div>
@@ -106,9 +106,9 @@
               <img v-if="!videoPlaying" :src="thumbnailSrc" :alt="serviceName"
                 class="absolute inset-0 w-full h-full object-cover" />
               <div v-if="!videoPlaying" @click="playVideo"
-                class="absolute inset-0 flex items-center justify-center cursor-pointer group z-10">
-                <div class="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-all duration-300 shadow-2xl">
-                  <i class="fa-solid fa-play text-brand-navy text-xl md:text-2xl ml-1"></i>
+                class="absolute inset-0 cursor-pointer group z-10">
+                <div class="absolute bottom-4 right-4 w-14 h-14 rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-all duration-300 shadow-2xl">
+                  <i class="fa-solid fa-play text-brand-navy text-lg ml-0.5"></i>
                 </div>
               </div>
               <video
@@ -292,10 +292,12 @@ const videoPlaying = ref(false)
 
 function playVideo() {
   videoPlaying.value = true
-}
-
-function onVideoReady(e) {
-  e.target.play().catch(() => {})
+  nextTick(() => {
+    const video = document.querySelector('video')
+    if (video) {
+      video.play().catch(() => {})
+    }
+  })
 }
 
 // Reset video + re-observe reveals when route changes
