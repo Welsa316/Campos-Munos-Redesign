@@ -20,8 +20,12 @@
           </div>
           <div>
             <h1 class="font-[var(--font-heading)] text-4xl md:text-6xl lg:text-7xl font-bold text-brand-navy leading-[0.95]">
-              {{ serviceTitle }}
+              {{ pageH1 }}
             </h1>
+            <p v-if="locationData" class="mt-3 text-gray-400 text-lg font-[var(--font-ui)] tracking-wider">
+              <i class="fa-solid fa-location-dot text-brand-navy/40 mr-2"></i>
+              {{ locale === 'es' ? locationData.nameEs : locationData.nameEn }}
+            </p>
           </div>
         </div>
       </div>
@@ -32,7 +36,7 @@
       <div class="max-w-4xl mx-auto px-6">
         <div class="reveal">
           <p class="text-gray-600 text-2xl md:text-3xl leading-relaxed font-[var(--font-body)] mb-12">
-            {{ serviceDescription }}
+            {{ pageDescription }}
           </p>
 
           <!-- Video -->
@@ -51,7 +55,7 @@
                     {{ locale === 'es' ? 'Ver Video' : 'Watch Video' }}
                   </p>
                   <p class="text-white/60 text-base md:text-lg font-[var(--font-ui)] mt-2">
-                    {{ serviceTitle }}
+                    {{ serviceName }}
                   </p>
                 </div>
               </div>
@@ -68,8 +72,47 @@
           </div>
         </div>
 
+        <!-- FAQ Section -->
+        <div v-if="faqs.length" class="reveal mt-16">
+          <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-brand-navy mb-8">
+            {{ locale === 'es' ? 'Preguntas Frecuentes' : 'Frequently Asked Questions' }}
+          </h2>
+          <div class="space-y-4">
+            <details v-for="(faq, i) in faqs" :key="i"
+              class="group rounded-xl border border-gray-200 bg-white overflow-hidden">
+              <summary class="flex items-center justify-between gap-4 px-6 py-5 cursor-pointer font-[var(--font-ui)] text-lg font-semibold text-gray-700 hover:text-brand-navy transition-colors select-none list-none">
+                <span>{{ faq.q }}</span>
+                <i class="fa-solid fa-chevron-down text-sm text-gray-400 group-open:rotate-180 transition-transform flex-shrink-0"></i>
+              </summary>
+              <div class="px-6 pb-5 text-gray-600 text-lg leading-relaxed font-[var(--font-body)]">
+                {{ faq.a }}
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <!-- Related Services (Internal Linking) -->
+        <div v-if="relatedServices.length" class="reveal mt-16">
+          <h2 class="font-[var(--font-heading)] text-3xl md:text-4xl text-brand-navy mb-6">
+            {{ locale === 'es' ? 'Servicios Relacionados' : 'Related Services' }}
+          </h2>
+          <p class="text-gray-500 text-xl font-[var(--font-body)] mb-6">
+            {{ locale === 'es' ? 'También ofrecemos asistencia con los siguientes servicios:' : 'We also offer assistance with the following services:' }}
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <router-link v-for="related in relatedServices" :key="related.slug"
+              :to="`/servicios/${related.slug}`"
+              class="group flex items-center gap-3 p-5 rounded-xl border border-gray-200 bg-white hover:border-brand-navy/30 hover:shadow-md transition-all">
+              <i :class="related.icon" class="text-xl text-brand-navy/40 group-hover:text-brand-navy transition-colors"></i>
+              <span class="font-[var(--font-ui)] text-base font-semibold text-gray-600 group-hover:text-brand-navy transition-colors">
+                {{ related.name }}
+              </span>
+            </router-link>
+          </div>
+        </div>
+
         <!-- CTA -->
-        <div class="reveal mt-8 p-10 rounded-2xl bg-brand-surface border border-gray-200 text-center">
+        <div class="reveal mt-12 p-10 rounded-2xl bg-brand-surface border border-gray-200 text-center">
           <p class="text-gray-500 text-2xl mb-8 font-[var(--font-body)]">{{ $t('home.popupTitle') }}</p>
           <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
             <router-link to="/consulta"
@@ -84,42 +127,97 @@
         </div>
       </div>
     </section>
+
+    <!-- FAQ Schema (JSON-LD) -->
+    <component :is="'script'" v-if="faqs.length" type="application/ld+json" v-text="faqSchema"></component>
   </div>
 </template>
 
 <script setup>
-import { computed, ref, nextTick } from 'vue'
+import { computed, ref, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useHead } from '@unhead/vue'
 import { useScrollReveal } from '../composables/useScrollReveal.js'
+import {
+  resolveServiceSlug,
+  generateSeoMeta,
+  getLocationDescription,
+  serviceFaqs,
+  baseServices,
+} from '../data/seoServices.js'
 
 useScrollReveal()
 const props = defineProps({ slug: String })
 const { t, locale } = useI18n()
 
-const serviceMap = {
-  'visas-especial-para-jovenes': { key: 'visasJovenes', icon: 'fa-solid fa-passport', video: true, videoFile: '/Jovenes.mp4' },
-  'tramite-consular': { key: 'tramiteConsular', icon: 'fa-solid fa-file-signature', video: true, videoFile: '/Listo Proceso consullar fx listo.mp4' },
-  'asilo': { key: 'asilo', icon: 'fa-solid fa-hand-holding-heart', video: false },
-  'daca': { key: 'daca', icon: 'fa-solid fa-graduation-cap', video: true, videoFile: '/Listo DACA Fx LIsto.mp4' },
-  'visas-de-prometido': { key: 'visasPrometido', icon: 'fa-solid fa-ring', video: false },
-  'ead': { key: 'ead', icon: 'fa-solid fa-briefcase', video: true, videoFile: '/2 Listo Permiso de Trabajo FX Listo.mp4' },
-  'ciudadania': { key: 'ciudadania', icon: 'fa-solid fa-certificate', video: true, videoFile: '/Ciudadania.mp4' },
-  'estatus-de-proteccion-temporal': { key: 'tps', icon: 'fa-solid fa-umbrella', video: false },
-  'vawa': { key: 'vawa', icon: 'fa-solid fa-shield-halved', video: true, videoFile: '/VAWA.mp4' },
-  'defensa-contra-la-deportacion': { key: 'defensaDeportacion', icon: 'fa-solid fa-gavel', video: true, videoFile: '/1 listo defensa en corte FX listo.mp4' },
-  'peticiones-familiares': { key: 'peticionesFamiliares', icon: 'fa-solid fa-people-roof', video: true, videoFile: '/Peticiones Familiares.mp4' },
-  'visa-u': { key: 'visaU', icon: 'fa-solid fa-scale-balanced', video: true, videoFile: '/Visa U Listo YT.mp4' },
-  'visa-t': { key: 'visaT', icon: 'fa-solid fa-link', video: true, videoFile: '/3 Listo Visa T fx Listo.mp4' },
-  'green-card': { key: 'greenCard', icon: 'fa-solid fa-id-card', video: true, videoFile: '/Green Card.mp4' },
-}
+// Resolve slug to service + optional location
+const resolved = computed(() => {
+  return resolveServiceSlug(props.slug) || { service: { key: 'greenCard', icon: 'fa-solid fa-id-card', video: false }, location: null, baseSlug: 'green-card' }
+})
 
-const service = computed(() => serviceMap[props.slug] || { key: 'greenCard', icon: 'fa-solid fa-id-card', video: false })
-const serviceTitle = computed(() => t(`services.${service.value.key}`))
-const serviceDescription = computed(() => t(`serviceDescriptions.${service.value.key}`))
-const serviceIcon = computed(() => service.value.icon)
-const hasVideo = computed(() => service.value.video)
-const videoFile = computed(() => service.value.videoFile || '')
+const serviceData = computed(() => resolved.value.service)
+const locationData = computed(() => resolved.value.location)
+const baseSlug = computed(() => resolved.value.baseSlug)
 
+// Core service properties
+const serviceName = computed(() => t(`services.${serviceData.value.key}`))
+const serviceIcon = computed(() => serviceData.value.icon)
+const hasVideo = computed(() => serviceData.value.video)
+const videoFile = computed(() => serviceData.value.videoFile || '')
+
+// SEO-aware title and description
+const seoMeta = computed(() => generateSeoMeta(serviceData.value.key, locationData.value, locale.value, t))
+const pageH1 = computed(() => seoMeta.value.h1)
+const pageDescription = computed(() => getLocationDescription(serviceData.value.key, locationData.value, locale.value, t))
+
+// Dynamic head meta
+useHead({
+  title: computed(() => seoMeta.value.title),
+  meta: [
+    { name: 'description', content: computed(() => seoMeta.value.metaDescription) },
+  ],
+})
+
+// FAQs for the current service
+const faqs = computed(() => {
+  const faqData = serviceFaqs[serviceData.value.key]
+  if (!faqData) return []
+  return faqData[locale.value] || faqData.es || []
+})
+
+// FAQ Schema.org JSON-LD
+const faqSchema = computed(() => {
+  if (!faqs.value.length) return ''
+  return JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.value.map(faq => ({
+      '@type': 'Question',
+      name: faq.q,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.a,
+      },
+    })),
+  })
+})
+
+// Related services for internal linking
+const relatedServices = computed(() => {
+  const service = baseServices[baseSlug.value]
+  if (!service || !service.relatedSlugs) return []
+  return service.relatedSlugs.map(slug => {
+    const related = baseServices[slug]
+    if (!related) return null
+    return {
+      slug,
+      name: t(`services.${related.key}`),
+      icon: related.icon,
+    }
+  }).filter(Boolean)
+})
+
+// Video player
 const videoPlaying = ref(false)
 const videoRef = ref(null)
 
@@ -131,4 +229,9 @@ function playVideo() {
     }
   })
 }
+
+// Reset video when slug changes
+watch(() => props.slug, () => {
+  videoPlaying.value = false
+})
 </script>
