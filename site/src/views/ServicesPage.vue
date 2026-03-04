@@ -64,16 +64,18 @@ useScrollReveal()
 
 const services = [
   { key: 'greenCard', slug: 'green-card', icon: 'fa-solid fa-id-card', gradient: 'rgba(0,63,141,0.06), rgba(255,255,255,0.8)' },
+  { key: 'peticionesFamiliares', slug: 'peticiones-familiares', icon: 'fa-solid fa-people-roof', gradient: 'rgba(0,63,141,0.03), rgba(255,255,255,0.5)' },
   { key: 'ciudadania', slug: 'ciudadania', icon: 'fa-solid fa-certificate', gradient: 'rgba(0,63,141,0.03), rgba(255,255,255,0.5)' },
+  { key: 'defensaDeportacion', slug: 'defensa-contra-la-deportacion', icon: 'fa-solid fa-gavel', gradient: 'rgba(0,63,141,0.02), rgba(255,255,255,0.5)' },
+  { key: 'visasJovenes', slug: 'visas-especial-para-jovenes', icon: 'fa-solid fa-passport', gradient: 'rgba(206,29,29,0.02), rgba(255,255,255,0.5)' },
+  { key: 'visasPrometido', slug: 'visas-de-prometido', icon: 'fa-solid fa-ring', gradient: 'rgba(0,63,141,0.02), rgba(255,255,255,0.5)' },
   { key: 'asilo', slug: 'asilo', icon: 'fa-solid fa-hand-holding-heart', gradient: 'rgba(0,63,141,0.02), rgba(255,255,255,0.5)' },
   { key: 'vawa', slug: 'vawa', icon: 'fa-solid fa-shield-halved', gradient: 'rgba(206,29,29,0.03), rgba(255,255,255,0.5)' },
-  { key: 'visaU', slug: 'visa-u', icon: 'fa-solid fa-scale-balanced', gradient: 'rgba(0,63,141,0.02), rgba(255,255,255,0.5)' },
-  { key: 'tramiteConsular', slug: 'tramite-consular', icon: 'fa-solid fa-file-signature', gradient: 'rgba(0,63,141,0.02), rgba(255,255,255,0.5)' },
   { key: 'daca', slug: 'daca', icon: 'fa-solid fa-graduation-cap', gradient: 'rgba(206,29,29,0.02), rgba(255,255,255,0.5)' },
-  { key: 'tps', slug: 'estatus-de-proteccion-temporal', icon: 'fa-solid fa-umbrella', gradient: 'rgba(0,63,141,0.02), rgba(255,255,255,0.5)' },
-  { key: 'visasPrometido', slug: 'visas-de-prometido', icon: 'fa-solid fa-ring', gradient: 'rgba(0,63,141,0.02), rgba(255,255,255,0.5)' },
-  { key: 'visasJovenes', slug: 'visas-especial-para-jovenes', icon: 'fa-solid fa-passport', gradient: 'rgba(206,29,29,0.02), rgba(255,255,255,0.5)' },
-  { key: 'peticionesFamiliares', slug: 'peticiones-familiares', icon: 'fa-solid fa-people-roof', gradient: 'rgba(0,63,141,0.02), rgba(255,255,255,0.5)' },
+  { key: 'tramiteConsular', slug: 'tramite-consular', icon: 'fa-solid fa-file-signature', gradient: 'rgba(0,63,141,0.02), rgba(255,255,255,0.5)' },
   { key: 'ead', slug: 'ead', icon: 'fa-solid fa-briefcase', gradient: 'rgba(0,63,141,0.02), rgba(255,255,255,0.5)' },
+  { key: 'tps', slug: 'estatus-de-proteccion-temporal', icon: 'fa-solid fa-umbrella', gradient: 'rgba(0,63,141,0.02), rgba(255,255,255,0.5)' },
+  { key: 'visaU', slug: 'visa-u', icon: 'fa-solid fa-scale-balanced', gradient: 'rgba(0,63,141,0.02), rgba(255,255,255,0.5)' },
+  { key: 'visaT', slug: 'visa-t', icon: 'fa-solid fa-link', gradient: 'rgba(0,63,141,0.02), rgba(255,255,255,0.5)' },
 ]
 </script>

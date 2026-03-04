@@ -41,25 +41,29 @@
 
           <!-- Video -->
           <div v-if="hasVideo" class="rounded-2xl overflow-hidden mb-12 shadow-lg">
-            <div class="aspect-video relative">
-              <!-- Play overlay / Video cover -->
+            <div class="aspect-video relative bg-black">
+              <!-- Thumbnail: actual video frame via preload -->
+              <video
+                v-if="!videoPlaying"
+                :src="videoFile"
+                class="absolute inset-0 w-full h-full object-contain"
+                preload="metadata"
+                muted
+                playsinline
+              ></video>
+              <!-- Play overlay on top of thumbnail -->
               <div v-if="!videoPlaying" @click="playVideo"
-                class="absolute inset-0 flex items-center justify-center cursor-pointer group z-10 bg-brand-navy">
-                <!-- Background logo watermark -->
-                <img src="/logo.png" alt="" class="absolute inset-0 m-auto w-64 md:w-80 opacity-10 pointer-events-none select-none" />
-                <div class="text-center relative z-10">
-                  <div class="w-28 h-28 md:w-36 md:h-36 rounded-full bg-white/15 flex items-center justify-center mx-auto mb-6 group-hover:bg-white/25 group-hover:scale-110 transition-all duration-300 ring-2 ring-white/30">
-                    <i class="fa-solid fa-play text-white text-4xl md:text-5xl ml-2"></i>
+                class="absolute inset-0 flex items-center justify-center cursor-pointer group z-10 bg-black/40">
+                <div class="text-center">
+                  <div class="w-24 h-24 md:w-32 md:h-32 rounded-full bg-brand-navy/80 flex items-center justify-center mx-auto mb-4 group-hover:bg-brand-navy group-hover:scale-110 transition-all duration-300 ring-2 ring-white/30 shadow-xl">
+                    <i class="fa-solid fa-play text-white text-3xl md:text-4xl ml-1.5"></i>
                   </div>
-                  <p class="text-white text-xl md:text-2xl font-[var(--font-ui)] font-semibold tracking-wider uppercase">
+                  <p class="text-white text-lg md:text-xl font-[var(--font-ui)] font-semibold tracking-wider uppercase drop-shadow-lg">
                     {{ locale === 'es' ? 'Ver Video' : 'Watch Video' }}
-                  </p>
-                  <p class="text-white/60 text-base md:text-lg font-[var(--font-ui)] mt-2">
-                    {{ serviceName }}
                   </p>
                 </div>
               </div>
-              <!-- Video element -->
+              <!-- Active video player -->
               <video
                 v-if="videoPlaying"
                 ref="videoRef"

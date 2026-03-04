@@ -86,23 +86,23 @@
       </div>
 
       <!-- Mobile hamburger -->
-      <button @click="mobileOpen = !mobileOpen" class="xl:hidden relative w-12 h-12 flex items-center justify-center" aria-label="Menu">
+      <button @click="mobileOpen = !mobileOpen" class="xl:hidden relative z-[110] w-12 h-12 flex items-center justify-center mr-1" aria-label="Menu">
         <span class="sr-only">Menu</span>
         <div class="flex flex-col items-end gap-1.5 transition-all">
           <span class="block h-[2px] rounded-full transition-all duration-300"
-            :class="[navSolid ? 'bg-gray-800' : 'bg-white', mobileOpen ? 'w-7 rotate-45 translate-y-[5px]' : 'w-7']"></span>
+            :class="[mobileOpen ? 'bg-gray-800 w-7 rotate-45 translate-y-[5px]' : (navSolid ? 'bg-gray-800' : 'bg-white') + ' w-7']"></span>
           <span class="block h-[2px] rounded-full transition-all duration-300"
-            :class="[navSolid ? 'bg-gray-800' : 'bg-white', mobileOpen ? 'opacity-0 w-5' : 'opacity-100 w-5']"></span>
+            :class="[mobileOpen ? 'opacity-0 w-5 bg-gray-800' : (navSolid ? 'bg-gray-800' : 'bg-white') + ' opacity-100 w-5']"></span>
           <span class="block h-[2px] rounded-full transition-all duration-300"
-            :class="[navSolid ? 'bg-gray-800' : 'bg-white', mobileOpen ? 'w-7 -rotate-45 -translate-y-[5px]' : 'w-6']"></span>
+            :class="[mobileOpen ? 'bg-gray-800 w-7 -rotate-45 -translate-y-[5px]' : (navSolid ? 'bg-gray-800' : 'bg-white') + ' w-6']"></span>
         </div>
       </button>
     </nav>
 
     <!-- Mobile full-screen overlay -->
     <transition name="mobile-nav">
-      <div v-show="mobileOpen" class="xl:hidden fixed inset-0 top-0 bg-white/98 backdrop-blur-xl z-[-1]">
-        <div class="flex flex-col justify-center items-center h-full gap-8 px-8">
+      <div v-show="mobileOpen" class="xl:hidden fixed inset-0 top-0 bg-white/98 backdrop-blur-xl z-[105] overflow-y-auto">
+        <div class="flex flex-col justify-center items-center min-h-full gap-6 px-8 py-24">
           <router-link v-for="link in mobileLinks" :key="link.to" :to="link.to"
             class="text-4xl font-[var(--font-heading)] text-gray-800 hover:text-brand-navy transition-colors"
             @click="mobileOpen = false">
@@ -149,19 +149,19 @@ const socials = [
 
 const serviceLinks = [
   { key: 'greenCard', slug: 'green-card', icon: 'fa-solid fa-id-card' },
+  { key: 'peticionesFamiliares', slug: 'peticiones-familiares', icon: 'fa-solid fa-people-roof' },
   { key: 'ciudadania', slug: 'ciudadania', icon: 'fa-solid fa-certificate' },
+  { key: 'defensaDeportacion', slug: 'defensa-contra-la-deportacion', icon: 'fa-solid fa-gavel' },
+  { key: 'visasJovenes', slug: 'visas-especial-para-jovenes', icon: 'fa-solid fa-passport' },
+  { key: 'visasPrometido', slug: 'visas-de-prometido', icon: 'fa-solid fa-ring' },
   { key: 'asilo', slug: 'asilo', icon: 'fa-solid fa-hand-holding-heart' },
   { key: 'vawa', slug: 'vawa', icon: 'fa-solid fa-shield-halved' },
+  { key: 'daca', slug: 'daca', icon: 'fa-solid fa-graduation-cap' },
+  { key: 'tramiteConsular', slug: 'tramite-consular', icon: 'fa-solid fa-file-signature' },
+  { key: 'ead', slug: 'ead', icon: 'fa-solid fa-briefcase' },
+  { key: 'tps', slug: 'estatus-de-proteccion-temporal', icon: 'fa-solid fa-umbrella' },
   { key: 'visaU', slug: 'visa-u', icon: 'fa-solid fa-scale-balanced' },
   { key: 'visaT', slug: 'visa-t', icon: 'fa-solid fa-link' },
-  { key: 'daca', slug: 'daca', icon: 'fa-solid fa-graduation-cap' },
-  { key: 'tps', slug: 'estatus-de-proteccion-temporal', icon: 'fa-solid fa-umbrella' },
-  { key: 'tramiteConsular', slug: 'tramite-consular', icon: 'fa-solid fa-file-signature' },
-  { key: 'visasPrometido', slug: 'visas-de-prometido', icon: 'fa-solid fa-ring' },
-  { key: 'visasJovenes', slug: 'visas-especial-para-jovenes', icon: 'fa-solid fa-passport' },
-  { key: 'peticionesFamiliares', slug: 'peticiones-familiares', icon: 'fa-solid fa-people-roof' },
-  { key: 'ead', slug: 'ead', icon: 'fa-solid fa-briefcase' },
-  { key: 'defensaDeportacion', slug: 'defensa-contra-la-deportacion', icon: 'fa-solid fa-gavel' },
 ]
 
 const mobileLinks = computed(() => [
