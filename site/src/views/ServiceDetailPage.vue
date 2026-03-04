@@ -239,7 +239,7 @@ const baseSlug = computed(() => resolved.value.baseSlug)
 const serviceName = computed(() => t(`services.${serviceData.value.key}`))
 const serviceIcon = computed(() => serviceData.value.icon)
 const hasVideo = computed(() => serviceData.value.video)
-const videoFile = computed(() => encodeURI(serviceData.value.videoFile || ''))
+const videoFile = computed(() => serviceData.value.videoFile || '')
 const thumbnailSrc = computed(() => serviceData.value.thumbnail || '/logo.png')
 
 // Structured content blocks from .txt files
