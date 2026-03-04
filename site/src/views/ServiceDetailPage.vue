@@ -134,9 +134,8 @@
 </template>
 
 <script setup>
-import { computed, ref, nextTick, watch } from 'vue'
+import { computed, ref, nextTick, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useHead } from '@unhead/vue'
 import { useScrollReveal } from '../composables/useScrollReveal.js'
 import {
   resolveServiceSlug,
@@ -170,12 +169,11 @@ const seoMeta = computed(() => generateSeoMeta(serviceData.value.key, locationDa
 const pageH1 = computed(() => seoMeta.value.h1)
 const pageDescription = computed(() => getLocationDescription(serviceData.value.key, locationData.value, locale.value, t))
 
-// Dynamic head meta
-useHead({
-  title: computed(() => seoMeta.value.title),
-  meta: [
-    { name: 'description', content: computed(() => seoMeta.value.metaDescription) },
-  ],
+// Dynamic head meta (native DOM)
+watchEffect(() => {
+  document.title = seoMeta.value.title
+  const meta = document.querySelector('meta[name="description"]')
+  if (meta) meta.setAttribute('content', seoMeta.value.metaDescription)
 })
 
 // FAQs for the current service
