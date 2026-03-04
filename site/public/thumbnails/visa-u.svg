@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B1D3A"/>
+      <stop offset="100%" stop-color="#1a3a5c"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <!-- Decorative elements -->
+  <circle cx="250" cy="550" r="180" fill="white" opacity="0.02"/>
+  <circle cx="1080" cy="180" r="190" fill="white" opacity="0.02"/>
+  <circle cx="640" cy="360" r="270" fill="white" opacity="0.015"/>
+  <polygon points="100,100 140,100 160,60 180,100 220,100 190,125 200,165 160,140 120,165 130,125" fill="white" opacity="0.015" transform="scale(0.6)"/>
+  <line x1="0" y1="580" x2="380" y2="720" stroke="white" stroke-width="1" opacity="0.03"/>
+  <line x1="900" y1="0" x2="1280" y2="220" stroke="white" stroke-width="1" opacity="0.03"/>
+  <!-- Justice / Balance Scale Icon -->
+  <g transform="translate(640, 350)" fill="none" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Center pillar -->
+    <line x1="0" y1="-100" x2="0" y2="80"/>
+    <!-- Base -->
+    <line x1="-50" y1="80" x2="50" y2="80"/>
+    <rect x="-30" y="70" width="60" height="15" rx="3" fill="white" fill-opacity="0.1"/>
+    <!-- Beam -->
+    <line x1="-90" y1="-85" x2="90" y2="-85" stroke-width="6"/>
+    <!-- Top decoration -->
+    <circle cx="0" cy="-100" r="10" fill="white" fill-opacity="0.15" stroke="white" stroke-width="3"/>
+    <!-- Left pan chains -->
+    <line x1="-90" y1="-85" x2="-110" y2="-20"/>
+    <line x1="-90" y1="-85" x2="-70" y2="-20"/>
+    <!-- Left pan -->
+    <path d="M-120,-20 Q-90,20 -60,-20" stroke-width="4" fill="white" fill-opacity="0.08"/>
+    <!-- Right pan chains -->
+    <line x1="90" y1="-85" x2="110" y2="-20"/>
+    <line x1="90" y1="-85" x2="70" y2="-20"/>
+    <!-- Right pan -->
+    <path d="M60,-20 Q90,20 120,-20" stroke-width="4" fill="white" fill-opacity="0.08"/>
+  </g>
+</svg>

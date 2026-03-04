@@ -51,6 +51,7 @@ export const baseServices = {
     icon: 'fa-solid fa-id-card',
     video: true,
     videoFile: '/Green Card.mp4',
+    thumbnail: '/thumbnails/green-card.svg',
     relatedSlugs: ['ciudadania', 'peticiones-familiares', 'ead'],
   },
   'ciudadania': {
@@ -58,6 +59,7 @@ export const baseServices = {
     icon: 'fa-solid fa-certificate',
     video: true,
     videoFile: '/Ciudadania.mp4',
+    thumbnail: '/thumbnails/ciudadania.svg',
     relatedSlugs: ['green-card', 'peticiones-familiares'],
   },
   'asilo': {
@@ -71,6 +73,7 @@ export const baseServices = {
     icon: 'fa-solid fa-shield-halved',
     video: true,
     videoFile: '/VAWA.mp4',
+    thumbnail: '/thumbnails/vawa.svg',
     relatedSlugs: ['visa-u', 'visa-t', 'asilo'],
   },
   'visa-u': {
@@ -78,6 +81,7 @@ export const baseServices = {
     icon: 'fa-solid fa-scale-balanced',
     video: true,
     videoFile: '/Visa U Listo YT.mp4',
+    thumbnail: '/thumbnails/visa-u.svg',
     relatedSlugs: ['visa-t', 'vawa', 'ead'],
   },
   'visa-t': {
@@ -85,6 +89,7 @@ export const baseServices = {
     icon: 'fa-solid fa-link',
     video: true,
     videoFile: '/3 Listo Visa T fx Listo.mp4',
+    thumbnail: '/thumbnails/visa-t.svg',
     relatedSlugs: ['visa-u', 'vawa', 'asilo'],
   },
   'daca': {
@@ -92,6 +97,7 @@ export const baseServices = {
     icon: 'fa-solid fa-graduation-cap',
     video: true,
     videoFile: '/Listo DACA Fx LIsto.mp4',
+    thumbnail: '/thumbnails/daca.svg',
     relatedSlugs: ['ead', 'defensa-contra-la-deportacion', 'green-card'],
   },
   'estatus-de-proteccion-temporal': {
@@ -105,6 +111,7 @@ export const baseServices = {
     icon: 'fa-solid fa-file-signature',
     video: true,
     videoFile: '/Listo Proceso consullar fx listo.mp4',
+    thumbnail: '/thumbnails/tramite-consular.svg',
     relatedSlugs: ['green-card', 'visas-de-prometido', 'peticiones-familiares'],
   },
   'visas-de-prometido': {
@@ -118,6 +125,7 @@ export const baseServices = {
     icon: 'fa-solid fa-passport',
     video: true,
     videoFile: '/Jovenes.mp4',
+    thumbnail: '/thumbnails/visas-jovenes.svg',
     relatedSlugs: ['asilo', 'defensa-contra-la-deportacion', 'green-card'],
   },
   'peticiones-familiares': {
@@ -125,6 +133,7 @@ export const baseServices = {
     icon: 'fa-solid fa-people-roof',
     video: true,
     videoFile: '/Peticiones Familiares.mp4',
+    thumbnail: '/thumbnails/peticiones-familiares.svg',
     relatedSlugs: ['green-card', 'ciudadania', 'visas-de-prometido'],
   },
   'ead': {
@@ -132,6 +141,7 @@ export const baseServices = {
     icon: 'fa-solid fa-briefcase',
     video: true,
     videoFile: '/2 Listo Permiso de Trabajo FX Listo.mp4',
+    thumbnail: '/thumbnails/ead.svg',
     relatedSlugs: ['daca', 'estatus-de-proteccion-temporal', 'green-card'],
   },
   'defensa-contra-la-deportacion': {
@@ -139,6 +149,7 @@ export const baseServices = {
     icon: 'fa-solid fa-gavel',
     video: true,
     videoFile: '/1 listo defensa en corte FX listo.mp4',
+    thumbnail: '/thumbnails/defensa-deportacion.svg',
     relatedSlugs: ['asilo', 'daca', 'vawa'],
   },
 }

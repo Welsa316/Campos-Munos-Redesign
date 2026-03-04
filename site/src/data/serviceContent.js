@@ -201,6 +201,7 @@ export const serviceContent = {
   ],
 
   tramiteConsular: [
+    { type: 'video' },
     { type: 'paragraph', text: 'El procesamiento consular es un procedimiento mediante el cual el beneficiario de una petición de inmigración aprobada solicita una visa en uno de los consulados de los Estados Unidos en el extranjero. Para iniciar este proceso, deben existir números de visa disponibles para el país del posible inmigrante.' },
     { type: 'paragraph', text: 'Si está interesado en solicitar una visa en una oficina consular fuera de los Estados Unidos, debe buscar la asistencia de un abogado de inmigración calificado que lo guíe durante todo el proceso.' },
     { type: 'heading', text: '¿Cuál es la diferencia entre el procesamiento consular y el ajuste de estatus?' },
@@ -254,6 +255,7 @@ export const serviceContent = {
 
   // Visa T content — from VAWA.txt (Visa T section)
   visaT: [
+    { type: 'video' },
     { type: 'heading', text: '¿Qué es una Visa T?' },
     { type: 'paragraph', text: 'La Visa T fue creada para ofrecer alivio migratorio a las víctimas de formas graves de trata de personas.' },
     { type: 'paragraph', text: 'Una Visa T protege a los beneficiarios de la deportación y les otorga permiso para trabajar en los Estados Unidos.' },
