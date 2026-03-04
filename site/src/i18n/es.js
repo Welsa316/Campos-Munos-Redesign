@@ -63,7 +63,7 @@ export default {
     dondeEstamosText: 'Nuestras oficinas están ubicadas en el área metropolitana de Nueva Orleans; sin embargo, atendemos a clientes en los 50 estados de los Estados Unidos y en el extranjero.',
     contactenosBtn: 'Contáctenos',
     instagramTitle: 'Síguenos en Instagram',
-    instagramHandle: '@juancamposlaw',
+    instagramHandle: "{'@'}juancamposlaw",
     popupTitle: '¿Tiene preguntas sobre su situación legal?',
     popupSubtitle: 'Nuestro equipo está aquí para ayudarle.',
     popupCta: 'Llámenos',
@@ -145,7 +145,7 @@ export default {
     },
   },
   footer: {
-    firmName: 'CAMPOS MUNOS LAW, LLC | IMMIGRATION ATTORNEYS',
+    firmName: "CAMPOS MUNOS LAW, LLC {'|'} IMMIGRATION ATTORNEYS",
     address: '812 Gravier Street, Suite 330, New Orleans, LA 70112',
     mailingAddress: 'Dirección postal: PO Box 6224, Metairie, LA 70009',
     phone: 'Teléfono: (504) 910-6508',
