@@ -91,7 +91,6 @@
                   :src="videoFile"
                   class="w-full h-full object-contain bg-black"
                   controls
-                  autoplay
                   playsinline
                 ></video>
               </div>
@@ -240,7 +239,7 @@ const baseSlug = computed(() => resolved.value.baseSlug)
 const serviceName = computed(() => t(`services.${serviceData.value.key}`))
 const serviceIcon = computed(() => serviceData.value.icon)
 const hasVideo = computed(() => serviceData.value.video)
-const videoFile = computed(() => serviceData.value.videoFile || '')
+const videoFile = computed(() => encodeURI(serviceData.value.videoFile || ''))
 const thumbnailSrc = computed(() => serviceData.value.thumbnail || '/logo.png')
 
 // Structured content blocks from .txt files
@@ -292,6 +291,10 @@ const videoPlaying = ref(false)
 
 function playVideo() {
   videoPlaying.value = true
+  nextTick(() => {
+    const video = contentRef.value?.querySelector('video')
+    if (video) video.play().catch(() => {})
+  })
 }
 
 // Reset video + re-observe reveals when route changes
