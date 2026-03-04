@@ -34,35 +34,84 @@
     <!-- Content -->
     <section class="py-20 bg-white">
       <div class="max-w-4xl mx-auto px-6">
-        <div class="reveal">
-          <p class="text-gray-600 text-2xl md:text-3xl leading-relaxed font-[var(--font-body)] mb-8">
-            {{ pageDescription }}
-          </p>
 
-          <!-- Location service area note -->
-          <p v-if="locationData" class="text-gray-500 text-lg font-[var(--font-ui)] mb-12 flex items-center gap-2">
-            <i class="fa-solid fa-map-marker-alt text-brand-navy/40"></i>
-            {{ locale === 'es'
-              ? `Atendemos clientes ${locationData.contextEs}.`
-              : `Serving clients ${locationData.contextEn}.` }}
-          </p>
-          <div v-else class="mb-4"></div>
+        <!-- Location service area note -->
+        <p v-if="locationData" class="reveal text-gray-500 text-lg font-[var(--font-ui)] mb-8 flex items-center gap-2">
+          <i class="fa-solid fa-map-marker-alt text-brand-navy/40"></i>
+          {{ locale === 'es'
+            ? `Atendemos clientes ${locationData.contextEs}.`
+            : `Serving clients ${locationData.contextEn}.` }}
+        </p>
 
-          <!-- Video -->
-          <div v-if="hasVideo" class="rounded-2xl overflow-hidden mb-12 shadow-lg">
+        <!-- Structured content from .txt files -->
+        <template v-if="contentBlocks.length">
+          <template v-for="(block, i) in contentBlocks" :key="i">
+            <!-- Heading (h2) -->
+            <h2 v-if="block.type === 'heading'"
+              class="reveal font-[var(--font-heading)] text-3xl md:text-4xl text-brand-navy mt-14 mb-6 first:mt-0">
+              {{ block.text }}
+            </h2>
+
+            <!-- Subheading (h3) -->
+            <h3 v-else-if="block.type === 'subheading'"
+              class="reveal font-[var(--font-heading)] text-2xl md:text-3xl text-brand-navy/80 mt-10 mb-4">
+              {{ block.text }}
+            </h3>
+
+            <!-- Paragraph -->
+            <p v-else-if="block.type === 'paragraph'"
+              class="reveal text-gray-600 text-lg md:text-xl leading-relaxed font-[var(--font-body)] mb-5">
+              {{ block.text }}
+            </p>
+
+            <!-- List -->
+            <ul v-else-if="block.type === 'list'"
+              class="reveal list-disc list-outside pl-6 space-y-2 mb-6">
+              <li v-for="(item, j) in block.items" :key="j"
+                class="text-gray-600 text-lg leading-relaxed font-[var(--font-body)]">
+                {{ item }}
+              </li>
+            </ul>
+
+            <!-- Video embed marker -->
+            <div v-else-if="block.type === 'video' && hasVideo"
+              class="reveal rounded-2xl overflow-hidden my-10 shadow-lg">
+              <div class="aspect-video relative bg-brand-navy">
+                <div v-if="!videoPlaying" class="absolute inset-0 bg-brand-navy flex items-center justify-center">
+                  <img src="/logo.png" alt="Campos Munos Law" class="w-[50%] max-w-[320px] pointer-events-none select-none" />
+                </div>
+                <div v-if="!videoPlaying" @click="playVideo"
+                  class="absolute inset-0 flex items-center justify-center cursor-pointer group z-10">
+                  <div class="w-20 h-20 md:w-24 md:h-24 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 group-hover:scale-110 transition-all duration-300 ring-2 ring-white/30 shadow-2xl">
+                    <i class="fa-solid fa-play text-white text-2xl md:text-3xl ml-1"></i>
+                  </div>
+                </div>
+                <video
+                  v-if="videoPlaying"
+                  ref="videoRef"
+                  :src="videoFile"
+                  class="w-full h-full object-contain bg-black"
+                  controls
+                  playsinline
+                ></video>
+              </div>
+            </div>
+          </template>
+        </template>
+
+        <!-- Fallback: no .txt content — just show video if available -->
+        <template v-else>
+          <div v-if="hasVideo" class="reveal rounded-2xl overflow-hidden mb-12 shadow-lg">
             <div class="aspect-video relative bg-brand-navy">
-              <!-- Branded thumbnail cover -->
               <div v-if="!videoPlaying" class="absolute inset-0 bg-brand-navy flex items-center justify-center">
                 <img src="/logo.png" alt="Campos Munos Law" class="w-[50%] max-w-[320px] pointer-events-none select-none" />
               </div>
-              <!-- Play button overlay -->
               <div v-if="!videoPlaying" @click="playVideo"
                 class="absolute inset-0 flex items-center justify-center cursor-pointer group z-10">
                 <div class="w-20 h-20 md:w-24 md:h-24 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 group-hover:scale-110 transition-all duration-300 ring-2 ring-white/30 shadow-2xl">
                   <i class="fa-solid fa-play text-white text-2xl md:text-3xl ml-1"></i>
                 </div>
               </div>
-              <!-- Active video player -->
               <video
                 v-if="videoPlaying"
                 ref="videoRef"
@@ -73,7 +122,7 @@
               ></video>
             </div>
           </div>
-        </div>
+        </template>
 
         <!-- FAQ Section -->
         <div v-if="faqs.length" class="reveal mt-16">
@@ -143,10 +192,10 @@ import { useScrollReveal } from '../composables/useScrollReveal.js'
 import {
   resolveServiceSlug,
   generateSeoMeta,
-  getLocationDescription,
   serviceFaqs,
   baseServices,
 } from '../data/seoServices.js'
+import { serviceContent } from '../data/serviceContent.js'
 
 useScrollReveal()
 const props = defineProps({ slug: String, service: String, location: String })
@@ -155,11 +204,9 @@ const { t, locale } = useI18n()
 // Resolve slug to service + optional location
 // Supports both /servicios/:slug and /servicios/:service/:location
 const resolved = computed(() => {
-  // Path-based location: /servicios/green-card/metairie
   if (props.service && props.location) {
     return resolveServiceSlug(props.service, props.location) || { service: { key: 'greenCard', icon: 'fa-solid fa-id-card', video: false }, location: null, baseSlug: 'green-card' }
   }
-  // Single slug: /servicios/green-card or /servicios/green-card-new-orleans (legacy)
   return resolveServiceSlug(props.slug) || { service: { key: 'greenCard', icon: 'fa-solid fa-id-card', video: false }, location: null, baseSlug: 'green-card' }
 })
 
@@ -173,10 +220,12 @@ const serviceIcon = computed(() => serviceData.value.icon)
 const hasVideo = computed(() => serviceData.value.video)
 const videoFile = computed(() => serviceData.value.videoFile || '')
 
+// Structured content blocks from .txt files
+const contentBlocks = computed(() => serviceContent[serviceData.value.key] || [])
+
 // SEO-aware title and description
 const seoMeta = computed(() => generateSeoMeta(serviceData.value.key, locationData.value, locale.value, t))
 const pageH1 = computed(() => seoMeta.value.h1)
-const pageDescription = computed(() => getLocationDescription(serviceData.value.key, locationData.value, locale.value, t))
 
 // Dynamic head meta (native DOM)
 watchEffect(() => {
