@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B1D3A"/>
+      <stop offset="100%" stop-color="#1a3a5c"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <!-- Decorative elements -->
+  <circle cx="300" cy="600" r="200" fill="white" opacity="0.02"/>
+  <circle cx="1000" cy="120" r="160" fill="white" opacity="0.02"/>
+  <circle cx="640" cy="360" r="280" fill="white" opacity="0.015"/>
+  <polygon points="150,50 170,50 180,30 190,50 210,50 195,62 200,82 180,70 160,82 165,62" fill="white" opacity="0.025"/>
+  <polygon points="1080,640 1100,640 1110,620 1120,640 1140,640 1125,652 1130,672 1110,660 1090,672 1095,652" fill="white" opacity="0.025"/>
+  <line x1="0" y1="500" x2="350" y2="720" stroke="white" stroke-width="1" opacity="0.03"/>
+  <line x1="930" y1="0" x2="1280" y2="250" stroke="white" stroke-width="1" opacity="0.03"/>
+  <!-- Star / Citizenship Icon -->
+  <g transform="translate(640, 340)">
+    <!-- Outer circle -->
+    <circle cx="0" cy="0" r="110" fill="none" stroke="white" stroke-width="4" opacity="0.3"/>
+    <!-- Large star -->
+    <polygon points="0,-90 21,-29 85,-29 34,11 52,72 0,36 -52,72 -34,11 -85,-29 -21,-29" fill="white" fill-opacity="0.12" stroke="white" stroke-width="4" stroke-linejoin="round"/>
+    <!-- Inner circle decoration -->
+    <circle cx="0" cy="0" r="130" fill="none" stroke="white" stroke-width="1.5" opacity="0.15" stroke-dasharray="8 6"/>
+    <!-- Small decorative stars -->
+    <g opacity="0.4">
+      <polygon points="-100,-70 -94,-55 -78,-55 -91,-46 -86,-31 -100,-41 -114,-31 -109,-46 -122,-55 -106,-55" fill="white" transform="scale(0.5) translate(40, -80)"/>
+      <polygon points="100,-70 106,-55 122,-55 109,-46 114,-31 100,-41 86,-31 91,-46 78,-55 94,-55" fill="white" transform="scale(0.5) translate(-40, -80)"/>
+    </g>
+  </g>
+</svg>

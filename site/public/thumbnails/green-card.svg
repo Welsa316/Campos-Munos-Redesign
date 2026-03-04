@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B1D3A"/>
+      <stop offset="100%" stop-color="#1a3a5c"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a3a5c"/>
+      <stop offset="100%" stop-color="#2a5a8c"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <!-- Decorative geometric shapes -->
+  <circle cx="200" cy="150" r="180" fill="white" opacity="0.02"/>
+  <circle cx="1100" cy="580" r="220" fill="white" opacity="0.02"/>
+  <circle cx="640" cy="360" r="300" fill="white" opacity="0.015"/>
+  <rect x="50" y="50" width="80" height="80" rx="8" fill="white" opacity="0.015" transform="rotate(45 90 90)"/>
+  <rect x="1150" y="100" width="60" height="60" rx="6" fill="white" opacity="0.015" transform="rotate(30 1180 130)"/>
+  <line x1="0" y1="600" x2="400" y2="720" stroke="white" stroke-width="1" opacity="0.03"/>
+  <line x1="880" y1="0" x2="1280" y2="200" stroke="white" stroke-width="1" opacity="0.03"/>
+  <!-- Card/ID Icon -->
+  <g transform="translate(640, 360)" fill="none" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Card outline -->
+    <rect x="-120" y="-80" width="240" height="160" rx="16" fill="white" fill-opacity="0.08"/>
+    <rect x="-120" y="-80" width="240" height="160" rx="16"/>
+    <!-- Photo area -->
+    <rect x="-95" y="-50" width="70" height="85" rx="6"/>
+    <!-- Person silhouette in photo -->
+    <circle cx="-60" cy="-25" r="18" fill="white" fill-opacity="0.15"/>
+    <path d="M-85 35 Q-85 5 -60 5 Q-35 5 -35 35" fill="white" fill-opacity="0.15"/>
+    <!-- Lines for text -->
+    <line x1="0" y1="-45" x2="95" y2="-45" stroke-width="4"/>
+    <line x1="0" y1="-20" x2="80" y2="-20" stroke-width="4"/>
+    <line x1="0" y1="5" x2="70" y2="5" stroke-width="4"/>
+    <!-- Chip -->
+    <rect x="-95" y="50" width="40" height="28" rx="4" fill="white" fill-opacity="0.12"/>
+    <line x1="-82" y1="50" x2="-82" y2="78" stroke-width="2" opacity="0.5"/>
+    <line x1="-68" y1="50" x2="-68" y2="78" stroke-width="2" opacity="0.5"/>
+    <line x1="-95" y1="64" x2="-55" y2="64" stroke-width="2" opacity="0.5"/>
+  </g>
+</svg>

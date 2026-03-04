@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B1D3A"/>
+      <stop offset="100%" stop-color="#1a3a5c"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <circle cx="200" cy="150" r="180" fill="white" opacity="0.02"/>
+  <circle cx="1100" cy="580" r="220" fill="white" opacity="0.02"/>
+  <circle cx="640" cy="360" r="300" fill="white" opacity="0.015"/>
+  <line x1="0" y1="600" x2="400" y2="720" stroke="white" stroke-width="1" opacity="0.03"/>
+  <line x1="880" y1="0" x2="1280" y2="200" stroke="white" stroke-width="1" opacity="0.03"/>
+  <g transform="translate(640, 340)" fill="none" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="-90" y="-90" width="80" height="45" rx="8" fill="white" fill-opacity="0.08" transform="rotate(-45 -50 -67)"/>
+    <rect x="-90" y="-90" width="80" height="45" rx="8" transform="rotate(-45 -50 -67)"/>
+    <line x1="0" y1="-20" x2="80" y2="60" stroke-width="8"/>
+    <rect x="-70" y="60" width="140" height="30" rx="6" fill="white" fill-opacity="0.08"/>
+    <rect x="-70" y="60" width="140" height="30" rx="6"/>
+    <line x1="-30" y1="10" x2="-50" y2="-10" stroke-width="3" opacity="0.5"/>
+    <line x1="-15" y1="20" x2="-40" y2="15" stroke-width="3" opacity="0.5"/>
+    <line x1="-25" y1="30" x2="-50" y2="35" stroke-width="3" opacity="0.5"/>
+    <path d="M-10 -50 L40 -70 L90 -50 L90 10 Q90 50 40 70 Q-10 50 -10 10 Z" fill="white" fill-opacity="0.05" stroke-width="3" opacity="0.4"/>
+  </g>
+</svg>
