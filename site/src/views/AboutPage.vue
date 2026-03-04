@@ -3,7 +3,7 @@
     <!-- Immersive hero -->
     <section class="relative min-h-screen pt-24 flex items-end overflow-hidden">
       <div class="absolute inset-0">
-        <img src="/Team.jpg" alt="" class="w-full h-full object-cover" />
+        <img src="/Team.jpg" alt="" class="w-full h-full object-cover object-center" />
         <div class="absolute inset-0 bg-gradient-to-t from-brand-darker via-brand-darker/30 to-transparent"></div>
         <div class="absolute inset-0 bg-gradient-to-r from-brand-darker/50 to-transparent"></div>
       </div>

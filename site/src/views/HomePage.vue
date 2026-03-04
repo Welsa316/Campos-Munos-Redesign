@@ -37,15 +37,15 @@
           </transition>
         </div>
 
-        <div class="hero-reveal flex flex-wrap items-center gap-4" style="transition-delay: 1.2s">
+        <div class="hero-reveal flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4" style="transition-delay: 1.2s">
           <router-link to="/consulta"
-            class="group inline-flex items-center gap-3 bg-brand-navy text-white font-[var(--font-body)] font-bold tracking-wider text-xl px-10 py-5 rounded-xl btn-magnetic">
+            class="group inline-flex items-center gap-3 bg-brand-navy text-white font-[var(--font-body)] font-bold tracking-wider text-lg sm:text-xl px-8 sm:px-10 py-4 sm:py-5 rounded-xl btn-magnetic">
             {{ $t('home.consultaBtn') }}
             <i class="fa-solid fa-arrow-right text-sm transition-transform group-hover:translate-x-1"></i>
           </router-link>
           <button @click="toggleLang"
-            class="group inline-flex items-center gap-3 border-2 border-white/40 text-white font-[var(--font-ui)] font-semibold tracking-wider text-lg px-8 py-5 rounded-xl hover:bg-white hover:text-brand-navy transition-all duration-300">
-            <i class="fa-solid fa-globe text-xl"></i>
+            class="relative z-20 group inline-flex items-center gap-3 border-2 border-white/40 text-white font-[var(--font-ui)] font-semibold tracking-wider text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-5 rounded-xl hover:bg-white hover:text-brand-navy transition-all duration-300">
+            <i class="fa-solid fa-globe text-lg sm:text-xl"></i>
             {{ $t('home.translateBtn') }}
           </button>
         </div>
@@ -63,10 +63,10 @@
 
       <!-- Bottom info strip -->
       <div class="absolute bottom-0 left-0 right-0 py-4 bg-gradient-to-t from-brand-darker to-transparent">
-        <div class="max-w-7xl mx-auto px-6 flex flex-wrap items-center gap-8 text-white/60 text-base font-[var(--font-ui)] tracking-wider">
+        <div class="max-w-7xl mx-auto px-6 flex flex-wrap items-center gap-4 sm:gap-8 text-white/60 text-sm sm:text-base font-[var(--font-ui)] tracking-wider">
           <span class="flex items-center gap-2"><i class="fa-solid fa-location-dot text-brand-navy/80"></i> New Orleans, LA</span>
-          <a href="tel:+15049106508" class="flex items-center gap-2 hover:text-white transition-colors"><i class="fa-solid fa-phone text-brand-red/80"></i> <span class="text-lg font-semibold">(504) 910-6508</span></a>
-          <span class="flex items-center gap-2"><i class="fa-solid fa-video text-brand-navy/80"></i> {{ $t('home.virtualAvailable') }}</span>
+          <a href="tel:+15049106508" class="flex items-center gap-2 hover:text-white transition-colors"><i class="fa-solid fa-phone text-brand-red/80"></i> <span class="text-base sm:text-lg font-semibold">(504) 910-6508</span></a>
+          <span class="hidden sm:flex items-center gap-2"><i class="fa-solid fa-video text-brand-navy/80"></i> {{ $t('home.virtualAvailable') }}</span>
         </div>
       </div>
     </section>
@@ -90,7 +90,7 @@
       <div class="max-w-5xl mx-auto px-6">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-12 text-center reveal">
           <div class="p-8">
-            <p class="font-[var(--font-heading)] text-7xl md:text-8xl font-bold text-brand-navy mb-3">3,000+</p>
+            <p class="font-[var(--font-heading)] text-7xl md:text-8xl font-bold text-brand-navy mb-3">5,000+</p>
             <p class="font-[var(--font-ui)] text-xl md:text-2xl text-gray-500 tracking-wide">{{ $t('home.casosResueltos') }}</p>
           </div>
           <div class="p-8">
@@ -283,12 +283,12 @@ const badges = [
 ]
 
 const bentoServices = [
-  { key: 'visaU', slug: 'visa-u', icon: 'fa-solid fa-scale-balanced' },
+  { key: 'peticionesFamiliares', slug: 'peticiones-familiares', icon: 'fa-solid fa-people-roof' },
   { key: 'ciudadania', slug: 'ciudadania', icon: 'fa-solid fa-certificate' },
-  { key: 'vawa', slug: 'vawa', icon: 'fa-solid fa-shield-halved' },
+  { key: 'defensaDeportacion', slug: 'defensa-contra-la-deportacion', icon: 'fa-solid fa-gavel' },
+  { key: 'visasJovenes', slug: 'visas-especial-para-jovenes', icon: 'fa-solid fa-passport' },
+  { key: 'visasPrometido', slug: 'visas-de-prometido', icon: 'fa-solid fa-ring' },
   { key: 'asilo', slug: 'asilo', icon: 'fa-solid fa-hand-holding-heart' },
-  { key: 'daca', slug: 'daca', icon: 'fa-solid fa-graduation-cap' },
-  { key: 'visaT', slug: 'visa-t', icon: 'fa-solid fa-link' },
 ]
 
 onMounted(() => {

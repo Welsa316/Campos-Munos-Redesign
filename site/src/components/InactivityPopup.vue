@@ -1,27 +1,27 @@
 <template>
   <transition name="popup">
-    <div v-if="visible" class="fixed inset-0 z-[150] flex items-center justify-center p-4" @click.self="close">
+    <div v-if="visible" class="fixed inset-0 z-[150] flex items-center justify-center p-4 overflow-y-auto" @click.self="close">
       <!-- Backdrop -->
-      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="close"></div>
 
       <!-- Modal -->
-      <div class="relative w-full max-w-2xl overflow-hidden rounded-3xl">
+      <div class="relative w-full max-w-2xl overflow-hidden rounded-3xl my-auto">
         <div class="relative">
           <!-- Image section - no gradient, clean separation -->
           <div class="relative overflow-hidden rounded-t-3xl">
-            <img src="/PopupPhoto.jpg" alt="" class="w-full h-[420px] object-cover object-top" />
-            <button @click="close"
-              class="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white/80 hover:text-white hover:bg-black/60 transition-all">
-              <i class="fa-solid fa-xmark text-base"></i>
+            <img src="/PopupPhoto.jpg" alt="" class="w-full h-[220px] sm:h-[420px] object-cover object-top" />
+            <button @click="close" type="button"
+              class="absolute top-3 right-3 sm:top-4 sm:right-4 w-11 h-11 sm:w-10 sm:h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-all active:scale-95 touch-manipulation z-10">
+              <i class="fa-solid fa-xmark text-lg sm:text-base"></i>
             </button>
           </div>
 
           <!-- Content - solid blue, completely separate from image -->
-          <div class="px-10 py-10 bg-brand-navy text-center rounded-b-3xl">
-            <h2 class="font-[var(--font-heading)] text-4xl text-white mb-4 leading-tight">
+          <div class="px-6 py-8 sm:px-10 sm:py-10 bg-brand-navy text-center rounded-b-3xl">
+            <h2 class="font-[var(--font-heading)] text-2xl sm:text-4xl text-white mb-3 sm:mb-4 leading-tight">
               {{ $t('home.popupTitle') }}
             </h2>
-            <p class="text-white/80 text-xl font-[var(--font-ui)] mb-8">{{ $t('home.popupSubtitle') }}</p>
+            <p class="text-white/80 text-base sm:text-xl font-[var(--font-ui)] mb-6 sm:mb-8">{{ $t('home.popupSubtitle') }}</p>
 
             <div class="space-y-4">
               <a href="tel:+15049106508"
