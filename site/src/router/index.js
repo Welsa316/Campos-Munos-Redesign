@@ -4,6 +4,7 @@ const routes = [
   { path: '/', redirect: '/home' },
   { path: '/home', name: 'Home', component: () => import('../views/HomePage.vue') },
   { path: '/servicios', name: 'Services', component: () => import('../views/ServicesPage.vue') },
+  { path: '/servicios/:service/:location', name: 'ServiceDetailLocation', component: () => import('../views/ServiceDetailPage.vue'), props: true },
   { path: '/servicios/:slug', name: 'ServiceDetail', component: () => import('../views/ServiceDetailPage.vue'), props: true },
   { path: '/consulta', name: 'Contact', component: () => import('../views/ContactPage.vue') },
   { path: '/pago', name: 'Payment', component: () => import('../views/PaymentPage.vue') },
