@@ -52,25 +52,14 @@
           <div v-if="hasVideo" class="rounded-2xl overflow-hidden mb-12 shadow-lg">
             <div class="aspect-video relative bg-brand-navy">
               <!-- Branded thumbnail cover -->
-              <div v-if="!videoPlaying" class="absolute inset-0 bg-gradient-to-br from-brand-navy via-brand-navy-light to-brand-navy flex items-center justify-center">
-                <img src="/logo.png" alt="" class="absolute opacity-[0.08] w-[60%] max-w-[400px] pointer-events-none select-none" />
-                <div class="absolute top-6 left-6">
-                  <i :class="serviceIcon" class="text-4xl text-white/20"></i>
-                </div>
-                <div class="absolute bottom-6 left-6 right-6">
-                  <p class="text-white/40 text-sm font-[var(--font-ui)] tracking-wider uppercase">{{ serviceName }}</p>
-                </div>
+              <div v-if="!videoPlaying" class="absolute inset-0 bg-brand-navy flex items-center justify-center">
+                <img src="/logo.png" alt="Campos Munos Law" class="w-[50%] max-w-[320px] pointer-events-none select-none" />
               </div>
               <!-- Play button overlay -->
               <div v-if="!videoPlaying" @click="playVideo"
                 class="absolute inset-0 flex items-center justify-center cursor-pointer group z-10">
-                <div class="text-center">
-                  <div class="w-24 h-24 md:w-28 md:h-28 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center mx-auto mb-4 group-hover:bg-white/30 group-hover:scale-110 transition-all duration-300 ring-2 ring-white/30 shadow-2xl">
-                    <i class="fa-solid fa-play text-white text-3xl md:text-4xl ml-1.5"></i>
-                  </div>
-                  <p class="text-white text-lg md:text-xl font-[var(--font-ui)] font-semibold tracking-wider uppercase drop-shadow-lg">
-                    {{ locale === 'es' ? 'Ver Video' : 'Watch Video' }}
-                  </p>
+                <div class="w-20 h-20 md:w-24 md:h-24 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 group-hover:scale-110 transition-all duration-300 ring-2 ring-white/30 shadow-2xl">
+                  <i class="fa-solid fa-play text-white text-2xl md:text-3xl ml-1"></i>
                 </div>
               </div>
               <!-- Active video player -->
