@@ -143,193 +143,154 @@ export const baseServices = {
   },
 }
 
-// FAQ data extracted and rephrased from existing service descriptions
-// Each FAQ only uses information already present on the site
+// FAQ data sourced STRICTLY from .txt files in public/
+// Services without .txt files have no FAQs.
 export const serviceFaqs = {
-  greenCard: {
+  asilo: {
     es: [
-      { q: '¿Qué es una Green Card?', a: 'La Green Card es el documento que otorga la residencia permanente legal en los Estados Unidos.' },
-      { q: '¿Cómo puedo obtener una Green Card?', a: 'Asesoramos y representamos a nuestros clientes en procesos para obtener la residencia permanente a través de familia, empleo u otras opciones disponibles.' },
-      { q: '¿Puedo solicitar una Green Card mediante una petición familiar?', a: 'Sí. Nuestro equipo ayuda a clientes que buscan obtener residencia permanente a través de peticiones familiares.' },
+      { q: '¿Puede un asilado regresar a su país de origen?', a: 'No se recomienda que los solicitantes de asilo o los asilados regresen a su país de origen. Sin aprobación previa, una solicitud de asilo abierta se considerará abandonada por USCIS.' },
+      { q: '¿Cuánto dura el proceso de solicitud de asilo?', a: 'El tiempo varía según la jurisdicción. En algunas jurisdicciones, los solicitantes han esperado varios años, mientras que otros han sido llamados a una entrevista dentro del primer año.' },
+      { q: '¿Se les permite a los solicitantes de asilo trabajar en los Estados Unidos?', a: 'En términos generales, después de cierto número de días y con una solicitud de asilo pendiente correctamente presentada, el solicitante puede solicitar un permiso de autorización de empleo. El permiso de trabajo puede ser aprobado por dos años.' },
+      { q: '¿Qué sucede si la oficina de asilo no concede el asilo?', a: 'Si el solicitante no tiene un estatus migratorio válido, el caso será remitido a un tribunal de inmigración, donde tendrá una nueva oportunidad de presentar su solicitud ante un juez de inmigración.' },
     ],
     en: [
-      { q: 'What is a Green Card?', a: 'A Green Card is the document that grants lawful permanent residence in the United States.' },
-      { q: 'How can I obtain a Green Card?', a: 'We advise and represent our clients in processes to obtain lawful permanent residence through family, employment, or other available options.' },
-      { q: 'Can I apply for a Green Card through a family petition?', a: 'Yes. Our team helps clients seeking to obtain permanent residence through family petitions.' },
+      { q: 'Can an asylee return to their home country?', a: 'It is not recommended that asylum seekers or asylees return to their home country. Without prior approval, an open asylum application will be considered abandoned by USCIS.' },
+      { q: 'How long does the asylum application process take?', a: 'The time varies by jurisdiction. In some jurisdictions, applicants have waited several years, while others have been called for an interview within the first year.' },
+      { q: 'Are asylum seekers allowed to work in the United States?', a: 'Generally, after a certain number of days with a properly filed pending asylum application, the applicant may apply for an employment authorization permit. The work permit can be approved for two years.' },
+      { q: 'What happens if the asylum office does not grant asylum?', a: 'If the applicant does not have a valid immigration status, the case will be referred to immigration court, where the applicant will have another opportunity to present their asylum claim before an immigration judge.' },
     ],
   },
   ciudadania: {
     es: [
-      { q: '¿Cómo puedo obtener la ciudadanía estadounidense?', a: 'Le ayudamos guiándolo en cada paso del proceso, desde la solicitud hasta la entrevista y el examen de naturalización.' },
-      { q: '¿Qué incluye el proceso de ciudadanía?', a: 'El proceso incluye la solicitud, la entrevista y el examen de naturalización. Nuestro equipo lo acompaña en cada etapa.' },
-      { q: '¿Necesito un abogado para el proceso de ciudadanía?', a: 'Contar con representación legal le ayuda a asegurar que su solicitud cumpla con todos los requisitos y a prepararse adecuadamente para la entrevista y el examen.' },
+      { q: '¿Qué es la naturalización?', a: 'La "naturalización" es el nombre del proceso para convertirse en ciudadano estadounidense, si nació fuera de los Estados Unidos.' },
+      { q: '¿Cuánto tarda el proceso de ciudadanía?', a: 'Considerando los tiempos actuales de procesamiento, el proceso puede tardar más de un año desde la presentación de la solicitud hasta la decisión final.' },
+      { q: '¿Qué incluye la entrevista de naturalización?', a: 'Deberá asistir a una entrevista y realizar un examen donde deberá demostrar conocimiento básico sobre el sistema de gobierno y la historia de los Estados Unidos. También deberá demostrar dominio del idioma inglés.' },
+      { q: '¿Qué pasa si me mudo durante el proceso?', a: 'Si se muda, debe actualizar su dirección con el gobierno de manera inmediata mediante el formulario AR-11, el cual puede presentar en línea o en formato impreso.' },
     ],
     en: [
-      { q: 'How can I obtain U.S. citizenship?', a: 'We help you by guiding you through every step of the process, from the application to the interview and naturalization exam.' },
-      { q: 'What does the citizenship process include?', a: 'The process includes the application, interview, and naturalization exam. Our team accompanies you at every stage.' },
-      { q: 'Do I need an attorney for the citizenship process?', a: 'Having legal representation helps ensure your application meets all requirements and prepares you adequately for the interview and exam.' },
-    ],
-  },
-  asilo: {
-    es: [
-      { q: '¿Qué es el asilo?', a: 'El asilo es una forma de protección para personas que enfrentan persecución o peligro en su país de origen.' },
-      { q: '¿Cómo manejan los casos de asilo?', a: 'Brindamos apoyo legal manejando cada caso con confidencialidad y cuidado, ayudando a personas que buscan protección en los Estados Unidos.' },
-      { q: '¿El proceso de asilo es confidencial?', a: 'Sí. Manejamos su caso con confidencialidad y cuidado en todo momento.' },
-    ],
-    en: [
-      { q: 'What is asylum?', a: 'Asylum is a form of protection for individuals facing persecution or danger in their home country.' },
-      { q: 'How do you handle asylum cases?', a: 'We provide legal support handling each case with confidentiality and care, helping individuals seeking protection in the United States.' },
-      { q: 'Is the asylum process confidential?', a: 'Yes. We handle your case with confidentiality and care at all times.' },
-    ],
-  },
-  vawa: {
-    es: [
-      { q: '¿Qué es VAWA?', a: 'VAWA permite a víctimas de abuso por parte de un ciudadano o residente permanente solicitar estatus legal de forma confidencial e independiente del agresor.' },
-      { q: '¿Puedo solicitar VAWA sin que mi agresor lo sepa?', a: 'Sí. El proceso VAWA es confidencial e independiente del agresor.' },
-      { q: '¿Quién es elegible para VAWA?', a: 'Víctimas de abuso por parte de un ciudadano estadounidense o residente permanente pueden ser elegibles para solicitar estatus legal bajo VAWA.' },
-    ],
-    en: [
-      { q: 'What is VAWA?', a: 'VAWA allows victims of abuse by a U.S. citizen or permanent resident to apply for legal status confidentially and independently from the abuser.' },
-      { q: 'Can I apply for VAWA without my abuser knowing?', a: 'Yes. The VAWA process is confidential and independent from the abuser.' },
-      { q: 'Who is eligible for VAWA?', a: 'Victims of abuse by a U.S. citizen or permanent resident may be eligible to apply for legal status under VAWA.' },
-    ],
-  },
-  visaU: {
-    es: [
-      { q: '¿Qué es la Visa U?', a: 'La Visa U brinda protección y estatus legal a víctimas de ciertos delitos que han cooperado con las autoridades.' },
-      { q: '¿Necesito haber cooperado con las autoridades?', a: 'Sí. La Visa U requiere que la víctima haya cooperado con las autoridades en la investigación o persecución del delito.' },
-      { q: '¿Qué protección ofrece la Visa U?', a: 'La Visa U ofrece protección y estatus legal en los Estados Unidos para víctimas de ciertos delitos.' },
-    ],
-    en: [
-      { q: 'What is a U Visa?', a: 'The U Visa provides protection and legal status to victims of certain crimes who have cooperated with authorities.' },
-      { q: 'Do I need to have cooperated with authorities?', a: 'Yes. The U Visa requires that the victim has cooperated with authorities in the investigation or prosecution of the crime.' },
-      { q: 'What protection does the U Visa offer?', a: 'The U Visa provides protection and legal status in the United States for victims of certain crimes.' },
-    ],
-  },
-  visaT: {
-    es: [
-      { q: '¿Qué es la Visa T?', a: 'La Visa T está diseñada para víctimas de tráfico humano, brindando estatus legal y protección en los Estados Unidos.' },
-      { q: '¿El proceso de Visa T es confidencial?', a: 'Sí. Brindamos representación legal confidencial para ayudarle a obtener estatus legal y protección.' },
-      { q: '¿Quién califica para la Visa T?', a: 'Las víctimas de tráfico humano pueden calificar para la Visa T para obtener protección y estatus legal en los Estados Unidos.' },
-    ],
-    en: [
-      { q: 'What is a T Visa?', a: 'The T Visa is designed for victims of human trafficking, providing legal status and protection in the United States.' },
-      { q: 'Is the T Visa process confidential?', a: 'Yes. We provide confidential legal representation to help you obtain legal status and protection.' },
-      { q: 'Who qualifies for a T Visa?', a: 'Victims of human trafficking may qualify for a T Visa to obtain protection and legal status in the United States.' },
+      { q: 'What is naturalization?', a: 'Naturalization is the name of the process to become a U.S. citizen if you were born outside the United States.' },
+      { q: 'How long does the citizenship process take?', a: 'Considering current processing times, the process can take more than a year from the filing of the application to the final decision.' },
+      { q: 'What does the naturalization interview include?', a: 'You must attend an interview and take an exam where you must demonstrate basic knowledge of the U.S. government system and history. You must also demonstrate proficiency in the English language.' },
+      { q: 'What happens if I move during the process?', a: 'If you move, you must update your address with the government immediately using Form AR-11, which can be filed online or in print.' },
     ],
   },
   daca: {
     es: [
-      { q: '¿Qué es DACA?', a: 'DACA brinda protección contra la deportación y autorización de empleo a jóvenes elegibles.' },
-      { q: '¿Puedo renovar mi DACA?', a: 'Sí. Ayudamos a jóvenes elegibles a solicitar o renovar DACA.' },
-      { q: '¿DACA me permite trabajar legalmente?', a: 'Sí. DACA brinda autorización de empleo además de protección contra la deportación.' },
+      { q: '¿Qué beneficios ofrece DACA?', a: 'DACA permite a los beneficiarios obtener un número de Seguro Social y, en algunos estados, una licencia de conducir. Esto significa que podrá solicitar atención médica, poner servicios públicos a su nombre e incluso comenzar a construir un historial de crédito.' },
+      { q: '¿Qué significa "Acción Diferida" en DACA?', a: 'La "acción diferida" es una forma técnica de decir que el beneficiario está protegido temporalmente contra la deportación. No es un estatus legal, sino un aplazamiento indefinido de la deportación.' },
+      { q: '¿Existen riesgos al solicitar DACA?', a: 'Comenzar el proceso de solicitud sin cumplir con los criterios de elegibilidad puede causar que su solicitud sea rechazada e incluso acelerar su proceso de deportación. DACA es un estatus discrecional, lo que significa que las autoridades pueden decidir revocarlo en cualquier momento.' },
+      { q: '¿Pueden los beneficiarios de DACA viajar a otros países?', a: 'Algunos beneficiarios pueden solicitar un permiso anticipado de viaje (Advance Parole), el cual les permite salir del país sin perder su estatus DACA. Sin embargo, este documento no se aplica a todos los casos ni a todos los motivos de viaje.' },
     ],
     en: [
-      { q: 'What is DACA?', a: 'DACA provides deportation protection and employment authorization to eligible young people.' },
-      { q: 'Can I renew my DACA?', a: 'Yes. We help eligible young people apply for or renew DACA.' },
-      { q: 'Does DACA allow me to work legally?', a: 'Yes. DACA provides employment authorization in addition to deportation protection.' },
-    ],
-  },
-  tps: {
-    es: [
-      { q: '¿Qué es el Estatus de Protección Temporal?', a: 'El TPS permite a personas elegibles vivir y trabajar legalmente en los Estados Unidos.' },
-      { q: '¿Puedo renovar mi TPS?', a: 'Sí. Asistimos a personas elegibles para solicitar o renovar el Estatus de Protección Temporal.' },
-      { q: '¿El TPS me permite trabajar?', a: 'Sí. El Estatus de Protección Temporal permite vivir y trabajar legalmente en EE. UU.' },
-    ],
-    en: [
-      { q: 'What is Temporary Protected Status?', a: 'TPS allows eligible individuals to live and work legally in the United States.' },
-      { q: 'Can I renew my TPS?', a: 'Yes. We assist eligible individuals in applying for or renewing Temporary Protected Status.' },
-      { q: 'Does TPS allow me to work?', a: 'Yes. Temporary Protected Status allows you to live and work legally in the U.S.' },
-    ],
-  },
-  tramiteConsular: {
-    es: [
-      { q: '¿Qué es el trámite consular?', a: 'Es el proceso para obtener su visa desde su país de origen a través del consulado de los Estados Unidos.' },
-      { q: '¿Qué requisitos necesito cumplir?', a: 'Nos aseguramos de que su solicitud cumpla con todos los requisitos legales para el proceso consular.' },
-      { q: '¿Me ayudan con la preparación de documentos?', a: 'Sí. Le asistimos en todo el proceso consular, asegurándonos de que su solicitud esté completa y cumpla con los requisitos.' },
-    ],
-    en: [
-      { q: 'What is consular processing?', a: 'It is the process to obtain your visa from your home country through the United States consulate.' },
-      { q: 'What requirements do I need to meet?', a: 'We ensure your application meets all legal requirements for consular processing.' },
-      { q: 'Do you help with document preparation?', a: 'Yes. We assist you throughout the consular process, ensuring your application is complete and meets all requirements.' },
-    ],
-  },
-  visasPrometido: {
-    es: [
-      { q: '¿Qué es una visa de prometido(a)?', a: 'La visa de prometido(a) permite reunirse con su pareja ciudadana estadounidense y casarse legalmente en EE. UU.' },
-      { q: '¿Mi pareja debe ser ciudadano(a) estadounidense?', a: 'Sí. La visa de prometido(a) está diseñada para parejas donde uno de los miembros es ciudadano estadounidense.' },
-      { q: '¿Me guían durante todo el proceso?', a: 'Sí. Le guiamos en cada paso del proceso de visa de prometido(a) para que pueda reunirse con su pareja.' },
-    ],
-    en: [
-      { q: 'What is a fiancé visa?', a: 'A fiancé visa allows you to reunite with your U.S. citizen partner and legally marry in the U.S.' },
-      { q: 'Does my partner need to be a U.S. citizen?', a: 'Yes. The fiancé visa is designed for couples where one member is a U.S. citizen.' },
-      { q: 'Do you guide me through the entire process?', a: 'Yes. We guide you through every step of the fiancé visa process so you can reunite with your partner.' },
-    ],
-  },
-  visasJovenes: {
-    es: [
-      { q: '¿Qué es la Visa Especial para Jóvenes (SIJS)?', a: 'El SIJS brinda protección migratoria a jóvenes menores de 21 años que han sido abandonados, maltratados o descuidados.' },
-      { q: '¿Puedo solicitar residencia permanente con SIJS?', a: 'Sí. El SIJS permite solicitar la residencia permanente en los Estados Unidos.' },
-      { q: '¿Quién es elegible para SIJS?', a: 'Jóvenes menores de 21 años que han sido abandonados, maltratados o descuidados pueden ser elegibles para SIJS.' },
-    ],
-    en: [
-      { q: 'What is Special Immigrant Juvenile Status (SIJS)?', a: 'SIJS provides immigration protection to minors under 21 who have been abandoned, abused, or neglected.' },
-      { q: 'Can I apply for permanent residence with SIJS?', a: 'Yes. SIJS allows you to apply for permanent residence in the United States.' },
-      { q: 'Who is eligible for SIJS?', a: 'Minors under 21 who have been abandoned, abused, or neglected may be eligible for SIJS.' },
-    ],
-  },
-  peticionesFamiliares: {
-    es: [
-      { q: '¿Qué son las peticiones familiares?', a: 'Las peticiones familiares permiten a ciudadanos y residentes permanentes solicitar a ciertos familiares para obtener estatus legal y residencia permanente.' },
-      { q: '¿Quién puede hacer una petición familiar?', a: 'Ciudadanos y residentes permanentes de los Estados Unidos pueden solicitar a ciertos familiares.' },
-      { q: '¿Qué familiares puedo solicitar?', a: 'Ciertos familiares pueden ser solicitados por ciudadanos y residentes permanentes para obtener estatus legal y residencia permanente en EE. UU.' },
-    ],
-    en: [
-      { q: 'What are family petitions?', a: 'Family petitions allow citizens and permanent residents to petition certain family members to obtain legal status and permanent residence.' },
-      { q: 'Who can file a family petition?', a: 'U.S. citizens and permanent residents can petition for certain family members.' },
-      { q: 'Which family members can I petition for?', a: 'Certain family members can be petitioned by citizens and permanent residents to obtain legal status and permanent residence in the U.S.' },
+      { q: 'What benefits does DACA offer?', a: 'DACA allows beneficiaries to obtain a Social Security number and, in some states, a driver\'s license. This means you can apply for healthcare, put utilities in your name, and even start building a credit history.' },
+      { q: 'What does "Deferred Action" mean in DACA?', a: 'Deferred action is a technical way of saying the beneficiary is temporarily protected from deportation. It is not a legal status, but an indefinite postponement of deportation.' },
+      { q: 'Are there risks when applying for DACA?', a: 'Starting the application process without meeting eligibility criteria can cause your application to be rejected and even accelerate your deportation process. DACA is a discretionary status, meaning authorities can decide to revoke it at any time.' },
+      { q: 'Can DACA recipients travel to other countries?', a: 'Some beneficiaries can apply for Advance Parole, which allows them to leave the country without losing their DACA status. However, this document does not apply to all cases or all reasons for travel.' },
     ],
   },
   ead: {
     es: [
-      { q: '¿Qué es un permiso de trabajo (EAD)?', a: 'El permiso de trabajo permite a ciertos inmigrantes trabajar legalmente en Estados Unidos mientras su caso migratorio está en proceso.' },
-      { q: '¿Puedo trabajar mientras mi caso está en proceso?', a: 'Sí. El permiso de trabajo le permite trabajar legalmente mientras su caso migratorio está en proceso o bajo una categoría elegible.' },
-      { q: '¿Me ayudan a solicitar el permiso de trabajo?', a: 'Sí. Le ayudamos a solicitarlo correctamente para que pueda trabajar sin preocupaciones.' },
+      { q: '¿Qué es un Documento de Autorización de Empleo (EAD)?', a: 'El Formulario I-765, también conocido como Documento de Autorización de Empleo (EAD) o permiso de trabajo, le permite demostrar que está autorizado para trabajar legalmente dentro de los Estados Unidos.' },
+      { q: '¿Cuánto tiempo tarda en obtenerse un EAD?', a: 'Debido a que se trata de un proceso complejo, el tiempo de procesamiento puede ser prolongado. Su solicitud puede tardar hasta 12 meses en algunos casos.' },
+      { q: '¿Qué sucede si mi solicitud de EAD es rechazada?', a: 'Si su solicitud de EAD es denegada, recibirá una carta explicando las razones del rechazo. Es posible presentar una moción para reabrir el caso y ofrecer nueva evidencia.' },
+      { q: '¿Necesito un abogado para solicitar el EAD?', a: 'Reunir los documentos necesarios para su categoría migratoria específica y mantenerse al día con las diferentes etapas del proceso puede ser difícil sin la ayuda de un equipo de profesionales capacitados y con experiencia.' },
     ],
     en: [
-      { q: 'What is an Employment Authorization Document (EAD)?', a: 'The EAD allows certain immigrants to work legally in the United States while their immigration case is in process.' },
-      { q: 'Can I work while my case is being processed?', a: 'Yes. The employment authorization document allows you to work legally while your immigration case is in process or under an eligible category.' },
-      { q: 'Do you help me apply for the work permit?', a: 'Yes. We help you apply correctly so you can work without worry.' },
+      { q: 'What is an Employment Authorization Document (EAD)?', a: 'Form I-765, also known as the Employment Authorization Document (EAD) or work permit, allows you to prove that you are authorized to work legally within the United States.' },
+      { q: 'How long does it take to obtain an EAD?', a: 'Because it is a complex process, the processing time can be lengthy. Your application may take up to 12 months in some cases.' },
+      { q: 'What happens if my EAD application is denied?', a: 'If your EAD application is denied, you will receive a letter explaining the reasons for the rejection. It is possible to file a motion to reopen the case and offer new evidence.' },
+      { q: 'Do I need an attorney to apply for an EAD?', a: 'Gathering the necessary documents for your specific immigration category and keeping up with the different stages of the process can be difficult without the help of a qualified and experienced professional team.' },
     ],
   },
-  defensaDeportacion: {
+  tps: {
     es: [
-      { q: '¿Qué es la defensa contra la deportación?', a: 'Representamos a personas que enfrentan procedimientos de deportación ante los tribunales de inmigración.' },
-      { q: '¿Preparan defensas para estos casos?', a: 'Sí. Nuestros abogados preparan defensas sólidas para proteger su derecho a permanecer en los Estados Unidos.' },
-      { q: '¿Me representan en el tribunal de inmigración?', a: 'Sí. Representamos a personas en procedimientos de deportación ante los tribunales de inmigración.' },
+      { q: '¿Qué es el Estatus de Protección Temporal (TPS)?', a: 'El TPS ofrece a los no ciudadanos un estatus migratorio no permanente en los Estados Unidos. Protege a las personas de países designados que podrían enfrentar condiciones peligrosas o dificultades significativas si regresaran a su país de origen.' },
+      { q: '¿Quién califica para el TPS?', a: 'El solicitante debe demostrar que es ciudadano del país designado, demostrar su presencia física en los EE. UU. en la fecha de la designación, y demostrar residencia continua desde ese momento. Además, no debe ser inadmisible bajo la ley de inmigración.' },
+      { q: '¿Cómo beneficia el TPS después de ser aprobado?', a: 'El TPS protege a los titulares contra la deportación y les autoriza a trabajar legalmente en los Estados Unidos. Un titular de TPS también puede solicitar autorización para viajar al extranjero.' },
+      { q: '¿El TPS ofrece un camino hacia la residencia permanente?', a: 'La ley no permite ajustar el estatus a residente permanente únicamente por tener TPS. Sin embargo, si un titular de TPS obtiene una visa de inmigrante mientras mantiene su estatus TPS, podría ser posible convertirse en residente permanente.' },
     ],
     en: [
-      { q: 'What is deportation defense?', a: 'We represent individuals facing deportation proceedings in immigration court.' },
-      { q: 'Do you prepare defenses for these cases?', a: 'Yes. Our attorneys prepare strong defenses to protect your right to remain in the United States.' },
-      { q: 'Do you represent me in immigration court?', a: 'Yes. We represent individuals in deportation proceedings before immigration courts.' },
+      { q: 'What is Temporary Protected Status (TPS)?', a: 'TPS offers non-citizens a non-permanent immigration status in the United States. It protects people from designated countries who could face dangerous conditions or significant hardship if they returned to their home country.' },
+      { q: 'Who qualifies for TPS?', a: 'The applicant must demonstrate citizenship of the designated country, physical presence in the U.S. on the designation date, and continuous residence since that time. Additionally, they must not be inadmissible under immigration law.' },
+      { q: 'How does TPS benefit you after approval?', a: 'TPS protects holders from deportation and authorizes them to work legally in the United States. A TPS holder can also apply for authorization to travel abroad.' },
+      { q: 'Does TPS offer a path to permanent residence?', a: 'The law does not allow adjusting status to permanent resident solely for having TPS. However, if a TPS holder obtains an immigrant visa while maintaining TPS status, it may be possible to become a permanent resident.' },
+    ],
+  },
+  tramiteConsular: {
+    es: [
+      { q: '¿Qué es el procesamiento consular?', a: 'El procesamiento consular es un procedimiento mediante el cual el beneficiario de una petición de inmigración aprobada solicita una visa en uno de los consulados de los Estados Unidos en el extranjero.' },
+      { q: '¿Cuál es la diferencia entre el procesamiento consular y el ajuste de estatus?', a: 'El ajuste de estatus permite cambiar su estatus sin salir del país. El procesamiento consular requiere que el inmigrante esté físicamente presente en el país donde tiene programada su cita.' },
+      { q: '¿Cuándo debo contratar a un abogado para el proceso consular?', a: 'Lo ideal es que contacte a un abogado lo antes posible. El proceso consular puede ser muy complicado, y un error podría hacerle perder tiempo valioso o poner en riesgo su posibilidad de ingresar a los Estados Unidos en el futuro.' },
+    ],
+    en: [
+      { q: 'What is consular processing?', a: 'Consular processing is a procedure whereby the beneficiary of an approved immigration petition applies for a visa at one of the United States consulates abroad.' },
+      { q: 'What is the difference between consular processing and adjustment of status?', a: 'Adjustment of status allows you to change your status without leaving the country. Consular processing requires the immigrant to be physically present in the country where the appointment is scheduled.' },
+      { q: 'When should I hire an attorney for consular processing?', a: 'Ideally, you should contact an attorney as soon as possible. Consular processing can be very complicated, and a mistake could cost you valuable time or jeopardize your ability to enter the United States in the future.' },
+    ],
+  },
+  vawa: {
+    es: [
+      { q: '¿Qué es una Auto-Petición VAWA?', a: 'VAWA creó una vía especial para obtener estatus migratorio legal para víctimas de abuso doméstico que normalmente tendrían que depender de sus abusadores para solicitar estatus migratorio. La auto-petición permite que las víctimas soliciten el estatus por su cuenta, sin necesidad del abusador.' },
+      { q: '¿Quién es elegible para VAWA?', a: 'Las auto-peticiones VAWA están disponibles para cónyuges o ex cónyuges de ciudadanos estadounidenses o residentes permanentes legales abusivos. Los hijos de ciudadanos o residentes permanentes abusivos también pueden solicitar antes de cumplir 25 años.' },
+      { q: '¿Qué debe demostrar el solicitante de VAWA?', a: 'Además de demostrar abuso, el solicitante debe probar matrimonio de buena fe si el abusador es un cónyuge, la relación con el abusador, el estatus migratorio del abusador, buen carácter moral, y que residió con el familiar abusivo.' },
+    ],
+    en: [
+      { q: 'What is a VAWA Self-Petition?', a: 'VAWA created a special pathway for victims of domestic abuse to obtain legal immigration status who would normally have to depend on their abusers to apply for immigration status. The self-petition allows victims to apply on their own, without the abuser.' },
+      { q: 'Who is eligible for VAWA?', a: 'VAWA self-petitions are available for spouses or former spouses of abusive U.S. citizens or lawful permanent residents. Children of abusive citizens or permanent residents can also apply before turning 25.' },
+      { q: 'What must a VAWA applicant demonstrate?', a: 'In addition to demonstrating abuse, the applicant must prove good faith marriage if the abuser is a spouse, the relationship with the abuser, the abuser\'s immigration status, good moral character, and that they resided with the abusive family member.' },
+    ],
+  },
+  visaU: {
+    es: [
+      { q: '¿Qué es la Visa U?', a: 'La Visa U es una visa no inmigrante para víctimas de ciertos delitos que han sufrido abuso físico o mental y que pueden ayudar a las autoridades de los Estados Unidos a investigar o enjuiciar actividades criminales.' },
+      { q: '¿Quién es elegible para una Visa U?', a: 'Debe ser víctima de ciertos delitos especificados, poseer información relacionada con la actividad criminal, haber ayudado o ser probable que ayude a una agencia gubernamental en la investigación del delito, y haber sufrido abuso físico o mental sustancial como resultado.' },
+      { q: '¿Pueden las víctimas de Visa U obtener residencia permanente?', a: 'Las víctimas de crimen pueden eventualmente calificar para una residencia permanente (Green Card) en el futuro, pero primero deben obtener el estatus no inmigrante U.' },
+    ],
+    en: [
+      { q: 'What is a U Visa?', a: 'The U Visa is a nonimmigrant visa for victims of certain crimes who have suffered physical or mental abuse and can help U.S. authorities investigate or prosecute criminal activity.' },
+      { q: 'Who is eligible for a U Visa?', a: 'You must be a victim of certain specified crimes, possess information related to the criminal activity, have helped or be likely to help a government agency in the investigation, and have suffered substantial physical or mental abuse as a result.' },
+      { q: 'Can U Visa victims obtain permanent residence?', a: 'Crime victims may eventually qualify for permanent residence (Green Card) in the future, but they must first obtain U nonimmigrant status.' },
+    ],
+  },
+  visaT: {
+    es: [
+      { q: '¿Qué es una Visa T?', a: 'La Visa T fue creada para ofrecer alivio migratorio a las víctimas de formas graves de trata de personas. Protege a los beneficiarios de la deportación y les otorga permiso para trabajar en los Estados Unidos.' },
+      { q: '¿Quién es elegible para una Visa T?', a: 'Es elegible si es víctima de una forma grave de trata de personas (sexual o laboral), se encuentra físicamente presente en EE. UU. como resultado directo de la trata, colabora con las autoridades en la investigación, y puede demostrar que sufriría dificultades extremas si fuera removida del país.' },
+      { q: '¿Qué beneficios reciben los solicitantes de Visa T?', a: 'Los solicitantes de buena fe tienen acceso a los mismos beneficios que los refugiados, incluyendo asistencia económica, ayuda alimentaria y capacitación laboral. El cónyuge y los hijos solteros menores de edad también pueden calificar como familiares dependientes.' },
+    ],
+    en: [
+      { q: 'What is a T Visa?', a: 'The T Visa was created to provide immigration relief to victims of severe forms of human trafficking. It protects beneficiaries from deportation and grants them permission to work in the United States.' },
+      { q: 'Who is eligible for a T Visa?', a: 'You are eligible if you are a victim of a severe form of human trafficking (sexual or labor), are physically present in the U.S. as a direct result of trafficking, cooperate with authorities in the investigation, and can demonstrate extreme hardship if removed from the country.' },
+      { q: 'What benefits do T Visa applicants receive?', a: 'Good faith applicants have access to the same benefits as refugees, including financial assistance, food assistance, and job training. The spouse and unmarried minor children may also qualify as derivative family members.' },
     ],
   },
 }
 
 /**
  * Resolves a slug to its base service data.
- * Handles both base slugs (e.g., "green-card") and location slugs (e.g., "green-card-new-orleans").
+ * Supports:
+ *   resolveServiceSlug('green-card')              → base service
+ *   resolveServiceSlug('green-card-new-orleans')   → location via suffix (legacy)
+ *   resolveServiceSlug('green-card', 'metairie')   → location via separate param
  *
- * @param {string} slug - The route slug
+ * @param {string} slug - The route slug (or service slug when locationSlug provided)
+ * @param {string} [locationSlug] - Optional location slug from path param
  * @returns {{ service: object, location: object|null, baseSlug: string } | null}
  */
-export function resolveServiceSlug(slug) {
+export function resolveServiceSlug(slug, locationSlug) {
+  // Path-based location: /servicios/:service/:location
+  if (locationSlug) {
+    if (!baseServices[slug]) return null
+    const loc = locations.find(l => l.slug === locationSlug)
+    return { service: baseServices[slug], location: loc || null, baseSlug: slug }
+  }
+
   // Direct match - base service
   if (baseServices[slug]) {
     return { service: baseServices[slug], location: null, baseSlug: slug }
   }
 
-  // Try to match location suffix
+  // Try to match location suffix (legacy URLs like green-card-new-orleans)
   for (const loc of locations) {
     const suffix = `-${loc.slug}`
     if (slug.endsWith(suffix)) {

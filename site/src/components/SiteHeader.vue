@@ -35,14 +35,14 @@
                   :to="`/servicios/${service.slug}`"
                   class="flex items-center gap-4 px-5 py-4 rounded-xl transition-all group/item"
                   :class="navSolid
-                    ? 'text-gray-600 hover:text-brand-navy hover:bg-brand-navy/5'
-                    : 'text-white/70 hover:text-brand-navy hover:bg-white/5'"
+                    ? 'text-gray-600 hover:text-brand-navy hover:bg-brand-navy/8'
+                    : 'text-white/70 hover:text-white hover:bg-white/10'"
                   @click="showServices = false">
                   <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors"
                     :class="navSolid ? 'bg-brand-navy/8' : 'bg-white/8'">
                     <i :class="[service.icon, 'text-lg transition-colors', navSolid
                         ? 'text-brand-navy/50 group-hover/item:text-brand-navy'
-                        : 'text-brand-navy/60 group-hover/item:text-brand-navy']"></i>
+                        : 'text-white/40 group-hover/item:text-white']"></i>
                   </div>
                   <span class="font-[var(--font-ui)] text-base font-semibold">{{ $t(`services.${service.key}`) }}</span>
                 </router-link>
@@ -216,10 +216,10 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
   background: rgba(0,63,141,0.06);
 }
 
-.mega-enter-active { transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-.mega-leave-active { transition: all 0.15s ease; }
-.mega-enter-from, .mega-leave-to { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(0.97); }
-.mega-enter-to { transform: translateX(-50%) translateY(0) scale(1); }
+.mega-enter-active { transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+.mega-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
+.mega-enter-from, .mega-leave-to { opacity: 0; transform: translateX(-50%) translateY(6px); }
+.mega-enter-to, .mega-leave-from { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 .mobile-nav-enter-active { transition: opacity 0.4s ease; }
 .mobile-nav-leave-active { transition: opacity 0.2s ease; }

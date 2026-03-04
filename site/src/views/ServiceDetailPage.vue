@@ -35,27 +35,37 @@
     <section class="py-20 bg-white">
       <div class="max-w-4xl mx-auto px-6">
         <div class="reveal">
-          <p class="text-gray-600 text-2xl md:text-3xl leading-relaxed font-[var(--font-body)] mb-12">
+          <p class="text-gray-600 text-2xl md:text-3xl leading-relaxed font-[var(--font-body)] mb-8">
             {{ pageDescription }}
           </p>
 
+          <!-- Location service area note -->
+          <p v-if="locationData" class="text-gray-500 text-lg font-[var(--font-ui)] mb-12 flex items-center gap-2">
+            <i class="fa-solid fa-map-marker-alt text-brand-navy/40"></i>
+            {{ locale === 'es'
+              ? `Atendemos clientes ${locationData.contextEs}.`
+              : `Serving clients ${locationData.contextEn}.` }}
+          </p>
+          <div v-else class="mb-4"></div>
+
           <!-- Video -->
           <div v-if="hasVideo" class="rounded-2xl overflow-hidden mb-12 shadow-lg">
-            <div class="aspect-video relative bg-black">
-              <!-- Thumbnail: actual video frame via preload -->
-              <video
-                v-if="!videoPlaying"
-                :src="videoFile"
-                class="absolute inset-0 w-full h-full object-contain"
-                preload="metadata"
-                muted
-                playsinline
-              ></video>
-              <!-- Play overlay on top of thumbnail -->
+            <div class="aspect-video relative bg-brand-navy">
+              <!-- Branded thumbnail cover -->
+              <div v-if="!videoPlaying" class="absolute inset-0 bg-gradient-to-br from-brand-navy via-brand-navy-light to-brand-navy flex items-center justify-center">
+                <img src="/logo.png" alt="" class="absolute opacity-[0.08] w-[60%] max-w-[400px] pointer-events-none select-none" />
+                <div class="absolute top-6 left-6">
+                  <i :class="serviceIcon" class="text-4xl text-white/20"></i>
+                </div>
+                <div class="absolute bottom-6 left-6 right-6">
+                  <p class="text-white/40 text-sm font-[var(--font-ui)] tracking-wider uppercase">{{ serviceName }}</p>
+                </div>
+              </div>
+              <!-- Play button overlay -->
               <div v-if="!videoPlaying" @click="playVideo"
-                class="absolute inset-0 flex items-center justify-center cursor-pointer group z-10 bg-black/40">
+                class="absolute inset-0 flex items-center justify-center cursor-pointer group z-10">
                 <div class="text-center">
-                  <div class="w-24 h-24 md:w-32 md:h-32 rounded-full bg-brand-navy/80 flex items-center justify-center mx-auto mb-4 group-hover:bg-brand-navy group-hover:scale-110 transition-all duration-300 ring-2 ring-white/30 shadow-xl">
+                  <div class="w-24 h-24 md:w-28 md:h-28 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center mx-auto mb-4 group-hover:bg-white/30 group-hover:scale-110 transition-all duration-300 ring-2 ring-white/30 shadow-2xl">
                     <i class="fa-solid fa-play text-white text-3xl md:text-4xl ml-1.5"></i>
                   </div>
                   <p class="text-white text-lg md:text-xl font-[var(--font-ui)] font-semibold tracking-wider uppercase drop-shadow-lg">
@@ -150,11 +160,17 @@ import {
 } from '../data/seoServices.js'
 
 useScrollReveal()
-const props = defineProps({ slug: String })
+const props = defineProps({ slug: String, service: String, location: String })
 const { t, locale } = useI18n()
 
 // Resolve slug to service + optional location
+// Supports both /servicios/:slug and /servicios/:service/:location
 const resolved = computed(() => {
+  // Path-based location: /servicios/green-card/metairie
+  if (props.service && props.location) {
+    return resolveServiceSlug(props.service, props.location) || { service: { key: 'greenCard', icon: 'fa-solid fa-id-card', video: false }, location: null, baseSlug: 'green-card' }
+  }
+  // Single slug: /servicios/green-card or /servicios/green-card-new-orleans (legacy)
   return resolveServiceSlug(props.slug) || { service: { key: 'greenCard', icon: 'fa-solid fa-id-card', video: false }, location: null, baseSlug: 'green-card' }
 })
 
@@ -232,8 +248,8 @@ function playVideo() {
   })
 }
 
-// Reset video when slug changes
-watch(() => props.slug, () => {
+// Reset video when route changes
+watch(() => [props.slug, props.service, props.location], () => {
   videoPlaying.value = false
 })
 </script>
