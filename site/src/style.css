@@ -265,6 +265,41 @@
   transition: transform 0.1s linear;
 }
 
+/* Form utilities (shared by ContactPage and admin views) */
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+.form-label {
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(107, 114, 128, 1);
+  margin-bottom: 0.5rem;
+}
+.form-input {
+  width: 100%;
+  padding: 1rem 1.25rem;
+  background: white;
+  border: 1px solid rgba(209, 213, 219, 1);
+  border-radius: 0.75rem;
+  color: #1a1a1a;
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  transition: all 0.3s;
+}
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-brand-navy);
+  box-shadow: 0 0 0 3px rgba(0, 63, 141, 0.1);
+  background: white;
+}
+.form-input::placeholder {
+  color: rgba(156, 163, 175, 1);
+}
+
 /* Elfsight Google Reviews wrapper */
 .elfsight-reviews-wrapper {
   background: white;

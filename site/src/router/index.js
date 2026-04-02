@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuth } from '../composables/useAuth.js'
 
 const routes = [
   { path: '/', redirect: '/home' },
@@ -11,6 +12,8 @@ const routes = [
   { path: '/acerca-de', name: 'About', component: () => import('../views/AboutPage.vue') },
   { path: '/el-equipo', name: 'Team', component: () => import('../views/TeamPage.vue') },
   { path: '/el-equipo/:member', name: 'TeamMember', component: () => import('../views/TeamMemberPage.vue'), props: true },
+  { path: '/admin/login', name: 'AdminLogin', component: () => import('../views/AdminLogin.vue') },
+  { path: '/admin', name: 'AdminDashboard', component: () => import('../views/AdminDashboard.vue'), meta: { requiresAuth: true } },
   { path: '/:pathMatch(.*)*', redirect: '/home' },
 ]
 
@@ -20,6 +23,24 @@ const router = createRouter({
   scrollBehavior() {
     return { top: 0 }
   },
+})
+
+router.beforeEach(async (to) => {
+  const { verify, isAuthenticated } = useAuth()
+
+  if (to.meta.requiresAuth) {
+    await verify()
+    if (!isAuthenticated.value) {
+      return { name: 'AdminLogin' }
+    }
+  }
+
+  if (to.name === 'AdminLogin') {
+    await verify()
+    if (isAuthenticated.value) {
+      return { name: 'AdminDashboard' }
+    }
+  }
 })
 
 export default router

@@ -22,66 +22,49 @@
           <!-- Form - takes 7 cols -->
           <div class="lg:col-span-7 reveal-left">
             <form @submit.prevent="submitForm" class="space-y-6">
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div class="form-group">
-                  <label class="form-label">{{ $t('contact.firstName') }} <span class="text-brand-red">*</span></label>
-                  <input v-model="form.firstName" type="text" required maxlength="100" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">{{ $t('contact.lastName') }} <span class="text-brand-red">*</span></label>
-                  <input v-model="form.lastName" type="text" required maxlength="100" class="form-input" />
-                </div>
+              <div class="form-group">
+                <label class="form-label">{{ $t('contact.name') }} <span class="text-brand-red">*</span></label>
+                <input v-model="form.name" type="text" required maxlength="255" class="form-input" />
               </div>
 
               <div class="form-group">
                 <label class="form-label">{{ $t('contact.email') }} <span class="text-brand-red">*</span></label>
-                <input v-model="form.email" type="email" required maxlength="250" class="form-input" />
+                <input v-model="form.email" type="email" required maxlength="255" class="form-input" />
               </div>
 
               <div class="form-group">
-                <label class="form-label">{{ $t('contact.consultationType') }} <span class="text-brand-red">*</span></label>
-                <input v-model="form.consultationType" type="text" required class="form-input" />
-              </div>
-
-              <div class="grid grid-cols-4 gap-4">
-                <div class="form-group">
-                  <label class="form-label">{{ $t('contact.countryCode') }}</label>
-                  <select v-model="form.countryCode" class="form-input">
-                    <option value="+1">US +1</option>
-                    <option value="+52">MX +52</option>
-                    <option value="+502">GT +502</option>
-                    <option value="+503">SV +503</option>
-                    <option value="+504">HN +504</option>
-                    <option value="+505">NI +505</option>
-                    <option value="+506">CR +506</option>
-                    <option value="+507">PA +507</option>
-                    <option value="+57">CO +57</option>
-                    <option value="+58">VE +58</option>
-                    <option value="+51">PE +51</option>
-                    <option value="+55">BR +55</option>
-                  </select>
-                </div>
-                <div class="col-span-3 form-group">
-                  <label class="form-label">{{ $t('contact.phone') }} <span class="text-brand-red">*</span></label>
-                  <input v-model="form.phone" type="tel" required class="form-input" />
-                </div>
+                <label class="form-label">{{ $t('contact.phone') }} <span class="text-brand-red">*</span></label>
+                <input v-model="form.phone" type="tel" required maxlength="50" class="form-input" />
               </div>
 
               <div class="form-group">
-                <label class="form-label">{{ $t('contact.message') }}</label>
-                <textarea v-model="form.message" rows="4" class="form-input resize-none"></textarea>
+                <label class="form-label">{{ $t('contact.message') }} <span class="text-brand-red">*</span></label>
+                <textarea v-model="form.message" rows="4" required maxlength="5000" class="form-input resize-none"></textarea>
               </div>
 
-              <button type="submit"
-                class="w-full bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-base py-5 rounded-xl btn-magnetic">
-                {{ $t('contact.submit') }}
-                <i class="fa-solid fa-paper-plane ml-2 text-sm"></i>
+              <button type="submit" :disabled="loading"
+                class="w-full bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-base py-5 rounded-xl btn-magnetic disabled:opacity-50 disabled:cursor-not-allowed">
+                <span v-if="loading">
+                  <i class="fa-solid fa-spinner fa-spin mr-2 text-sm"></i>{{ $t('contact.sending') }}
+                </span>
+                <span v-else>
+                  {{ $t('contact.submit') }}
+                  <i class="fa-solid fa-paper-plane ml-2 text-sm"></i>
+                </span>
               </button>
 
               <transition name="fade">
                 <div v-if="submitted" class="p-4 rounded-xl bg-green-50 border border-green-200 text-center">
                   <p class="text-green-600 text-base font-[var(--font-ui)]">
                     <i class="fa-solid fa-check-circle mr-2"></i>{{ $t('contact.successMessage') }}
+                  </p>
+                </div>
+              </transition>
+
+              <transition name="fade">
+                <div v-if="error" class="p-4 rounded-xl bg-red-50 border border-red-200 text-center">
+                  <p class="text-red-600 text-base font-[var(--font-ui)]">
+                    <i class="fa-solid fa-exclamation-circle mr-2"></i>{{ $t('contact.errorMessage') }}
                   </p>
                 </div>
               </transition>
@@ -188,8 +171,12 @@ import { useScrollReveal } from '../composables/useScrollReveal.js'
 useScrollReveal()
 const { t } = useI18n()
 
-const form = ref({ firstName: '', lastName: '', email: '', consultationType: '', countryCode: '+1', phone: '', message: '' })
+const form = ref({ name: '', email: '', phone: '', message: '' })
 const submitted = ref(false)
+const loading = ref(false)
+const error = ref(false)
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
 const socials = [
   { icon: 'fa-brands fa-whatsapp', href: 'https://wa.me/15049106508', label: 'WhatsApp', color: '#25D366' },
@@ -205,42 +192,35 @@ const contactCards = computed(() => [
   { titleKey: 'correo', icon: 'fa-solid fa-envelope', content: '<a href="mailto:office@camulaw.com" class="hover:text-[var(--color-brand-navy)] transition-colors">office@camulaw.com</a>' },
 ])
 
-function submitForm() {
-  submitted.value = true
-  form.value = { firstName: '', lastName: '', email: '', consultationType: '', countryCode: '+1', phone: '', message: '' }
-  setTimeout(() => { submitted.value = false }, 5000)
+async function submitForm() {
+  loading.value = true
+  error.value = false
+
+  try {
+    const res = await fetch(`${API_BASE}/api/submissions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(form.value),
+    })
+
+    if (!res.ok) {
+      throw new Error('Submission failed')
+    }
+
+    submitted.value = true
+    form.value = { name: '', email: '', phone: '', message: '' }
+    setTimeout(() => { submitted.value = false }, 5000)
+  } catch {
+    error.value = true
+    setTimeout(() => { error.value = false }, 5000)
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
 <style scoped>
-.form-group { display: flex; flex-direction: column; }
-.form-label {
-  font-family: var(--font-ui);
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(107,114,128,1);
-  margin-bottom: 0.5rem;
-}
-.form-input {
-  width: 100%;
-  padding: 1rem 1.25rem;
-  background: white;
-  border: 1px solid rgba(209,213,219,1);
-  border-radius: 0.75rem;
-  color: #1a1a1a;
-  font-family: var(--font-ui);
-  font-size: 1rem;
-  transition: all 0.3s;
-}
-.form-input:focus {
-  outline: none;
-  border-color: var(--color-brand-navy);
-  box-shadow: 0 0 0 3px rgba(0, 63, 141, 0.1);
-  background: white;
-}
-.form-input::placeholder { color: rgba(156,163,175,1); }
 .fade-enter-active { transition: all 0.4s ease; }
 .fade-leave-active { transition: all 0.2s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(8px); }
