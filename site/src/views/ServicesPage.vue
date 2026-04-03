@@ -28,6 +28,7 @@
               :src="service.image"
               :alt="$t(`services.${service.key}`)"
               class="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-70 group-hover:scale-[1.03] transition-all duration-700 ease-out"
+              :style="service.position ? { objectPosition: service.position } : {}"
               loading="lazy"
             />
 
@@ -67,18 +68,18 @@ useScrollReveal()
 
 const services = [
   { key: 'greenCard', slug: 'green-card', image: '/services/green-card.jpg' },
-  { key: 'peticionesFamiliares', slug: 'peticiones-familiares', image: '/services/peticiones-familiares.jpg' },
+  { key: 'peticionesFamiliares', slug: 'peticiones-familiares', image: '/services/peticiones-familiares.png' },
   { key: 'ciudadania', slug: 'ciudadania', image: '/services/ciudadania.jpg' },
   { key: 'defensaDeportacion', slug: 'defensa-contra-la-deportacion', image: '/services/defensa-deportacion.jpg' },
   { key: 'visasJovenes', slug: 'visas-especial-para-jovenes', image: '/services/visas-jovenes.jpg' },
-  { key: 'visasPrometido', slug: 'visas-de-prometido', image: '/services/visas-prometido.jpg' },
+  { key: 'visasPrometido', slug: 'visas-de-prometido', image: '/services/visas-prometido.jpg', position: 'center 40%' },
   { key: 'asilo', slug: 'asilo', image: '/services/asilo.jpg' },
   { key: 'vawa', slug: 'vawa', image: '/services/vawa.png' },
   { key: 'daca', slug: 'daca', image: '/services/daca.jpg' },
-  { key: 'tramiteConsular', slug: 'tramite-consular', image: '/services/tramite-consular.jpg' },
-  { key: 'ead', slug: 'ead', image: '/services/ead.png' },
+  { key: 'tramiteConsular', slug: 'tramite-consular', image: '/services/tramite-consular.png' },
+  { key: 'ead', slug: 'ead', image: '/services/ead.png', position: 'center 30%' },
   { key: 'tps', slug: 'estatus-de-proteccion-temporal', image: '/services/tps.jpg' },
-  { key: 'visaU', slug: 'visa-u', image: '/services/visa-u.jpg' },
+  { key: 'visaU', slug: 'visa-u', image: '/services/visa-u.png' },
   { key: 'visaT', slug: 'visa-t', image: '/services/visa-t.jpg' },
 ]
 </script>
