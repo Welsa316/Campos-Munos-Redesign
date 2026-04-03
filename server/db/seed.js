@@ -33,30 +33,30 @@ async function seed() {
     const day = 24 * hour
 
     const submissions = [
-      { name: 'Maria Garcia', email: 'maria.garcia@gmail.com', phone: '504-555-1234', message: 'Buenas tardes. Necesito informacion sobre el proceso de asilo para mi familia. Llegamos de Guatemala hace 6 meses y no sabemos cuales son los siguientes pasos. Agradeceria mucho una consulta.', is_read: true, ago: 2.5 * day },
-      { name: 'Carlos Rodriguez', email: 'carlos.r@hotmail.com', phone: '504-555-2345', message: 'Hello, I am interested in learning about the DACA renewal process. My permit expires in 3 months and I want to make sure I file everything on time. Can we schedule a consultation?', is_read: true, ago: 2 * day },
-      { name: 'Ana Martinez', email: 'ana.martinez@yahoo.com', phone: '504-555-3456', message: 'Hola, mi esposo es ciudadano americano y queremos empezar el proceso de la green card para mi. Cuanto tiempo toma el proceso y cuales son los costos? Gracias.', is_read: true, ago: 1.8 * day },
-      { name: 'Roberto Sanchez', email: 'roberto.s@gmail.com', phone: '504-555-4567', message: 'I received a notice to appear in immigration court next month. I need legal representation urgently. Please let me know your availability as soon as possible.', is_read: false, ago: 1.2 * day },
-      { name: 'Laura Hernandez', email: 'laura.h@outlook.com', phone: '504-555-5678', message: 'Buenas noches. Tengo una pregunta sobre la visa U para victimas de crimen. Fui victima de un robo y la policia hizo un reporte. Califico para esta visa?', is_read: false, ago: 1 * day },
-      { name: 'Jose Ramirez', email: 'jose.ramirez@gmail.com', phone: '504-555-6789', message: 'Hi, I am a business owner and I want to sponsor an employee for a work visa. Can you help me understand the H-1B process and what documentation I need to prepare?', is_read: false, ago: 18 * hour },
-      { name: 'Diana Flores', email: 'diana.f@icloud.com', phone: '504-555-7890', message: 'Necesito ayuda con la peticion de mis padres. Soy ciudadana americana y quiero traer a mis padres de Honduras. Cuanto tiempo toma este proceso actualmente?', is_read: false, ago: 8 * hour },
-      { name: 'Miguel Torres', email: 'miguel.t@gmail.com', phone: '504-555-8901', message: 'Good morning. I have TPS and heard there might be changes to the program soon. I want to explore other options for permanent residency. Can we discuss my case?', is_read: false, ago: 3 * hour },
-      { name: 'Sofia Mendez', email: 'sofia.mendez@gmail.com', phone: '504-555-9012', message: 'Hola, quisiera saber si ofrecen planes de pago para sus servicios legales. Necesito ayuda con mi caso de inmigracion pero mi situacion economica es dificil en este momento.', is_read: false, ago: 1 * hour },
+      { firstName: 'Maria', lastName: 'Garcia', email: 'maria.garcia@gmail.com', phone: '504-555-1234', message: 'Buenas tardes. Necesito informacion sobre el proceso de asilo para mi familia. Llegamos de Guatemala hace 6 meses y no sabemos cuales son los siguientes pasos. Agradeceria mucho una consulta.', is_read: true, ago: 2.5 * day },
+      { firstName: 'Carlos', lastName: 'Rodriguez', email: 'carlos.r@hotmail.com', phone: '504-555-2345', message: 'Hello, I am interested in learning about the DACA renewal process. My permit expires in 3 months and I want to make sure I file everything on time. Can we schedule a consultation?', is_read: true, ago: 2 * day },
+      { firstName: 'Ana', lastName: 'Martinez', email: 'ana.martinez@yahoo.com', phone: '504-555-3456', message: 'Hola, mi esposo es ciudadano americano y queremos empezar el proceso de la green card para mi. Cuanto tiempo toma el proceso y cuales son los costos? Gracias.', is_read: true, ago: 1.8 * day },
+      { firstName: 'Roberto', lastName: 'Sanchez', email: 'roberto.s@gmail.com', phone: '504-555-4567', message: 'I received a notice to appear in immigration court next month. I need legal representation urgently. Please let me know your availability as soon as possible.', is_read: false, ago: 1.2 * day },
+      { firstName: 'Laura', lastName: 'Hernandez', email: 'laura.h@outlook.com', phone: '504-555-5678', message: 'Buenas noches. Tengo una pregunta sobre la visa U para victimas de crimen. Fui victima de un robo y la policia hizo un reporte. Califico para esta visa?', is_read: false, ago: 1 * day },
+      { firstName: 'Jose', lastName: 'Ramirez', email: 'jose.ramirez@gmail.com', phone: '504-555-6789', message: 'Hi, I am a business owner and I want to sponsor an employee for a work visa. Can you help me understand the H-1B process and what documentation I need to prepare?', is_read: false, ago: 18 * hour },
+      { firstName: 'Diana', lastName: 'Flores', email: 'diana.f@icloud.com', phone: '504-555-7890', message: 'Necesito ayuda con la peticion de mis padres. Soy ciudadana americana y quiero traer a mis padres de Honduras. Cuanto tiempo toma este proceso actualmente?', is_read: false, ago: 8 * hour },
+      { firstName: 'Miguel', lastName: 'Torres', email: 'miguel.t@gmail.com', phone: '504-555-8901', message: 'Good morning. I have TPS and heard there might be changes to the program soon. I want to explore other options for permanent residency. Can we discuss my case?', is_read: false, ago: 3 * hour },
+      { firstName: 'Sofia', lastName: 'Mendez', email: 'sofia.mendez@gmail.com', phone: '504-555-9012', message: 'Hola, quisiera saber si ofrecen planes de pago para sus servicios legales. Necesito ayuda con mi caso de inmigracion pero mi situacion economica es dificil en este momento.', is_read: false, ago: 1 * hour },
     ]
 
     for (const sub of submissions) {
       const ts = new Date(now - sub.ago).toISOString()
       await client.query(
-        `INSERT INTO submissions (name, email, phone, message, is_read, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [sub.name, sub.email, sub.phone, sub.message, sub.is_read, ts]
+        `INSERT INTO submissions (first_name, last_name, email, phone, message, is_read, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [sub.firstName, sub.lastName, sub.email, sub.phone, sub.message, sub.is_read, ts]
       )
     }
     console.log(`Seeded ${submissions.length} submissions.`)
 
     // Seed replies for read submissions
     const readSubmissions = await client.query(
-      `SELECT id, name, created_at FROM submissions WHERE is_read = true ORDER BY created_at ASC`
+      `SELECT id, first_name, last_name, created_at FROM submissions WHERE is_read = true ORDER BY created_at ASC`
     )
 
     if (readSubmissions.rows.length >= 2) {

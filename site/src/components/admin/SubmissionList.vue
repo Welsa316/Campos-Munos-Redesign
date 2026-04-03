@@ -55,7 +55,7 @@
           <div class="flex-1 min-w-0">
             <div class="flex items-baseline justify-between gap-2 mb-1">
               <span :class="['font-ui text-sm truncate', sub.is_read ? 'text-gray-700' : 'text-gray-900 font-semibold']">
-                {{ sub.name }}
+                {{ sub.first_name }} {{ sub.last_name }}
               </span>
               <span class="text-xs text-gray-400 font-ui flex-shrink-0">
                 {{ relativeTime(sub.created_at) }}

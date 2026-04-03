@@ -22,9 +22,15 @@
           <!-- Form - takes 7 cols -->
           <div class="lg:col-span-7 reveal-left">
             <form @submit.prevent="submitForm" class="space-y-6">
-              <div class="form-group">
-                <label class="form-label">{{ $t('contact.name') }} <span class="text-brand-red">*</span></label>
-                <input v-model="form.name" type="text" required maxlength="255" class="form-input" />
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div class="form-group">
+                  <label class="form-label">{{ $t('contact.firstName') }} <span class="text-brand-red">*</span></label>
+                  <input v-model="form.firstName" type="text" required maxlength="255" class="form-input" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">{{ $t('contact.lastName') }} <span class="text-brand-red">*</span></label>
+                  <input v-model="form.lastName" type="text" required maxlength="255" class="form-input" />
+                </div>
               </div>
 
               <div class="form-group">
@@ -171,7 +177,7 @@ import { useScrollReveal } from '../composables/useScrollReveal.js'
 useScrollReveal()
 const { t } = useI18n()
 
-const form = ref({ name: '', email: '', phone: '', message: '' })
+const form = ref({ firstName: '', lastName: '', email: '', phone: '', message: '' })
 const submitted = ref(false)
 const loading = ref(false)
 const error = ref(false)
@@ -209,7 +215,7 @@ async function submitForm() {
     }
 
     submitted.value = true
-    form.value = { name: '', email: '', phone: '', message: '' }
+    form.value = { firstName: '', lastName: '', email: '', phone: '', message: '' }
     setTimeout(() => { submitted.value = false }, 5000)
   } catch {
     error.value = true

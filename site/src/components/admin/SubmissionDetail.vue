@@ -13,7 +13,7 @@
       <div class="p-6 border-b border-gray-100 flex-shrink-0">
         <div class="flex items-start justify-between">
           <div>
-            <h2 class="font-heading text-2xl text-gray-900 mb-1">{{ submission.name }}</h2>
+            <h2 class="font-heading text-2xl text-gray-900 mb-1">{{ submission.first_name }} {{ submission.last_name }}</h2>
             <div class="flex items-center gap-4 text-sm font-ui">
               <a :href="'mailto:' + submission.email" class="text-brand-navy hover:text-brand-navy-light transition-colors">
                 <i class="fa-solid fa-envelope mr-1.5 text-xs"></i>{{ submission.email }}

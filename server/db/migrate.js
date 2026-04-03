@@ -21,13 +21,26 @@ async function migrate() {
 
       CREATE TABLE IF NOT EXISTS submissions (
         id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
+        first_name VARCHAR(255) NOT NULL,
+        last_name VARCHAR(255) NOT NULL,
         email VARCHAR(255) NOT NULL,
         phone VARCHAR(50) NOT NULL,
         message TEXT NOT NULL,
         is_read BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
+
+      -- Migration: rename name to first_name/last_name if upgrading
+      DO $$ BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'submissions' AND column_name = 'name') THEN
+          ALTER TABLE submissions ADD COLUMN IF NOT EXISTS first_name VARCHAR(255);
+          ALTER TABLE submissions ADD COLUMN IF NOT EXISTS last_name VARCHAR(255);
+          UPDATE submissions SET first_name = split_part(name, ' ', 1), last_name = substring(name from position(' ' in name) + 1) WHERE first_name IS NULL;
+          ALTER TABLE submissions ALTER COLUMN first_name SET NOT NULL;
+          ALTER TABLE submissions ALTER COLUMN last_name SET NOT NULL;
+          ALTER TABLE submissions DROP COLUMN name;
+        END IF;
+      END $$;
 
       CREATE TABLE IF NOT EXISTS replies (
         id SERIAL PRIMARY KEY,

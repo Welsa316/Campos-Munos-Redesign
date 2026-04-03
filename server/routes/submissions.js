@@ -20,7 +20,8 @@ const submitLimiter = rateLimit({
 router.post(
   '/',
   submitLimiter,
-  body('name').trim().notEmpty().isLength({ max: 255 }).withMessage('Name is required (max 255 chars)'),
+  body('firstName').trim().notEmpty().isLength({ max: 255 }).withMessage('First name is required (max 255 chars)'),
+  body('lastName').trim().notEmpty().isLength({ max: 255 }).withMessage('Last name is required (max 255 chars)'),
   body('email').isEmail().normalizeEmail().isLength({ max: 255 }).withMessage('Valid email required'),
   body('phone').trim().notEmpty().isLength({ max: 50 }).matches(/^[0-9+\-() ]+$/).withMessage('Valid phone number required'),
   body('message').trim().notEmpty().isLength({ max: 5000 }).withMessage('Message is required (max 5000 chars)'),
@@ -31,14 +32,15 @@ router.post(
     }
 
     try {
-      const name = stripHtml(req.body.name)
+      const firstName = stripHtml(req.body.firstName)
+      const lastName = stripHtml(req.body.lastName)
       const email = req.body.email
       const phone = stripHtml(req.body.phone)
       const message = stripHtml(req.body.message)
 
       const result = await getPool().query(
-        `INSERT INTO submissions (name, email, phone, message) VALUES ($1, $2, $3, $4) RETURNING id, created_at`,
-        [name, email, phone, message]
+        `INSERT INTO submissions (first_name, last_name, email, phone, message) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at`,
+        [firstName, lastName, email, phone, message]
       )
 
       res.status(201).json({ id: result.rows[0].id, created_at: result.rows[0].created_at })
@@ -53,7 +55,7 @@ router.post(
 router.get('/', requireAuth, async (req, res) => {
   try {
     const unreadOnly = req.query.unread === 'true'
-    let query = 'SELECT id, name, email, phone, message, is_read, created_at FROM submissions'
+    let query = 'SELECT id, first_name, last_name, email, phone, message, is_read, created_at FROM submissions'
     const params = []
 
     if (unreadOnly) {
@@ -83,7 +85,7 @@ router.get(
 
     try {
       const submissionResult = await getPool().query(
-        'SELECT id, name, email, phone, message, is_read, created_at FROM submissions WHERE id = $1',
+        'SELECT id, first_name, last_name, email, phone, message, is_read, created_at FROM submissions WHERE id = $1',
         [req.params.id]
       )
 
@@ -151,7 +153,7 @@ router.post(
     try {
       // Fetch submission for recipient info
       const subResult = await getPool().query(
-        'SELECT id, name, email, created_at FROM submissions WHERE id = $1',
+        'SELECT id, first_name, last_name, email, created_at FROM submissions WHERE id = $1',
         [req.params.id]
       )
 
@@ -189,7 +191,7 @@ router.post(
               <div style="border-bottom: 3px solid #003F8D; padding-bottom: 16px; margin-bottom: 24px;">
                 <h2 style="margin: 0; color: #003F8D; font-size: 20px;">Campos Muños Law</h2>
               </div>
-              <p style="font-size: 15px; line-height: 1.6;">Dear ${submission.name},</p>
+              <p style="font-size: 15px; line-height: 1.6;">Dear ${submission.first_name},</p>
               <div style="font-size: 15px; line-height: 1.7; white-space: pre-wrap;">${replyBody}</div>
               <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0 16px;" />
               <p style="font-size: 12px; color: #6b7280; line-height: 1.5;">
