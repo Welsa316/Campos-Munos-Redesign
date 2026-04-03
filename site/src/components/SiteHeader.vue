@@ -44,7 +44,7 @@
                         ? 'text-brand-navy/50 group-hover/item:text-brand-navy'
                         : 'text-white/40 group-hover/item:text-white']"></i>
                   </div>
-                  <span class="font-[var(--font-ui)] text-base font-semibold">{{ $t(`services.${service.key}`) }}</span>
+                  <span class="font-ui text-base font-semibold">{{ $t(`services.${service.key}`) }}</span>
                 </router-link>
               </div>
             </div>
@@ -79,7 +79,7 @@
           </a>
         </div>
         <a href="tel:+15049106508"
-          class="flex items-center gap-3 whitespace-nowrap px-8 py-3 rounded-full bg-brand-red hover:bg-brand-red-light text-white text-base font-[var(--font-ui)] font-semibold tracking-wider transition-all btn-magnetic">
+          class="flex items-center gap-3 whitespace-nowrap px-8 py-3 rounded-full bg-brand-red hover:bg-brand-red-light text-white text-base font-ui font-semibold tracking-wider transition-all btn-magnetic">
           <i class="fa-solid fa-phone text-sm"></i>
           (504) 910-6508
         </a>
@@ -104,12 +104,12 @@
       <div v-show="mobileOpen" class="xl:hidden fixed inset-0 top-0 bg-white/98 backdrop-blur-xl z-[105] overflow-y-auto">
         <div class="flex flex-col justify-center items-center min-h-full gap-6 px-8 py-24">
           <router-link v-for="link in mobileLinks" :key="link.to" :to="link.to"
-            class="text-4xl font-[var(--font-heading)] text-gray-800 hover:text-brand-navy transition-colors"
+            class="text-4xl font-heading text-gray-800 hover:text-brand-navy transition-colors"
             @click="mobileOpen = false">
             {{ link.label }}
           </router-link>
           <div class="w-16 h-px bg-brand-navy/30 my-2"></div>
-          <a href="tel:+15049106508" class="text-brand-red font-[var(--font-ui)] text-3xl tracking-wider font-bold">
+          <a href="tel:+15049106508" class="text-brand-red font-ui text-3xl tracking-wider font-bold">
             (504) 910-6508
           </a>
           <div class="flex items-center gap-5 mt-4">

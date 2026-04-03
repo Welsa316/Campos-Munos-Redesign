@@ -5,16 +5,16 @@
       <div class="flex items-center gap-4">
         <img src="/logo.png" alt="Campos Munos Law" class="h-9" />
         <div class="w-px h-8 bg-gray-200"></div>
-        <h1 class="font-[var(--font-heading)] text-lg text-brand-navy tracking-tight">Client Messages</h1>
-        <span v-if="unreadCount > 0" class="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-brand-red text-white text-xs font-[var(--font-ui)] font-bold">
+        <h1 class="font-heading text-lg text-brand-navy tracking-tight">Client Messages</h1>
+        <span v-if="unreadCount > 0" class="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-brand-red text-white text-xs font-ui font-bold">
           {{ unreadCount }}
         </span>
       </div>
       <div class="ml-auto flex items-center gap-4">
-        <span class="text-xs text-gray-400 font-[var(--font-ui)] hidden sm:inline">{{ adminEmail }}</span>
+        <span class="text-xs text-gray-400 font-ui hidden sm:inline">{{ adminEmail }}</span>
         <button
           @click="handleLogout"
-          class="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-500 hover:text-brand-red hover:bg-red-50 text-sm font-[var(--font-ui)] font-medium transition-colors"
+          class="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-500 hover:text-brand-red hover:bg-red-50 text-sm font-ui font-medium transition-colors"
         >
           <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
           Sign Out
@@ -26,7 +26,7 @@
     <div v-if="loadingList" class="flex-1 flex items-center justify-center">
       <div class="text-center">
         <i class="fa-solid fa-spinner fa-spin text-2xl text-brand-navy mb-3"></i>
-        <p class="text-gray-400 text-sm font-[var(--font-ui)]">Loading messages...</p>
+        <p class="text-gray-400 text-sm font-ui">Loading messages...</p>
       </div>
     </div>
 
@@ -34,8 +34,8 @@
     <div v-else-if="listError" class="flex-1 flex items-center justify-center">
       <div class="text-center">
         <i class="fa-solid fa-exclamation-triangle text-2xl text-brand-red mb-3"></i>
-        <p class="text-gray-500 text-sm font-[var(--font-ui)] mb-4">Failed to load messages</p>
-        <button @click="fetchSubmissions" class="text-brand-navy text-sm font-[var(--font-ui)] font-medium hover:underline">
+        <p class="text-gray-500 text-sm font-ui mb-4">Failed to load messages</p>
+        <button @click="fetchSubmissions" class="text-brand-navy text-sm font-ui font-medium hover:underline">
           Try again
         </button>
       </div>

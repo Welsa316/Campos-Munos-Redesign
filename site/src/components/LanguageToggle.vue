@@ -4,7 +4,7 @@
       class="group relative w-12 h-12 rounded-2xl bg-white shadow-md border border-gray-200 flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-brand-navy/10">
       <!-- Rotating ring -->
       <div class="absolute inset-0 rounded-2xl border border-brand-navy/20 group-hover:border-brand-navy/50 transition-all duration-500 group-hover:rotate-90"></div>
-      <span class="font-[var(--font-ui)] text-xs font-bold tracking-wider text-brand-navy">
+      <span class="font-ui text-xs font-bold tracking-wider text-brand-navy">
         {{ currentLang.toUpperCase() }}
       </span>
     </button>

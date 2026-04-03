@@ -3,8 +3,8 @@
     <!-- Hero -->
     <section class="relative pt-36 pb-24 bg-brand-surface overflow-hidden">
       <div class="relative max-w-7xl mx-auto px-6">
-        <p class="font-[var(--font-ui)] text-base tracking-[0.3em] text-brand-navy uppercase mb-4">Campos Munos Law</p>
-        <h1 class="font-[var(--font-heading)] text-5xl md:text-7xl lg:text-8xl font-bold text-brand-navy leading-[0.95]">
+        <p class="font-ui text-base tracking-[0.3em] text-brand-navy uppercase mb-4">Campos Munos Law</p>
+        <h1 class="font-heading text-5xl md:text-7xl lg:text-8xl font-bold text-brand-navy leading-[0.95]">
           {{ $t('nav.pago') }}
         </h1>
         <p class="text-gray-500 text-xl md:text-2xl mt-4">
@@ -22,10 +22,10 @@
               <i class="fa-solid fa-credit-card text-4xl text-brand-navy"></i>
             </div>
 
-            <h2 class="font-[var(--font-heading)] text-3xl text-gray-900 mb-4">
+            <h2 class="font-heading text-3xl text-gray-900 mb-4">
               {{ currentLang === 'es' ? 'Portal de Pagos' : 'Payment Portal' }}
             </h2>
-            <p class="text-gray-500 text-lg font-[var(--font-ui)] mb-10 max-w-sm mx-auto leading-relaxed">
+            <p class="text-gray-500 text-lg font-ui mb-10 max-w-sm mx-auto leading-relaxed">
               {{ currentLang === 'es'
                 ? 'Haga clic a continuación para realizar su pago de forma segura.'
                 : 'Click below to make your payment securely.' }}
@@ -33,7 +33,7 @@
 
             <a href="https://secure.lawpay.com/pages/goldenmunoslaw/operating?qr_used=true"
               target="_blank" rel="noopener"
-              class="flex items-center justify-center gap-3 w-full py-5 rounded-xl bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-base btn-magnetic">
+              class="flex items-center justify-center gap-3 w-full py-5 rounded-xl bg-brand-navy text-white font-ui font-bold tracking-wider text-base btn-magnetic">
               <i class="fa-solid fa-lock text-sm"></i>
               {{ currentLang === 'es' ? 'Realizar Pago' : 'Make Payment' }}
             </a>

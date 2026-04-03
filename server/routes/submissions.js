@@ -2,7 +2,7 @@ import { Router } from 'express'
 import rateLimit from 'express-rate-limit'
 import { body, param, validationResult } from 'express-validator'
 import { Resend } from 'resend'
-import pool from '../db/pool.js'
+import getPool from '../db/pool.js'
 import requireAuth from '../middleware/auth.js'
 import { stripHtml } from '../utils/sanitize.js'
 
@@ -36,7 +36,7 @@ router.post(
       const phone = stripHtml(req.body.phone)
       const message = stripHtml(req.body.message)
 
-      const result = await pool.query(
+      const result = await getPool().query(
         `INSERT INTO submissions (name, email, phone, message) VALUES ($1, $2, $3, $4) RETURNING id, created_at`,
         [name, email, phone, message]
       )
@@ -62,7 +62,7 @@ router.get('/', requireAuth, async (req, res) => {
 
     query += ' ORDER BY created_at DESC'
 
-    const result = await pool.query(query, params)
+    const result = await getPool().query(query, params)
     res.json(result.rows)
   } catch (err) {
     console.error('List submissions error:', err)
@@ -82,7 +82,7 @@ router.get(
     }
 
     try {
-      const submissionResult = await pool.query(
+      const submissionResult = await getPool().query(
         'SELECT id, name, email, phone, message, is_read, created_at FROM submissions WHERE id = $1',
         [req.params.id]
       )
@@ -91,7 +91,7 @@ router.get(
         return res.status(404).json({ error: 'Submission not found' })
       }
 
-      const repliesResult = await pool.query(
+      const repliesResult = await getPool().query(
         'SELECT id, body, sent_at FROM replies WHERE submission_id = $1 ORDER BY sent_at ASC',
         [req.params.id]
       )
@@ -119,7 +119,7 @@ router.patch(
     }
 
     try {
-      const result = await pool.query(
+      const result = await getPool().query(
         'UPDATE submissions SET is_read = true WHERE id = $1 RETURNING id, is_read',
         [req.params.id]
       )
@@ -150,7 +150,7 @@ router.post(
 
     try {
       // Fetch submission for recipient info
-      const subResult = await pool.query(
+      const subResult = await getPool().query(
         'SELECT id, name, email, created_at FROM submissions WHERE id = $1',
         [req.params.id]
       )
@@ -163,7 +163,7 @@ router.post(
       const replyBody = stripHtml(req.body.body)
 
       // Save reply to DB first
-      const replyResult = await pool.query(
+      const replyResult = await getPool().query(
         'INSERT INTO replies (submission_id, body) VALUES ($1, $2) RETURNING id, body, sent_at',
         [submission.id, replyBody]
       )

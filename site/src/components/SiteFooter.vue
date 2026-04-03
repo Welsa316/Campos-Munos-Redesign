@@ -11,7 +11,7 @@
           <router-link to="/home" class="inline-block mb-6">
             <img src="/logo.png" alt="Campos Munos Law" class="h-20 brightness-0 invert" />
           </router-link>
-          <p class="text-white/70 text-base font-[var(--font-ui)] leading-relaxed max-w-xs">
+          <p class="text-white/70 text-base font-ui leading-relaxed max-w-xs">
             {{ $t('about.introText').substring(0, 150) }}...
           </p>
           <!-- Social icons -->
@@ -27,7 +27,7 @@
 
         <!-- Navigation -->
         <div class="md:col-span-2">
-          <h4 class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-white/40 uppercase mb-5">
+          <h4 class="font-ui text-sm tracking-[0.2em] text-white/40 uppercase mb-5">
             {{ $t('nav.servicios') }}
           </h4>
           <div class="space-y-3">
@@ -38,7 +38,7 @@
         </div>
 
         <div class="md:col-span-2">
-          <h4 class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-white/40 uppercase mb-5">
+          <h4 class="font-ui text-sm tracking-[0.2em] text-white/40 uppercase mb-5">
             {{ $t('nav.acercaDe') }}
           </h4>
           <div class="space-y-3">
@@ -49,10 +49,10 @@
 
         <!-- Contact info -->
         <div class="md:col-span-4">
-          <h4 class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-white/40 uppercase mb-5">
+          <h4 class="font-ui text-sm tracking-[0.2em] text-white/40 uppercase mb-5">
             {{ $t('contact.direccion') }}
           </h4>
-          <div class="space-y-4 text-white/70 text-base font-[var(--font-ui)]">
+          <div class="space-y-4 text-white/70 text-base font-ui">
             <div class="flex items-start gap-3">
               <i class="fa-solid fa-location-dot text-white/40 mt-1"></i>
               <div>
@@ -80,10 +80,10 @@
 
       <!-- Bottom bar -->
       <div class="border-t border-white/15 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-        <p class="font-[var(--font-ui)] text-sm tracking-[0.2em] text-white/50 uppercase">
+        <p class="font-ui text-sm tracking-[0.2em] text-white/50 uppercase">
           {{ $t('footer.firmName') }}
         </p>
-        <p class="font-[var(--font-ui)] text-sm text-white/40">
+        <p class="font-ui text-sm text-white/40">
           &copy; Campos Munos Law, LLC
         </p>
       </div>

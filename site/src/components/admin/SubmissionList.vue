@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="p-5 border-b border-gray-100">
       <div class="flex items-center justify-between mb-4">
-        <h2 class="font-[var(--font-ui)] font-semibold text-gray-900 text-sm tracking-wide">
+        <h2 class="font-ui font-semibold text-gray-900 text-sm tracking-wide">
           Messages
           <span v-if="unreadCount > 0" class="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-brand-red text-white text-xs font-bold">
             {{ unreadCount }}
@@ -19,12 +19,12 @@
         <button
           @click="filter = 'all'"
           :class="filter === 'all' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-          class="flex-1 text-xs font-[var(--font-ui)] font-medium py-1.5 rounded-md transition-all"
+          class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-all"
         >All</button>
         <button
           @click="filter = 'unread'"
           :class="filter === 'unread' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-          class="flex-1 text-xs font-[var(--font-ui)] font-medium py-1.5 rounded-md transition-all"
+          class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-all"
         >Unread</button>
       </div>
     </div>
@@ -33,7 +33,7 @@
     <div class="flex-1 overflow-y-auto">
       <div v-if="filteredSubmissions.length === 0" class="p-6 text-center">
         <i class="fa-solid fa-inbox text-3xl text-gray-300 mb-3"></i>
-        <p class="text-gray-400 text-sm font-[var(--font-ui)]">
+        <p class="text-gray-400 text-sm font-ui">
           {{ filter === 'unread' ? 'No unread messages' : 'No messages yet' }}
         </p>
       </div>
@@ -54,14 +54,14 @@
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-baseline justify-between gap-2 mb-1">
-              <span :class="['font-[var(--font-ui)] text-sm truncate', sub.is_read ? 'text-gray-700' : 'text-gray-900 font-semibold']">
+              <span :class="['font-ui text-sm truncate', sub.is_read ? 'text-gray-700' : 'text-gray-900 font-semibold']">
                 {{ sub.name }}
               </span>
-              <span class="text-xs text-gray-400 font-[var(--font-ui)] flex-shrink-0">
+              <span class="text-xs text-gray-400 font-ui flex-shrink-0">
                 {{ relativeTime(sub.created_at) }}
               </span>
             </div>
-            <p class="text-xs text-gray-400 font-[var(--font-ui)] truncate leading-relaxed">
+            <p class="text-xs text-gray-400 font-ui truncate leading-relaxed">
               {{ sub.message }}
             </p>
           </div>

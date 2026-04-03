@@ -1,5 +1,9 @@
 import dotenv from 'dotenv'
-if (process.env.NODE_ENV !== 'production') dotenv.config()
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+dotenv.config({ path: join(__dirname, '.env') })
 
 import express from 'express'
 import helmet from 'helmet'

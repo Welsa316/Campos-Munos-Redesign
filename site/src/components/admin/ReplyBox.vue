@@ -11,7 +11,7 @@
       ></textarea>
 
       <div class="flex items-center justify-between">
-        <span class="text-xs text-gray-400 font-[var(--font-ui)]">
+        <span class="text-xs text-gray-400 font-ui">
           {{ body.length.toLocaleString() }} / 10,000
         </span>
 
@@ -19,7 +19,7 @@
           <!-- Toast messages -->
           <transition name="fade">
             <span v-if="toast" :class="[
-              'text-xs font-[var(--font-ui)]',
+              'text-xs font-ui',
               toast.type === 'success' ? 'text-green-600' : 'text-amber-600'
             ]">
               <i :class="toast.type === 'success' ? 'fa-solid fa-check-circle' : 'fa-solid fa-exclamation-triangle'" class="mr-1"></i>
@@ -30,7 +30,7 @@
           <button
             type="submit"
             :disabled="sending || !body.trim()"
-            class="bg-brand-navy text-white font-[var(--font-ui)] font-medium text-sm px-5 py-2.5 rounded-xl btn-magnetic disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
+            class="bg-brand-navy text-white font-ui font-medium text-sm px-5 py-2.5 rounded-xl btn-magnetic disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
           >
             <span v-if="sending">
               <i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Sending...

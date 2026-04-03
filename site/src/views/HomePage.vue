@@ -20,18 +20,18 @@
         <!-- Accent line -->
         <div class="w-20 h-[3px] bg-brand-navy mb-6 hero-reveal" style="transition-delay: 0.2s"></div>
 
-        <p class="font-[var(--font-ui)] text-white/80 text-base md:text-lg tracking-[0.3em] uppercase mb-4 hero-reveal" style="transition-delay: 0.4s">
+        <p class="font-ui text-white/80 text-base md:text-lg tracking-[0.3em] uppercase mb-4 hero-reveal" style="transition-delay: 0.4s">
           Campos Munos Law, LLC
         </p>
 
-        <h1 class="font-[var(--font-heading)] text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white leading-[0.95] mb-4 hero-reveal" style="transition-delay: 0.6s">
+        <h1 class="font-heading text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white leading-[0.95] mb-4 hero-reveal" style="transition-delay: 0.6s">
           {{ $t('home.heroTitle') }}
         </h1>
 
         <div class="flex items-center gap-4 mb-6 hero-reveal" style="transition-delay: 0.8s">
           <div class="w-12 h-[1px] bg-white/30"></div>
           <transition name="subtitle-fade" mode="out-in">
-            <p :key="currentSlide" class="font-[var(--font-heading)] text-2xl md:text-3xl lg:text-4xl text-white/70 italic">
+            <p :key="currentSlide" class="font-heading text-2xl md:text-3xl lg:text-4xl text-white/70 italic">
               {{ $t(slides[currentSlide].subtitleKey) }}
             </p>
           </transition>
@@ -39,12 +39,12 @@
 
         <div class="hero-reveal flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4" style="transition-delay: 1.2s">
           <router-link to="/consulta"
-            class="group inline-flex items-center gap-3 bg-brand-navy text-white font-[var(--font-body)] font-bold tracking-wider text-lg sm:text-xl px-8 sm:px-10 py-4 sm:py-5 rounded-xl btn-magnetic">
+            class="group inline-flex items-center gap-3 bg-brand-navy text-white font-body font-bold tracking-wider text-lg sm:text-xl px-8 sm:px-10 py-4 sm:py-5 rounded-xl btn-magnetic">
             {{ $t('home.consultaBtn') }}
             <i class="fa-solid fa-arrow-right text-sm transition-transform group-hover:translate-x-1"></i>
           </router-link>
           <button @click="toggleLang"
-            class="relative z-20 group inline-flex items-center gap-3 border-2 border-white/40 text-white font-[var(--font-ui)] font-semibold tracking-wider text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-5 rounded-xl hover:bg-white hover:text-brand-navy transition-all duration-300">
+            class="relative z-20 group inline-flex items-center gap-3 border-2 border-white/40 text-white font-ui font-semibold tracking-wider text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-5 rounded-xl hover:bg-white hover:text-brand-navy transition-all duration-300">
             <i class="fa-solid fa-globe text-lg sm:text-xl"></i>
             {{ $t('home.translateBtn') }}
           </button>
@@ -63,7 +63,7 @@
 
       <!-- Bottom info strip -->
       <div class="absolute bottom-0 left-0 right-0 py-4 bg-gradient-to-t from-brand-darker to-transparent">
-        <div class="max-w-7xl mx-auto px-6 flex flex-wrap items-center gap-4 sm:gap-8 text-white/60 text-sm sm:text-base font-[var(--font-ui)] tracking-wider">
+        <div class="max-w-7xl mx-auto px-6 flex flex-wrap items-center gap-4 sm:gap-8 text-white/60 text-sm sm:text-base font-ui tracking-wider">
           <span class="flex items-center gap-2"><i class="fa-solid fa-location-dot text-brand-navy/80"></i> New Orleans, LA</span>
           <a href="tel:+15049106508" class="flex items-center gap-2 hover:text-white transition-colors"><i class="fa-solid fa-phone text-brand-red/80"></i> <span class="text-base sm:text-lg font-semibold">(504) 910-6508</span></a>
           <span class="hidden sm:flex items-center gap-2"><i class="fa-solid fa-video text-brand-navy/80"></i> {{ $t('home.virtualAvailable') }}</span>
@@ -75,7 +75,7 @@
     <section class="py-14 bg-brand-surface border-y border-gray-200">
       <div class="max-w-6xl mx-auto px-6">
         <div class="flex flex-col items-center gap-10">
-          <p class="font-[var(--font-ui)] text-base tracking-[0.2em] text-gray-400 uppercase">{{ $t('home.recognizedBy') }}</p>
+          <p class="font-ui text-base tracking-[0.2em] text-gray-400 uppercase">{{ $t('home.recognizedBy') }}</p>
           <div class="flex flex-wrap items-center justify-center gap-12 md:gap-20">
             <img v-for="(badge, i) in badges" :key="i"
               :src="badge.src" :alt="badge.alt"
@@ -90,12 +90,12 @@
       <div class="max-w-5xl mx-auto px-6">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-12 text-center reveal">
           <div class="p-8">
-            <p class="font-[var(--font-heading)] text-7xl md:text-8xl font-bold text-brand-navy mb-3">5,000+</p>
-            <p class="font-[var(--font-ui)] text-xl md:text-2xl text-gray-500 tracking-wide">{{ $t('home.casosResueltos') }}</p>
+            <p class="font-heading text-7xl md:text-8xl font-bold text-brand-navy mb-3">5,000+</p>
+            <p class="font-ui text-xl md:text-2xl text-gray-500 tracking-wide">{{ $t('home.casosResueltos') }}</p>
           </div>
           <div class="p-8">
-            <p class="font-[var(--font-heading)] text-7xl md:text-8xl font-bold text-brand-navy mb-3">25+</p>
-            <p class="font-[var(--font-ui)] text-xl md:text-2xl text-gray-500 tracking-wide">{{ $t('home.anosExperiencia') }}</p>
+            <p class="font-heading text-7xl md:text-8xl font-bold text-brand-navy mb-3">25+</p>
+            <p class="font-ui text-xl md:text-2xl text-gray-500 tracking-wide">{{ $t('home.anosExperiencia') }}</p>
           </div>
         </div>
       </div>
@@ -105,7 +105,7 @@
     <section class="py-24 bg-brand-light relative">
       <div class="relative z-10 max-w-7xl mx-auto px-6">
         <div class="text-center mb-16 reveal">
-          <h2 class="font-[var(--font-heading)] text-4xl md:text-6xl text-brand-navy">
+          <h2 class="font-heading text-4xl md:text-6xl text-brand-navy">
             {{ $t('nav.servicios') }}
           </h2>
         </div>
@@ -118,13 +118,13 @@
             <div class="absolute inset-0 bg-gradient-to-br from-brand-navy/5 to-white group-hover:from-brand-navy/10 transition-all duration-500"></div>
             <div class="relative h-full p-10 flex flex-col justify-end">
               <i class="fa-solid fa-id-card text-6xl text-brand-navy/20 mb-auto group-hover:text-brand-navy/40 transition-colors duration-500"></i>
-              <h3 class="font-[var(--font-heading)] text-3xl md:text-4xl text-gray-900 mb-3 group-hover:text-brand-navy transition-colors">
+              <h3 class="font-heading text-3xl md:text-4xl text-gray-900 mb-3 group-hover:text-brand-navy transition-colors">
                 {{ $t('services.greenCard') }}
               </h3>
-              <p class="text-gray-500 text-lg md:text-xl font-[var(--font-ui)] leading-relaxed line-clamp-3">
+              <p class="text-gray-500 text-lg md:text-xl font-ui leading-relaxed line-clamp-3">
                 {{ $t('serviceDescriptions.greenCard') }}
               </p>
-              <div class="mt-5 flex items-center gap-2 text-brand-navy text-base font-[var(--font-ui)] font-semibold tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
+              <div class="mt-5 flex items-center gap-2 text-brand-navy text-base font-ui font-semibold tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
                 {{ $t('readMore') }} <i class="fa-solid fa-arrow-right text-sm"></i>
               </div>
             </div>
@@ -137,7 +137,7 @@
             <div class="relative h-full p-6 flex flex-col justify-between">
               <i :class="service.icon" class="text-3xl text-brand-navy/30 group-hover:text-brand-navy transition-colors duration-300"></i>
               <div>
-                <h3 class="font-[var(--font-heading)] text-xl md:text-2xl text-gray-900 group-hover:text-brand-navy transition-colors leading-tight">
+                <h3 class="font-heading text-xl md:text-2xl text-gray-900 group-hover:text-brand-navy transition-colors leading-tight">
                   {{ $t(`services.${service.key}`) }}
                 </h3>
               </div>
@@ -147,7 +147,7 @@
 
         <div class="text-center mt-14 reveal">
           <router-link to="/servicios"
-            class="inline-flex items-center gap-3 text-brand-navy hover:text-brand-navy-light font-[var(--font-ui)] font-semibold tracking-wider text-lg transition-colors group">
+            class="inline-flex items-center gap-3 text-brand-navy hover:text-brand-navy-light font-ui font-semibold tracking-wider text-lg transition-colors group">
             {{ $t('home.serviciosBtn') }}
             <i class="fa-solid fa-arrow-right text-sm group-hover:translate-x-1 transition-transform"></i>
           </router-link>
@@ -162,7 +162,7 @@
           <div class="flex items-center justify-center gap-2 mb-3">
             <i v-for="n in 5" :key="n" class="fa-solid fa-star text-yellow-400 text-lg"></i>
           </div>
-          <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-brand-navy">{{ $t('home.reviewsTitle') }}</h2>
+          <h2 class="font-heading text-4xl md:text-5xl text-brand-navy">{{ $t('home.reviewsTitle') }}</h2>
         </div>
         <div class="reveal elfsight-reviews-wrapper rounded-2xl overflow-hidden">
           <div class="elfsight-app-02c0cb8e-d132-4834-ae18-93002f5a819a" data-elfsight-app-lazy></div>
@@ -173,14 +173,14 @@
     <!-- ===================== ABOUT SECTION ===================== -->
     <section class="py-24 bg-brand-light">
       <div class="max-w-3xl mx-auto px-6 text-center reveal">
-        <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-brand-navy mb-6 leading-tight">
+        <h2 class="font-heading text-4xl md:text-5xl text-brand-navy mb-6 leading-tight">
           {{ $t('home.quienesSomos') }}
         </h2>
         <p class="text-gray-600 text-xl md:text-2xl leading-relaxed mb-8">
           {{ $t('home.quienesSomosText') }}
         </p>
         <router-link to="/acerca-de"
-          class="inline-flex items-center gap-3 text-brand-navy hover:text-brand-navy-light font-[var(--font-ui)] font-semibold tracking-wider text-lg transition-colors group">
+          class="inline-flex items-center gap-3 text-brand-navy hover:text-brand-navy-light font-ui font-semibold tracking-wider text-lg transition-colors group">
           {{ $t('home.sobreNosotros') }}
           <i class="fa-solid fa-arrow-right text-sm group-hover:translate-x-1 transition-transform"></i>
         </router-link>
@@ -192,14 +192,14 @@
       <div class="absolute inset-0 bg-cover bg-center bg-fixed" style="background-image: url('/Slideshow3.jpg')"></div>
       <div class="absolute inset-0 bg-brand-darker/85"></div>
       <div class="relative max-w-3xl mx-auto px-6 text-center reveal">
-        <h2 class="font-[var(--font-heading)] text-4xl md:text-6xl text-white mb-8 leading-tight">
+        <h2 class="font-heading text-4xl md:text-6xl text-white mb-8 leading-tight">
           {{ $t('home.porQueNosotros') }}
         </h2>
         <p class="text-white/70 text-xl md:text-3xl leading-relaxed mb-12">
           {{ $t('home.porQueNosotrosText') }}
         </p>
         <router-link to="/el-equipo"
-          class="inline-flex items-center gap-3 bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-base px-10 py-5 rounded-xl btn-magnetic">
+          class="inline-flex items-center gap-3 bg-brand-navy text-white font-ui font-bold tracking-wider text-base px-10 py-5 rounded-xl btn-magnetic">
           {{ $t('home.perfilesBtn') }}
           <i class="fa-solid fa-arrow-right text-sm"></i>
         </router-link>
@@ -211,12 +211,12 @@
       <div class="max-w-7xl mx-auto px-6">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div class="reveal-left">
-            <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-brand-navy mb-6 leading-tight">{{ $t('home.dondeEstamos') }}</h2>
+            <h2 class="font-heading text-4xl md:text-5xl text-brand-navy mb-6 leading-tight">{{ $t('home.dondeEstamos') }}</h2>
             <p class="text-gray-600 text-xl md:text-2xl leading-relaxed mb-8">
               {{ $t('home.dondeEstamosText') }}
             </p>
             <router-link to="/consulta"
-              class="inline-flex items-center gap-3 border-2 border-brand-navy text-brand-navy hover:bg-brand-navy hover:text-white font-[var(--font-ui)] font-semibold tracking-wider text-base px-10 py-4 rounded-xl transition-all btn-magnetic">
+              class="inline-flex items-center gap-3 border-2 border-brand-navy text-brand-navy hover:bg-brand-navy hover:text-white font-ui font-semibold tracking-wider text-base px-10 py-4 rounded-xl transition-all btn-magnetic">
               {{ $t('home.contactenosBtn') }}
             </router-link>
           </div>
@@ -237,8 +237,8 @@
     <section class="py-20 bg-brand-light relative overflow-hidden">
       <div class="max-w-7xl mx-auto px-6">
         <div class="text-center mb-10 reveal">
-          <p class="font-[var(--font-ui)] text-base tracking-[0.2em] text-brand-navy uppercase mb-3">{{ $t('home.instagramTitle') }}</p>
-          <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-gray-900 mb-2">
+          <p class="font-ui text-base tracking-[0.2em] text-brand-navy uppercase mb-3">{{ $t('home.instagramTitle') }}</p>
+          <h2 class="font-heading text-4xl md:text-5xl text-gray-900 mb-2">
             <a href="https://www.instagram.com/juancamposlaw/" target="_blank" rel="noopener" class="navy-shimmer">
               {{ $t('home.instagramHandle') }}
             </a>

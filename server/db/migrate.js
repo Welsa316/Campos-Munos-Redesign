@@ -1,9 +1,14 @@
 import dotenv from 'dotenv'
-if (process.env.NODE_ENV !== 'production') dotenv.config()
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
 
-import pool from './pool.js'
+const __dirname = dirname(fileURLToPath(import.meta.url))
+dotenv.config({ path: join(__dirname, '..', '.env') })
+
+import getPool from './pool.js'
 
 async function migrate() {
+  const pool = getPool()
   const client = await pool.connect()
   try {
     await client.query(`

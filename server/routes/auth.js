@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import rateLimit from 'express-rate-limit'
 import { body, validationResult } from 'express-validator'
-import pool from '../db/pool.js'
+import getPool from '../db/pool.js'
 
 const router = Router()
 
@@ -36,7 +36,7 @@ router.post(
 
     try {
       const { email, password } = req.body
-      const result = await pool.query(
+      const result = await getPool().query(
         'SELECT id, email, password_hash FROM admin_users WHERE email = $1',
         [email]
       )

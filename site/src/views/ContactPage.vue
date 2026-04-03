@@ -6,8 +6,8 @@
       <div class="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-brand-navy/[0.03] to-transparent pointer-events-none"></div>
       <div class="relative max-w-7xl mx-auto px-6">
         <div class="reveal">
-          <p class="font-[var(--font-ui)] text-base tracking-[0.2em] text-brand-navy uppercase mb-4">{{ $t('contact.subtitleAlt') }}</p>
-          <h1 class="font-[var(--font-heading)] text-5xl md:text-7xl lg:text-8xl font-bold text-brand-navy leading-[0.95]">
+          <p class="font-ui text-base tracking-[0.2em] text-brand-navy uppercase mb-4">{{ $t('contact.subtitleAlt') }}</p>
+          <h1 class="font-heading text-5xl md:text-7xl lg:text-8xl font-bold text-brand-navy leading-[0.95]">
             {{ $t('contact.title') }}
           </h1>
           <p class="text-gray-500 text-2xl mt-4 max-w-lg">{{ $t('contact.subtitle') }}</p>
@@ -43,7 +43,7 @@
               </div>
 
               <button type="submit" :disabled="loading"
-                class="w-full bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-base py-5 rounded-xl btn-magnetic disabled:opacity-50 disabled:cursor-not-allowed">
+                class="w-full bg-brand-navy text-white font-ui font-bold tracking-wider text-base py-5 rounded-xl btn-magnetic disabled:opacity-50 disabled:cursor-not-allowed">
                 <span v-if="loading">
                   <i class="fa-solid fa-spinner fa-spin mr-2 text-sm"></i>{{ $t('contact.sending') }}
                 </span>
@@ -55,7 +55,7 @@
 
               <transition name="fade">
                 <div v-if="submitted" class="p-4 rounded-xl bg-green-50 border border-green-200 text-center">
-                  <p class="text-green-600 text-base font-[var(--font-ui)]">
+                  <p class="text-green-600 text-base font-ui">
                     <i class="fa-solid fa-check-circle mr-2"></i>{{ $t('contact.successMessage') }}
                   </p>
                 </div>
@@ -63,7 +63,7 @@
 
               <transition name="fade">
                 <div v-if="error" class="p-4 rounded-xl bg-red-50 border border-red-200 text-center">
-                  <p class="text-red-600 text-base font-[var(--font-ui)]">
+                  <p class="text-red-600 text-base font-ui">
                     <i class="fa-solid fa-exclamation-circle mr-2"></i>{{ $t('contact.errorMessage') }}
                   </p>
                 </div>
@@ -72,7 +72,7 @@
 
             <div class="mt-8">
               <router-link to="/pago"
-                class="inline-flex items-center gap-2 text-gray-400 hover:text-brand-navy text-base font-[var(--font-ui)] transition-colors">
+                class="inline-flex items-center gap-2 text-gray-400 hover:text-brand-navy text-base font-ui transition-colors">
                 <i class="fa-solid fa-credit-card text-sm"></i>
                 {{ $t('contact.paymentBtn') }}
               </router-link>
@@ -90,7 +90,7 @@
                     <i :class="item.icon" class="text-brand-navy text-lg"></i>
                   </div>
                   <div>
-                    <h3 class="font-[var(--font-heading)] text-xl text-gray-900 mb-1">{{ $t(`contact.${item.titleKey}`) }}</h3>
+                    <h3 class="font-heading text-xl text-gray-900 mb-1">{{ $t(`contact.${item.titleKey}`) }}</h3>
                     <div class="text-gray-500 text-lg space-y-0.5" v-html="item.content"></div>
                   </div>
                 </div>
@@ -98,7 +98,7 @@
 
               <!-- Social strip -->
               <div class="p-6 rounded-2xl bg-brand-light border border-gray-200">
-                <h3 class="font-[var(--font-heading)] text-xl text-gray-900 mb-4">{{ $t('contact.conectese') }}</h3>
+                <h3 class="font-heading text-xl text-gray-900 mb-4">{{ $t('contact.conectese') }}</h3>
                 <div class="flex gap-3">
                   <a v-for="social in socials" :key="social.label" :href="social.href" target="_blank" rel="noopener"
                     :aria-label="social.label"
@@ -116,7 +116,7 @@
                     <i class="fa-solid fa-clock text-brand-navy text-lg"></i>
                   </div>
                   <div>
-                    <h3 class="font-[var(--font-heading)] text-xl text-gray-900 mb-2">{{ $t('contact.horario') }}</h3>
+                    <h3 class="font-heading text-xl text-gray-900 mb-2">{{ $t('contact.horario') }}</h3>
                     <div class="text-gray-500 text-lg space-y-1">
                       <div class="flex justify-between gap-6">
                         <span>{{ $t('contact.lunesViernes') }}</span>
@@ -143,7 +143,7 @@
           <div class="flex items-center justify-center gap-2 mb-3">
             <i v-for="n in 5" :key="n" class="fa-solid fa-star text-yellow-400 text-xl"></i>
           </div>
-          <h2 class="font-[var(--font-heading)] text-4xl md:text-5xl text-brand-navy">{{ $t('home.reviewsTitle') }}</h2>
+          <h2 class="font-heading text-4xl md:text-5xl text-brand-navy">{{ $t('home.reviewsTitle') }}</h2>
         </div>
         <div class="reveal elfsight-reviews-wrapper rounded-2xl overflow-hidden">
           <div class="elfsight-app-924b81dc-21bf-470e-b66f-9137cae00590" data-elfsight-app-lazy></div>

@@ -1,10 +1,15 @@
 import dotenv from 'dotenv'
-if (process.env.NODE_ENV !== 'production') dotenv.config()
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+dotenv.config({ path: join(__dirname, '..', '.env') })
 
 import bcrypt from 'bcrypt'
-import pool from './pool.js'
+import getPool from './pool.js'
 
 async function seed() {
+  const pool = getPool()
   const client = await pool.connect()
   try {
     // Seed admin user

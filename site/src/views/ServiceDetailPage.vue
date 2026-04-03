@@ -9,7 +9,7 @@
 
       <div class="relative max-w-7xl mx-auto px-6">
         <router-link to="/servicios"
-          class="inline-flex items-center gap-2 text-gray-400 hover:text-brand-navy text-base font-[var(--font-ui)] tracking-wider uppercase mb-8 transition-colors group">
+          class="inline-flex items-center gap-2 text-gray-400 hover:text-brand-navy text-base font-ui tracking-wider uppercase mb-8 transition-colors group">
           <i class="fa-solid fa-arrow-left text-xs group-hover:-translate-x-1 transition-transform"></i>
           {{ $t('nav.servicios') }}
         </router-link>
@@ -19,10 +19,10 @@
             <i :class="serviceIcon" class="text-3xl text-brand-navy"></i>
           </div>
           <div>
-            <h1 class="font-[var(--font-heading)] text-4xl md:text-6xl lg:text-7xl font-bold text-brand-navy leading-[0.95]">
+            <h1 class="font-heading text-4xl md:text-6xl lg:text-7xl font-bold text-brand-navy leading-[0.95]">
               {{ pageH1 }}
             </h1>
-            <p v-if="locationData" class="mt-3 text-gray-400 text-lg font-[var(--font-ui)] tracking-wider">
+            <p v-if="locationData" class="mt-3 text-gray-400 text-lg font-ui tracking-wider">
               <i class="fa-solid fa-location-dot text-brand-navy/40 mr-2"></i>
               {{ locale === 'es' ? locationData.nameEs : locationData.nameEn }}
             </p>
@@ -36,7 +36,7 @@
       <div ref="contentRef" class="max-w-4xl mx-auto px-6">
 
         <!-- Location service area note -->
-        <p v-if="locationData" class="reveal text-gray-500 text-lg font-[var(--font-ui)] mb-6 flex items-center gap-2">
+        <p v-if="locationData" class="reveal text-gray-500 text-lg font-ui mb-6 flex items-center gap-2">
           <i class="fa-solid fa-map-marker-alt text-brand-navy/40"></i>
           {{ locale === 'es'
             ? `Atendemos clientes ${locationData.contextEs}.`
@@ -48,20 +48,20 @@
           <template v-for="(block, i) in contentBlocks" :key="i">
             <!-- Heading (h2) -->
             <h2 v-if="block.type === 'heading'"
-              class="reveal font-[var(--font-heading)] text-2xl md:text-3xl text-brand-navy mb-4"
+              class="reveal font-heading text-2xl md:text-3xl text-brand-navy mb-4"
               :class="i === 0 ? 'mt-0' : 'mt-10'">
               {{ block.text }}
             </h2>
 
             <!-- Subheading (h3) -->
             <h3 v-else-if="block.type === 'subheading'"
-              class="reveal font-[var(--font-heading)] text-xl md:text-2xl text-brand-navy/80 mt-8 mb-3">
+              class="reveal font-heading text-xl md:text-2xl text-brand-navy/80 mt-8 mb-3">
               {{ block.text }}
             </h3>
 
             <!-- Paragraph -->
             <p v-else-if="block.type === 'paragraph'"
-              class="reveal text-gray-600 text-lg leading-relaxed font-[var(--font-body)] mb-3">
+              class="reveal text-gray-600 text-lg leading-relaxed font-body mb-3">
               {{ block.text }}
             </p>
 
@@ -69,7 +69,7 @@
             <ul v-else-if="block.type === 'list'"
               class="reveal list-disc list-outside pl-6 space-y-1.5 mb-4">
               <li v-for="(item, j) in block.items" :key="j"
-                class="text-gray-600 text-lg leading-relaxed font-[var(--font-body)]">
+                class="text-gray-600 text-lg leading-relaxed font-body">
                 {{ item }}
               </li>
             </ul>
@@ -125,17 +125,17 @@
 
         <!-- FAQ Section -->
         <div v-if="faqs.length" class="reveal mt-12">
-          <h2 class="font-[var(--font-heading)] text-2xl md:text-3xl text-brand-navy mb-6">
+          <h2 class="font-heading text-2xl md:text-3xl text-brand-navy mb-6">
             {{ locale === 'es' ? 'Preguntas Frecuentes' : 'Frequently Asked Questions' }}
           </h2>
           <div class="space-y-3">
             <details v-for="(faq, i) in faqs" :key="i"
               class="group rounded-xl border border-gray-200 bg-white overflow-hidden">
-              <summary class="flex items-center justify-between gap-4 px-6 py-4 cursor-pointer font-[var(--font-ui)] text-lg font-semibold text-gray-700 hover:text-brand-navy transition-colors select-none list-none">
+              <summary class="flex items-center justify-between gap-4 px-6 py-4 cursor-pointer font-ui text-lg font-semibold text-gray-700 hover:text-brand-navy transition-colors select-none list-none">
                 <span>{{ faq.q }}</span>
                 <i class="fa-solid fa-chevron-down text-sm text-gray-400 group-open:rotate-180 transition-transform flex-shrink-0"></i>
               </summary>
-              <div class="px-6 pb-4 text-gray-600 text-lg leading-relaxed font-[var(--font-body)]">
+              <div class="px-6 pb-4 text-gray-600 text-lg leading-relaxed font-body">
                 {{ faq.a }}
               </div>
             </details>
@@ -144,10 +144,10 @@
 
         <!-- Related Services (Internal Linking) -->
         <div v-if="relatedServices.length" class="reveal mt-12">
-          <h2 class="font-[var(--font-heading)] text-2xl md:text-3xl text-brand-navy mb-4">
+          <h2 class="font-heading text-2xl md:text-3xl text-brand-navy mb-4">
             {{ locale === 'es' ? 'Servicios Relacionados' : 'Related Services' }}
           </h2>
-          <p class="text-gray-500 text-lg font-[var(--font-body)] mb-4">
+          <p class="text-gray-500 text-lg font-body mb-4">
             {{ locale === 'es' ? 'También ofrecemos asistencia con los siguientes servicios:' : 'We also offer assistance with the following services:' }}
           </p>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -155,7 +155,7 @@
               :to="`/servicios/${related.slug}`"
               class="group flex items-center gap-3 p-5 rounded-xl border border-gray-200 bg-white hover:border-brand-navy/30 hover:shadow-md transition-all">
               <i :class="related.icon" class="text-xl text-brand-navy/40 group-hover:text-brand-navy transition-colors"></i>
-              <span class="font-[var(--font-ui)] text-base font-semibold text-gray-600 group-hover:text-brand-navy transition-colors">
+              <span class="font-ui text-base font-semibold text-gray-600 group-hover:text-brand-navy transition-colors">
                 {{ related.name }}
               </span>
             </router-link>
@@ -164,14 +164,14 @@
 
         <!-- CTA -->
         <div class="reveal mt-12 p-10 rounded-2xl bg-brand-surface border border-gray-200 text-center">
-          <p class="text-gray-500 text-2xl mb-8 font-[var(--font-body)]">{{ $t('home.popupTitle') }}</p>
+          <p class="text-gray-500 text-2xl mb-8 font-body">{{ $t('home.popupTitle') }}</p>
           <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
             <router-link to="/consulta"
-              class="inline-flex items-center gap-3 bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-base px-10 py-5 rounded-xl btn-magnetic">
+              class="inline-flex items-center gap-3 bg-brand-navy text-white font-ui font-bold tracking-wider text-base px-10 py-5 rounded-xl btn-magnetic">
               {{ $t('home.consultaBtn') }} <i class="fa-solid fa-arrow-right text-sm"></i>
             </router-link>
             <a href="tel:+15049106508"
-              class="inline-flex items-center gap-3 border border-gray-300 text-gray-500 hover:text-brand-navy hover:border-brand-navy/30 font-[var(--font-ui)] font-medium tracking-wider text-base px-10 py-5 rounded-xl transition-all">
+              class="inline-flex items-center gap-3 border border-gray-300 text-gray-500 hover:text-brand-navy hover:border-brand-navy/30 font-ui font-medium tracking-wider text-base px-10 py-5 rounded-xl transition-all">
               <i class="fa-solid fa-phone text-sm"></i> (504) 910-6508
             </a>
           </div>

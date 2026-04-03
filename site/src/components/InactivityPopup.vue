@@ -19,19 +19,19 @@
 
           <!-- Content - solid blue, completely separate from image -->
           <div class="px-6 py-8 sm:px-10 sm:py-10 bg-brand-navy text-center rounded-b-3xl">
-            <h2 class="font-[var(--font-heading)] text-2xl sm:text-4xl text-white mb-3 sm:mb-4 leading-tight">
+            <h2 class="font-heading text-2xl sm:text-4xl text-white mb-3 sm:mb-4 leading-tight">
               {{ $t('home.popupTitle') }}
             </h2>
-            <p class="text-white/80 text-base sm:text-xl font-[var(--font-ui)] mb-6 sm:mb-8">{{ $t('home.popupSubtitle') }}</p>
+            <p class="text-white/80 text-base sm:text-xl font-ui mb-6 sm:mb-8">{{ $t('home.popupSubtitle') }}</p>
 
             <div class="space-y-4">
               <a href="tel:+15049106508"
-                class="flex items-center justify-center gap-3 w-full py-5 rounded-xl bg-brand-red text-white font-[var(--font-ui)] font-bold text-xl tracking-wider transition-all btn-magnetic">
+                class="flex items-center justify-center gap-3 w-full py-5 rounded-xl bg-brand-red text-white font-ui font-bold text-xl tracking-wider transition-all btn-magnetic">
                 <i class="fa-solid fa-phone text-base"></i>
                 (504) 910-6508
               </a>
               <router-link to="/consulta" @click="close"
-                class="flex items-center justify-center gap-3 w-full py-5 rounded-xl border border-white/20 text-white/80 hover:bg-white hover:text-brand-navy hover:border-white font-[var(--font-ui)] font-bold text-lg tracking-wider transition-all">
+                class="flex items-center justify-center gap-3 w-full py-5 rounded-xl border border-white/20 text-white/80 hover:bg-white hover:text-brand-navy hover:border-white font-ui font-bold text-lg tracking-wider transition-all">
                 <i class="fa-solid fa-message text-sm"></i>
                 {{ $t('home.popupBtn') }}
               </router-link>

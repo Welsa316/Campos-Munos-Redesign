@@ -4,8 +4,8 @@
     <section class="relative pt-36 pb-24 bg-brand-surface overflow-hidden">
       <div class="absolute top-0 right-0 w-96 h-96 rounded-full bg-brand-navy/[0.03] blur-[120px] pointer-events-none"></div>
       <div class="relative max-w-7xl mx-auto px-6">
-        <p class="font-[var(--font-ui)] text-base tracking-[0.2em] text-brand-navy uppercase mb-4">Campos Munos Law</p>
-        <h1 class="font-[var(--font-heading)] text-5xl md:text-7xl lg:text-8xl font-bold text-brand-navy leading-[0.95]">
+        <p class="font-ui text-base tracking-[0.2em] text-brand-navy uppercase mb-4">Campos Munos Law</p>
+        <h1 class="font-heading text-5xl md:text-7xl lg:text-8xl font-bold text-brand-navy leading-[0.95]">
           {{ $t('nav.servicios') }}
         </h1>
       </div>
@@ -31,10 +31,10 @@
                 </div>
 
                 <div class="mt-auto">
-                  <h3 :class="['font-[var(--font-heading)] text-gray-900 group-hover:text-brand-navy transition-colors duration-300', i === 0 ? 'text-3xl md:text-4xl mb-3' : 'text-xl md:text-2xl mb-2']">
+                  <h3 :class="['font-heading text-gray-900 group-hover:text-brand-navy transition-colors duration-300', i === 0 ? 'text-3xl md:text-4xl mb-3' : 'text-xl md:text-2xl mb-2']">
                     {{ $t(`services.${service.key}`) }}
                   </h3>
-                  <p v-if="i < 4" :class="['text-gray-500 leading-relaxed font-[var(--font-ui)]', i === 0 ? 'text-lg line-clamp-3' : 'text-base line-clamp-2']">
+                  <p v-if="i < 4" :class="['text-gray-500 leading-relaxed font-ui', i === 0 ? 'text-lg line-clamp-3' : 'text-base line-clamp-2']">
                     {{ $t(`serviceDescriptions.${service.key}`) }}
                   </p>
                 </div>
@@ -48,9 +48,9 @@
     <!-- Bottom CTA -->
     <section class="py-20 bg-brand-surface">
       <div class="max-w-3xl mx-auto px-6 text-center reveal">
-        <p class="text-gray-500 text-2xl mb-8 font-[var(--font-body)]">{{ $t('home.popupTitle') }}</p>
+        <p class="text-gray-500 text-2xl mb-8 font-body">{{ $t('home.popupTitle') }}</p>
         <router-link to="/consulta"
-          class="inline-flex items-center gap-3 bg-brand-navy text-white font-[var(--font-ui)] font-bold tracking-wider text-base px-10 py-5 rounded-xl btn-magnetic">
+          class="inline-flex items-center gap-3 bg-brand-navy text-white font-ui font-bold tracking-wider text-base px-10 py-5 rounded-xl btn-magnetic">
           {{ $t('home.consultaBtn') }} <i class="fa-solid fa-arrow-right text-sm"></i>
         </router-link>
       </div>
