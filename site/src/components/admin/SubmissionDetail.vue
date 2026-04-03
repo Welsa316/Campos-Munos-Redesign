@@ -28,6 +28,14 @@
               <span class="w-1.5 h-1.5 rounded-full bg-brand-red"></span>
               Unread
             </span>
+            <button
+              @click="toggleArchive"
+              :disabled="archiving"
+              class="p-2 rounded-lg text-gray-400 hover:text-brand-navy hover:bg-brand-surface transition-colors"
+              :title="submission.is_archived ? 'Move to Inbox' : 'Archive'"
+            >
+              <i :class="submission.is_archived ? 'fa-solid fa-inbox' : 'fa-solid fa-archive'" class="text-sm"></i>
+            </button>
             <!-- Back button for mobile -->
             <button v-if="showBack" @click="$emit('back')" class="p-2 rounded-lg text-gray-400 hover:text-brand-navy hover:bg-brand-surface transition-colors lg:hidden">
               <i class="fa-solid fa-arrow-left"></i>
@@ -71,14 +79,32 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
+import { useApi } from '../../composables/useApi.js'
 import ReplyBox from './ReplyBox.vue'
 
-defineProps({
+const props = defineProps({
   submission: { type: Object, default: null },
   showBack: { type: Boolean, default: false },
 })
 
-defineEmits(['replied', 'back'])
+const emit = defineEmits(['replied', 'back', 'archived'])
+
+const { patch } = useApi()
+const archiving = ref(false)
+
+async function toggleArchive() {
+  if (!props.submission || archiving.value) return
+  archiving.value = true
+  try {
+    await patch(`/api/submissions/${props.submission.id}/archive`)
+    emit('archived')
+  } catch {
+    // silently fail
+  } finally {
+    archiving.value = false
+  }
+}
 
 function formatDate(dateStr) {
   const d = new Date(dateStr)

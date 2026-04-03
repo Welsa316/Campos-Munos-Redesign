@@ -42,6 +42,9 @@ async function migrate() {
         END IF;
       END $$;
 
+      -- Add is_archived column if missing
+      ALTER TABLE submissions ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;
+
       CREATE TABLE IF NOT EXISTS replies (
         id SERIAL PRIMARY KEY,
         submission_id INTEGER REFERENCES submissions(id) ON DELETE CASCADE,

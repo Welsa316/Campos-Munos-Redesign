@@ -44,6 +44,36 @@ router.post(
       )
 
       res.status(201).json({ id: result.rows[0].id, created_at: result.rows[0].created_at })
+
+      // Notify admin via email (fire and forget)
+      try {
+        const adminEmail = process.env.ADMIN_EMAIL
+        if (adminEmail && process.env.RESEND_API_KEY) {
+          const resend = new Resend(process.env.RESEND_API_KEY)
+          await resend.emails.send({
+            from: process.env.RESEND_FROM_EMAIL || 'contact@camulaw.com',
+            to: adminEmail,
+            subject: `New inquiry from ${firstName} ${lastName}`,
+            html: `
+              <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1a1a1a;">
+                <div style="border-bottom: 3px solid #003F8D; padding-bottom: 16px; margin-bottom: 24px;">
+                  <h2 style="margin: 0; color: #003F8D; font-size: 20px;">New Contact Form Submission</h2>
+                </div>
+                <p style="font-size: 15px; line-height: 1.6;"><strong>${firstName} ${lastName}</strong> submitted a new inquiry.</p>
+                <table style="font-size: 14px; line-height: 1.6; margin: 16px 0;">
+                  <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Email:</td><td>${email}</td></tr>
+                  <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Phone:</td><td>${phone}</td></tr>
+                </table>
+                <div style="background: #f0f2f7; border-radius: 8px; padding: 16px; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${message}</div>
+                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0 12px;" />
+                <p style="font-size: 12px; color: #6b7280;">Log in to the admin dashboard to reply.</p>
+              </div>
+            `,
+          })
+        }
+      } catch (notifyErr) {
+        console.error('Admin notification email failed:', notifyErr)
+      }
     } catch (err) {
       console.error('Submission error:', err)
       res.status(500).json({ error: 'Failed to submit. Please try again.' })
@@ -55,14 +85,18 @@ router.post(
 router.get('/', requireAuth, async (req, res) => {
   try {
     const unreadOnly = req.query.unread === 'true'
-    let query = 'SELECT id, first_name, last_name, email, phone, message, is_read, created_at FROM submissions'
+    const archived = req.query.archived === 'true'
+    const conditions = []
     const params = []
 
+    conditions.push(`is_archived = ${archived}`)
+
     if (unreadOnly) {
-      query += ' WHERE is_read = false'
+      conditions.push('is_read = false')
     }
 
-    query += ' ORDER BY created_at DESC'
+    const where = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : ''
+    const query = `SELECT id, first_name, last_name, email, phone, message, is_read, is_archived, created_at FROM submissions${where} ORDER BY created_at DESC`
 
     const result = await getPool().query(query, params)
     res.json(result.rows)
@@ -85,7 +119,7 @@ router.get(
 
     try {
       const submissionResult = await getPool().query(
-        'SELECT id, first_name, last_name, email, phone, message, is_read, created_at FROM submissions WHERE id = $1',
+        'SELECT id, first_name, last_name, email, phone, message, is_read, is_archived, created_at FROM submissions WHERE id = $1',
         [req.params.id]
       )
 
@@ -137,6 +171,58 @@ router.patch(
     }
   }
 )
+
+// Admin — archive/unarchive submission
+router.patch(
+  '/:id/archive',
+  requireAuth,
+  param('id').isInt().withMessage('Invalid submission ID'),
+  async (req, res) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ error: errors.array()[0].msg })
+    }
+
+    try {
+      const result = await getPool().query(
+        'UPDATE submissions SET is_archived = NOT is_archived WHERE id = $1 RETURNING id, is_archived',
+        [req.params.id]
+      )
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Submission not found' })
+      }
+
+      res.json(result.rows[0])
+    } catch (err) {
+      console.error('Archive error:', err)
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  }
+)
+
+// Admin — export submissions as CSV
+router.get('/export/csv', requireAuth, async (req, res) => {
+  try {
+    const result = await getPool().query(
+      'SELECT first_name, last_name, email, phone, message, is_read, is_archived, created_at FROM submissions ORDER BY created_at DESC'
+    )
+
+    const header = 'First Name,Last Name,Email,Phone,Message,Read,Archived,Submitted\n'
+    const rows = result.rows.map(r => {
+      const msg = r.message.replace(/"/g, '""').replace(/\n/g, ' ')
+      const date = new Date(r.created_at).toISOString()
+      return `"${r.first_name}","${r.last_name}","${r.email}","${r.phone}","${msg}",${r.is_read},${r.is_archived},"${date}"`
+    }).join('\n')
+
+    res.setHeader('Content-Type', 'text/csv')
+    res.setHeader('Content-Disposition', `attachment; filename="submissions-${new Date().toISOString().slice(0, 10)}.csv"`)
+    res.send(header + rows)
+  } catch (err) {
+    console.error('CSV export error:', err)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
 
 // Admin — reply to submission
 router.post(

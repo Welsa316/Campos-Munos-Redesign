@@ -4,8 +4,8 @@
     <div class="p-5 border-b border-gray-100">
       <div class="flex items-center justify-between mb-4">
         <h2 class="font-ui font-semibold text-gray-900 text-sm tracking-wide">
-          Messages
-          <span v-if="unreadCount > 0" class="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-brand-red text-white text-xs font-bold">
+          {{ viewMode === 'archived' ? 'Archived' : 'Messages' }}
+          <span v-if="viewMode !== 'archived' && unreadCount > 0" class="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-brand-red text-white text-xs font-bold">
             {{ unreadCount }}
           </span>
         </h2>
@@ -14,8 +14,22 @@
         </button>
       </div>
 
-      <!-- Filter toggle -->
-      <div class="flex bg-brand-surface rounded-lg p-0.5">
+      <!-- View toggle: Inbox / Archived -->
+      <div class="flex bg-brand-surface rounded-lg p-0.5 mb-3">
+        <button
+          @click="$emit('changeView', 'inbox')"
+          :class="viewMode === 'inbox' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
+          class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-all"
+        >Inbox</button>
+        <button
+          @click="$emit('changeView', 'archived')"
+          :class="viewMode === 'archived' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
+          class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-all"
+        >Archived</button>
+      </div>
+
+      <!-- Filter toggle (only in inbox view) -->
+      <div v-if="viewMode === 'inbox'" class="flex bg-brand-surface rounded-lg p-0.5">
         <button
           @click="filter = 'all'"
           :class="filter === 'all' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
@@ -32,9 +46,9 @@
     <!-- List -->
     <div class="flex-1 overflow-y-auto">
       <div v-if="filteredSubmissions.length === 0" class="p-6 text-center">
-        <i class="fa-solid fa-inbox text-3xl text-gray-300 mb-3"></i>
+        <i :class="viewMode === 'archived' ? 'fa-solid fa-archive' : 'fa-solid fa-inbox'" class="text-3xl text-gray-300 mb-3"></i>
         <p class="text-gray-400 text-sm font-ui">
-          {{ filter === 'unread' ? 'No unread messages' : 'No messages yet' }}
+          {{ viewMode === 'archived' ? 'No archived messages' : (filter === 'unread' ? 'No unread messages' : 'No messages yet') }}
         </p>
       </div>
 
@@ -77,20 +91,20 @@ import { ref, computed } from 'vue'
 const props = defineProps({
   submissions: { type: Array, default: () => [] },
   selectedId: { type: Number, default: null },
+  viewMode: { type: String, default: 'inbox' },
 })
 
-defineEmits(['select', 'refresh'])
+defineEmits(['select', 'refresh', 'changeView'])
 
 const filter = ref('all')
 
 const unreadCount = computed(() => props.submissions.filter(s => !s.is_read).length)
 
 const filteredSubmissions = computed(() => {
-  let list = filter.value === 'unread'
+  let list = filter.value === 'unread' && props.viewMode !== 'archived'
     ? props.submissions.filter(s => !s.is_read)
     : props.submissions
 
-  // Sort: unread first, then by date desc
   return [...list].sort((a, b) => {
     if (a.is_read !== b.is_read) return a.is_read ? 1 : -1
     return new Date(b.created_at) - new Date(a.created_at)

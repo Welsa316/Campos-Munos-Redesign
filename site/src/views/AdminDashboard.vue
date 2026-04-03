@@ -11,6 +11,14 @@
         </span>
       </div>
       <div class="ml-auto flex items-center gap-4">
+        <button
+          @click="exportCsv"
+          class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors"
+          title="Export CSV"
+        >
+          <i class="fa-solid fa-download text-xs"></i>
+          <span class="hidden sm:inline">Export</span>
+        </button>
         <span class="text-xs text-gray-400 font-ui hidden sm:inline">{{ adminEmail }}</span>
         <button
           @click="handleLogout"
@@ -43,7 +51,7 @@
 
     <!-- Main content — two panel layout -->
     <div v-else class="flex-1 flex overflow-hidden">
-      <!-- Left panel — visible on desktop always, on mobile when no detail selected -->
+      <!-- Left panel -->
       <div :class="[
         'w-full lg:w-[380px] lg:flex-shrink-0 flex flex-col',
         selectedId !== null ? 'hidden lg:flex' : 'flex'
@@ -51,12 +59,14 @@
         <SubmissionList
           :submissions="submissions"
           :selectedId="selectedId"
+          :viewMode="viewMode"
           @select="selectSubmission"
           @refresh="fetchSubmissions"
+          @changeView="changeView"
         />
       </div>
 
-      <!-- Right panel — visible on desktop always, on mobile only when detail selected -->
+      <!-- Right panel -->
       <div :class="[
         'flex-1 flex flex-col min-w-0',
         selectedId === null ? 'hidden lg:flex' : 'flex'
@@ -66,6 +76,7 @@
           :showBack="true"
           @replied="refreshSelected"
           @back="selectedId = null"
+          @archived="handleArchived"
         />
       </div>
     </div>
@@ -84,11 +95,14 @@ const router = useRouter()
 const { adminEmail, logout } = useAuth()
 const { get, patch } = useApi()
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
+
 const submissions = ref([])
 const selectedId = ref(null)
 const selectedSubmission = ref(null)
 const loadingList = ref(true)
 const listError = ref(false)
+const viewMode = ref('inbox')
 
 const unreadCount = computed(() => submissions.value.filter(s => !s.is_read).length)
 
@@ -101,12 +115,20 @@ async function fetchSubmissions() {
   listError.value = false
 
   try {
-    submissions.value = await get('/api/submissions')
+    const archived = viewMode.value === 'archived' ? 'true' : 'false'
+    submissions.value = await get(`/api/submissions?archived=${archived}`)
   } catch {
     listError.value = true
   } finally {
     loadingList.value = false
   }
+}
+
+function changeView(mode) {
+  viewMode.value = mode
+  selectedId.value = null
+  selectedSubmission.value = null
+  fetchSubmissions()
 }
 
 async function selectSubmission(id) {
@@ -115,7 +137,6 @@ async function selectSubmission(id) {
   try {
     selectedSubmission.value = await get(`/api/submissions/${id}`)
 
-    // Mark as read if unread
     const sub = submissions.value.find(s => s.id === id)
     if (sub && !sub.is_read) {
       await patch(`/api/submissions/${id}/read`)
@@ -133,6 +154,28 @@ async function refreshSelected() {
     } catch {
       // Keep existing data on error
     }
+  }
+}
+
+async function handleArchived() {
+  selectedId.value = null
+  selectedSubmission.value = null
+  await fetchSubmissions()
+}
+
+async function exportCsv() {
+  try {
+    const res = await fetch(`${API_BASE}/api/submissions/export/csv`, { credentials: 'include' })
+    if (!res.ok) throw new Error('Export failed')
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `submissions-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch {
+    // Silently fail — could add toast here
   }
 }
 
