@@ -21,7 +21,7 @@
             v-for="service in services"
             :key="service.slug"
             :to="`/servicios/${service.slug}`"
-            class="reveal group relative h-[380px] overflow-hidden cursor-pointer"
+            class="reveal group relative h-[500px] md:h-[600px] lg:h-[700px] overflow-hidden cursor-pointer"
           >
             <!-- Background image -->
             <img
