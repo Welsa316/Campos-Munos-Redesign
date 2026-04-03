@@ -35,11 +35,11 @@
             <div class="absolute inset-0 bg-gradient-to-t from-brand-navy via-brand-navy/40 to-transparent"></div>
 
             <!-- Text content -->
-            <div class="relative h-full p-8 flex flex-col justify-end">
-              <h3 class="font-heading text-2xl font-bold text-white mb-1.5 group-hover:translate-y-[-2px] transition-transform duration-300">
+            <div class="relative h-full p-8 md:p-10 lg:p-12 flex flex-col justify-end">
+              <h3 class="font-heading text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-2 md:mb-3 group-hover:translate-y-[-2px] transition-transform duration-300">
                 {{ $t(`services.${service.key}`) }}
               </h3>
-              <p class="text-white/60 text-sm font-ui line-clamp-1 group-hover:text-white/80 transition-colors duration-300">
+              <p class="text-white/60 text-base md:text-lg font-ui line-clamp-2 group-hover:text-white/80 transition-colors duration-300 max-w-md">
                 {{ $t(`serviceDescriptions.${service.key}`) }}
               </p>
             </div>
