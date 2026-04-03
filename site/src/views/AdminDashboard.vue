@@ -87,15 +87,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
-import { useApi } from '../composables/useApi.js'
+import { useApi, rawFetch } from '../composables/useApi.js'
 import SubmissionList from '../components/admin/SubmissionList.vue'
 import SubmissionDetail from '../components/admin/SubmissionDetail.vue'
 
 const router = useRouter()
 const { adminEmail, logout } = useAuth()
 const { get, patch } = useApi()
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
 const submissions = ref([])
 const selectedId = ref(null)
@@ -132,6 +130,7 @@ function changeView(mode) {
 }
 
 async function selectSubmission(id) {
+  if (selectedId.value === id && selectedSubmission.value) return
   selectedId.value = id
 
   try {
@@ -165,8 +164,9 @@ async function handleArchived() {
 
 async function exportCsv() {
   try {
-    const res = await fetch(`${API_BASE}/api/submissions/export/csv`, { credentials: 'include' })
-    if (!res.ok) throw new Error('Export failed')
+    const res = await rawFetch('/api/submissions/export/csv')
+    if (res.status === 401) { window.location.href = '/admin/login'; return }
+    if (!res.ok) return
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -174,9 +174,7 @@ async function exportCsv() {
     a.download = `submissions-${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
     URL.revokeObjectURL(url)
-  } catch {
-    // Silently fail — could add toast here
-  }
+  } catch { /* noop */ }
 }
 
 async function handleLogout() {

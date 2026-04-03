@@ -1,10 +1,11 @@
 import { Router } from 'express'
 import rateLimit from 'express-rate-limit'
-import { body, param, validationResult } from 'express-validator'
+import { body, param } from 'express-validator'
 import { Resend } from 'resend'
 import getPool from '../db/pool.js'
 import requireAuth from '../middleware/auth.js'
-import { stripHtml } from '../utils/sanitize.js'
+import validate from '../middleware/validate.js'
+import { stripHtml, escapeHtml, escapeCsvField } from '../utils/sanitize.js'
 
 const router = Router()
 
@@ -25,12 +26,8 @@ router.post(
   body('email').isEmail().normalizeEmail().isLength({ max: 255 }).withMessage('Valid email required'),
   body('phone').trim().notEmpty().isLength({ max: 50 }).matches(/^[0-9+\-() ]+$/).withMessage('Valid phone number required'),
   body('message').trim().notEmpty().isLength({ max: 5000 }).withMessage('Message is required (max 5000 chars)'),
+  validate,
   async (req, res) => {
-    const errors = validationResult(req)
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ error: errors.array()[0].msg })
-    }
-
     try {
       const firstName = stripHtml(req.body.firstName)
       const lastName = stripHtml(req.body.lastName)
@@ -59,12 +56,12 @@ router.post(
                 <div style="border-bottom: 3px solid #003F8D; padding-bottom: 16px; margin-bottom: 24px;">
                   <h2 style="margin: 0; color: #003F8D; font-size: 20px;">New Contact Form Submission</h2>
                 </div>
-                <p style="font-size: 15px; line-height: 1.6;"><strong>${firstName} ${lastName}</strong> submitted a new inquiry.</p>
+                <p style="font-size: 15px; line-height: 1.6;"><strong>${escapeHtml(firstName)} ${escapeHtml(lastName)}</strong> submitted a new inquiry.</p>
                 <table style="font-size: 14px; line-height: 1.6; margin: 16px 0;">
-                  <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Email:</td><td>${email}</td></tr>
-                  <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Phone:</td><td>${phone}</td></tr>
+                  <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Email:</td><td>${escapeHtml(email)}</td></tr>
+                  <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Phone:</td><td>${escapeHtml(phone)}</td></tr>
                 </table>
-                <div style="background: #f0f2f7; border-radius: 8px; padding: 16px; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${message}</div>
+                <div style="background: #f0f2f7; border-radius: 8px; padding: 16px; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${escapeHtml(message)}</div>
                 <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0 12px;" />
                 <p style="font-size: 12px; color: #6b7280;">Log in to the admin dashboard to reply.</p>
               </div>
@@ -89,13 +86,14 @@ router.get('/', requireAuth, async (req, res) => {
     const conditions = []
     const params = []
 
-    conditions.push(`is_archived = ${archived}`)
+    params.push(archived)
+    conditions.push(`is_archived = $${params.length}`)
 
     if (unreadOnly) {
       conditions.push('is_read = false')
     }
 
-    const where = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : ''
+    const where = ` WHERE ${conditions.join(' AND ')}`
     const query = `SELECT id, first_name, last_name, email, phone, message, is_read, is_archived, created_at FROM submissions${where} ORDER BY created_at DESC`
 
     const result = await getPool().query(query, params)
@@ -111,26 +109,23 @@ router.get(
   '/:id',
   requireAuth,
   param('id').isInt().withMessage('Invalid submission ID'),
+  validate,
   async (req, res) => {
-    const errors = validationResult(req)
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ error: errors.array()[0].msg })
-    }
-
     try {
-      const submissionResult = await getPool().query(
-        'SELECT id, first_name, last_name, email, phone, message, is_read, is_archived, created_at FROM submissions WHERE id = $1',
-        [req.params.id]
-      )
+      const [submissionResult, repliesResult] = await Promise.all([
+        getPool().query(
+          'SELECT id, first_name, last_name, email, phone, message, is_read, is_archived, created_at FROM submissions WHERE id = $1',
+          [req.params.id]
+        ),
+        getPool().query(
+          'SELECT id, body, sent_at FROM replies WHERE submission_id = $1 ORDER BY sent_at ASC',
+          [req.params.id]
+        ),
+      ])
 
       if (submissionResult.rows.length === 0) {
         return res.status(404).json({ error: 'Submission not found' })
       }
-
-      const repliesResult = await getPool().query(
-        'SELECT id, body, sent_at FROM replies WHERE submission_id = $1 ORDER BY sent_at ASC',
-        [req.params.id]
-      )
 
       res.json({
         ...submissionResult.rows[0],
@@ -148,12 +143,8 @@ router.patch(
   '/:id/read',
   requireAuth,
   param('id').isInt().withMessage('Invalid submission ID'),
+  validate,
   async (req, res) => {
-    const errors = validationResult(req)
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ error: errors.array()[0].msg })
-    }
-
     try {
       const result = await getPool().query(
         'UPDATE submissions SET is_read = true WHERE id = $1 RETURNING id, is_read',
@@ -177,12 +168,8 @@ router.patch(
   '/:id/archive',
   requireAuth,
   param('id').isInt().withMessage('Invalid submission ID'),
+  validate,
   async (req, res) => {
-    const errors = validationResult(req)
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ error: errors.array()[0].msg })
-    }
-
     try {
       const result = await getPool().query(
         'UPDATE submissions SET is_archived = NOT is_archived WHERE id = $1 RETURNING id, is_archived',
@@ -210,9 +197,8 @@ router.get('/export/csv', requireAuth, async (req, res) => {
 
     const header = 'First Name,Last Name,Email,Phone,Message,Read,Archived,Submitted\n'
     const rows = result.rows.map(r => {
-      const msg = r.message.replace(/"/g, '""').replace(/\n/g, ' ')
       const date = new Date(r.created_at).toISOString()
-      return `"${r.first_name}","${r.last_name}","${r.email}","${r.phone}","${msg}",${r.is_read},${r.is_archived},"${date}"`
+      return `${escapeCsvField(r.first_name)},${escapeCsvField(r.last_name)},${escapeCsvField(r.email)},${escapeCsvField(r.phone)},${escapeCsvField(r.message)},${r.is_read},${r.is_archived},"${date}"`
     }).join('\n')
 
     res.setHeader('Content-Type', 'text/csv')
@@ -230,12 +216,8 @@ router.post(
   requireAuth,
   param('id').isInt().withMessage('Invalid submission ID'),
   body('body').trim().notEmpty().isLength({ max: 10000 }).withMessage('Reply body is required (max 10000 chars)'),
+  validate,
   async (req, res) => {
-    const errors = validationResult(req)
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ error: errors.array()[0].msg })
-    }
-
     try {
       // Fetch submission for recipient info
       const subResult = await getPool().query(
@@ -277,8 +259,8 @@ router.post(
               <div style="border-bottom: 3px solid #003F8D; padding-bottom: 16px; margin-bottom: 24px;">
                 <h2 style="margin: 0; color: #003F8D; font-size: 20px;">Campos Muños Law</h2>
               </div>
-              <p style="font-size: 15px; line-height: 1.6;">Dear ${submission.first_name},</p>
-              <div style="font-size: 15px; line-height: 1.7; white-space: pre-wrap;">${replyBody}</div>
+              <p style="font-size: 15px; line-height: 1.6;">Dear ${escapeHtml(submission.first_name)},</p>
+              <div style="font-size: 15px; line-height: 1.7; white-space: pre-wrap;">${escapeHtml(replyBody)}</div>
               <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0 16px;" />
               <p style="font-size: 12px; color: #6b7280; line-height: 1.5;">
                 This is a reply to your inquiry submitted on ${submittedDate}.<br/>

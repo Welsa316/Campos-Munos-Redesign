@@ -1,20 +1,10 @@
 import { ref } from 'vue'
+import { rawFetch } from './useApi.js'
 
 const isAuthenticated = ref(false)
 const adminEmail = ref('')
 const loading = ref(true)
 let verified = false
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
-
-async function apiFetch(path, options = {}) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-  })
-  return res
-}
 
 export function useAuth() {
   async function verify() {
@@ -22,7 +12,7 @@ export function useAuth() {
 
     loading.value = true
     try {
-      const res = await apiFetch('/api/auth/verify')
+      const res = await rawFetch('/api/auth/verify')
       if (res.ok) {
         const data = await res.json()
         isAuthenticated.value = true
@@ -43,7 +33,7 @@ export function useAuth() {
   }
 
   async function login(email, password) {
-    const res = await apiFetch('/api/auth/login', {
+    const res = await rawFetch('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     })
@@ -61,9 +51,9 @@ export function useAuth() {
 
   async function logout() {
     try {
-      await apiFetch('/api/auth/logout', { method: 'POST' })
+      await rawFetch('/api/auth/logout', { method: 'POST' })
     } catch {
-      // Clear state regardless
+      // noop
     }
     isAuthenticated.value = false
     adminEmail.value = ''

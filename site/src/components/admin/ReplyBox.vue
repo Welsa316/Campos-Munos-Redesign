@@ -46,7 +46,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onBeforeUnmount } from 'vue'
 import { useApi } from '../../composables/useApi.js'
 
 const props = defineProps({
@@ -86,14 +86,15 @@ async function sendReply() {
   }
 }
 
-function showToast(message, type) {
-  toast.value = { message, type }
-  setTimeout(() => { toast.value = null }, 5000)
-}
-</script>
+let toastTimer = null
 
-<style scoped>
-.fade-enter-active { transition: all 0.3s ease; }
-.fade-leave-active { transition: all 0.2s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
-</style>
+function showToast(message, type) {
+  if (toastTimer) clearTimeout(toastTimer)
+  toast.value = { message, type }
+  toastTimer = setTimeout(() => { toast.value = null }, 5000)
+}
+
+onBeforeUnmount(() => {
+  if (toastTimer) clearTimeout(toastTimer)
+})
+</script>

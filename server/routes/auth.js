@@ -2,8 +2,9 @@ import { Router } from 'express'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import rateLimit from 'express-rate-limit'
-import { body, validationResult } from 'express-validator'
+import { body } from 'express-validator'
 import getPool from '../db/pool.js'
+import validate from '../middleware/validate.js'
 
 const router = Router()
 
@@ -28,12 +29,8 @@ router.post(
   loginLimiter,
   body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
   body('password').notEmpty().withMessage('Password required'),
+  validate,
   async (req, res) => {
-    const errors = validationResult(req)
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ error: errors.array()[0].msg })
-    }
-
     try {
       const { email, password } = req.body
       const result = await getPool().query(
@@ -67,12 +64,8 @@ router.post(
 )
 
 router.post('/logout', (req, res) => {
-  res.clearCookie('token', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    path: '/',
-  })
+  const { maxAge, ...clearOptions } = COOKIE_OPTIONS
+  res.clearCookie('token', clearOptions)
   res.json({ ok: true })
 })
 

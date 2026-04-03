@@ -173,6 +173,7 @@
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useScrollReveal } from '../composables/useScrollReveal.js'
+import { rawFetch } from '../composables/useApi.js'
 
 useScrollReveal()
 const { t } = useI18n()
@@ -181,8 +182,6 @@ const form = ref({ firstName: '', lastName: '', email: '', phone: '', message: '
 const submitted = ref(false)
 const loading = ref(false)
 const error = ref(false)
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
 const socials = [
   { icon: 'fa-brands fa-whatsapp', href: 'https://wa.me/15049106508', label: 'WhatsApp', color: '#25D366' },
@@ -203,10 +202,8 @@ async function submitForm() {
   error.value = false
 
   try {
-    const res = await fetch(`${API_BASE}/api/submissions`, {
+    const res = await rawFetch('/api/submissions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify(form.value),
     })
 
@@ -225,9 +222,3 @@ async function submitForm() {
   }
 }
 </script>
-
-<style scoped>
-.fade-enter-active { transition: all 0.4s ease; }
-.fade-leave-active { transition: all 0.2s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(8px); }
-</style>

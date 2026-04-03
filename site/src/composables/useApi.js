@@ -1,15 +1,19 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
+export const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
+
+export async function rawFetch(path, options = {}) {
+  return fetch(`${API_BASE}${path}`, {
+    ...options,
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  })
+}
 
 export function useApi() {
   async function apiFetch(path, options = {}) {
-    const res = await fetch(`${API_BASE}${path}`, {
-      ...options,
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    })
+    const res = await rawFetch(path, options)
 
     if (res.status === 401) {
       window.location.href = '/admin/login'

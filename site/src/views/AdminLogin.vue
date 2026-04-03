@@ -86,9 +86,3 @@ async function handleLogin() {
   }
 }
 </script>
-
-<style scoped>
-.fade-enter-active { transition: all 0.3s ease; }
-.fade-leave-active { transition: all 0.2s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(4px); }
-</style>

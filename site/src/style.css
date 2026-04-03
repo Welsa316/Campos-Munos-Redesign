@@ -265,6 +265,11 @@
   transition: transform 0.1s linear;
 }
 
+/* Shared fade transition */
+.fade-enter-active { transition: all 0.4s ease; }
+.fade-leave-active { transition: all 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(8px); }
+
 /* Form utilities (shared by ContactPage and admin views) */
 .form-group {
   display: flex;
