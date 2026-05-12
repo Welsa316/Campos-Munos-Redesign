@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "prestart": "node db/migrate.js && node db/seed.js",
     "start": "node index.js",
     "dev": "node --watch index.js",
     "migrate": "node db/migrate.js",

@@ -11,20 +11,30 @@ import getPool from './pool.js'
 async function seed() {
   const isProduction = process.env.NODE_ENV === 'production'
 
-  if (isProduction) {
-    if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_INITIAL_PASSWORD) {
-      console.error('FATAL: refusing to seed in production without ADMIN_EMAIL and ADMIN_INITIAL_PASSWORD set.')
-      process.exit(1)
-    }
-    if (process.env.ADMIN_INITIAL_PASSWORD.length < 10 || /^changeme$/i.test(process.env.ADMIN_INITIAL_PASSWORD)) {
-      console.error('FATAL: ADMIN_INITIAL_PASSWORD must be at least 10 chars and not the literal "changeme".')
-      process.exit(1)
-    }
-  }
-
   const pool = getPool()
   const client = await pool.connect()
   try {
+    // Idempotent fast-path: if any admin already exists, this is a redeploy
+    // and there's nothing to do. Avoids both re-hashing and the env-var
+    // guard so production redeploys don't fail.
+    const existingAdmin = await client.query('SELECT id FROM admin_users LIMIT 1')
+    if (existingAdmin.rows.length > 0) {
+      console.log('Admin user already exists — skipping seed.')
+      return
+    }
+
+    // First-time seed: production must explicitly opt-in to a real password.
+    if (isProduction) {
+      if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_INITIAL_PASSWORD) {
+        console.error('FATAL: first production seed requires ADMIN_EMAIL and ADMIN_INITIAL_PASSWORD env vars.')
+        process.exit(1)
+      }
+      if (process.env.ADMIN_INITIAL_PASSWORD.length < 10 || /^changeme$/i.test(process.env.ADMIN_INITIAL_PASSWORD)) {
+        console.error('FATAL: ADMIN_INITIAL_PASSWORD must be at least 10 chars and not the literal "changeme".')
+        process.exit(1)
+      }
+    }
+
     // Seed admin user
     const email = process.env.ADMIN_EMAIL || 'admin@camulaw.com'
     const password = process.env.ADMIN_INITIAL_PASSWORD || 'changeme'
