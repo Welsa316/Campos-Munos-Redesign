@@ -28,6 +28,16 @@
                 <i class="fa-solid fa-phone mr-1.5 text-xs"></i>{{ submission.phone }}
               </a>
             </div>
+            <div class="flex items-center gap-3 text-xs font-ui mt-2">
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-navy/10 text-brand-navy font-semibold uppercase tracking-wider">
+                <i class="fa-solid fa-briefcase text-[10px]"></i>
+                {{ consultationLabel(submission.consultation_type) }}
+              </span>
+              <span v-if="submission.location" class="inline-flex items-center gap-1.5 text-gray-500">
+                <i class="fa-solid fa-location-dot text-[10px]"></i>
+                {{ submission.location }}
+              </span>
+            </div>
           </div>
           <div class="flex items-center gap-2">
             <span v-if="!submission.is_read" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-red/10 text-brand-red text-xs font-ui font-medium">
@@ -88,8 +98,17 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useApi } from '../../composables/useApi.js'
 import ReplyBox from './ReplyBox.vue'
+
+const { t, te } = useI18n()
+
+function consultationLabel(key) {
+  if (!key) return 'Other'
+  if (key === 'other') return t('consultationForm.notSure')
+  return te(`services.${key}`) ? t(`services.${key}`) : key
+}
 
 const props = defineProps({
   submission: { type: Object, default: null },

@@ -156,6 +156,13 @@ export default {
     cta: 'Llámenos',
     callLabel: 'Llamar a (504) 910-6508',
   },
+  consultationForm: {
+    consultationType: 'Tipo de consulta',
+    selectConsultation: 'Seleccione un tipo de consulta',
+    location: 'Ciudad y estado',
+    locationPlaceholder: 'p. ej. Nueva Orleans, LA',
+    notSure: 'No estoy seguro / Otro',
+  },
   chat: {
     openChat: 'Abrir chat',
     close: 'Cerrar',

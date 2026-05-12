@@ -48,6 +48,12 @@ async function migrate() {
       -- Add source column (contact | chat) to distinguish chat sessions from contact form submissions
       ALTER TABLE submissions ADD COLUMN IF NOT EXISTS source VARCHAR(20) NOT NULL DEFAULT 'contact';
 
+      -- Add consultation type + client location (both required for new submissions)
+      ALTER TABLE submissions ADD COLUMN IF NOT EXISTS consultation_type VARCHAR(50) NOT NULL DEFAULT 'other';
+      ALTER TABLE submissions ADD COLUMN IF NOT EXISTS location VARCHAR(255) NOT NULL DEFAULT '';
+
+      CREATE INDEX IF NOT EXISTS idx_submissions_consultation_type ON submissions(consultation_type);
+
       CREATE TABLE IF NOT EXISTS replies (
         id SERIAL PRIMARY KEY,
         submission_id INTEGER REFERENCES submissions(id) ON DELETE CASCADE,

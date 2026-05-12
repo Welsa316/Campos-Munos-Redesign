@@ -156,6 +156,13 @@ export default {
     cta: 'Call us',
     callLabel: 'Call (504) 910-6508',
   },
+  consultationForm: {
+    consultationType: 'Type of consultation',
+    selectConsultation: 'Select a consultation type',
+    location: 'City and state',
+    locationPlaceholder: 'e.g. New Orleans, LA',
+    notSure: 'Not sure / Other',
+  },
   chat: {
     openChat: 'Open chat',
     close: 'Close',

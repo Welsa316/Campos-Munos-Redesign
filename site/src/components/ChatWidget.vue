@@ -85,6 +85,17 @@
               <input v-model="form.phone" type="tel" required maxlength="50"
                 :placeholder="$t('chat.phone')"
                 class="w-full px-3 py-2.5 rounded-lg bg-white border border-gray-200 focus:border-brand-navy/40 focus:ring-2 focus:ring-brand-navy/10 focus:outline-none text-sm font-ui text-gray-800 placeholder:text-gray-400 transition-all" />
+              <select v-model="form.consultationType" required
+                class="w-full px-3 py-2.5 rounded-lg bg-white border border-gray-200 focus:border-brand-navy/40 focus:ring-2 focus:ring-brand-navy/10 focus:outline-none text-sm font-ui text-gray-800 transition-all"
+                :class="!form.consultationType ? 'text-gray-400' : 'text-gray-800'">
+                <option value="" disabled>{{ $t('consultationForm.selectConsultation') }}</option>
+                <option v-for="key in CONSULTATION_KEYS" :key="key" :value="key">
+                  {{ key === 'other' ? $t('consultationForm.notSure') : $t(`services.${key}`) }}
+                </option>
+              </select>
+              <input v-model="form.location" type="text" required maxlength="255"
+                :placeholder="$t('consultationForm.locationPlaceholder')"
+                class="w-full px-3 py-2.5 rounded-lg bg-white border border-gray-200 focus:border-brand-navy/40 focus:ring-2 focus:ring-brand-navy/10 focus:outline-none text-sm font-ui text-gray-800 placeholder:text-gray-400 transition-all" />
               <textarea v-model="form.message" rows="3" required maxlength="5000"
                 :placeholder="$t('chat.firstMessage')"
                 class="w-full resize-none px-3 py-2.5 rounded-lg bg-white border border-gray-200 focus:border-brand-navy/40 focus:ring-2 focus:ring-brand-navy/10 focus:outline-none text-sm font-ui text-gray-800 placeholder:text-gray-400 transition-all"></textarea>
@@ -192,8 +203,16 @@ const form = ref({
   lastName: '',
   email: '',
   phone: '',
+  consultationType: '',
+  location: '',
   message: '',
 })
+
+const CONSULTATION_KEYS = [
+  'greenCard', 'ciudadania', 'asilo', 'vawa', 'visaU', 'visaT', 'daca', 'tps',
+  'tramiteConsular', 'visasPrometido', 'visasJovenes', 'peticionesFamiliares',
+  'ead', 'defensaDeportacion', 'other',
+]
 
 const session = ref(null) // { id, firstName, lastName, email, phone, startedAt }
 const messages = ref([])  // [{ id, body, sent_at }]
@@ -268,7 +287,7 @@ async function startChat() {
   formError.value = ''
   const f = form.value
 
-  if (!f.firstName.trim() || !f.lastName.trim() || !f.email.trim() || !f.phone.trim() || !f.message.trim()) {
+  if (!f.firstName.trim() || !f.lastName.trim() || !f.email.trim() || !f.phone.trim() || !f.consultationType || !f.location.trim() || !f.message.trim()) {
     formError.value = t('chat.requiredError')
     return
   }
@@ -286,6 +305,8 @@ async function startChat() {
         lastName: f.lastName.trim(),
         email: f.email.trim(),
         phone: f.phone.trim(),
+        consultationType: f.consultationType,
+        location: f.location.trim(),
         message: f.message.trim(),
         source: 'chat',
       }),
@@ -308,7 +329,7 @@ async function startChat() {
     }
     messages.value = [{ id: `m-${data.id}`, body: firstMessageBody, sent_at: data.created_at }]
     saveSession()
-    form.value = { firstName: '', lastName: '', email: '', phone: '', message: '' }
+    form.value = { firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '' }
     nextTick(scrollThreadToBottom)
   } catch (err) {
     formError.value = t('chat.sendError')

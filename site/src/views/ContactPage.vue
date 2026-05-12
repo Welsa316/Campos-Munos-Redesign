@@ -43,6 +43,24 @@
                 <input v-model="form.phone" type="tel" required maxlength="50" class="form-input" />
               </div>
 
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div class="form-group">
+                  <label class="form-label">{{ $t('consultationForm.consultationType') }} <span class="text-brand-red">*</span></label>
+                  <select v-model="form.consultationType" required class="form-input">
+                    <option value="" disabled>{{ $t('consultationForm.selectConsultation') }}</option>
+                    <option v-for="key in CONSULTATION_KEYS" :key="key" :value="key">
+                      {{ key === 'other' ? $t('consultationForm.notSure') : $t(`services.${key}`) }}
+                    </option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">{{ $t('consultationForm.location') }} <span class="text-brand-red">*</span></label>
+                  <input v-model="form.location" type="text" required maxlength="255"
+                    :placeholder="$t('consultationForm.locationPlaceholder')"
+                    class="form-input" />
+                </div>
+              </div>
+
               <div class="form-group">
                 <label class="form-label">{{ $t('contact.message') }} <span class="text-brand-red">*</span></label>
                 <textarea v-model="form.message" rows="4" required maxlength="5000" class="form-input resize-none"></textarea>
@@ -178,10 +196,16 @@ import { rawFetch } from '../composables/useApi.js'
 useScrollReveal()
 const { t } = useI18n()
 
-const form = ref({ firstName: '', lastName: '', email: '', phone: '', message: '' })
+const form = ref({ firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '' })
 const submitted = ref(false)
 const loading = ref(false)
 const error = ref(false)
+
+const CONSULTATION_KEYS = [
+  'greenCard', 'ciudadania', 'asilo', 'vawa', 'visaU', 'visaT', 'daca', 'tps',
+  'tramiteConsular', 'visasPrometido', 'visasJovenes', 'peticionesFamiliares',
+  'ead', 'defensaDeportacion', 'other',
+]
 
 const socials = [
   { icon: 'fa-brands fa-whatsapp', href: 'https://wa.me/15049106508', label: 'WhatsApp', color: '#25D366' },
@@ -212,7 +236,7 @@ async function submitForm() {
     }
 
     submitted.value = true
-    form.value = { firstName: '', lastName: '', email: '', phone: '', message: '' }
+    form.value = { firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '' }
     setTimeout(() => { submitted.value = false }, 5000)
   } catch {
     error.value = true

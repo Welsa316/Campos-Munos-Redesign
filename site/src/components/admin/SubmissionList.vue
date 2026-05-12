@@ -41,6 +41,17 @@
           class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-all"
         >Unread</button>
       </div>
+
+      <!-- Consultation type filter -->
+      <div class="mt-3">
+        <select v-model="consultationFilter"
+          class="w-full text-xs font-ui font-medium px-3 py-2 rounded-lg bg-brand-surface border border-transparent focus:border-brand-navy/30 focus:bg-white focus:outline-none text-gray-700 transition-colors">
+          <option value="">All consultation types</option>
+          <option v-for="key in CONSULTATION_KEYS" :key="key" :value="key">
+            {{ consultationLabel(key) }}
+          </option>
+        </select>
+      </div>
     </div>
 
     <!-- List -->
@@ -76,6 +87,14 @@
                 {{ relativeTime(sub.created_at) }}
               </span>
             </div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-brand-navy/10 text-brand-navy text-[10px] font-ui font-semibold uppercase tracking-wider">
+                {{ consultationLabel(sub.consultation_type) }}
+              </span>
+              <span v-if="sub.location" class="text-[11px] text-gray-400 font-ui truncate">
+                <i class="fa-solid fa-location-dot text-[9px] mr-0.5"></i>{{ sub.location }}
+              </span>
+            </div>
             <p class="text-xs text-gray-400 font-ui truncate leading-relaxed">
               {{ sub.message }}
             </p>
@@ -88,6 +107,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   submissions: { type: Array, default: () => [] },
@@ -97,14 +117,32 @@ const props = defineProps({
 
 defineEmits(['select', 'refresh', 'changeView'])
 
+const { t, te } = useI18n()
 const filter = ref('all')
+const consultationFilter = ref('')
+
+const CONSULTATION_KEYS = [
+  'greenCard', 'ciudadania', 'asilo', 'vawa', 'visaU', 'visaT', 'daca', 'tps',
+  'tramiteConsular', 'visasPrometido', 'visasJovenes', 'peticionesFamiliares',
+  'ead', 'defensaDeportacion', 'other',
+]
+
+function consultationLabel(key) {
+  if (!key) return 'Other'
+  if (key === 'other') return t('consultationForm.notSure')
+  return te(`services.${key}`) ? t(`services.${key}`) : key
+}
 
 const unreadCount = computed(() => props.submissions.filter(s => !s.is_read).length)
 
 const filteredSubmissions = computed(() => {
-  let list = filter.value === 'unread' && props.viewMode !== 'archived'
-    ? props.submissions.filter(s => !s.is_read)
-    : props.submissions
+  let list = props.submissions
+  if (filter.value === 'unread' && props.viewMode !== 'archived') {
+    list = list.filter(s => !s.is_read)
+  }
+  if (consultationFilter.value) {
+    list = list.filter(s => s.consultation_type === consultationFilter.value)
+  }
 
   return [...list].sort((a, b) => {
     if (a.is_read !== b.is_read) return a.is_read ? 1 : -1

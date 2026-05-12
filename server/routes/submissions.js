@@ -9,6 +9,12 @@ import { stripHtml, escapeHtml, escapeCsvField } from '../utils/sanitize.js'
 
 const router = Router()
 
+const CONSULTATION_TYPES = [
+  'greenCard', 'ciudadania', 'asilo', 'vawa', 'visaU', 'visaT', 'daca', 'tps',
+  'tramiteConsular', 'visasPrometido', 'visasJovenes', 'peticionesFamiliares',
+  'ead', 'defensaDeportacion', 'other',
+]
+
 const submitLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 10,
@@ -35,6 +41,8 @@ router.post(
   body('phone').trim().notEmpty().isLength({ max: 50 }).matches(/^[0-9+\-() ]+$/).withMessage('Valid phone number required'),
   body('message').trim().notEmpty().isLength({ max: 5000 }).withMessage('Message is required (max 5000 chars)'),
   body('source').optional().isIn(['contact', 'chat']).withMessage('Invalid source'),
+  body('consultationType').trim().notEmpty().isIn(CONSULTATION_TYPES).withMessage('Valid consultation type is required'),
+  body('location').trim().notEmpty().isLength({ max: 255 }).withMessage('Location is required (max 255 chars)'),
   validate,
   async (req, res) => {
     try {
@@ -44,10 +52,12 @@ router.post(
       const phone = stripHtml(req.body.phone)
       const message = stripHtml(req.body.message)
       const source = req.body.source === 'chat' ? 'chat' : 'contact'
+      const consultationType = req.body.consultationType
+      const location = stripHtml(req.body.location)
 
       const result = await getPool().query(
-        `INSERT INTO submissions (first_name, last_name, email, phone, message, source) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, created_at`,
-        [firstName, lastName, email, phone, message, source]
+        `INSERT INTO submissions (first_name, last_name, email, phone, message, source, consultation_type, location) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, created_at`,
+        [firstName, lastName, email, phone, message, source, consultationType, location]
       )
 
       res.status(201).json({ id: result.rows[0].id, created_at: result.rows[0].created_at })
@@ -71,6 +81,8 @@ router.post(
                 <table style="font-size: 14px; line-height: 1.6; margin: 16px 0;">
                   <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Email:</td><td>${escapeHtml(email)}</td></tr>
                   <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Phone:</td><td>${escapeHtml(phone)}</td></tr>
+                  <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Service:</td><td>${escapeHtml(consultationType)}</td></tr>
+                  <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Location:</td><td>${escapeHtml(location)}</td></tr>
                 </table>
                 <div style="background: #f0f2f7; border-radius: 8px; padding: 16px; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${escapeHtml(message)}</div>
                 <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0 12px;" />
@@ -104,8 +116,14 @@ router.get('/', requireAuth, async (req, res) => {
       conditions.push('is_read = false')
     }
 
+    const consultationType = req.query.consultationType
+    if (consultationType && CONSULTATION_TYPES.includes(consultationType)) {
+      params.push(consultationType)
+      conditions.push(`consultation_type = $${params.length}`)
+    }
+
     const where = ` WHERE ${conditions.join(' AND ')}`
-    const query = `SELECT id, first_name, last_name, email, phone, message, is_read, is_archived, source, created_at FROM submissions${where} ORDER BY created_at DESC`
+    const query = `SELECT id, first_name, last_name, email, phone, message, is_read, is_archived, source, consultation_type, location, created_at FROM submissions${where} ORDER BY created_at DESC`
 
     const result = await getPool().query(query, params)
     res.json(result.rows)
@@ -125,7 +143,7 @@ router.get(
     try {
       const [submissionResult, repliesResult, chatMessagesResult] = await Promise.all([
         getPool().query(
-          'SELECT id, first_name, last_name, email, phone, message, is_read, is_archived, source, created_at FROM submissions WHERE id = $1',
+          'SELECT id, first_name, last_name, email, phone, message, is_read, is_archived, source, consultation_type, location, created_at FROM submissions WHERE id = $1',
           [req.params.id]
         ),
         getPool().query(
@@ -273,13 +291,13 @@ router.patch(
 router.get('/export/csv', requireAuth, async (req, res) => {
   try {
     const result = await getPool().query(
-      'SELECT first_name, last_name, email, phone, message, is_read, is_archived, created_at FROM submissions ORDER BY created_at DESC'
+      'SELECT first_name, last_name, email, phone, message, consultation_type, location, is_read, is_archived, created_at FROM submissions ORDER BY created_at DESC'
     )
 
-    const header = 'First Name,Last Name,Email,Phone,Message,Read,Archived,Submitted\n'
+    const header = 'First Name,Last Name,Email,Phone,Message,Service,Location,Read,Archived,Submitted\n'
     const rows = result.rows.map(r => {
       const date = new Date(r.created_at).toISOString()
-      return `${escapeCsvField(r.first_name)},${escapeCsvField(r.last_name)},${escapeCsvField(r.email)},${escapeCsvField(r.phone)},${escapeCsvField(r.message)},${r.is_read},${r.is_archived},"${date}"`
+      return `${escapeCsvField(r.first_name)},${escapeCsvField(r.last_name)},${escapeCsvField(r.email)},${escapeCsvField(r.phone)},${escapeCsvField(r.message)},${escapeCsvField(r.consultation_type)},${escapeCsvField(r.location)},${r.is_read},${r.is_archived},"${date}"`
     }).join('\n')
 
     res.setHeader('Content-Type', 'text/csv')
