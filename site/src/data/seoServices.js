@@ -5,6 +5,11 @@
  * Each base service × location = one additional SEO page.
  */
 
+// Service-video CDN. Files are hosted on Cloudflare R2 because the bundle
+// is too large for Railway's build artifact limit. If we ever move CDNs,
+// swap this single base URL — every videoFile below is relative to it.
+const VIDEO_BASE = 'https://pub-bc3780d3394f41c6801ba2012e17903c.r2.dev'
+
 // Target locations for SEO pages
 export const locations = [
   {
@@ -55,7 +60,7 @@ export const baseServices = {
     key: 'greenCard',
     icon: 'fa-solid fa-id-card',
     video: true,
-    videoFile: '/Green-Card.mp4',
+    videoFile: `${VIDEO_BASE}/Green-Card.mp4`,
     thumbnail: '/thumbnails/green-card.svg',
     headline: { es: 'Abogados de Green Card en Nueva Orleans', en: 'Green Card Attorneys in New Orleans' },
     relatedSlugs: ['ciudadania', 'peticiones-familiares', 'ead'],
@@ -64,7 +69,7 @@ export const baseServices = {
     key: 'ciudadania',
     icon: 'fa-solid fa-certificate',
     video: true,
-    videoFile: '/Ciudadania.mp4',
+    videoFile: `${VIDEO_BASE}/Ciudadania.mp4`,
     thumbnail: '/thumbnails/ciudadania.svg',
     headline: { es: 'Abogados de Ciudadanía en Nueva Orleans', en: 'Citizenship Attorneys in New Orleans' },
     relatedSlugs: ['green-card', 'peticiones-familiares'],
@@ -80,7 +85,7 @@ export const baseServices = {
     key: 'vawa',
     icon: 'fa-solid fa-shield-halved',
     video: true,
-    videoFile: '/VAWA.mp4',
+    videoFile: `${VIDEO_BASE}/VAWA.mp4`,
     thumbnail: '/thumbnails/vawa.svg',
     headline: { es: 'Abogados en Nueva Orleans para Víctimas de Crimen y Tráfico Humano', en: 'New Orleans Attorneys for Crime and Human Trafficking Victims' },
     relatedSlugs: ['visa-u', 'visa-t', 'asilo'],
@@ -89,7 +94,7 @@ export const baseServices = {
     key: 'visaU',
     icon: 'fa-solid fa-scale-balanced',
     video: true,
-    videoFile: '/Visa-U-Listo-YT.mp4',
+    videoFile: `${VIDEO_BASE}/Visa-U-Listo-YT.mp4`,
     thumbnail: '/thumbnails/visa-u.svg',
     headline: { es: 'Abogados de Visa U en Nueva Orleans', en: 'U Visa Attorneys in New Orleans' },
     relatedSlugs: ['visa-t', 'vawa', 'ead'],
@@ -98,7 +103,7 @@ export const baseServices = {
     key: 'visaT',
     icon: 'fa-solid fa-link',
     video: true,
-    videoFile: '/3-Listo-Visa-T-fx-Listo.mp4',
+    videoFile: `${VIDEO_BASE}/3-Listo-Visa-T-fx-Listo.mp4`,
     thumbnail: '/thumbnails/visa-t.svg',
     headline: { es: 'Abogados de Visa T en Nueva Orleans', en: 'T Visa Attorneys in New Orleans' },
     relatedSlugs: ['visa-u', 'vawa', 'asilo'],
@@ -107,7 +112,7 @@ export const baseServices = {
     key: 'daca',
     icon: 'fa-solid fa-graduation-cap',
     video: true,
-    videoFile: '/Listo-DACA-Fx-LIsto.mp4',
+    videoFile: `${VIDEO_BASE}/Listo-DACA-Fx-LIsto.mp4`,
     thumbnail: '/thumbnails/daca.svg',
     headline: { es: 'Abogados de DACA en Nueva Orleans', en: 'DACA Attorneys in New Orleans' },
     relatedSlugs: ['ead', 'defensa-contra-la-deportacion', 'green-card'],
@@ -123,7 +128,7 @@ export const baseServices = {
     key: 'tramiteConsular',
     icon: 'fa-solid fa-file-signature',
     video: true,
-    videoFile: '/Listo-Proceso-consullar-fx-listo.mp4',
+    videoFile: `${VIDEO_BASE}/Listo-Proceso-consullar-fx-listo.mp4`,
     thumbnail: '/thumbnails/tramite-consular.svg',
     headline: { es: 'Abogados de Procesamiento Consular en Nueva Orleans', en: 'Consular Processing Attorneys in New Orleans' },
     relatedSlugs: ['green-card', 'visas-de-prometido', 'peticiones-familiares'],
@@ -139,7 +144,7 @@ export const baseServices = {
     key: 'visasJovenes',
     icon: 'fa-solid fa-passport',
     video: true,
-    videoFile: '/Jovenes.mp4',
+    videoFile: `${VIDEO_BASE}/Jovenes.mp4`,
     thumbnail: '/thumbnails/visas-jovenes.svg',
     headline: { es: 'Abogados de Visas Especiales para Jóvenes en Nueva Orleans', en: 'Special Immigrant Juvenile Visa Attorneys in New Orleans' },
     relatedSlugs: ['asilo', 'defensa-contra-la-deportacion', 'green-card'],
@@ -148,7 +153,7 @@ export const baseServices = {
     key: 'peticionesFamiliares',
     icon: 'fa-solid fa-people-roof',
     video: true,
-    videoFile: '/Peticiones-Familiares.mp4',
+    videoFile: `${VIDEO_BASE}/Peticiones-Familiares.mp4`,
     thumbnail: '/thumbnails/peticiones-familiares.svg',
     headline: { es: 'Abogados de Peticiones Familiares en Nueva Orleans', en: 'Family Petition Attorneys in New Orleans' },
     relatedSlugs: ['green-card', 'ciudadania', 'visas-de-prometido'],
@@ -157,7 +162,7 @@ export const baseServices = {
     key: 'ead',
     icon: 'fa-solid fa-briefcase',
     video: true,
-    videoFile: '/2-Listo-Permiso-de-Trabajo-FX-Listo.mp4',
+    videoFile: `${VIDEO_BASE}/2-Listo-Permiso-de-Trabajo-FX-Listo.mp4`,
     thumbnail: '/thumbnails/ead.svg',
     headline: { es: 'Abogados de Autorización de Empleo en Nueva Orleans', en: 'Work Authorization Attorneys in New Orleans' },
     relatedSlugs: ['daca', 'estatus-de-proteccion-temporal', 'green-card'],
@@ -166,7 +171,7 @@ export const baseServices = {
     key: 'defensaDeportacion',
     icon: 'fa-solid fa-gavel',
     video: true,
-    videoFile: '/1-listo-defensa-en-corte-FX-listo.mp4',
+    videoFile: `${VIDEO_BASE}/1-listo-defensa-en-corte-FX-listo.mp4`,
     thumbnail: '/thumbnails/defensa-deportacion.svg',
     headline: { es: 'Abogados de Defensa Contra la Deportación en Nueva Orleans', en: 'Deportation Defense Attorneys in New Orleans' },
     relatedSlugs: ['asilo', 'daca', 'vawa'],
