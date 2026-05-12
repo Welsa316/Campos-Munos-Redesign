@@ -192,7 +192,7 @@ import {
   serviceFaqs,
   baseServices,
 } from '../data/seoServices.js'
-import { serviceContent } from '../data/serviceContent.js'
+import { getServiceContent } from '../data/serviceContent.js'
 
 const props = defineProps({ slug: String, service: String, location: String })
 const { t, locale } = useI18n()
@@ -242,11 +242,11 @@ const hasVideo = computed(() => serviceData.value.video)
 const videoFile = computed(() => serviceData.value.videoFile || '')
 const thumbnailSrc = computed(() => serviceData.value.thumbnail || '/logo.png')
 
-// Structured content blocks from .txt files
-const contentBlocks = computed(() => serviceContent[serviceData.value.key] || [])
+// Structured content blocks (bilingual; falls back to ES when EN missing)
+const contentBlocks = computed(() => getServiceContent(serviceData.value.key, locale.value))
 
 // SEO
-const seoMeta = computed(() => generateSeoMeta(serviceData.value.key, locationData.value, locale.value, t))
+const seoMeta = computed(() => generateSeoMeta(serviceData.value.key, locationData.value, locale.value, t, serviceData.value))
 const pageH1 = computed(() => seoMeta.value.h1)
 
 watchEffect(() => {

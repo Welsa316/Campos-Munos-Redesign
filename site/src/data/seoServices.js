@@ -45,6 +45,11 @@ export const locations = [
 ]
 
 // Base services (no 'videos' since it has no legal content)
+// Each service has a `headline.{es,en}` used as the page H1 when the route
+// is the default (no specific SEO location). This matches the live Wix
+// site's SEO-friendly "Abogados de X en Nueva Orleans" pattern. When a
+// location-suffixed route is hit (e.g. /servicios/asilo/metairie),
+// generateSeoMeta below falls back to "{service name} en {location}".
 export const baseServices = {
   'green-card': {
     key: 'greenCard',
@@ -52,6 +57,7 @@ export const baseServices = {
     video: true,
     videoFile: '/Green-Card.mp4',
     thumbnail: '/thumbnails/green-card.svg',
+    headline: { es: 'Abogados de Green Card en Nueva Orleans', en: 'Green Card Attorneys in New Orleans' },
     relatedSlugs: ['ciudadania', 'peticiones-familiares', 'ead'],
   },
   'ciudadania': {
@@ -60,12 +66,14 @@ export const baseServices = {
     video: true,
     videoFile: '/Ciudadania.mp4',
     thumbnail: '/thumbnails/ciudadania.svg',
+    headline: { es: 'Abogados de Ciudadanía en Nueva Orleans', en: 'Citizenship Attorneys in New Orleans' },
     relatedSlugs: ['green-card', 'peticiones-familiares'],
   },
   'asilo': {
     key: 'asilo',
     icon: 'fa-solid fa-hand-holding-heart',
     video: false,
+    headline: { es: 'Abogados de Asilo en Nueva Orleans', en: 'Asylum Attorneys in New Orleans' },
     relatedSlugs: ['visa-t', 'vawa', 'defensa-contra-la-deportacion'],
   },
   'vawa': {
@@ -74,6 +82,7 @@ export const baseServices = {
     video: true,
     videoFile: '/VAWA.mp4',
     thumbnail: '/thumbnails/vawa.svg',
+    headline: { es: 'Abogados en Nueva Orleans para Víctimas de Crimen y Tráfico Humano', en: 'New Orleans Attorneys for Crime and Human Trafficking Victims' },
     relatedSlugs: ['visa-u', 'visa-t', 'asilo'],
   },
   'visa-u': {
@@ -82,6 +91,7 @@ export const baseServices = {
     video: true,
     videoFile: '/Visa-U-Listo-YT.mp4',
     thumbnail: '/thumbnails/visa-u.svg',
+    headline: { es: 'Abogados de Visa U en Nueva Orleans', en: 'U Visa Attorneys in New Orleans' },
     relatedSlugs: ['visa-t', 'vawa', 'ead'],
   },
   'visa-t': {
@@ -90,6 +100,7 @@ export const baseServices = {
     video: true,
     videoFile: '/3-Listo-Visa-T-fx-Listo.mp4',
     thumbnail: '/thumbnails/visa-t.svg',
+    headline: { es: 'Abogados de Visa T en Nueva Orleans', en: 'T Visa Attorneys in New Orleans' },
     relatedSlugs: ['visa-u', 'vawa', 'asilo'],
   },
   'daca': {
@@ -98,12 +109,14 @@ export const baseServices = {
     video: true,
     videoFile: '/Listo-DACA-Fx-LIsto.mp4',
     thumbnail: '/thumbnails/daca.svg',
+    headline: { es: 'Abogados de DACA en Nueva Orleans', en: 'DACA Attorneys in New Orleans' },
     relatedSlugs: ['ead', 'defensa-contra-la-deportacion', 'green-card'],
   },
   'estatus-de-proteccion-temporal': {
     key: 'tps',
     icon: 'fa-solid fa-umbrella',
     video: false,
+    headline: { es: 'Abogados de TPS en Nueva Orleans', en: 'TPS Attorneys in New Orleans' },
     relatedSlugs: ['ead', 'defensa-contra-la-deportacion', 'asilo'],
   },
   'tramite-consular': {
@@ -112,12 +125,14 @@ export const baseServices = {
     video: true,
     videoFile: '/Listo-Proceso-consullar-fx-listo.mp4',
     thumbnail: '/thumbnails/tramite-consular.svg',
+    headline: { es: 'Abogados de Procesamiento Consular en Nueva Orleans', en: 'Consular Processing Attorneys in New Orleans' },
     relatedSlugs: ['green-card', 'visas-de-prometido', 'peticiones-familiares'],
   },
   'visas-de-prometido': {
     key: 'visasPrometido',
     icon: 'fa-solid fa-ring',
     video: false,
+    headline: { es: 'Abogados de Visas de Prometido(a) – K1 en Nueva Orleans', en: 'Fiancé(e) Visa (K-1) Attorneys in New Orleans' },
     relatedSlugs: ['tramite-consular', 'green-card', 'peticiones-familiares'],
   },
   'visas-especial-para-jovenes': {
@@ -126,6 +141,7 @@ export const baseServices = {
     video: true,
     videoFile: '/Jovenes.mp4',
     thumbnail: '/thumbnails/visas-jovenes.svg',
+    headline: { es: 'Abogados de Visas Especiales para Jóvenes en Nueva Orleans', en: 'Special Immigrant Juvenile Visa Attorneys in New Orleans' },
     relatedSlugs: ['asilo', 'defensa-contra-la-deportacion', 'green-card'],
   },
   'peticiones-familiares': {
@@ -134,6 +150,7 @@ export const baseServices = {
     video: true,
     videoFile: '/Peticiones-Familiares.mp4',
     thumbnail: '/thumbnails/peticiones-familiares.svg',
+    headline: { es: 'Abogados de Peticiones Familiares en Nueva Orleans', en: 'Family Petition Attorneys in New Orleans' },
     relatedSlugs: ['green-card', 'ciudadania', 'visas-de-prometido'],
   },
   'ead': {
@@ -142,6 +159,7 @@ export const baseServices = {
     video: true,
     videoFile: '/2-Listo-Permiso-de-Trabajo-FX-Listo.mp4',
     thumbnail: '/thumbnails/ead.svg',
+    headline: { es: 'Abogados de Autorización de Empleo en Nueva Orleans', en: 'Work Authorization Attorneys in New Orleans' },
     relatedSlugs: ['daca', 'estatus-de-proteccion-temporal', 'green-card'],
   },
   'defensa-contra-la-deportacion': {
@@ -150,6 +168,7 @@ export const baseServices = {
     video: true,
     videoFile: '/1-listo-defensa-en-corte-FX-listo.mp4',
     thumbnail: '/thumbnails/defensa-deportacion.svg',
+    headline: { es: 'Abogados de Defensa Contra la Deportación en Nueva Orleans', en: 'Deportation Defense Attorneys in New Orleans' },
     relatedSlugs: ['asilo', 'daca', 'vawa'],
   },
 }
@@ -324,16 +343,20 @@ export function resolveServiceSlug(slug, locationSlug) {
  * @param {Function} t - i18n translate function
  * @returns {{ title: string, metaDescription: string, h1: string }}
  */
-export function generateSeoMeta(serviceKey, location, lang, t) {
+export function generateSeoMeta(serviceKey, location, lang, t, service) {
   const serviceName = t(`services.${serviceKey}`)
+  // service.headline is the SEO-friendly long-form headline used as h1 on
+  // the default route. Fall back to the plain service name if a service
+  // somehow doesn't have one.
+  const baseHeadline = service?.headline?.[lang] || serviceName
 
   if (!location) {
     return {
-      title: `${serviceName} | Campos Muños`,
+      title: `${baseHeadline} | Campos Muños`,
       metaDescription: lang === 'es'
         ? `Abogados de inmigración especializados en ${serviceName.toLowerCase()}. Atendemos clientes en Nueva Orleans y toda Louisiana.`
         : `Immigration attorneys specializing in ${serviceName.toLowerCase()}. Serving clients in New Orleans and all of Louisiana.`,
-      h1: serviceName,
+      h1: baseHeadline,
     }
   }
 

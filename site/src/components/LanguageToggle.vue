@@ -1,6 +1,6 @@
 <template>
   <transition name="lang-fade">
-    <div v-if="scrolled" class="fixed bottom-8 left-8 z-[90]">
+    <div v-if="shouldShow" class="fixed bottom-8 left-8 z-[90]">
       <button @click="toggleLang"
         class="group relative h-12 px-3.5 rounded-2xl bg-white shadow-md border border-gray-200 flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-brand-navy/10">
         <div class="absolute inset-0 rounded-2xl border border-brand-navy/20 group-hover:border-brand-navy/50 transition-all duration-500"></div>
@@ -14,17 +14,25 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useLocaleToggle } from '../composables/useLocaleToggle.js'
 import { LANG_TOGGLE_SCROLL_THRESHOLD } from '../data/timing.js'
 
 const { currentLang, toggleLang } = useLocaleToggle()
+const route = useRoute()
+
+// Only the home page has a hero-section translate button to compete with;
+// elsewhere the toggle should stay pinned in the corner all the time.
+const isHomePage = computed(() => route.path === '/home' || route.path === '/')
 
 const scrolled = ref(false)
 
 function updateScrolled() {
   scrolled.value = window.scrollY > LANG_TOGGLE_SCROLL_THRESHOLD
 }
+
+const shouldShow = computed(() => !isHomePage.value || scrolled.value)
 
 onMounted(() => {
   updateScrolled()
