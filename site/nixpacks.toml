@@ -1,0 +1,11 @@
+providers = ["node"]
+
+[phases.setup]
+nixPkgs = ["...", "git-lfs"]
+
+[phases.install]
+cmds = [
+  "git lfs install --local",
+  "git lfs pull",
+  "npm ci",
+]
