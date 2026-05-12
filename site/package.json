@@ -10,7 +10,9 @@
     "start": "serve -s dist -l ${PORT:-4173}"
   },
   "dependencies": {
-    "@fortawesome/fontawesome-free": "^7.2.0",
+    "@fortawesome/fontawesome-svg-core": "^7.2.0",
+    "@fortawesome/free-brands-svg-icons": "^7.2.0",
+    "@fortawesome/free-solid-svg-icons": "^7.2.0",
     "@tailwindcss/vite": "^4.2.1",
     "serve": "^14.2.6",
     "tailwindcss": "^4.2.1",
