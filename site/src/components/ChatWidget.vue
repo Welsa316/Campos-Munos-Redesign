@@ -102,10 +102,15 @@
                   {{ key === 'other' ? $t('consultationForm.notSure') : $t(`services.${key}`) }}
                 </option>
               </select>
-              <input v-model="form.location" type="text" required maxlength="255"
-                :placeholder="$t('consultationForm.locationPlaceholder')"
-                :aria-label="$t('consultationForm.location')"
-                class="chat-input w-full" />
+              <select v-model="form.location" required
+                :aria-label="$t('consultationForm.country')"
+                class="chat-input w-full"
+                :class="!form.location ? 'text-gray-500' : 'text-gray-800'">
+                <option value="" disabled>{{ $t('consultationForm.selectCountry') }}</option>
+                <option v-for="c in COUNTRIES" :key="c.code" :value="c.code">
+                  {{ locale === 'en' ? c.nameEn : c.nameEs }}
+                </option>
+              </select>
               <textarea v-model="form.message" rows="3" required maxlength="5000"
                 :placeholder="$t('chat.firstMessage')"
                 :aria-label="$t('chat.firstMessage')"
@@ -197,8 +202,9 @@ import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { rawFetch } from '../composables/useApi.js'
 import { CONSULTATION_KEYS } from '../data/consultationTypes.js'
+import { COUNTRIES } from '../data/countries.js'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 import { CHAT_GREETING_DELAY_MS, CHAT_GREETING_DISMISS_TTL_MS } from '../data/timing.js'
 

@@ -16,6 +16,12 @@ const CONSULTATION_TYPES = [
   'ead', 'defensaDeportacion', 'other',
 ]
 
+// Country location validation — values are ISO 3166 alpha-2 codes from the
+// frontend dropdown (site/src/data/countries.js). Accept any 2-letter
+// uppercase code; we don't enumerate all 195 here, but the frontend dropdown
+// is the only thing that can submit them in practice.
+const COUNTRY_CODE_REGEX = /^[A-Z]{2}$/
+
 const submitLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 10,
@@ -43,7 +49,7 @@ router.post(
   body('message').trim().notEmpty().isLength({ max: 5000 }).withMessage('Message is required (max 5000 chars)'),
   body('source').optional().isIn(['contact', 'chat']).withMessage('Invalid source'),
   body('consultationType').trim().notEmpty().isIn(CONSULTATION_TYPES).withMessage('Valid consultation type is required'),
-  body('location').trim().notEmpty().isLength({ max: 255 }).withMessage('Location is required (max 255 chars)'),
+  body('location').trim().notEmpty().matches(COUNTRY_CODE_REGEX).withMessage('Valid country is required'),
   validate,
   async (req, res) => {
     try {

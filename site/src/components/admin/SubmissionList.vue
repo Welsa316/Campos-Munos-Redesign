@@ -92,7 +92,7 @@
                 {{ consultationLabel(sub.consultation_type) }}
               </span>
               <span v-if="sub.location" class="text-[11px] text-gray-500 font-ui truncate">
-                <i class="fa-solid fa-location-dot text-[9px] mr-0.5"></i>{{ sub.location }}
+                <i class="fa-solid fa-location-dot text-[9px] mr-0.5" aria-hidden="true"></i>{{ countryLabel(sub.location, locale.value) }}
               </span>
             </div>
             <p class="text-xs text-gray-500 font-ui truncate leading-relaxed">
@@ -109,6 +109,7 @@
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CONSULTATION_KEYS, consultationLabel as consultationLabelShared } from '../../data/consultationTypes.js'
+import { countryLabel } from '../../data/countries.js'
 
 const props = defineProps({
   submissions: { type: Array, default: () => [] },
@@ -118,7 +119,7 @@ const props = defineProps({
 
 defineEmits(['select', 'refresh', 'changeView'])
 
-const { t, te } = useI18n()
+const { t, te, locale } = useI18n()
 const filter = ref('all')
 const consultationFilter = ref('')
 

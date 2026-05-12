@@ -54,10 +54,13 @@
                   </select>
                 </div>
                 <div class="form-group">
-                  <label class="form-label">{{ $t('consultationForm.location') }} <span class="text-brand-red">*</span></label>
-                  <input v-model="form.location" type="text" required maxlength="255"
-                    :placeholder="$t('consultationForm.locationPlaceholder')"
-                    class="form-input" />
+                  <label class="form-label">{{ $t('consultationForm.country') }} <span class="text-brand-red">*</span></label>
+                  <select v-model="form.location" required class="form-input">
+                    <option value="" disabled>{{ $t('consultationForm.selectCountry') }}</option>
+                    <option v-for="c in COUNTRIES" :key="c.code" :value="c.code">
+                      {{ locale === 'en' ? c.nameEn : c.nameEs }}
+                    </option>
+                  </select>
                 </div>
               </div>
 
@@ -193,9 +196,10 @@ import { useI18n } from 'vue-i18n'
 import { useScrollReveal } from '../composables/useScrollReveal.js'
 import { rawFetch } from '../composables/useApi.js'
 import { CONSULTATION_KEYS } from '../data/consultationTypes.js'
+import { COUNTRIES } from '../data/countries.js'
 
 useScrollReveal()
-useI18n() // imported so the template can use $t; no destructured fns needed
+const { locale } = useI18n()
 
 const form = ref({ firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '' })
 const submitted = ref(false)

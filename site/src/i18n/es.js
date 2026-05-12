@@ -170,8 +170,8 @@ export default {
   consultationForm: {
     consultationType: 'Tipo de consulta',
     selectConsultation: 'Seleccione un tipo de consulta',
-    location: 'Ciudad y estado',
-    locationPlaceholder: 'p. ej. Nueva Orleans, LA',
+    country: 'País',
+    selectCountry: 'Seleccione su país',
     notSure: 'No estoy seguro / Otro',
   },
   chat: {

@@ -34,8 +34,8 @@
                 {{ consultationLabel(submission.consultation_type) }}
               </span>
               <span v-if="submission.location" class="inline-flex items-center gap-1.5 text-gray-500">
-                <i class="fa-solid fa-location-dot text-[10px]"></i>
-                {{ submission.location }}
+                <i class="fa-solid fa-location-dot text-[10px]" aria-hidden="true"></i>
+                {{ formatCountry(submission.location) }}
               </span>
             </div>
           </div>
@@ -101,10 +101,12 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useApi } from '../../composables/useApi.js'
 import { consultationLabel as consultationLabelShared } from '../../data/consultationTypes.js'
+import { countryLabel } from '../../data/countries.js'
 import ReplyBox from './ReplyBox.vue'
 
-const { t, te } = useI18n()
+const { t, te, locale } = useI18n()
 const consultationLabel = (key) => consultationLabelShared(key, t, te)
+const formatCountry = (code) => countryLabel(code, locale.value)
 
 const props = defineProps({
   submission: { type: Object, default: null },
