@@ -153,12 +153,8 @@ export default {
   readMore: 'Leer más',
   backToSite: 'Volver al sitio',
   mobileContact: {
-    cta: '¡Contáctenos!',
-    openLabel: 'Abrir contacto',
-    closeLabel: 'Cerrar',
-    heading: '¿Listos para ayudarle?',
-    subheading: 'Llámenos ahora — sin compromiso.',
-    hoursHint: 'Lun–Vie · 9:00 AM – 5:00 PM',
+    cta: 'Llámenos',
+    callLabel: 'Llamar a (504) 910-6508',
   },
   chat: {
     openChat: 'Abrir chat',

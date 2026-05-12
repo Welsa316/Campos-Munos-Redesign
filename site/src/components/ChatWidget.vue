@@ -1,43 +1,39 @@
 <template>
-  <!-- Greeting preview bubble (auto-shows once per 24h) -->
-  <transition name="greeting">
-    <div v-if="showGreeting && !isOpen"
-      class="fixed bottom-28 right-6 z-[140] max-w-[260px] sm:max-w-[280px]">
-      <button @click="openChat" type="button"
-        class="relative bg-white rounded-2xl rounded-br-sm shadow-2xl border border-gray-100 p-4 pr-9 text-left hover:shadow-xl transition-shadow group">
-        <p class="font-ui text-sm text-gray-700 leading-snug">
-          {{ $t('chat.greetingMessage') }}
-        </p>
-        <span class="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors"
-          @click.stop="dismissGreeting"
-          role="button"
+  <!-- Bubble + speech-bubble greeting (unified group, fixed bottom-right) -->
+  <transition name="bubble">
+    <div v-if="!isOpen" class="fixed bottom-6 right-6 z-[145] flex flex-col items-end gap-3">
+      <!-- Speech bubble greeting -- comes out of the chat bubble -->
+      <div v-show="showGreeting"
+        class="speech-bubble relative bg-white rounded-2xl rounded-br-md shadow-[0_10px_40px_rgba(0,63,141,0.18)] border border-gray-100 px-4 py-3 pr-9 max-w-[240px]"
+        :class="{ 'is-visible': showGreeting }">
+        <button @click="openChat" type="button" class="text-left w-full">
+          <p class="font-ui text-sm text-gray-700 leading-snug">
+            {{ $t('chat.greetingMessage') }}
+          </p>
+        </button>
+        <button @click.stop="dismissGreeting" type="button"
+          class="absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center text-gray-300 hover:text-gray-700 hover:bg-gray-100 transition-colors"
           :aria-label="$t('chat.close')">
-          <i class="fa-solid fa-xmark text-xs"></i>
+          <i class="fa-solid fa-xmark text-[10px]"></i>
+        </button>
+        <!-- Tail pointing down toward the bubble -->
+        <span class="absolute -bottom-1.5 right-6 w-3 h-3 bg-white border-r border-b border-gray-100 rotate-45"></span>
+      </div>
+
+      <!-- Chat bubble trigger -->
+      <button @click="openChat" type="button"
+        class="group relative"
+        :aria-label="$t('chat.openChat')">
+        <!-- Avatar -->
+        <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-[3px] border-white shadow-[0_10px_40px_rgba(0,63,141,0.25)] group-hover:scale-105 transition-transform bg-brand-navy/5">
+          <img src="/JuanChatBubble.png" alt="Juan Campos" class="w-full h-full object-cover" />
+        </div>
+        <!-- Chat icon badge -->
+        <span class="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-brand-navy flex items-center justify-center shadow-lg border-[3px] border-white">
+          <i class="fa-solid fa-comment-dots text-white text-sm"></i>
         </span>
       </button>
     </div>
-  </transition>
-
-  <!-- Chat bubble trigger (always visible when modal closed) -->
-  <transition name="bubble">
-    <button v-if="!isOpen" @click="openChat" type="button"
-      class="fixed bottom-6 right-6 z-[145] group"
-      :aria-label="$t('chat.openChat')">
-      <div class="relative">
-        <!-- Avatar -->
-        <div class="w-16 h-16 sm:w-[68px] sm:h-[68px] rounded-full overflow-hidden border-[3px] border-white shadow-2xl group-hover:scale-105 transition-transform">
-          <img src="/JuanHeadshot.jpg" alt="Juan Campos" class="w-full h-full object-cover object-top scale-[1.35] origin-top" />
-        </div>
-        <!-- Chat icon badge -->
-        <span class="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-brand-navy flex items-center justify-center shadow-lg border-2 border-white">
-          <i class="fa-solid fa-comment-dots text-white text-xs"></i>
-        </span>
-        <!-- Online pulse -->
-        <span class="absolute top-0 right-1 w-3 h-3 rounded-full bg-green-500 border-2 border-white">
-          <span class="absolute inset-0 rounded-full bg-green-500 animate-ping opacity-60"></span>
-        </span>
-      </div>
-    </button>
   </transition>
 
   <!-- Chat modal -->
@@ -47,7 +43,7 @@
       <!-- Header -->
       <div class="flex items-center gap-3 px-4 py-3 bg-brand-navy text-white flex-shrink-0">
         <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-white/30 flex-shrink-0">
-          <img src="/JuanHeadshot.jpg" alt="Juan Campos" class="w-full h-full object-cover object-top scale-[1.35] origin-top" />
+          <img src="/JuanChatBubble.png" alt="Juan Campos" class="w-full h-full object-cover" />
         </div>
         <div class="flex-1 min-w-0">
           <h3 class="font-heading text-base leading-tight truncate">Campos Muños Law</h3>
@@ -117,7 +113,7 @@
             <!-- Bot welcome -->
             <div class="flex gap-2 items-end">
               <div class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
-                <img src="/JuanHeadshot.jpg" alt="" class="w-full h-full object-cover object-top scale-[1.35] origin-top" />
+                <img src="/JuanChatBubble.png" alt="" class="w-full h-full object-cover" />
               </div>
               <div class="bg-white rounded-2xl rounded-bl-sm px-4 py-2.5 max-w-[80%] shadow-sm">
                 <p class="text-gray-800 text-sm font-ui leading-relaxed">
@@ -143,7 +139,7 @@
             <!-- Auto-reply after each user send -->
             <div v-if="allUserMessages.length > 0" class="flex gap-2 items-end">
               <div class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
-                <img src="/JuanHeadshot.jpg" alt="" class="w-full h-full object-cover object-top scale-[1.35] origin-top" />
+                <img src="/JuanChatBubble.png" alt="" class="w-full h-full object-cover" />
               </div>
               <div class="bg-white rounded-2xl rounded-bl-sm px-4 py-2.5 max-w-[80%] shadow-sm">
                 <p class="text-gray-800 text-sm font-ui leading-relaxed">
@@ -388,9 +384,16 @@ onUnmounted(() => {
 .modal-enter-from { opacity: 0; transform: translateY(20px) scale(0.95); transform-origin: bottom right; }
 .modal-leave-to { opacity: 0; transform: translateY(10px) scale(0.97); transform-origin: bottom right; }
 
-/* Greeting preview slide-up */
-.greeting-enter-active { transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
-.greeting-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
-.greeting-enter-from { opacity: 0; transform: translateY(20px); }
-.greeting-leave-to { opacity: 0; transform: translateY(10px); }
+/* Speech bubble greeting fade/slide */
+.speech-bubble {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.35s ease, transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+.speech-bubble.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
 </style>
