@@ -26,7 +26,7 @@
       <div class="relative">
         <!-- Avatar -->
         <div class="w-16 h-16 sm:w-[68px] sm:h-[68px] rounded-full overflow-hidden border-[3px] border-white shadow-2xl group-hover:scale-105 transition-transform">
-          <img src="/JuanHeadshot.jpg" alt="Juan Campos" class="w-full h-full object-cover" />
+          <img src="/JuanHeadshot.jpg" alt="Juan Campos" class="w-full h-full object-cover object-top scale-[1.35] origin-top" />
         </div>
         <!-- Chat icon badge -->
         <span class="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-brand-navy flex items-center justify-center shadow-lg border-2 border-white">
@@ -47,7 +47,7 @@
       <!-- Header -->
       <div class="flex items-center gap-3 px-4 py-3 bg-brand-navy text-white flex-shrink-0">
         <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-white/30 flex-shrink-0">
-          <img src="/JuanHeadshot.jpg" alt="Juan Campos" class="w-full h-full object-cover" />
+          <img src="/JuanHeadshot.jpg" alt="Juan Campos" class="w-full h-full object-cover object-top scale-[1.35] origin-top" />
         </div>
         <div class="flex-1 min-w-0">
           <h3 class="font-heading text-base leading-tight truncate">Campos Muños Law</h3>
@@ -117,7 +117,7 @@
             <!-- Bot welcome -->
             <div class="flex gap-2 items-end">
               <div class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
-                <img src="/JuanHeadshot.jpg" alt="" class="w-full h-full object-cover" />
+                <img src="/JuanHeadshot.jpg" alt="" class="w-full h-full object-cover object-top scale-[1.35] origin-top" />
               </div>
               <div class="bg-white rounded-2xl rounded-bl-sm px-4 py-2.5 max-w-[80%] shadow-sm">
                 <p class="text-gray-800 text-sm font-ui leading-relaxed">
@@ -143,7 +143,7 @@
             <!-- Auto-reply after each user send -->
             <div v-if="allUserMessages.length > 0" class="flex gap-2 items-end">
               <div class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
-                <img src="/JuanHeadshot.jpg" alt="" class="w-full h-full object-cover" />
+                <img src="/JuanHeadshot.jpg" alt="" class="w-full h-full object-cover object-top scale-[1.35] origin-top" />
               </div>
               <div class="bg-white rounded-2xl rounded-bl-sm px-4 py-2.5 max-w-[80%] shadow-sm">
                 <p class="text-gray-800 text-sm font-ui leading-relaxed">

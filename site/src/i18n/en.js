@@ -152,6 +152,14 @@ export default {
   },
   readMore: 'Read More',
   backToSite: 'Back to Site',
+  mobileContact: {
+    cta: 'Contact us!',
+    openLabel: 'Open contact',
+    closeLabel: 'Close',
+    heading: 'Ready to help you?',
+    subheading: 'Call us now — no obligation.',
+    hoursHint: 'Mon–Fri · 9:00 AM – 5:00 PM',
+  },
   chat: {
     openChat: 'Open chat',
     close: 'Close',
