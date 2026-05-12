@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import crypto from 'crypto'
 import rateLimit from 'express-rate-limit'
 import { body, param } from 'express-validator'
 import { Resend } from 'resend'
@@ -54,13 +55,17 @@ router.post(
       const source = req.body.source === 'chat' ? 'chat' : 'contact'
       const consultationType = req.body.consultationType
       const location = stripHtml(req.body.location)
+      const chatToken = source === 'chat' ? crypto.randomBytes(24).toString('base64url') : null
 
       const result = await getPool().query(
-        `INSERT INTO submissions (first_name, last_name, email, phone, message, source, consultation_type, location) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, created_at`,
-        [firstName, lastName, email, phone, message, source, consultationType, location]
+        `INSERT INTO submissions (first_name, last_name, email, phone, message, source, consultation_type, location, chat_token) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id, created_at`,
+        [firstName, lastName, email, phone, message, source, consultationType, location, chatToken]
       )
 
-      res.status(201).json({ id: result.rows[0].id, created_at: result.rows[0].created_at })
+      // Return chat_token only when this is a chat session — the widget needs it to post follow-ups
+      const responseBody = { id: result.rows[0].id, created_at: result.rows[0].created_at }
+      if (chatToken) responseBody.chat_token = chatToken
+      res.status(201).json(responseBody)
 
       // Notify admin via email (fire and forget)
       try {
@@ -122,8 +127,13 @@ router.get('/', requireAuth, async (req, res) => {
       conditions.push(`consultation_type = $${params.length}`)
     }
 
+    const limit = Math.min(parseInt(req.query.limit, 10) || 100, 200)
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0)
+    params.push(limit, offset)
+    const limitClause = ` LIMIT $${params.length - 1} OFFSET $${params.length}`
+
     const where = ` WHERE ${conditions.join(' AND ')}`
-    const query = `SELECT id, first_name, last_name, email, phone, message, is_read, is_archived, source, consultation_type, location, created_at FROM submissions${where} ORDER BY created_at DESC`
+    const query = `SELECT id, first_name, last_name, email, phone, message, is_read, is_archived, source, consultation_type, location, created_at FROM submissions${where} ORDER BY created_at DESC${limitClause}`
 
     const result = await getPool().query(query, params)
     res.json(result.rows)
@@ -178,14 +188,18 @@ router.post(
   chatMessageLimiter,
   param('id').isInt().withMessage('Invalid session ID'),
   body('body').trim().notEmpty().isLength({ max: 5000 }).withMessage('Message is required (max 5000 chars)'),
+  body('chatToken').isString().isLength({ min: 16, max: 64 }).withMessage('Valid chat token is required'),
   validate,
   async (req, res) => {
+    const pool = getPool()
+    const client = await pool.connect()
     try {
       const submissionId = req.params.id
       const messageBody = stripHtml(req.body.body)
+      const incomingToken = req.body.chatToken
 
-      const subResult = await getPool().query(
-        'SELECT id, first_name, last_name, email FROM submissions WHERE id = $1 AND source = $2',
+      const subResult = await client.query(
+        'SELECT id, first_name, last_name, email, chat_token FROM submissions WHERE id = $1 AND source = $2',
         [submissionId, 'chat']
       )
 
@@ -194,14 +208,19 @@ router.post(
       }
 
       const submission = subResult.rows[0]
+      if (!submission.chat_token || submission.chat_token !== incomingToken) {
+        return res.status(403).json({ error: 'Invalid chat session' })
+      }
 
-      const result = await getPool().query(
+      // Wrap the INSERT + UPDATE so a partial failure can't leave the submission unread
+      // without the new message present (or vice versa).
+      await client.query('BEGIN')
+      const result = await client.query(
         'INSERT INTO chat_messages (submission_id, body) VALUES ($1, $2) RETURNING id, body, sent_at',
         [submissionId, messageBody]
       )
-
-      // Mark the parent submission unread so admins see the new chat activity
-      await getPool().query('UPDATE submissions SET is_read = FALSE WHERE id = $1', [submissionId])
+      await client.query('UPDATE submissions SET is_read = FALSE WHERE id = $1', [submissionId])
+      await client.query('COMMIT')
 
       res.status(201).json(result.rows[0])
 
@@ -231,8 +250,11 @@ router.post(
         console.error('Admin chat notification email failed:', notifyErr)
       }
     } catch (err) {
+      try { await client.query('ROLLBACK') } catch { /* ignore */ }
       console.error('Chat message error:', err)
       res.status(500).json({ error: 'Failed to send message. Please try again.' })
+    } finally {
+      client.release()
     }
   }
 )
@@ -262,18 +284,22 @@ router.patch(
   }
 )
 
-// Admin — archive/unarchive submission
+// Admin — archive/unarchive submission. Accepts explicit `archived: boolean` to
+// avoid the toggle race when the dashboard double-clicks or two tabs disagree.
 router.patch(
   '/:id/archive',
   requireAuth,
   param('id').isInt().withMessage('Invalid submission ID'),
+  body('archived').optional().isBoolean(),
   validate,
   async (req, res) => {
     try {
-      const result = await getPool().query(
-        'UPDATE submissions SET is_archived = NOT is_archived WHERE id = $1 RETURNING id, is_archived',
-        [req.params.id]
-      )
+      const explicit = typeof req.body?.archived === 'boolean'
+      const query = explicit
+        ? 'UPDATE submissions SET is_archived = $2 WHERE id = $1 RETURNING id, is_archived'
+        : 'UPDATE submissions SET is_archived = NOT is_archived WHERE id = $1 RETURNING id, is_archived'
+      const params = explicit ? [req.params.id, req.body.archived] : [req.params.id]
+      const result = await getPool().query(query, params)
 
       if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Submission not found' })

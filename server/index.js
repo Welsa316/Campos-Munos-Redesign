@@ -11,26 +11,70 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import authRoutes from './routes/auth.js'
 import submissionRoutes from './routes/submissions.js'
+import getPool from './db/pool.js'
+
+const isProduction = process.env.NODE_ENV === 'production'
+
+if (isProduction) {
+  const required = ['JWT_SECRET', 'DATABASE_URL', 'FRONTEND_URL']
+  const missing = required.filter(k => !process.env[k])
+  if (missing.length) {
+    console.error(`FATAL: missing required env vars in production: ${missing.join(', ')}`)
+    process.exit(1)
+  }
+  if (process.env.JWT_SECRET.length < 32 || /change[-_ ]?me/i.test(process.env.JWT_SECRET)) {
+    console.error('FATAL: JWT_SECRET is too short or contains a placeholder value. Generate at least 32 random chars.')
+    process.exit(1)
+  }
+}
 
 const app = express()
 const PORT = process.env.PORT || 3000
 
+// Railway / any reverse proxy terminates TLS in front of us — needed so
+// express-rate-limit sees the real client IP instead of every request
+// appearing to come from the proxy.
+app.set('trust proxy', 1)
+
 app.use(helmet())
 app.use(cors({
-  origin: process.env.FRONTEND_URL,
+  origin: process.env.FRONTEND_URL || (isProduction ? false : true),
   credentials: true,
 }))
 app.use(cookieParser())
 app.use(express.json({ limit: '100kb' }))
 
+app.get('/healthz', (_req, res) => res.json({ ok: true }))
+app.get('/readyz', async (_req, res) => {
+  try {
+    await getPool().query('SELECT 1')
+    res.json({ ok: true })
+  } catch {
+    res.status(503).json({ ok: false })
+  }
+})
+
 app.use('/api/auth', authRoutes)
 app.use('/api/submissions', submissionRoutes)
+
+app.use((req, res) => res.status(404).json({ error: 'Not found' }))
 
 app.use((err, req, res, _next) => {
   console.error('Unhandled error:', err)
   res.status(500).json({ error: 'Internal server error' })
 })
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 })
+
+function shutdown(signal) {
+  console.log(`${signal} received — closing server gracefully`)
+  server.close(async () => {
+    try { await getPool().end() } catch { /* ignore */ }
+    process.exit(0)
+  })
+  setTimeout(() => process.exit(1), 10000).unref()
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))

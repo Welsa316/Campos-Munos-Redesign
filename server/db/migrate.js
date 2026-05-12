@@ -19,6 +19,11 @@ async function migrate() {
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
 
+      -- token_version: bumped on password change so older JWTs become invalid
+      -- password_updated_at: audit trail for password rotation
+      ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 1;
+      ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS password_updated_at TIMESTAMPTZ;
+
       CREATE TABLE IF NOT EXISTS submissions (
         id SERIAL PRIMARY KEY,
         first_name VARCHAR(255) NOT NULL,
@@ -52,7 +57,27 @@ async function migrate() {
       ALTER TABLE submissions ADD COLUMN IF NOT EXISTS consultation_type VARCHAR(50) NOT NULL DEFAULT 'other';
       ALTER TABLE submissions ADD COLUMN IF NOT EXISTS location VARCHAR(255) NOT NULL DEFAULT '';
 
+      -- chat_token gates POST /:id/chat-message so sequential IDs aren't enough to spoof a chat session
+      ALTER TABLE submissions ADD COLUMN IF NOT EXISTS chat_token VARCHAR(64);
+
       CREATE INDEX IF NOT EXISTS idx_submissions_consultation_type ON submissions(consultation_type);
+      CREATE INDEX IF NOT EXISTS idx_submissions_created_at ON submissions(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_submissions_list ON submissions(is_archived, is_read, created_at DESC);
+
+      -- CHECK constraints enforce the same whitelists the API does (defense in depth).
+      -- Wrapped in DO $$ so re-running the migration doesn't error if the constraint already exists.
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'submissions_source_chk') THEN
+          ALTER TABLE submissions ADD CONSTRAINT submissions_source_chk CHECK (source IN ('contact', 'chat'));
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'submissions_consultation_type_chk') THEN
+          ALTER TABLE submissions ADD CONSTRAINT submissions_consultation_type_chk CHECK (consultation_type IN (
+            'greenCard','ciudadania','asilo','vawa','visaU','visaT','daca','tps',
+            'tramiteConsular','visasPrometido','visasJovenes','peticionesFamiliares',
+            'ead','defensaDeportacion','other'
+          ));
+        END IF;
+      END $$;
 
       CREATE TABLE IF NOT EXISTS replies (
         id SERIAL PRIMARY KEY,
@@ -60,6 +85,8 @@ async function migrate() {
         body TEXT NOT NULL,
         sent_at TIMESTAMPTZ DEFAULT NOW()
       );
+
+      CREATE INDEX IF NOT EXISTS idx_replies_submission_id ON replies(submission_id);
 
       CREATE TABLE IF NOT EXISTS chat_messages (
         id SERIAL PRIMARY KEY,

@@ -9,6 +9,19 @@ import bcrypt from 'bcrypt'
 import getPool from './pool.js'
 
 async function seed() {
+  const isProduction = process.env.NODE_ENV === 'production'
+
+  if (isProduction) {
+    if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_INITIAL_PASSWORD) {
+      console.error('FATAL: refusing to seed in production without ADMIN_EMAIL and ADMIN_INITIAL_PASSWORD set.')
+      process.exit(1)
+    }
+    if (process.env.ADMIN_INITIAL_PASSWORD.length < 10 || /^changeme$/i.test(process.env.ADMIN_INITIAL_PASSWORD)) {
+      console.error('FATAL: ADMIN_INITIAL_PASSWORD must be at least 10 chars and not the literal "changeme".')
+      process.exit(1)
+    }
+  }
+
   const pool = getPool()
   const client = await pool.connect()
   try {
@@ -25,7 +38,18 @@ async function seed() {
     )
     console.log(`\nAdmin account seeded:`)
     console.log(`  Email:    ${email}`)
-    console.log(`  Password: ${password}\n`)
+    if (!isProduction) {
+      console.log(`  Password: ${password}\n`)
+    } else {
+      console.log(`  Password: (set via ADMIN_INITIAL_PASSWORD env)\n`)
+    }
+
+    // Skip test submissions in production — only admin user is seeded.
+    if (isProduction) {
+      console.log('\nProduction: skipping test submissions.')
+      console.log('Seed complete!')
+      return
+    }
 
     // Seed submissions spread across last 3 days
     const now = Date.now()

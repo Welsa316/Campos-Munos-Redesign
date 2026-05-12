@@ -43,7 +43,7 @@ router.post(
     try {
       const { email, password } = req.body
       const result = await getPool().query(
-        'SELECT id, email, password_hash FROM admin_users WHERE email = $1',
+        'SELECT id, email, password_hash, token_version FROM admin_users WHERE email = $1',
         [email]
       )
 
@@ -58,7 +58,7 @@ router.post(
       }
 
       const token = jwt.sign(
-        { id: admin.id, email: admin.email },
+        { id: admin.id, email: admin.email, tv: admin.token_version },
         process.env.JWT_SECRET,
         { expiresIn: '8h' }
       )
@@ -109,10 +109,19 @@ router.post(
       }
 
       const newHash = await bcrypt.hash(newPassword, 12)
-      await getPool().query(
-        'UPDATE admin_users SET password_hash = $1 WHERE id = $2',
+      // Bump token_version so any other active sessions are invalidated immediately.
+      const updated = await getPool().query(
+        'UPDATE admin_users SET password_hash = $1, password_updated_at = NOW(), token_version = token_version + 1 WHERE id = $2 RETURNING token_version, email',
         [newHash, adminId]
       )
+
+      // Re-issue this session's cookie with the new token_version so the admin stays logged in.
+      const newToken = jwt.sign(
+        { id: adminId, email: updated.rows[0].email, tv: updated.rows[0].token_version },
+        process.env.JWT_SECRET,
+        { expiresIn: '8h' }
+      )
+      res.cookie('token', newToken, COOKIE_OPTIONS)
 
       res.json({ ok: true })
     } catch (err) {

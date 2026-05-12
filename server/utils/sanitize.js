@@ -15,9 +15,9 @@ export function escapeHtml(str) {
 
 export function escapeCsvField(str) {
   if (typeof str !== 'string') return ''
-  const escaped = str.replace(/"/g, '""').replace(/\n/g, ' ')
-  if (/^[=+\-@\t\r]/.test(escaped)) {
-    return `"'${escaped}"`
-  }
-  return `"${escaped}"`
+  // Check formula prefix on the ORIGINAL string before quote escaping, so that
+  // inputs like `=cmd(...)` or unusual leading whitespace are reliably neutralised.
+  const needsFormulaPrefix = /^[=+\-@\t\r]/.test(str)
+  const escaped = str.replace(/"/g, '""').replace(/[\r\n]/g, ' ')
+  return needsFormulaPrefix ? `"'${escaped}"` : `"${escaped}"`
 }
