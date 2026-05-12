@@ -4,7 +4,7 @@
     <section class="min-h-[80vh] bg-brand-surface">
       <div class="max-w-7xl mx-auto px-6 pt-32 pb-20">
         <router-link to="/el-equipo"
-          class="inline-flex items-center gap-2 text-gray-400 hover:text-brand-navy text-base font-ui tracking-wider uppercase mb-12 transition-colors group">
+          class="inline-flex items-center gap-2 text-gray-500 hover:text-brand-navy text-base font-ui tracking-wider uppercase mb-12 transition-colors group">
           <i class="fa-solid fa-arrow-left text-xs group-hover:-translate-x-1 transition-transform"></i>
           {{ $t('team.title') }}
         </router-link>

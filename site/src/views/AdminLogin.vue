@@ -52,7 +52,7 @@
         </form>
       </div>
 
-      <p class="text-center text-gray-400 text-xs font-ui mt-8">
+      <p class="text-center text-gray-500 text-xs font-ui mt-8">
         Campos Mu&ntilde;os Law &mdash; Secure Admin Access
       </p>
     </div>

@@ -9,7 +9,7 @@
             {{ unreadCount }}
           </span>
         </h2>
-        <button @click="$emit('refresh')" class="p-2 rounded-lg text-gray-400 hover:text-brand-navy hover:bg-brand-surface transition-colors" title="Refresh">
+        <button @click="$emit('refresh')" class="p-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface transition-colors" title="Refresh">
           <i class="fa-solid fa-rotate-right text-sm"></i>
         </button>
       </div>
@@ -58,7 +58,7 @@
     <div class="flex-1 overflow-y-auto">
       <div v-if="filteredSubmissions.length === 0" class="p-6 text-center">
         <i :class="viewMode === 'archived' ? 'fa-solid fa-archive' : 'fa-solid fa-inbox'" class="text-3xl text-gray-300 mb-3"></i>
-        <p class="text-gray-400 text-sm font-ui">
+        <p class="text-gray-500 text-sm font-ui">
           {{ viewMode === 'archived' ? 'No archived messages' : (filter === 'unread' ? 'No unread messages' : 'No messages yet') }}
         </p>
       </div>
@@ -83,7 +83,7 @@
                 <i v-if="sub.source === 'chat'" class="fa-solid fa-comment-dots text-brand-navy/60 text-[10px] flex-shrink-0" title="Chat session"></i>
                 <span class="truncate">{{ sub.first_name }} {{ sub.last_name }}</span>
               </span>
-              <span class="text-xs text-gray-400 font-ui flex-shrink-0">
+              <span class="text-xs text-gray-500 font-ui flex-shrink-0">
                 {{ relativeTime(sub.created_at) }}
               </span>
             </div>
@@ -91,11 +91,11 @@
               <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-brand-navy/10 text-brand-navy text-[10px] font-ui font-semibold uppercase tracking-wider">
                 {{ consultationLabel(sub.consultation_type) }}
               </span>
-              <span v-if="sub.location" class="text-[11px] text-gray-400 font-ui truncate">
+              <span v-if="sub.location" class="text-[11px] text-gray-500 font-ui truncate">
                 <i class="fa-solid fa-location-dot text-[9px] mr-0.5"></i>{{ sub.location }}
               </span>
             </div>
-            <p class="text-xs text-gray-400 font-ui truncate leading-relaxed">
+            <p class="text-xs text-gray-500 font-ui truncate leading-relaxed">
               {{ sub.message }}
             </p>
           </div>

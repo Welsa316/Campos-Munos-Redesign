@@ -9,7 +9,7 @@
 
       <div class="relative max-w-7xl mx-auto px-6">
         <router-link to="/servicios"
-          class="inline-flex items-center gap-2 text-gray-400 hover:text-brand-navy text-base font-ui tracking-wider uppercase mb-8 transition-colors group">
+          class="inline-flex items-center gap-2 text-gray-500 hover:text-brand-navy text-base font-ui tracking-wider uppercase mb-8 transition-colors group">
           <i class="fa-solid fa-arrow-left text-xs group-hover:-translate-x-1 transition-transform"></i>
           {{ $t('nav.servicios') }}
         </router-link>
@@ -22,7 +22,7 @@
             <h1 class="font-heading text-4xl md:text-6xl lg:text-7xl font-bold text-brand-navy leading-[0.95]">
               {{ pageH1 }}
             </h1>
-            <p v-if="locationData" class="mt-3 text-gray-400 text-lg font-ui tracking-wider">
+            <p v-if="locationData" class="mt-3 text-gray-500 text-lg font-ui tracking-wider">
               <i class="fa-solid fa-location-dot text-brand-navy/40 mr-2"></i>
               {{ locale === 'es' ? locationData.nameEs : locationData.nameEn }}
             </p>
@@ -91,6 +91,7 @@
                   controls
                   autoplay
                   playsinline
+                  preload="metadata"
                 ></video>
               </div>
             </div>
@@ -131,7 +132,7 @@
               class="group rounded-xl border border-gray-200 bg-white overflow-hidden">
               <summary class="flex items-center justify-between gap-4 px-6 py-4 cursor-pointer font-ui text-lg font-semibold text-gray-700 hover:text-brand-navy transition-colors select-none list-none">
                 <span>{{ faq.q }}</span>
-                <i class="fa-solid fa-chevron-down text-sm text-gray-400 group-open:rotate-180 transition-transform flex-shrink-0"></i>
+                <i class="fa-solid fa-chevron-down text-sm text-gray-500 group-open:rotate-180 transition-transform flex-shrink-0"></i>
               </summary>
               <div class="px-6 pb-4 text-gray-600 text-lg leading-relaxed font-body">
                 {{ faq.a }}

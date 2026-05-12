@@ -96,7 +96,7 @@
               <select v-model="form.consultationType" required
                 :aria-label="$t('consultationForm.consultationType')"
                 class="chat-input w-full"
-                :class="!form.consultationType ? 'text-gray-400' : 'text-gray-800'">
+                :class="!form.consultationType ? 'text-gray-500' : 'text-gray-800'">
                 <option value="" disabled>{{ $t('consultationForm.selectConsultation') }}</option>
                 <option v-for="key in CONSULTATION_KEYS" :key="key" :value="key">
                   {{ key === 'other' ? $t('consultationForm.notSure') : $t(`services.${key}`) }}
@@ -122,7 +122,7 @@
                 <i v-if="!loading" class="fa-solid fa-paper-plane text-xs"></i>
               </button>
 
-              <p class="text-gray-400 text-[11px] font-ui leading-relaxed text-center">
+              <p class="text-gray-500 text-[11px] font-ui leading-relaxed text-center">
                 {{ $t('chat.privacyNote') }}
               </p>
             </form>
@@ -200,9 +200,10 @@ import { CONSULTATION_KEYS } from '../data/consultationTypes.js'
 
 const { t } = useI18n()
 
+import { CHAT_GREETING_DELAY_MS, CHAT_GREETING_DISMISS_TTL_MS } from '../data/timing.js'
+
 const SESSION_KEY = 'cm_chat_session_v1'
 const GREETING_KEY = 'cm_chat_greeting_dismissed_at'
-const GREETING_TTL_MS = 24 * 60 * 60 * 1000
 
 const isOpen = ref(false)
 const showGreeting = ref(false)
@@ -260,7 +261,7 @@ function shouldShowGreeting() {
   if (session.value) return false
   try {
     const dismissed = parseInt(localStorage.getItem(GREETING_KEY) || '0', 10)
-    if (dismissed && Date.now() - dismissed < GREETING_TTL_MS) return false
+    if (dismissed && Date.now() - dismissed < CHAT_GREETING_DISMISS_TTL_MS) return false
   } catch {
     /* ignore */
   }
@@ -391,7 +392,7 @@ onMounted(() => {
       if (!isOpen.value && !session.value) {
         showGreeting.value = true
       }
-    }, 5000)
+    }, CHAT_GREETING_DELAY_MS)
   }
 })
 

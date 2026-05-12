@@ -99,7 +99,7 @@ export default {
   about: {
     firmName: 'Campos Munos Law, LLC',
     quienesSomos: 'Who We Are',
-    introText: 'At Campos Munos immigration law firm, we have over twenty years of experience dedicated exclusively to the complex and changing laws governing immigration in the United States. This focus has allowed us to build a reputation for providing exceptional and efficient solutions for our immigrant clients throughout the Southeast.',
+    introText: 'At Campos Muños immigration law firm, we have over twenty years of experience dedicated exclusively to the complex and changing laws governing immigration in the United States. This focus has allowed us to build a reputation for providing exceptional and efficient solutions for our immigrant clients throughout the Southeast.',
     mision: 'Our Mission',
     misionText1: 'Our mission is to provide high-quality legal services to the immigrant community in Louisiana.',
     misionText2: 'Our legal work reflects our Christian values of compassion and service to those who need legal help.',

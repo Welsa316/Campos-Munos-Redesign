@@ -313,25 +313,50 @@ router.patch(
   }
 )
 
-// Admin — export submissions as CSV
+// Admin — export submissions as CSV. Streams rows directly from the DB cursor
+// to the response, so a 50k-row inbox doesn't materialise the whole result set
+// in memory before writing.
 router.get('/export/csv', requireAuth, async (req, res) => {
+  const client = await getPool().connect()
   try {
-    const result = await getPool().query(
-      'SELECT first_name, last_name, email, phone, message, consultation_type, location, is_read, is_archived, created_at FROM submissions ORDER BY created_at DESC'
-    )
-
-    const header = 'First Name,Last Name,Email,Phone,Message,Service,Location,Read,Archived,Submitted\n'
-    const rows = result.rows.map(r => {
-      const date = new Date(r.created_at).toISOString()
-      return `${escapeCsvField(r.first_name)},${escapeCsvField(r.last_name)},${escapeCsvField(r.email)},${escapeCsvField(r.phone)},${escapeCsvField(r.message)},${escapeCsvField(r.consultation_type)},${escapeCsvField(r.location)},${r.is_read},${r.is_archived},"${date}"`
-    }).join('\n')
-
     res.setHeader('Content-Type', 'text/csv')
     res.setHeader('Content-Disposition', `attachment; filename="submissions-${new Date().toISOString().slice(0, 10)}.csv"`)
-    res.send(header + rows)
+    res.write('First Name,Last Name,Email,Phone,Message,Service,Location,Read,Archived,Submitted\n')
+
+    // pg's stream-result mode via the `rowMode: 'array'` + manual iteration
+    // would need pg-query-stream; instead we batch with a server-side cursor.
+    await client.query('BEGIN')
+    await client.query(
+      `DECLARE submissions_csv_cursor CURSOR FOR
+       SELECT first_name, last_name, email, phone, message, consultation_type, location, is_read, is_archived, created_at
+       FROM submissions ORDER BY created_at DESC`
+    )
+
+    const BATCH = 500
+    while (true) {
+      const batch = await client.query(`FETCH ${BATCH} FROM submissions_csv_cursor`)
+      if (batch.rows.length === 0) break
+      const chunk = batch.rows.map(r => {
+        const date = new Date(r.created_at).toISOString()
+        return `${escapeCsvField(r.first_name)},${escapeCsvField(r.last_name)},${escapeCsvField(r.email)},${escapeCsvField(r.phone)},${escapeCsvField(r.message)},${escapeCsvField(r.consultation_type)},${escapeCsvField(r.location)},${r.is_read},${r.is_archived},"${date}"`
+      }).join('\n')
+      res.write(chunk + '\n')
+      if (batch.rows.length < BATCH) break
+    }
+
+    await client.query('CLOSE submissions_csv_cursor')
+    await client.query('COMMIT')
+    res.end()
   } catch (err) {
     console.error('CSV export error:', err)
-    res.status(500).json({ error: 'Internal server error' })
+    try { await client.query('ROLLBACK') } catch { /* ignore */ }
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Internal server error' })
+    } else {
+      res.end()
+    }
+  } finally {
+    client.release()
   }
 })
 

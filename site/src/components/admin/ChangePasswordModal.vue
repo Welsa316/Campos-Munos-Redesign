@@ -15,10 +15,10 @@
         <div class="px-6 pt-6 pb-4 border-b border-gray-100 flex items-start justify-between">
           <div>
             <h2 id="change-password-title" class="font-heading text-xl text-brand-navy">Change password</h2>
-            <p class="text-gray-400 text-sm font-ui mt-1">Use at least 10 characters.</p>
+            <p class="text-gray-500 text-sm font-ui mt-1">Use at least 10 characters.</p>
           </div>
           <button ref="closeBtnRef" @click="close" type="button"
-            class="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 flex items-center justify-center transition-colors"
+            class="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700 flex items-center justify-center transition-colors"
             aria-label="Close">
             <i class="fa-solid fa-xmark text-sm" aria-hidden="true"></i>
           </button>

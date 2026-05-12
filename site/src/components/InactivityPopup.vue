@@ -53,18 +53,18 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 
+import { INACTIVITY_POPUP_DELAY_MS, INACTIVITY_POPUP_DISMISS_TTL_MS } from '../data/timing.js'
+
 const visible = ref(false)
 let timer = null
 let hasTriggered = false
 const events = ['mousemove', 'keydown', 'scroll', 'touchstart']
 const DISMISS_KEY = 'cm_inactivity_dismissed_at'
-const DISMISS_TTL_MS = 24 * 60 * 60 * 1000 // 24h
-const IDLE_MS = 30000 // 30s of inactivity before showing
 
 function isRecentlyDismissed() {
   try {
     const ts = parseInt(localStorage.getItem(DISMISS_KEY) || '0', 10)
-    return ts && Date.now() - ts < DISMISS_TTL_MS
+    return ts && Date.now() - ts < INACTIVITY_POPUP_DISMISS_TTL_MS
   } catch { return false }
 }
 
@@ -80,7 +80,7 @@ function resetTimer() {
     visible.value = true
     hasTriggered = true
     stopListening()
-  }, IDLE_MS)
+  }, INACTIVITY_POPUP_DELAY_MS)
 }
 
 function close() {

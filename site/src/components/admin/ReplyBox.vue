@@ -14,7 +14,7 @@
       ></textarea>
 
       <div class="flex items-center justify-between">
-        <span class="text-xs text-gray-400 font-ui">
+        <span class="text-xs text-gray-500 font-ui">
           {{ body.length.toLocaleString() }} / 10,000
         </span>
 

@@ -19,7 +19,7 @@
           <i class="fa-solid fa-download text-xs"></i>
           <span class="hidden sm:inline">Export</span>
         </button>
-        <span class="text-xs text-gray-400 font-ui hidden sm:inline">{{ adminEmail }}</span>
+        <span class="text-xs text-gray-500 font-ui hidden sm:inline">{{ adminEmail }}</span>
         <button
           @click="showChangePassword = true"
           class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors"
@@ -44,7 +44,7 @@
     <div v-if="loadingList" class="flex-1 flex items-center justify-center">
       <div class="text-center">
         <i class="fa-solid fa-spinner fa-spin text-2xl text-brand-navy mb-3"></i>
-        <p class="text-gray-400 text-sm font-ui">Loading messages...</p>
+        <p class="text-gray-500 text-sm font-ui">Loading messages...</p>
       </div>
     </div>
 

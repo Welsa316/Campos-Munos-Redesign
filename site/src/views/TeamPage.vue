@@ -37,7 +37,7 @@
             <h3 class="font-heading text-2xl text-gray-900 group-hover:text-brand-navy transition-colors duration-300 mb-1">
               {{ $t(`team.members.${member.key}.name`) }}
             </h3>
-            <p class="font-ui text-base tracking-wider text-gray-400 uppercase">
+            <p class="font-ui text-base tracking-wider text-gray-500 uppercase">
               {{ $t(`team.members.${member.key}.title`) }}
             </p>
 

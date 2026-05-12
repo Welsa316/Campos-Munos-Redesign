@@ -325,6 +325,21 @@
   color: rgba(156, 163, 175, 1);
 }
 
+/* Global focus-visible ring for keyboard users. Applied to anything actionable
+   that doesn't already declare its own focus styling. */
+:focus-visible {
+  outline: 2px solid var(--color-brand-navy);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+/* Inputs / textareas / selects already have their own focus ring via Tailwind,
+   so suppress the default outline to avoid a double ring. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+}
+
 /* Respect users who prefer reduced motion: shorten / disable transitions and animations. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

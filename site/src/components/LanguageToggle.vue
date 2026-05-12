@@ -14,18 +14,16 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { onMounted, onUnmounted, ref } from 'vue'
+import { useLocaleToggle } from '../composables/useLocaleToggle.js'
+import { LANG_TOGGLE_SCROLL_THRESHOLD } from '../data/timing.js'
 
-const { locale } = useI18n()
-const currentLang = computed(() => locale.value)
-function toggleLang() { locale.value = locale.value === 'es' ? 'en' : 'es' }
+const { currentLang, toggleLang } = useLocaleToggle()
 
 const scrolled = ref(false)
-const SCROLL_THRESHOLD = 200
 
 function updateScrolled() {
-  scrolled.value = window.scrollY > SCROLL_THRESHOLD
+  scrolled.value = window.scrollY > LANG_TOGGLE_SCROLL_THRESHOLD
 }
 
 onMounted(() => {

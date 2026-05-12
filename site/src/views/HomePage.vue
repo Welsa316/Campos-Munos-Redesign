@@ -54,8 +54,9 @@
       <!-- Slide progress dots - vertical on right -->
       <div class="absolute right-6 top-1/2 -translate-y-1/2 flex flex-col gap-3 z-10">
         <button v-for="(_, i) in slides" :key="i" @click="goToSlide(i)"
-          class="group relative w-3 h-3 flex items-center justify-center"
-          :aria-label="`Slide ${i + 1}`">
+          class="group relative w-3 h-3 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent rounded-full"
+          :aria-label="`Slide ${i + 1}`"
+          :aria-current="currentSlide === i ? 'true' : null">
           <span class="block rounded-full transition-all duration-500"
             :class="currentSlide === i ? 'w-3 h-3 bg-white' : 'w-1.5 h-1.5 bg-white/30 group-hover:bg-white/60'"></span>
         </button>
@@ -75,7 +76,7 @@
     <section class="py-14 bg-brand-surface border-y border-gray-200">
       <div class="max-w-6xl mx-auto px-6">
         <div class="flex flex-col items-center gap-10">
-          <p class="font-ui text-base tracking-[0.2em] text-gray-400 uppercase">{{ $t('home.recognizedBy') }}</p>
+          <p class="font-ui text-base tracking-[0.2em] text-gray-500 uppercase">{{ $t('home.recognizedBy') }}</p>
           <div class="flex flex-wrap items-center justify-center gap-12 md:gap-20">
             <img v-for="(badge, i) in badges" :key="i"
               :src="badge.src" :alt="badge.alt"
@@ -254,20 +255,19 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { useScrollReveal } from '../composables/useScrollReveal.js'
+import { useLocaleToggle } from '../composables/useLocaleToggle.js'
+import { HERO_SLIDE_DURATION_MS } from '../data/timing.js'
 
 useScrollReveal()
-const { locale } = useI18n()
-
-function toggleLang() { locale.value = locale.value === 'es' ? 'en' : 'es' }
+const { toggleLang } = useLocaleToggle()
 
 const slides = [
   { img: '/Slideshow1.jpg', subtitleKey: 'home.slideSubtitle1' },
   { img: '/Slideshow2.jpg', subtitleKey: 'home.slideSubtitle2' },
   { img: '/Slideshow3.jpg', subtitleKey: 'home.slideSubtitle3' },
   { img: '/Slideshow4.jpg', subtitleKey: 'home.slideSubtitle4' },
-  { img: '/Slideshow5.png', subtitleKey: 'home.slideSubtitle5' },
+  { img: '/Slideshow5.jpg', subtitleKey: 'home.slideSubtitle5' },
 ]
 const currentSlide = ref(0)
 let slideTimer = null
@@ -292,7 +292,7 @@ const bentoServices = [
 ]
 
 onMounted(() => {
-  slideTimer = setInterval(nextSlide, 8000)
+  slideTimer = setInterval(nextSlide, HERO_SLIDE_DURATION_MS)
   nextTick(() => {
     document.querySelectorAll('.hero-reveal').forEach((el, i) => {
       el.style.opacity = '0'

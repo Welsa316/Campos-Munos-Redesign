@@ -86,7 +86,12 @@
       </div>
 
       <!-- Mobile hamburger -->
-      <button @click="mobileOpen = !mobileOpen" class="xl:hidden relative z-[110] w-12 h-12 flex items-center justify-center mr-1" aria-label="Menu">
+      <button
+        @click="mobileOpen = !mobileOpen"
+        :aria-expanded="mobileOpen"
+        aria-controls="mobile-nav"
+        class="xl:hidden relative z-[110] w-12 h-12 flex items-center justify-center mr-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy/40 rounded-lg"
+        aria-label="Menu">
         <span class="sr-only">Menu</span>
         <div class="flex flex-col items-end gap-1.5 transition-all">
           <span class="block h-[2px] rounded-full transition-all duration-300"
@@ -101,7 +106,7 @@
 
     <!-- Mobile full-screen overlay -->
     <transition name="mobile-nav">
-      <div v-show="mobileOpen" class="xl:hidden fixed inset-0 top-0 bg-white/98 backdrop-blur-xl z-[105] overflow-y-auto">
+      <div v-show="mobileOpen" id="mobile-nav" class="xl:hidden fixed inset-0 top-0 bg-white/98 backdrop-blur-xl z-[105] overflow-y-auto">
         <div class="flex flex-col justify-center items-center min-h-full gap-6 px-8 py-24">
           <router-link v-for="link in mobileLinks" :key="link.to" :to="link.to"
             class="text-4xl font-heading text-gray-800 hover:text-brand-navy transition-colors"
@@ -129,6 +134,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
+import { HEADER_SCROLL_THRESHOLD } from '../data/timing.js'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -174,7 +180,7 @@ const mobileLinks = computed(() => [
   { to: '/pago', label: t('nav.pago') },
 ])
 
-function onScroll() { scrolled.value = window.scrollY > 50 }
+function onScroll() { scrolled.value = window.scrollY > HEADER_SCROLL_THRESHOLD }
 onMounted(() => window.addEventListener('scroll', onScroll, { passive: true }))
 onUnmounted(() => window.removeEventListener('scroll', onScroll))
 </script>
@@ -213,7 +219,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 .nav-scrolled:hover,
 .nav-scrolled.router-link-active {
   color: var(--color-brand-navy);
-  background: rgba(0,63,141,0.06);
+  background: color-mix(in srgb, var(--color-brand-navy) 6%, transparent);
 }
 
 .mega-enter-active { transition: opacity 0.15s ease; }

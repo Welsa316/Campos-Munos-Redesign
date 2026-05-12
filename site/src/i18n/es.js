@@ -99,7 +99,7 @@ export default {
   about: {
     firmName: 'Campos Munos Law, LLC',
     quienesSomos: 'Quiénes somos',
-    introText: 'En el despacho de abogados de inmigración Campos Munos, contamos con más de veinte años de experiencia dedicados exclusivamente a las complejas y cambiantes leyes que regulan la inmigración en los Estados Unidos. Este enfoque nos ha permitido construir una reputación de ofrecer soluciones excepcionales y eficientes para nuestros clientes inmigrantes en todo el sureste del país.',
+    introText: 'En el despacho de abogados de inmigración Campos Muños, contamos con más de veinte años de experiencia dedicados exclusivamente a las complejas y cambiantes leyes que regulan la inmigración en los Estados Unidos. Este enfoque nos ha permitido construir una reputación de ofrecer soluciones excepcionales y eficientes para nuestros clientes inmigrantes en todo el sureste del país.',
     mision: 'Nuestra misión',
     misionText1: 'Nuestra misión es ofrecer servicios legales de alta calidad a la comunidad inmigrante en Luisiana.',
     misionText2: 'Nuestro trabajo jurídico refleja nuestros valores cristianos de compasión y servicio hacia quienes necesitan ayuda legal.',

@@ -4,7 +4,7 @@
     <div v-if="!submission" class="flex-1 flex items-center justify-center">
       <div class="text-center">
         <i class="fa-solid fa-envelope-open text-4xl text-gray-200 mb-4"></i>
-        <p class="text-gray-400 font-ui text-sm">Select a message to view</p>
+        <p class="text-gray-500 font-ui text-sm">Select a message to view</p>
       </div>
     </div>
 
@@ -47,13 +47,13 @@
             <button
               @click="toggleArchive"
               :disabled="archiving"
-              class="p-2 rounded-lg text-gray-400 hover:text-brand-navy hover:bg-brand-surface transition-colors"
+              class="p-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface transition-colors"
               :title="submission.is_archived ? 'Move to Inbox' : 'Archive'"
             >
               <i :class="submission.is_archived ? 'fa-solid fa-inbox' : 'fa-solid fa-archive'" class="text-sm"></i>
             </button>
             <!-- Back button for mobile -->
-            <button v-if="showBack" @click="$emit('back')" class="p-2 rounded-lg text-gray-400 hover:text-brand-navy hover:bg-brand-surface transition-colors lg:hidden">
+            <button v-if="showBack" @click="$emit('back')" class="p-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface transition-colors lg:hidden">
               <i class="fa-solid fa-arrow-left"></i>
             </button>
           </div>
@@ -68,7 +68,7 @@
             <div class="bg-brand-surface rounded-2xl rounded-tl-sm p-5">
               <p class="text-gray-800 text-sm font-ui leading-relaxed whitespace-pre-wrap">{{ item.body }}</p>
             </div>
-            <p class="text-xs text-gray-400 font-ui mt-1.5 ml-1">
+            <p class="text-xs text-gray-500 font-ui mt-1.5 ml-1">
               {{ formatDate(item.timestamp) }}
             </p>
           </div>
@@ -79,7 +79,7 @@
               <div class="bg-brand-navy/[0.08] rounded-2xl rounded-tr-sm p-5">
                 <p class="text-gray-800 text-sm font-ui leading-relaxed whitespace-pre-wrap">{{ item.body }}</p>
               </div>
-              <p class="text-xs text-gray-400 font-ui mt-1.5 mr-1 text-right">
+              <p class="text-xs text-gray-500 font-ui mt-1.5 mr-1 text-right">
                 {{ formatDate(item.timestamp) }}
               </p>
             </div>

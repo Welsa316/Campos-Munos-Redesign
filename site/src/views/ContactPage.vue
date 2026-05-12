@@ -96,7 +96,7 @@
 
             <div class="mt-8">
               <router-link to="/pago"
-                class="inline-flex items-center gap-2 text-gray-400 hover:text-brand-navy text-base font-ui transition-colors">
+                class="inline-flex items-center gap-2 text-gray-500 hover:text-brand-navy text-base font-ui transition-colors">
                 <i class="fa-solid fa-credit-card text-sm"></i>
                 {{ $t('contact.paymentBtn') }}
               </router-link>
@@ -211,7 +211,7 @@ const socials = [
 ]
 
 const contactCards = computed(() => [
-  { titleKey: 'direccion', icon: 'fa-solid fa-location-dot', content: '<p>812 Gravier Street, Office 330</p><p>New Orleans, LA 70112</p><p class="text-gray-400 text-sm mt-1">PO Box 6224, Metairie, LA 70009</p>' },
+  { titleKey: 'direccion', icon: 'fa-solid fa-location-dot', content: '<p>812 Gravier Street, Office 330</p><p>New Orleans, LA 70112</p><p class="text-gray-500 text-sm mt-1">PO Box 6224, Metairie, LA 70009</p>' },
   { titleKey: 'telefono', icon: 'fa-solid fa-phone', content: '<a href="tel:+15049106508" class="hover:text-[var(--color-brand-navy)] transition-colors">+1 (504) 910-6508</a>' },
   { titleKey: 'correo', icon: 'fa-solid fa-envelope', content: '<a href="mailto:office@camulaw.com" class="hover:text-[var(--color-brand-navy)] transition-colors">office@camulaw.com</a>' },
 ])
