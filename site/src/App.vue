@@ -19,6 +19,7 @@
       <SiteFooter />
       <LanguageToggle />
       <InactivityPopup />
+      <ChatWidget />
     </template>
   </div>
 </template>
@@ -30,6 +31,7 @@ import SiteHeader from './components/SiteHeader.vue'
 import SiteFooter from './components/SiteFooter.vue'
 import LanguageToggle from './components/LanguageToggle.vue'
 import InactivityPopup from './components/InactivityPopup.vue'
+import ChatWidget from './components/ChatWidget.vue'
 
 const route = useRoute()
 const isAdminRoute = computed(() => route.path.startsWith('/admin'))

@@ -17,6 +17,14 @@ const submitLimiter = rateLimit({
   legacyHeaders: false,
 })
 
+const chatMessageLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 60,
+  message: { error: 'Too many chat messages. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
 // Public — contact form submission
 router.post(
   '/',
@@ -26,6 +34,7 @@ router.post(
   body('email').isEmail().normalizeEmail().isLength({ max: 255 }).withMessage('Valid email required'),
   body('phone').trim().notEmpty().isLength({ max: 50 }).matches(/^[0-9+\-() ]+$/).withMessage('Valid phone number required'),
   body('message').trim().notEmpty().isLength({ max: 5000 }).withMessage('Message is required (max 5000 chars)'),
+  body('source').optional().isIn(['contact', 'chat']).withMessage('Invalid source'),
   validate,
   async (req, res) => {
     try {
@@ -34,10 +43,11 @@ router.post(
       const email = req.body.email
       const phone = stripHtml(req.body.phone)
       const message = stripHtml(req.body.message)
+      const source = req.body.source === 'chat' ? 'chat' : 'contact'
 
       const result = await getPool().query(
-        `INSERT INTO submissions (first_name, last_name, email, phone, message) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at`,
-        [firstName, lastName, email, phone, message]
+        `INSERT INTO submissions (first_name, last_name, email, phone, message, source) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, created_at`,
+        [firstName, lastName, email, phone, message, source]
       )
 
       res.status(201).json({ id: result.rows[0].id, created_at: result.rows[0].created_at })
@@ -47,10 +57,11 @@ router.post(
         const adminEmail = process.env.ADMIN_EMAIL
         if (adminEmail && process.env.RESEND_API_KEY) {
           const resend = new Resend(process.env.RESEND_API_KEY)
+          const subjectPrefix = source === 'chat' ? 'New chat from' : 'New inquiry from'
           await resend.emails.send({
             from: process.env.RESEND_FROM_EMAIL || 'contact@camulaw.com',
             to: adminEmail,
-            subject: `New inquiry from ${firstName} ${lastName}`,
+            subject: `${subjectPrefix} ${firstName} ${lastName}`,
             html: `
               <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1a1a1a;">
                 <div style="border-bottom: 3px solid #003F8D; padding-bottom: 16px; margin-bottom: 24px;">
@@ -94,7 +105,7 @@ router.get('/', requireAuth, async (req, res) => {
     }
 
     const where = ` WHERE ${conditions.join(' AND ')}`
-    const query = `SELECT id, first_name, last_name, email, phone, message, is_read, is_archived, created_at FROM submissions${where} ORDER BY created_at DESC`
+    const query = `SELECT id, first_name, last_name, email, phone, message, is_read, is_archived, source, created_at FROM submissions${where} ORDER BY created_at DESC`
 
     const result = await getPool().query(query, params)
     res.json(result.rows)
@@ -112,13 +123,17 @@ router.get(
   validate,
   async (req, res) => {
     try {
-      const [submissionResult, repliesResult] = await Promise.all([
+      const [submissionResult, repliesResult, chatMessagesResult] = await Promise.all([
         getPool().query(
-          'SELECT id, first_name, last_name, email, phone, message, is_read, is_archived, created_at FROM submissions WHERE id = $1',
+          'SELECT id, first_name, last_name, email, phone, message, is_read, is_archived, source, created_at FROM submissions WHERE id = $1',
           [req.params.id]
         ),
         getPool().query(
           'SELECT id, body, sent_at FROM replies WHERE submission_id = $1 ORDER BY sent_at ASC',
+          [req.params.id]
+        ),
+        getPool().query(
+          'SELECT id, body, sent_at FROM chat_messages WHERE submission_id = $1 ORDER BY sent_at ASC',
           [req.params.id]
         ),
       ])
@@ -130,10 +145,76 @@ router.get(
       res.json({
         ...submissionResult.rows[0],
         replies: repliesResult.rows,
+        chat_messages: chatMessagesResult.rows,
       })
     } catch (err) {
       console.error('Get submission error:', err)
       res.status(500).json({ error: 'Internal server error' })
+    }
+  }
+)
+
+// Public — append a follow-up chat message to an existing chat session
+router.post(
+  '/:id/chat-message',
+  chatMessageLimiter,
+  param('id').isInt().withMessage('Invalid session ID'),
+  body('body').trim().notEmpty().isLength({ max: 5000 }).withMessage('Message is required (max 5000 chars)'),
+  validate,
+  async (req, res) => {
+    try {
+      const submissionId = req.params.id
+      const messageBody = stripHtml(req.body.body)
+
+      const subResult = await getPool().query(
+        'SELECT id, first_name, last_name, email FROM submissions WHERE id = $1 AND source = $2',
+        [submissionId, 'chat']
+      )
+
+      if (subResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Chat session not found' })
+      }
+
+      const submission = subResult.rows[0]
+
+      const result = await getPool().query(
+        'INSERT INTO chat_messages (submission_id, body) VALUES ($1, $2) RETURNING id, body, sent_at',
+        [submissionId, messageBody]
+      )
+
+      // Mark the parent submission unread so admins see the new chat activity
+      await getPool().query('UPDATE submissions SET is_read = FALSE WHERE id = $1', [submissionId])
+
+      res.status(201).json(result.rows[0])
+
+      // Notify admin via email (fire and forget)
+      try {
+        const adminEmail = process.env.ADMIN_EMAIL
+        if (adminEmail && process.env.RESEND_API_KEY) {
+          const resend = new Resend(process.env.RESEND_API_KEY)
+          await resend.emails.send({
+            from: process.env.RESEND_FROM_EMAIL || 'contact@camulaw.com',
+            to: adminEmail,
+            subject: `New chat message from ${submission.first_name} ${submission.last_name}`,
+            html: `
+              <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1a1a1a;">
+                <div style="border-bottom: 3px solid #003F8D; padding-bottom: 16px; margin-bottom: 24px;">
+                  <h2 style="margin: 0; color: #003F8D; font-size: 20px;">New Chat Message</h2>
+                </div>
+                <p style="font-size: 15px; line-height: 1.6;"><strong>${escapeHtml(submission.first_name)} ${escapeHtml(submission.last_name)}</strong> (${escapeHtml(submission.email)}) sent a new message in their chat.</p>
+                <div style="background: #f0f2f7; border-radius: 8px; padding: 16px; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${escapeHtml(messageBody)}</div>
+                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0 12px;" />
+                <p style="font-size: 12px; color: #6b7280;">Log in to the admin dashboard to view the full thread.</p>
+              </div>
+            `,
+          })
+        }
+      } catch (notifyErr) {
+        console.error('Admin chat notification email failed:', notifyErr)
+      }
+    } catch (err) {
+      console.error('Chat message error:', err)
+      res.status(500).json({ error: 'Failed to send message. Please try again.' })
     }
   }
 )

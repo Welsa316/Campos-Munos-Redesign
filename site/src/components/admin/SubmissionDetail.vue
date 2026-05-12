@@ -13,7 +13,13 @@
       <div class="p-6 border-b border-gray-100 flex-shrink-0">
         <div class="flex items-start justify-between">
           <div>
-            <h2 class="font-heading text-2xl text-gray-900 mb-1">{{ submission.first_name }} {{ submission.last_name }}</h2>
+            <div class="flex items-center gap-2 mb-1">
+              <h2 class="font-heading text-2xl text-gray-900">{{ submission.first_name }} {{ submission.last_name }}</h2>
+              <span v-if="submission.source === 'chat'" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-navy/10 text-brand-navy text-[10px] font-ui font-semibold uppercase tracking-wider">
+                <i class="fa-solid fa-comment-dots text-[10px]"></i>
+                Chat
+              </span>
+            </div>
             <div class="flex items-center gap-4 text-sm font-ui">
               <a :href="'mailto:' + submission.email" class="text-brand-navy hover:text-brand-navy-light transition-colors">
                 <i class="fa-solid fa-envelope mr-1.5 text-xs"></i>{{ submission.email }}
@@ -46,27 +52,29 @@
 
       <!-- Conversation thread -->
       <div class="flex-1 overflow-y-auto p-6 space-y-4">
-        <!-- Original message -->
-        <div class="max-w-[85%]">
-          <div class="bg-brand-surface rounded-2xl rounded-tl-sm p-5">
-            <p class="text-gray-800 text-sm font-ui leading-relaxed whitespace-pre-wrap">{{ submission.message }}</p>
-          </div>
-          <p class="text-xs text-gray-400 font-ui mt-1.5 ml-1">
-            {{ formatDate(submission.created_at) }}
-          </p>
-        </div>
-
-        <!-- Admin replies -->
-        <div v-for="reply in submission.replies" :key="reply.id" class="flex justify-end">
-          <div class="max-w-[85%]">
-            <div class="bg-brand-navy/[0.08] rounded-2xl rounded-tr-sm p-5">
-              <p class="text-gray-800 text-sm font-ui leading-relaxed whitespace-pre-wrap">{{ reply.body }}</p>
+        <template v-for="item in threadItems" :key="`${item.type}-${item.id}`">
+          <!-- User message (initial submission or chat follow-up) -->
+          <div v-if="item.type === 'user'" class="max-w-[85%]">
+            <div class="bg-brand-surface rounded-2xl rounded-tl-sm p-5">
+              <p class="text-gray-800 text-sm font-ui leading-relaxed whitespace-pre-wrap">{{ item.body }}</p>
             </div>
-            <p class="text-xs text-gray-400 font-ui mt-1.5 mr-1 text-right">
-              {{ formatDate(reply.sent_at) }}
+            <p class="text-xs text-gray-400 font-ui mt-1.5 ml-1">
+              {{ formatDate(item.timestamp) }}
             </p>
           </div>
-        </div>
+
+          <!-- Admin reply -->
+          <div v-else-if="item.type === 'reply'" class="flex justify-end">
+            <div class="max-w-[85%]">
+              <div class="bg-brand-navy/[0.08] rounded-2xl rounded-tr-sm p-5">
+                <p class="text-gray-800 text-sm font-ui leading-relaxed whitespace-pre-wrap">{{ item.body }}</p>
+              </div>
+              <p class="text-xs text-gray-400 font-ui mt-1.5 mr-1 text-right">
+                {{ formatDate(item.timestamp) }}
+              </p>
+            </div>
+          </div>
+        </template>
       </div>
 
       <!-- Reply box -->
@@ -79,7 +87,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useApi } from '../../composables/useApi.js'
 import ReplyBox from './ReplyBox.vue'
 
@@ -92,6 +100,32 @@ const emit = defineEmits(['replied', 'back', 'archived'])
 
 const { patch } = useApi()
 const archiving = ref(false)
+
+// Interleave the original message, any follow-up chat messages, and admin replies, all sorted by timestamp.
+const threadItems = computed(() => {
+  if (!props.submission) return []
+  const items = [
+    {
+      type: 'user',
+      id: `initial-${props.submission.id}`,
+      body: props.submission.message,
+      timestamp: props.submission.created_at,
+    },
+    ...(props.submission.chat_messages || []).map(m => ({
+      type: 'user',
+      id: `chat-${m.id}`,
+      body: m.body,
+      timestamp: m.sent_at,
+    })),
+    ...(props.submission.replies || []).map(r => ({
+      type: 'reply',
+      id: `reply-${r.id}`,
+      body: r.body,
+      timestamp: r.sent_at,
+    })),
+  ]
+  return items.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+})
 
 async function toggleArchive() {
   if (!props.submission || archiving.value) return

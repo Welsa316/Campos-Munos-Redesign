@@ -68,8 +68,9 @@
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-baseline justify-between gap-2 mb-1">
-              <span :class="['font-ui text-sm truncate', sub.is_read ? 'text-gray-700' : 'text-gray-900 font-semibold']">
-                {{ sub.first_name }} {{ sub.last_name }}
+              <span :class="['font-ui text-sm truncate flex items-center gap-1.5', sub.is_read ? 'text-gray-700' : 'text-gray-900 font-semibold']">
+                <i v-if="sub.source === 'chat'" class="fa-solid fa-comment-dots text-brand-navy/60 text-[10px] flex-shrink-0" title="Chat session"></i>
+                <span class="truncate">{{ sub.first_name }} {{ sub.last_name }}</span>
               </span>
               <span class="text-xs text-gray-400 font-ui flex-shrink-0">
                 {{ relativeTime(sub.created_at) }}

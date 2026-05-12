@@ -45,12 +45,24 @@ async function migrate() {
       -- Add is_archived column if missing
       ALTER TABLE submissions ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;
 
+      -- Add source column (contact | chat) to distinguish chat sessions from contact form submissions
+      ALTER TABLE submissions ADD COLUMN IF NOT EXISTS source VARCHAR(20) NOT NULL DEFAULT 'contact';
+
       CREATE TABLE IF NOT EXISTS replies (
         id SERIAL PRIMARY KEY,
         submission_id INTEGER REFERENCES submissions(id) ON DELETE CASCADE,
         body TEXT NOT NULL,
         sent_at TIMESTAMPTZ DEFAULT NOW()
       );
+
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id SERIAL PRIMARY KEY,
+        submission_id INTEGER REFERENCES submissions(id) ON DELETE CASCADE,
+        body TEXT NOT NULL,
+        sent_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_chat_messages_submission_id ON chat_messages(submission_id);
     `)
     console.log('Migration complete — tables created.')
   } finally {
