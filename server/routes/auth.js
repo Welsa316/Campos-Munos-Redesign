@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit'
 import { body } from 'express-validator'
 import getPool from '../db/pool.js'
 import validate from '../middleware/validate.js'
+import requireAuth from '../middleware/auth.js'
 
 const router = Router()
 
@@ -12,6 +13,14 @@ const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
   message: { error: 'Too many login attempts. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
+const passwordChangeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: 'Too many password change attempts. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
 })
@@ -68,6 +77,50 @@ router.post('/logout', (req, res) => {
   res.clearCookie('token', clearOptions)
   res.json({ ok: true })
 })
+
+router.post(
+  '/change-password',
+  passwordChangeLimiter,
+  requireAuth,
+  body('currentPassword').notEmpty().withMessage('Current password is required'),
+  body('newPassword').isLength({ min: 10, max: 200 }).withMessage('New password must be at least 10 characters'),
+  validate,
+  async (req, res) => {
+    try {
+      const { currentPassword, newPassword } = req.body
+      const adminId = req.admin.id
+
+      const result = await getPool().query(
+        'SELECT password_hash FROM admin_users WHERE id = $1',
+        [adminId]
+      )
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Account not found' })
+      }
+
+      const valid = await bcrypt.compare(currentPassword, result.rows[0].password_hash)
+      if (!valid) {
+        return res.status(401).json({ error: 'Current password is incorrect' })
+      }
+
+      if (currentPassword === newPassword) {
+        return res.status(400).json({ error: 'New password must be different from current password' })
+      }
+
+      const newHash = await bcrypt.hash(newPassword, 12)
+      await getPool().query(
+        'UPDATE admin_users SET password_hash = $1 WHERE id = $2',
+        [newHash, adminId]
+      )
+
+      res.json({ ok: true })
+    } catch (err) {
+      console.error('Change password error:', err)
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  }
+)
 
 router.get('/verify', (req, res) => {
   const token = req.cookies.token

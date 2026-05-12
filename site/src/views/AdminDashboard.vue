@@ -21,6 +21,14 @@
         </button>
         <span class="text-xs text-gray-400 font-ui hidden sm:inline">{{ adminEmail }}</span>
         <button
+          @click="showChangePassword = true"
+          class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors"
+          title="Change password"
+        >
+          <i class="fa-solid fa-key text-xs"></i>
+          <span class="hidden sm:inline">Password</span>
+        </button>
+        <button
           @click="handleLogout"
           class="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-500 hover:text-brand-red hover:bg-red-50 text-sm font-ui font-medium transition-colors"
         >
@@ -29,6 +37,8 @@
         </button>
       </div>
     </header>
+
+    <ChangePasswordModal :visible="showChangePassword" @close="showChangePassword = false" />
 
     <!-- Loading state -->
     <div v-if="loadingList" class="flex-1 flex items-center justify-center">
@@ -90,6 +100,7 @@ import { useAuth } from '../composables/useAuth.js'
 import { useApi, rawFetch } from '../composables/useApi.js'
 import SubmissionList from '../components/admin/SubmissionList.vue'
 import SubmissionDetail from '../components/admin/SubmissionDetail.vue'
+import ChangePasswordModal from '../components/admin/ChangePasswordModal.vue'
 
 const router = useRouter()
 const { adminEmail, logout } = useAuth()
@@ -101,6 +112,7 @@ const selectedSubmission = ref(null)
 const loadingList = ref(true)
 const listError = ref(false)
 const viewMode = ref('inbox')
+const showChangePassword = ref(false)
 
 const unreadCount = computed(() => submissions.value.filter(s => !s.is_read).length)
 
