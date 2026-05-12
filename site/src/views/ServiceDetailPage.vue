@@ -37,10 +37,8 @@
 
         <!-- Location service area note -->
         <p v-if="locationData" class="reveal text-gray-500 text-lg font-ui mb-6 flex items-center gap-2">
-          <i class="fa-solid fa-map-marker-alt text-brand-navy/40"></i>
-          {{ locale === 'es'
-            ? `Atendemos clientes ${locationData.contextEs}.`
-            : `Serving clients ${locationData.contextEn}.` }}
+          <i class="fa-solid fa-map-marker-alt text-brand-navy/40" aria-hidden="true"></i>
+          {{ $t('serviceDetail.servingPrefix') }} {{ locale === 'es' ? locationData.contextEs : locationData.contextEn }}.
         </p>
 
         <!-- Structured content from .txt files -->
@@ -126,7 +124,7 @@
         <!-- FAQ Section -->
         <div v-if="faqs.length" class="reveal mt-12">
           <h2 class="font-heading text-2xl md:text-3xl text-brand-navy mb-6">
-            {{ locale === 'es' ? 'Preguntas Frecuentes' : 'Frequently Asked Questions' }}
+            {{ $t('serviceDetail.faqTitle') }}
           </h2>
           <div class="space-y-3">
             <details v-for="(faq, i) in faqs" :key="i"
@@ -145,10 +143,10 @@
         <!-- Related Services (Internal Linking) -->
         <div v-if="relatedServices.length" class="reveal mt-12">
           <h2 class="font-heading text-2xl md:text-3xl text-brand-navy mb-4">
-            {{ locale === 'es' ? 'Servicios Relacionados' : 'Related Services' }}
+            {{ $t('serviceDetail.relatedTitle') }}
           </h2>
           <p class="text-gray-500 text-lg font-body mb-4">
-            {{ locale === 'es' ? 'También ofrecemos asistencia con los siguientes servicios:' : 'We also offer assistance with the following services:' }}
+            {{ $t('serviceDetail.relatedSubtitle') }}
           </p>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <router-link v-for="related in relatedServices" :key="related.slug"

@@ -305,6 +305,36 @@
   color: rgba(156, 163, 175, 1);
 }
 
+/* Compact input style used inside the chat widget pre-chat form */
+.chat-input {
+  padding: 0.625rem 0.75rem;
+  background: white;
+  border: 1px solid rgba(229, 231, 235, 1);
+  border-radius: 0.5rem;
+  font-family: var(--font-ui);
+  font-size: 0.875rem;
+  color: #1a1a1a;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+}
+.chat-input:focus {
+  outline: none;
+  border-color: rgba(0, 63, 141, 0.4);
+  box-shadow: 0 0 0 2px rgba(0, 63, 141, 0.1);
+}
+.chat-input::placeholder {
+  color: rgba(156, 163, 175, 1);
+}
+
+/* Respect users who prefer reduced motion: shorten / disable transitions and animations. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Elfsight Google Reviews wrapper */
 .elfsight-reviews-wrapper {
   background: white;

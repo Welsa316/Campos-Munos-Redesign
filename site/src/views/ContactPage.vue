@@ -78,17 +78,17 @@
               </button>
 
               <transition name="fade">
-                <div v-if="submitted" class="p-4 rounded-xl bg-green-50 border border-green-200 text-center">
+                <div v-if="submitted" role="status" aria-live="polite" class="p-4 rounded-xl bg-green-50 border border-green-200 text-center">
                   <p class="text-green-600 text-base font-ui">
-                    <i class="fa-solid fa-check-circle mr-2"></i>{{ $t('contact.successMessage') }}
+                    <i class="fa-solid fa-check-circle mr-2" aria-hidden="true"></i>{{ $t('contact.successMessage') }}
                   </p>
                 </div>
               </transition>
 
               <transition name="fade">
-                <div v-if="error" class="p-4 rounded-xl bg-red-50 border border-red-200 text-center">
+                <div v-if="error" role="alert" aria-live="assertive" class="p-4 rounded-xl bg-red-50 border border-red-200 text-center">
                   <p class="text-red-600 text-base font-ui">
-                    <i class="fa-solid fa-exclamation-circle mr-2"></i>{{ $t('contact.errorMessage') }}
+                    <i class="fa-solid fa-exclamation-circle mr-2" aria-hidden="true"></i>{{ $t('contact.errorMessage') }}
                   </p>
                 </div>
               </transition>
@@ -192,20 +192,15 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useScrollReveal } from '../composables/useScrollReveal.js'
 import { rawFetch } from '../composables/useApi.js'
+import { CONSULTATION_KEYS } from '../data/consultationTypes.js'
 
 useScrollReveal()
-const { t } = useI18n()
+useI18n() // imported so the template can use $t; no destructured fns needed
 
 const form = ref({ firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '' })
 const submitted = ref(false)
 const loading = ref(false)
 const error = ref(false)
-
-const CONSULTATION_KEYS = [
-  'greenCard', 'ciudadania', 'asilo', 'vawa', 'visaU', 'visaT', 'daca', 'tps',
-  'tramiteConsular', 'visasPrometido', 'visasJovenes', 'peticionesFamiliares',
-  'ead', 'defensaDeportacion', 'other',
-]
 
 const socials = [
   { icon: 'fa-brands fa-whatsapp', href: 'https://wa.me/15049106508', label: 'WhatsApp', color: '#25D366' },

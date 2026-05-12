@@ -1,12 +1,15 @@
 <template>
   <div class="border-t border-gray-100 p-5 flex-shrink-0">
     <form @submit.prevent="sendReply">
+      <label for="reply-body" class="sr-only">Reply body</label>
       <textarea
+        id="reply-body"
         v-model="body"
         rows="3"
         maxlength="10000"
         :disabled="sending"
         placeholder="Type your reply..."
+        aria-label="Reply body"
         class="form-input resize-none text-sm mb-3"
       ></textarea>
 
@@ -18,11 +21,14 @@
         <div class="flex items-center gap-3">
           <!-- Toast messages -->
           <transition name="fade">
-            <span v-if="toast" :class="[
-              'text-xs font-ui',
-              toast.type === 'success' ? 'text-green-600' : 'text-amber-600'
-            ]">
-              <i :class="toast.type === 'success' ? 'fa-solid fa-check-circle' : 'fa-solid fa-exclamation-triangle'" class="mr-1"></i>
+            <span v-if="toast"
+              :role="toast.type === 'success' ? 'status' : 'alert'"
+              :aria-live="toast.type === 'success' ? 'polite' : 'assertive'"
+              :class="[
+                'text-xs font-ui',
+                toast.type === 'success' ? 'text-green-600' : 'text-amber-600'
+              ]">
+              <i :class="toast.type === 'success' ? 'fa-solid fa-check-circle' : 'fa-solid fa-exclamation-triangle'" class="mr-1" aria-hidden="true"></i>
               {{ toast.message }}
             </span>
           </transition>

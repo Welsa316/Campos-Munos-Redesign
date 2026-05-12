@@ -258,7 +258,7 @@ import { useI18n } from 'vue-i18n'
 import { useScrollReveal } from '../composables/useScrollReveal.js'
 
 useScrollReveal()
-const { t, locale } = useI18n()
+const { locale } = useI18n()
 
 function toggleLang() { locale.value = locale.value === 'es' ? 'en' : 'es' }
 

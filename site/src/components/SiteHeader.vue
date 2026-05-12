@@ -165,7 +165,7 @@ const serviceLinks = [
 ]
 
 const mobileLinks = computed(() => [
-  { to: '/home', label: 'Home' },
+  { to: '/home', label: t('nav.home') },
   { to: '/servicios', label: t('nav.servicios') },
   { to: '/servicios/green-card', label: t('nav.greenCards') },
   { to: '/consulta', label: t('nav.consulta') },

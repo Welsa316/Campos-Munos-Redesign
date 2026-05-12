@@ -8,7 +8,7 @@
           {{ $t('nav.pago') }}
         </h1>
         <p class="text-gray-500 text-xl md:text-2xl mt-4">
-          {{ currentLang === 'es' ? 'Realice su pago de forma segura' : 'Make your payment securely' }}
+          {{ $t('payment.subtitle') }}
         </p>
       </div>
     </section>
@@ -19,23 +19,21 @@
         <div class="reveal rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
           <div class="bg-white p-12 text-center">
             <div class="w-24 h-24 rounded-2xl bg-brand-navy/10 flex items-center justify-center mx-auto mb-8">
-              <i class="fa-solid fa-credit-card text-4xl text-brand-navy"></i>
+              <i class="fa-solid fa-credit-card text-4xl text-brand-navy" aria-hidden="true"></i>
             </div>
 
             <h2 class="font-heading text-3xl text-gray-900 mb-4">
-              {{ currentLang === 'es' ? 'Portal de Pagos' : 'Payment Portal' }}
+              {{ $t('payment.portalTitle') }}
             </h2>
             <p class="text-gray-500 text-lg font-ui mb-10 max-w-sm mx-auto leading-relaxed">
-              {{ currentLang === 'es'
-                ? 'Haga clic a continuación para realizar su pago de forma segura.'
-                : 'Click below to make your payment securely.' }}
+              {{ $t('payment.portalDescription') }}
             </p>
 
             <a href="https://secure.lawpay.com/pages/goldenmunoslaw/operating?qr_used=true"
               target="_blank" rel="noopener"
               class="flex items-center justify-center gap-3 w-full py-5 rounded-xl bg-brand-navy text-white font-ui font-bold tracking-wider text-base btn-magnetic">
-              <i class="fa-solid fa-lock text-sm"></i>
-              {{ currentLang === 'es' ? 'Realizar Pago' : 'Make Payment' }}
+              <i class="fa-solid fa-lock text-sm" aria-hidden="true"></i>
+              {{ $t('payment.makePayment') }}
             </a>
           </div>
         </div>
@@ -45,11 +43,6 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { useScrollReveal } from '../composables/useScrollReveal.js'
-
 useScrollReveal()
-const { locale } = useI18n()
-const currentLang = computed(() => locale.value)
 </script>

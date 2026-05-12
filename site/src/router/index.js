@@ -14,7 +14,7 @@ const routes = [
   { path: '/el-equipo/:member', name: 'TeamMember', component: () => import('../views/TeamMemberPage.vue'), props: true },
   { path: '/admin/login', name: 'AdminLogin', component: () => import('../views/AdminLogin.vue') },
   { path: '/admin', name: 'AdminDashboard', component: () => import('../views/AdminDashboard.vue'), meta: { requiresAuth: true } },
-  { path: '/:pathMatch(.*)*', redirect: '/home' },
+  { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('../views/NotFoundPage.vue') },
 ]
 
 const router = createRouter({

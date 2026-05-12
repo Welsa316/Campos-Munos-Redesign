@@ -1,12 +1,12 @@
 export default {
   nav: {
+    home: 'Home',
     servicios: 'SERVICES',
     greenCards: 'GREEN CARDS',
     consulta: 'CONSULTATION',
     pago: 'PAYMENT',
     acercaDe: 'ABOUT US',
     elEquipo: 'OUR TEAM',
-    more: 'MORE',
   },
   services: {
     visasJovenes: 'Special Immigrant Juvenile Visas',
@@ -44,8 +44,6 @@ export default {
   },
   home: {
     heroTitle: 'Immigration Attorneys',
-    heroSubtitle: 'New Orleans',
-    heroTagline: 'Helping Survivors',
     consultaBtn: 'CONSULTATION HERE',
     virtualAvailable: 'Virtual consultation available',
     recognizedBy: 'Recognized By',
@@ -53,8 +51,6 @@ export default {
     quienesSomos: 'Who Are We?',
     quienesSomosText: 'Campos Munos Law is composed of dedicated and committed attorneys who practice exclusively immigration law in the United States. Our attorneys have different backgrounds and specific areas of specialization, and are able to analyze your case from multiple perspectives.',
     sobreNosotros: 'About Us',
-    queEsperar: 'What Can You Expect?',
-    queEsperarText: 'We represent immigrants in all aspects of their case. We want to offer solutions to the processes and procedures that can be overwhelming for immigrants when trying to handle them on their own. We always prioritize transparency, realistic timelines, and personalized legal strategies.',
     serviciosBtn: 'Services',
     porQueNosotros: 'Why Us?',
     porQueNosotrosText: 'Because we will make sure you understand what is happening with your case, we will strive to treat you like family, and we will always be available to answer your questions and concerns. We will do everything possible to keep you informed about changes in immigration laws and how they may affect your case.',
@@ -66,7 +62,6 @@ export default {
     instagramHandle: "{'@'}juancamposlaw",
     popupTitle: 'Do you have questions about your legal situation?',
     popupSubtitle: 'Our team is here to help you.',
-    popupCta: 'Call Us',
     popupBtn: 'CONTACT US',
     casosResueltos: 'Cases Resolved',
     anosExperiencia: 'Years of Experience',
@@ -146,15 +141,33 @@ export default {
   },
   footer: {
     firmName: "CAMPOS MUNOS LAW, LLC {'|'} IMMIGRATION ATTORNEYS",
-    address: '812 Gravier Street, Suite 330, New Orleans, LA 70112',
-    mailingAddress: 'Mailing Address: PO Box 6224, Metairie, LA 70009',
-    phone: 'Phone: (504) 910-6508',
   },
   readMore: 'Read More',
-  backToSite: 'Back to Site',
+  a11y: {
+    skipToContent: 'Skip to main content',
+    close: 'Close',
+  },
+  notFound: {
+    title: 'Page not found',
+    body: 'The page you were looking for doesn\'t exist or has moved. Let us guide you back.',
+    homeBtn: 'Go home',
+    servicesBtn: 'See services',
+  },
   mobileContact: {
     cta: 'Call us',
     callLabel: 'Call (504) 910-6508',
+  },
+  payment: {
+    subtitle: 'Make your payment securely',
+    portalTitle: 'Payment Portal',
+    portalDescription: 'Click below to make your payment securely.',
+    makePayment: 'Make Payment',
+  },
+  serviceDetail: {
+    servingPrefix: 'Serving clients',
+    faqTitle: 'Frequently Asked Questions',
+    relatedTitle: 'Related Services',
+    relatedSubtitle: 'We also offer assistance with the following services:',
   },
   consultationForm: {
     consultationType: 'Type of consultation',

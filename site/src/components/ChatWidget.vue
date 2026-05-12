@@ -74,19 +74,28 @@
               <div class="grid grid-cols-2 gap-2">
                 <input v-model="form.firstName" type="text" required maxlength="255"
                   :placeholder="$t('chat.firstName')"
-                  class="px-3 py-2.5 rounded-lg bg-white border border-gray-200 focus:border-brand-navy/40 focus:ring-2 focus:ring-brand-navy/10 focus:outline-none text-sm font-ui text-gray-800 placeholder:text-gray-400 transition-all" />
+                  :aria-label="$t('chat.firstName')"
+                  autocomplete="given-name"
+                  class="chat-input" />
                 <input v-model="form.lastName" type="text" required maxlength="255"
                   :placeholder="$t('chat.lastName')"
-                  class="px-3 py-2.5 rounded-lg bg-white border border-gray-200 focus:border-brand-navy/40 focus:ring-2 focus:ring-brand-navy/10 focus:outline-none text-sm font-ui text-gray-800 placeholder:text-gray-400 transition-all" />
+                  :aria-label="$t('chat.lastName')"
+                  autocomplete="family-name"
+                  class="chat-input" />
               </div>
               <input v-model="form.email" type="email" required maxlength="255"
                 :placeholder="$t('chat.email')"
-                class="w-full px-3 py-2.5 rounded-lg bg-white border border-gray-200 focus:border-brand-navy/40 focus:ring-2 focus:ring-brand-navy/10 focus:outline-none text-sm font-ui text-gray-800 placeholder:text-gray-400 transition-all" />
+                :aria-label="$t('chat.email')"
+                autocomplete="email"
+                class="chat-input w-full" />
               <input v-model="form.phone" type="tel" required maxlength="50"
                 :placeholder="$t('chat.phone')"
-                class="w-full px-3 py-2.5 rounded-lg bg-white border border-gray-200 focus:border-brand-navy/40 focus:ring-2 focus:ring-brand-navy/10 focus:outline-none text-sm font-ui text-gray-800 placeholder:text-gray-400 transition-all" />
+                :aria-label="$t('chat.phone')"
+                autocomplete="tel"
+                class="chat-input w-full" />
               <select v-model="form.consultationType" required
-                class="w-full px-3 py-2.5 rounded-lg bg-white border border-gray-200 focus:border-brand-navy/40 focus:ring-2 focus:ring-brand-navy/10 focus:outline-none text-sm font-ui text-gray-800 transition-all"
+                :aria-label="$t('consultationForm.consultationType')"
+                class="chat-input w-full"
                 :class="!form.consultationType ? 'text-gray-400' : 'text-gray-800'">
                 <option value="" disabled>{{ $t('consultationForm.selectConsultation') }}</option>
                 <option v-for="key in CONSULTATION_KEYS" :key="key" :value="key">
@@ -95,13 +104,15 @@
               </select>
               <input v-model="form.location" type="text" required maxlength="255"
                 :placeholder="$t('consultationForm.locationPlaceholder')"
-                class="w-full px-3 py-2.5 rounded-lg bg-white border border-gray-200 focus:border-brand-navy/40 focus:ring-2 focus:ring-brand-navy/10 focus:outline-none text-sm font-ui text-gray-800 placeholder:text-gray-400 transition-all" />
+                :aria-label="$t('consultationForm.location')"
+                class="chat-input w-full" />
               <textarea v-model="form.message" rows="3" required maxlength="5000"
                 :placeholder="$t('chat.firstMessage')"
-                class="w-full resize-none px-3 py-2.5 rounded-lg bg-white border border-gray-200 focus:border-brand-navy/40 focus:ring-2 focus:ring-brand-navy/10 focus:outline-none text-sm font-ui text-gray-800 placeholder:text-gray-400 transition-all"></textarea>
+                :aria-label="$t('chat.firstMessage')"
+                class="chat-input w-full resize-none"></textarea>
 
-              <p v-if="formError" class="text-brand-red text-xs font-ui">
-                <i class="fa-solid fa-circle-exclamation mr-1"></i>{{ formError }}
+              <p v-if="formError" role="alert" class="text-brand-red text-xs font-ui">
+                <i class="fa-solid fa-circle-exclamation mr-1" aria-hidden="true"></i>{{ formError }}
               </p>
 
               <button type="submit" :disabled="loading"
@@ -164,6 +175,7 @@
           <form @submit.prevent="sendFollowUp" class="flex items-center gap-2 px-3 py-3 border-t border-gray-100 bg-white flex-shrink-0">
             <input v-model="newMessage" type="text" maxlength="5000"
               :placeholder="$t('chat.typeMessage')"
+              :aria-label="$t('chat.typeMessage')"
               :disabled="sending"
               class="flex-1 px-4 py-2.5 rounded-full bg-brand-light border border-transparent focus:border-brand-navy/30 focus:bg-white focus:outline-none text-sm font-ui text-gray-800 placeholder:text-gray-400 transition-colors disabled:opacity-60" />
             <button type="submit"
@@ -184,6 +196,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { rawFetch } from '../composables/useApi.js'
+import { CONSULTATION_KEYS } from '../data/consultationTypes.js'
 
 const { t } = useI18n()
 
@@ -207,12 +220,6 @@ const form = ref({
   location: '',
   message: '',
 })
-
-const CONSULTATION_KEYS = [
-  'greenCard', 'ciudadania', 'asilo', 'vawa', 'visaU', 'visaT', 'daca', 'tps',
-  'tramiteConsular', 'visasPrometido', 'visasJovenes', 'peticionesFamiliares',
-  'ead', 'defensaDeportacion', 'other',
-]
 
 const session = ref(null) // { id, firstName, lastName, email, phone, startedAt }
 const messages = ref([])  // [{ id, body, sent_at }]
@@ -321,6 +328,7 @@ async function startChat() {
     const firstMessageBody = f.message.trim()
     session.value = {
       id: data.id,
+      chatToken: data.chat_token,
       firstName: f.firstName.trim(),
       lastName: f.lastName.trim(),
       email: f.email.trim(),
@@ -349,7 +357,7 @@ async function sendFollowUp() {
   try {
     const res = await rawFetch(`/api/submissions/${session.value.id}/chat-message`, {
       method: 'POST',
-      body: JSON.stringify({ body }),
+      body: JSON.stringify({ body, chatToken: session.value.chatToken }),
     })
 
     if (!res.ok) {

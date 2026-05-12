@@ -1,18 +1,26 @@
 <template>
   <transition name="fade">
-    <div v-if="visible" class="fixed inset-0 z-[200] flex items-center justify-center p-4" @click.self="close">
-      <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+    <div v-if="visible"
+      ref="overlayRef"
+      class="fixed inset-0 z-[200] flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="change-password-title"
+      @keydown.esc="close"
+      @keydown.tab="trapFocus"
+      @click.self="close">
+      <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true"></div>
 
       <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
         <div class="px-6 pt-6 pb-4 border-b border-gray-100 flex items-start justify-between">
           <div>
-            <h2 class="font-heading text-xl text-brand-navy">Change password</h2>
+            <h2 id="change-password-title" class="font-heading text-xl text-brand-navy">Change password</h2>
             <p class="text-gray-400 text-sm font-ui mt-1">Use at least 10 characters.</p>
           </div>
-          <button @click="close" type="button"
+          <button ref="closeBtnRef" @click="close" type="button"
             class="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 flex items-center justify-center transition-colors"
             aria-label="Close">
-            <i class="fa-solid fa-xmark text-sm"></i>
+            <i class="fa-solid fa-xmark text-sm" aria-hidden="true"></i>
           </button>
         </div>
 
@@ -39,11 +47,11 @@
               class="w-full px-3 py-2.5 rounded-lg bg-brand-surface border border-gray-200 focus:border-brand-navy/40 focus:ring-2 focus:ring-brand-navy/10 focus:outline-none text-sm font-ui text-gray-800" />
           </div>
 
-          <p v-if="error" class="text-brand-red text-xs font-ui">
-            <i class="fa-solid fa-circle-exclamation mr-1"></i>{{ error }}
+          <p v-if="error" role="alert" aria-live="assertive" class="text-brand-red text-xs font-ui">
+            <i class="fa-solid fa-circle-exclamation mr-1" aria-hidden="true"></i>{{ error }}
           </p>
-          <p v-if="success" class="text-green-600 text-xs font-ui">
-            <i class="fa-solid fa-check-circle mr-1"></i>Password updated. You'll need to use it next time you sign in.
+          <p v-if="success" role="status" aria-live="polite" class="text-green-600 text-xs font-ui">
+            <i class="fa-solid fa-check-circle mr-1" aria-hidden="true"></i>Password updated. You'll need to use it next time you sign in.
           </p>
 
           <div class="flex items-center gap-2 pt-2">
@@ -64,7 +72,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { rawFetch } from '../../composables/useApi.js'
 
 const props = defineProps({
@@ -76,6 +84,9 @@ const form = ref({ currentPassword: '', newPassword: '', confirmPassword: '' })
 const loading = ref(false)
 const error = ref('')
 const success = ref(false)
+const overlayRef = ref(null)
+const closeBtnRef = ref(null)
+let previouslyFocused = null
 
 watch(() => props.visible, (v) => {
   if (v) {
@@ -83,11 +94,39 @@ watch(() => props.visible, (v) => {
     error.value = ''
     success.value = false
     loading.value = false
+    previouslyFocused = document.activeElement
+    // Move focus to the first password field for a fast start.
+    nextTick(() => {
+      const first = overlayRef.value?.querySelector('input[type="password"]')
+      ;(first || closeBtnRef.value)?.focus()
+    })
+  } else if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
+    // Return focus to whatever button opened the modal.
+    previouslyFocused.focus()
+    previouslyFocused = null
   }
 })
 
 function close() {
   emit('close')
+}
+
+function trapFocus(e) {
+  // Keep Tab within the modal so keyboard users don't escape to the background.
+  if (e.key !== 'Tab' || !overlayRef.value) return
+  const focusable = overlayRef.value.querySelectorAll(
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])'
+  )
+  if (focusable.length === 0) return
+  const first = focusable[0]
+  const last = focusable[focusable.length - 1]
+  if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault()
+    last.focus()
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault()
+    first.focus()
+  }
 }
 
 async function submit() {

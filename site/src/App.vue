@@ -1,13 +1,17 @@
 <template>
   <div class="min-h-screen flex flex-col relative">
+    <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-[300] focus:bg-brand-navy focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:font-ui focus:text-sm">
+      {{ $t('a11y.skipToContent') }}
+    </a>
     <template v-if="!isAdminRoute">
-      <!-- Scroll progress bar -->
-      <div class="fixed top-0 left-0 h-[2px] bg-brand-navy z-[200] transition-all duration-75"
-        :style="{ width: scrollProgress + '%' }"></div>
+      <!-- Scroll progress bar — kept BELOW header z-index so modals can fully cover it -->
+      <div class="fixed top-0 left-0 h-[2px] bg-brand-navy z-[5] transition-all duration-75"
+        :style="{ width: scrollProgress + '%' }"
+        aria-hidden="true"></div>
       <SiteHeader />
     </template>
 
-    <main class="flex-1">
+    <main id="main" class="flex-1">
       <router-view v-slot="{ Component }">
         <transition name="page" mode="out-in">
           <component :is="Component" />
@@ -30,8 +34,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import SiteHeader from './components/SiteHeader.vue'
 import SiteFooter from './components/SiteFooter.vue'
 import LanguageToggle from './components/LanguageToggle.vue'
@@ -40,6 +45,7 @@ import ChatWidget from './components/ChatWidget.vue'
 import MobileContactWidget from './components/MobileContactWidget.vue'
 
 const route = useRoute()
+const { locale } = useI18n()
 const isAdminRoute = computed(() => route.path.startsWith('/admin'))
 
 const scrollProgress = ref(0)
@@ -49,6 +55,26 @@ function updateScroll() {
   const progress = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100
   scrollProgress.value = Math.min(100, Math.max(0, progress))
 }
+
+// Keep <html lang> in sync with the active locale so screen readers + Google
+// announce/index the right language whenever the user toggles ES <-> EN.
+watch(locale, (v) => {
+  document.documentElement.lang = v
+}, { immediate: true })
+
+// Apply noindex on admin routes so /admin/login never gets crawled.
+watch(isAdminRoute, (isAdmin) => {
+  const existing = document.querySelector('meta[data-dynamic="admin-noindex"]')
+  if (isAdmin && !existing) {
+    const m = document.createElement('meta')
+    m.name = 'robots'
+    m.content = 'noindex,nofollow'
+    m.dataset.dynamic = 'admin-noindex'
+    document.head.appendChild(m)
+  } else if (!isAdmin && existing) {
+    existing.remove()
+  }
+}, { immediate: true })
 
 onMounted(() => window.addEventListener('scroll', updateScroll, { passive: true }))
 onUnmounted(() => window.removeEventListener('scroll', updateScroll))

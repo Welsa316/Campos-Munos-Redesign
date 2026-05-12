@@ -100,15 +100,11 @@
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useApi } from '../../composables/useApi.js'
+import { consultationLabel as consultationLabelShared } from '../../data/consultationTypes.js'
 import ReplyBox from './ReplyBox.vue'
 
 const { t, te } = useI18n()
-
-function consultationLabel(key) {
-  if (!key) return 'Other'
-  if (key === 'other') return t('consultationForm.notSure')
-  return te(`services.${key}`) ? t(`services.${key}`) : key
-}
+const consultationLabel = (key) => consultationLabelShared(key, t, te)
 
 const props = defineProps({
   submission: { type: Object, default: null },

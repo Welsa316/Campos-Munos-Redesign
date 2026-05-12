@@ -108,6 +108,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { CONSULTATION_KEYS, consultationLabel as consultationLabelShared } from '../../data/consultationTypes.js'
 
 const props = defineProps({
   submissions: { type: Array, default: () => [] },
@@ -121,17 +122,7 @@ const { t, te } = useI18n()
 const filter = ref('all')
 const consultationFilter = ref('')
 
-const CONSULTATION_KEYS = [
-  'greenCard', 'ciudadania', 'asilo', 'vawa', 'visaU', 'visaT', 'daca', 'tps',
-  'tramiteConsular', 'visasPrometido', 'visasJovenes', 'peticionesFamiliares',
-  'ead', 'defensaDeportacion', 'other',
-]
-
-function consultationLabel(key) {
-  if (!key) return 'Other'
-  if (key === 'other') return t('consultationForm.notSure')
-  return te(`services.${key}`) ? t(`services.${key}`) : key
-}
+const consultationLabel = (key) => consultationLabelShared(key, t, te)
 
 const unreadCount = computed(() => props.submissions.filter(s => !s.is_read).length)
 

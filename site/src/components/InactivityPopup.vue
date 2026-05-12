@@ -1,25 +1,32 @@
 <template>
   <transition name="popup">
-    <div v-if="visible" class="fixed inset-0 z-[150] flex items-center justify-center p-4 overflow-y-auto" @click.self="close">
+    <div v-if="visible"
+      class="fixed inset-0 z-[150] flex items-center justify-center p-4 overflow-y-auto"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="inactivity-popup-title"
+      @click.self="close"
+      @keydown.esc="close">
       <!-- Backdrop -->
-      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="close"></div>
+      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-hidden="true" @click="close"></div>
 
       <!-- Modal -->
       <div class="relative w-full max-w-2xl rounded-3xl my-auto">
         <!-- Close button — outside overflow-hidden so it never gets clipped -->
         <button @click="close" type="button"
+          :aria-label="$t('a11y.close')"
           class="absolute top-3 right-3 sm:top-4 sm:right-4 w-11 h-11 sm:w-10 sm:h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-all active:scale-95 touch-manipulation z-20">
-          <i class="fa-solid fa-xmark text-lg sm:text-base"></i>
+          <i class="fa-solid fa-xmark text-lg sm:text-base" aria-hidden="true"></i>
         </button>
         <div class="relative overflow-hidden rounded-3xl">
           <!-- Image section -->
           <div class="relative">
-            <img src="/PopupPhoto.jpg" alt="" class="w-full h-[220px] sm:h-[420px] object-cover object-top" />
+            <img src="/PopupPhoto.jpg" alt="" loading="lazy" decoding="async" class="w-full h-[220px] sm:h-[420px] object-cover object-top" />
           </div>
 
           <!-- Content - solid blue, completely separate from image -->
           <div class="px-6 py-8 sm:px-10 sm:py-10 bg-brand-navy text-center rounded-b-3xl">
-            <h2 class="font-heading text-2xl sm:text-4xl text-white mb-3 sm:mb-4 leading-tight">
+            <h2 id="inactivity-popup-title" class="font-heading text-2xl sm:text-4xl text-white mb-3 sm:mb-4 leading-tight">
               {{ $t('home.popupTitle') }}
             </h2>
             <p class="text-white/80 text-base sm:text-xl font-ui mb-6 sm:mb-8">{{ $t('home.popupSubtitle') }}</p>
@@ -50,6 +57,16 @@ const visible = ref(false)
 let timer = null
 let hasTriggered = false
 const events = ['mousemove', 'keydown', 'scroll', 'touchstart']
+const DISMISS_KEY = 'cm_inactivity_dismissed_at'
+const DISMISS_TTL_MS = 24 * 60 * 60 * 1000 // 24h
+const IDLE_MS = 30000 // 30s of inactivity before showing
+
+function isRecentlyDismissed() {
+  try {
+    const ts = parseInt(localStorage.getItem(DISMISS_KEY) || '0', 10)
+    return ts && Date.now() - ts < DISMISS_TTL_MS
+  } catch { return false }
+}
 
 function stopListening() {
   clearTimeout(timer)
@@ -63,14 +80,19 @@ function resetTimer() {
     visible.value = true
     hasTriggered = true
     stopListening()
-  }, 10000)
+  }, IDLE_MS)
 }
 
 function close() {
   visible.value = false
+  try { localStorage.setItem(DISMISS_KEY, String(Date.now())) } catch { /* ignore */ }
 }
 
 onMounted(() => {
+  if (isRecentlyDismissed()) {
+    hasTriggered = true
+    return
+  }
   resetTimer()
   events.forEach(e => window.addEventListener(e, resetTimer, { passive: true }))
 })

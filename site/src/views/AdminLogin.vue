@@ -34,8 +34,8 @@
           </div>
 
           <transition name="fade">
-            <p v-if="errorMsg" class="text-brand-red text-sm font-ui">
-              <i class="fa-solid fa-exclamation-circle mr-1"></i>{{ errorMsg }}
+            <p v-if="errorMsg" role="alert" aria-live="assertive" class="text-brand-red text-sm font-ui">
+              <i class="fa-solid fa-exclamation-circle mr-1" aria-hidden="true"></i>{{ errorMsg }}
             </p>
           </transition>
 
