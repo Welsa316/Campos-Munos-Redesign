@@ -66,7 +66,7 @@ router.post(
       res.cookie('token', token, COOKIE_OPTIONS)
       res.json({ authenticated: true, email: admin.email })
     } catch (err) {
-      console.error('Login error:', err)
+      req.log.error({ err: err }, 'Login error')
       res.status(500).json({ error: 'Internal server error' })
     }
   }
@@ -125,7 +125,7 @@ router.post(
 
       res.json({ ok: true })
     } catch (err) {
-      console.error('Change password error:', err)
+      req.log.error({ err: err }, 'Change password error')
       res.status(500).json({ error: 'Internal server error' })
     }
   }

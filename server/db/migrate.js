@@ -6,6 +6,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: join(__dirname, '..', '.env') })
 
 import getPool from './pool.js'
+import logger from '../logger.js'
 
 async function migrate() {
   const pool = getPool()
@@ -97,7 +98,7 @@ async function migrate() {
 
       CREATE INDEX IF NOT EXISTS idx_chat_messages_submission_id ON chat_messages(submission_id);
     `)
-    console.log('Migration complete — tables created.')
+    logger.info('Migration complete — tables created.')
   } finally {
     client.release()
     await pool.end()
@@ -105,6 +106,6 @@ async function migrate() {
 }
 
 migrate().catch((err) => {
-  console.error('Migration failed:', err)
+  logger.fatal({ err }, 'Migration failed')
   process.exit(1)
 })

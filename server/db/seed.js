@@ -7,6 +7,7 @@ dotenv.config({ path: join(__dirname, '..', '.env') })
 
 import bcrypt from 'bcrypt'
 import getPool from './pool.js'
+import logger from '../logger.js'
 
 async function seed() {
   const isProduction = process.env.NODE_ENV === 'production'
@@ -19,18 +20,18 @@ async function seed() {
     // guard so production redeploys don't fail.
     const existingAdmin = await client.query('SELECT id FROM admin_users LIMIT 1')
     if (existingAdmin.rows.length > 0) {
-      console.log('Admin user already exists — skipping seed.')
+      logger.info('Admin user already exists — skipping seed.')
       return
     }
 
     // First-time seed: production must explicitly opt-in to a real password.
     if (isProduction) {
       if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_INITIAL_PASSWORD) {
-        console.error('FATAL: first production seed requires ADMIN_EMAIL and ADMIN_INITIAL_PASSWORD env vars.')
+        logger.fatal('FATAL: first production seed requires ADMIN_EMAIL and ADMIN_INITIAL_PASSWORD env vars.')
         process.exit(1)
       }
       if (process.env.ADMIN_INITIAL_PASSWORD.length < 10 || /^changeme$/i.test(process.env.ADMIN_INITIAL_PASSWORD)) {
-        console.error('FATAL: ADMIN_INITIAL_PASSWORD must be at least 10 chars and not the literal "changeme".')
+        logger.fatal('FATAL: ADMIN_INITIAL_PASSWORD must be at least 10 chars and not the literal "changeme".')
         process.exit(1)
       }
     }
@@ -46,18 +47,18 @@ async function seed() {
        ON CONFLICT (email) DO NOTHING`,
       [email, hash]
     )
-    console.log(`\nAdmin account seeded:`)
-    console.log(`  Email:    ${email}`)
+    logger.info(`\nAdmin account seeded:`)
+    logger.info(`  Email:    ${email}`)
     if (!isProduction) {
-      console.log(`  Password: ${password}\n`)
+      logger.info(`  Password: ${password}\n`)
     } else {
-      console.log(`  Password: (set via ADMIN_INITIAL_PASSWORD env)\n`)
+      logger.info(`  Password: (set via ADMIN_INITIAL_PASSWORD env)\n`)
     }
 
     // Skip test submissions in production — only admin user is seeded.
     if (isProduction) {
-      console.log('\nProduction: skipping test submissions.')
-      console.log('Seed complete!')
+      logger.info('\nProduction: skipping test submissions.')
+      logger.info('Seed complete!')
       return
     }
 
@@ -86,7 +87,7 @@ async function seed() {
         [sub.firstName, sub.lastName, sub.email, sub.phone, sub.message, sub.is_read, ts]
       )
     }
-    console.log(`Seeded ${submissions.length} submissions.`)
+    logger.info(`Seeded ${submissions.length} submissions.`)
 
     // Seed replies for read submissions
     const readSubmissions = await client.query(
@@ -118,8 +119,8 @@ async function seed() {
       )
     }
 
-    console.log('Seeded replies for read submissions.')
-    console.log('\nSeed complete!')
+    logger.info('Seeded replies for read submissions.')
+    logger.info('\nSeed complete!')
   } finally {
     client.release()
     await pool.end()
@@ -127,6 +128,6 @@ async function seed() {
 }
 
 seed().catch((err) => {
-  console.error('Seed failed:', err)
+  logger.fatal({ err }, 'Seed failed')
   process.exit(1)
 })

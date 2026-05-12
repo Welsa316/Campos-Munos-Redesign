@@ -97,10 +97,10 @@ router.post(
           })
         }
       } catch (notifyErr) {
-        console.error('Admin notification email failed:', notifyErr)
+        req.log.error({ err: notifyErr }, 'Admin notification email failed')
       }
     } catch (err) {
-      console.error('Submission error:', err)
+      req.log.error({ err: err }, 'Submission error')
       res.status(500).json({ error: 'Failed to submit. Please try again.' })
     }
   }
@@ -138,7 +138,7 @@ router.get('/', requireAuth, async (req, res) => {
     const result = await getPool().query(query, params)
     res.json(result.rows)
   } catch (err) {
-    console.error('List submissions error:', err)
+    req.log.error({ err: err }, 'List submissions error')
     res.status(500).json({ error: 'Internal server error' })
   }
 })
@@ -176,7 +176,7 @@ router.get(
         chat_messages: chatMessagesResult.rows,
       })
     } catch (err) {
-      console.error('Get submission error:', err)
+      req.log.error({ err: err }, 'Get submission error')
       res.status(500).json({ error: 'Internal server error' })
     }
   }
@@ -247,11 +247,11 @@ router.post(
           })
         }
       } catch (notifyErr) {
-        console.error('Admin chat notification email failed:', notifyErr)
+        req.log.error({ err: notifyErr }, 'Admin chat notification email failed')
       }
     } catch (err) {
       try { await client.query('ROLLBACK') } catch { /* ignore */ }
-      console.error('Chat message error:', err)
+      req.log.error({ err: err }, 'Chat message error')
       res.status(500).json({ error: 'Failed to send message. Please try again.' })
     } finally {
       client.release()
@@ -278,7 +278,7 @@ router.patch(
 
       res.json(result.rows[0])
     } catch (err) {
-      console.error('Mark read error:', err)
+      req.log.error({ err: err }, 'Mark read error')
       res.status(500).json({ error: 'Internal server error' })
     }
   }
@@ -307,7 +307,7 @@ router.patch(
 
       res.json(result.rows[0])
     } catch (err) {
-      console.error('Archive error:', err)
+      req.log.error({ err: err }, 'Archive error')
       res.status(500).json({ error: 'Internal server error' })
     }
   }
@@ -348,7 +348,7 @@ router.get('/export/csv', requireAuth, async (req, res) => {
     await client.query('COMMIT')
     res.end()
   } catch (err) {
-    console.error('CSV export error:', err)
+    req.log.error({ err: err }, 'CSV export error')
     try { await client.query('ROLLBACK') } catch { /* ignore */ }
     if (!res.headersSent) {
       res.status(500).json({ error: 'Internal server error' })
@@ -420,13 +420,13 @@ router.post(
           `,
         })
       } catch (emailErr) {
-        console.error('Resend email failed:', emailErr)
+        req.log.error({ err: emailErr }, 'Resend email failed')
         emailFailed = true
       }
 
       res.status(201).json({ ...reply, emailFailed })
     } catch (err) {
-      console.error('Reply error:', err)
+      req.log.error({ err: err }, 'Reply error')
       res.status(500).json({ error: 'Internal server error' })
     }
   }
