@@ -5,12 +5,14 @@
     <div class="absolute inset-0 transition-all duration-500"
       :class="navSolid ? 'bg-white shadow-lg opacity-100' : 'opacity-0'"></div>
 
-    <nav class="relative max-w-7xl mx-auto px-6 flex items-center justify-between">
-      <!-- Logo - visible on scroll or non-home pages -->
-      <router-link to="/home" class="flex-shrink-0 relative group transition-all duration-500 mr-8"
+    <nav class="relative max-w-screen-2xl mx-auto px-6 flex items-center justify-between gap-4">
+      <!-- Logo - visible on scroll or non-home pages. h-12 on xl gives the
+           500×100 logo enough room to coexist with the 6 English nav items
+           + call CTA; expands to h-16 on 2xl when there's space to spare. -->
+      <router-link to="/home" class="flex-shrink-0 relative group transition-all duration-500"
         :class="navSolid ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'">
         <img src="/logo.png" alt="Campos Munos Law"
-          class="h-16 transition-all duration-500" />
+          class="h-12 2xl:h-16 transition-all duration-500" />
       </router-link>
 
       <!-- Desktop nav - centered -->
@@ -68,19 +70,21 @@
         </router-link>
       </div>
 
-      <!-- Right side: phone + social -->
-      <div class="hidden xl:flex items-center gap-5">
-        <div class="flex items-center gap-3">
+      <!-- Right side: phone + social. Social icons only fit comfortably on
+           true wide screens; from xl→2xl they'd push the call CTA off the
+           edge, so they're hidden until 2xl. The footer keeps them visible. -->
+      <div class="hidden xl:flex items-center gap-4 flex-shrink-0">
+        <div class="hidden 2xl:flex items-center gap-3">
           <a v-for="social in socials" :key="social.label" :href="social.href" target="_blank" rel="noopener"
             :aria-label="social.label"
-            class="w-12 h-12 rounded-full flex items-center justify-center transition-all text-xl hover:scale-110 hover:opacity-80"
+            class="w-11 h-11 rounded-full flex items-center justify-center transition-all text-lg hover:scale-110 hover:opacity-80"
             :style="{ color: navSolid ? social.color : (social.colorAlt || social.color) }">
-            <i :class="social.icon"></i>
+            <i :class="social.icon" aria-hidden="true"></i>
           </a>
         </div>
         <a href="tel:+15049106508"
-          class="flex items-center gap-3 whitespace-nowrap px-8 py-3 rounded-full bg-brand-red hover:bg-brand-red-light text-white text-base font-ui font-semibold tracking-wider transition-all btn-magnetic">
-          <i class="fa-solid fa-phone text-sm"></i>
+          class="flex items-center gap-2 whitespace-nowrap px-5 py-2.5 rounded-full bg-brand-red hover:bg-brand-red-light text-white text-sm font-ui font-semibold tracking-wider transition-all btn-magnetic">
+          <i class="fa-solid fa-phone text-xs" aria-hidden="true"></i>
           (504) 910-6508
         </a>
       </div>

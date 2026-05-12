@@ -18,7 +18,12 @@ export default async function requireAuth(req, res, next) {
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Account no longer exists' })
     }
-    if (decoded.tv !== result.rows[0].token_version) {
+    // Tokens issued before token_version existed don't carry a `tv` claim — treat
+    // them as version 1, the schema default. After the admin rotates their
+    // password (which bumps token_version), the comparison will fail for those
+    // older tokens and the user will be forced to sign back in.
+    const tokenVersion = typeof decoded.tv === 'number' ? decoded.tv : 1
+    if (tokenVersion !== result.rows[0].token_version) {
       return res.status(401).json({ error: 'Session expired, please sign in again' })
     }
     req.admin = decoded
