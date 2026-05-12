@@ -11,9 +11,6 @@
           <router-link to="/home" class="inline-block mb-6">
             <img src="/logo.png" alt="Campos Munos Law" class="h-20 brightness-0 invert" />
           </router-link>
-          <p class="text-white/70 text-base font-ui leading-relaxed max-w-xs">
-            {{ $t('about.introText').substring(0, 150) }}...
-          </p>
           <!-- Social icons -->
           <div class="flex items-center gap-3 mt-6">
             <a v-for="social in socials" :key="social.label" :href="social.href" target="_blank" rel="noopener"
