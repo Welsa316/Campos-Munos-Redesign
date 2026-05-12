@@ -161,7 +161,7 @@ export default {
     close: 'Cerrar',
     online: 'En línea',
     greetingMessage: '¿Cómo puedo ayudarte?',
-    intro: 'Hola, gracias por contactarnos. Por favor déjenos sus datos y nuestro equipo le responderá pronto.',
+    intro: 'Hola, deja tus datos para que podamos contactarte aunque te hayas retirado del sitio.',
     firstName: 'Nombre',
     lastName: 'Apellido',
     email: 'Correo electrónico',

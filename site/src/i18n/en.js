@@ -161,7 +161,7 @@ export default {
     close: 'Close',
     online: 'Online',
     greetingMessage: 'How can I help you?',
-    intro: 'Hi, thanks for reaching out. Please share your details and our team will get back to you shortly.',
+    intro: 'Hi, leave your details so we can reach out to you even after you leave the site.',
     firstName: 'First name',
     lastName: 'Last name',
     email: 'Email address',
