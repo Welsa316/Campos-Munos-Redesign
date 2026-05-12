@@ -1,4 +1,5 @@
 import dotenv from 'dotenv'
+import fs from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 
@@ -76,7 +77,31 @@ app.get('/readyz', async (_req, res) => {
 app.use('/api/auth', authRoutes)
 app.use('/api/submissions', submissionRoutes)
 
-app.use((req, res) => res.status(404).json({ error: 'Not found' }))
+// API 404s — must be registered before the static + SPA fallback so an
+// unknown /api/* path returns JSON instead of the SPA's index.html.
+app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }))
+
+// Serve the built Vue frontend from one Railway service. In dev this
+// directory doesn't exist (Vite handles the frontend on :5174) — the
+// existsSync guard keeps `npm run dev` working without a prior build.
+const distDir = join(__dirname, '..', 'site', 'dist')
+if (fs.existsSync(distDir)) {
+  app.use(express.static(distDir, {
+    index: false,
+    maxAge: '1y',
+    setHeaders: (res, path) => {
+      // index.html must always be revalidated so a redeploy is picked up
+      // on the next request instead of being served from cache for a year.
+      if (path.endsWith('index.html')) {
+        res.setHeader('Cache-Control', 'no-cache')
+      }
+    },
+  }))
+
+  app.get('*', (_req, res) => res.sendFile(join(distDir, 'index.html')))
+} else {
+  app.use((req, res) => res.status(404).json({ error: 'Not found' }))
+}
 
 app.use((err, req, res, _next) => {
   req.log?.error({ err }, 'Unhandled error in request')
