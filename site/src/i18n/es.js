@@ -10,7 +10,6 @@ export default {
   },
   services: {
     visasJovenes: 'Visas Especial para Jóvenes',
-    videos: 'Videos',
     tramiteConsular: 'Trámite Consular',
     asilo: 'Asilo',
     daca: 'DACA',
@@ -40,7 +39,6 @@ export default {
     ead: 'El permiso de trabajo permite a ciertos inmigrantes trabajar legalmente en Estados Unidos mientras su caso migratorio está en proceso o bajo una categoría elegible. Le ayudamos a solicitarlo correctamente para que pueda trabajar sin preocupaciones.',
     defensaDeportacion: 'Representamos a personas que enfrentan procedimientos de deportación ante los tribunales de inmigración. Nuestros abogados preparan defensas sólidas para proteger su derecho a permanecer en los Estados Unidos.',
     visaT: 'La Visa T está diseñada para víctimas de tráfico humano. Brindamos representación legal confidencial para ayudarle a obtener estatus legal y protección en los Estados Unidos.',
-    videos: 'Contenido educativo en video sobre procesos migratorios y sus derechos legales.',
   },
   home: {
     heroTitle: 'Abogados de Inmigración',
