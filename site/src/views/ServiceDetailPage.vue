@@ -20,7 +20,7 @@
           </div>
           <div>
             <h1 class="font-heading text-4xl md:text-6xl lg:text-7xl font-bold text-brand-navy leading-[0.95]">
-              {{ pageH1 }}
+              {{ serviceName }}
             </h1>
             <p v-if="locationData" class="mt-3 text-gray-500 text-lg font-ui tracking-wider">
               <i class="fa-solid fa-location-dot text-brand-navy/40 mr-2"></i>
@@ -40,6 +40,11 @@
           <i class="fa-solid fa-map-marker-alt text-brand-navy/40" aria-hidden="true"></i>
           {{ $t('serviceDetail.servingPrefix') }} {{ locale === 'es' ? locationData.contextEs : locationData.contextEn }}.
         </p>
+
+        <!-- SEO-friendly long headline sits above the body content -->
+        <h2 class="reveal font-heading text-3xl md:text-4xl text-brand-navy leading-tight mb-8">
+          {{ pageH1 }}
+        </h2>
 
         <!-- Structured content from .txt files -->
         <template v-if="contentBlocks.length">

@@ -40,7 +40,60 @@ const PORT = process.env.PORT || 3000
 // appearing to come from the proxy.
 app.set('trust proxy', 1)
 
-app.use(helmet())
+// Custom CSP because the SPA loads from this same origin and needs to
+// pull video from Cloudflare R2, gtag.js from Google, the elfsight
+// widget, and inline scripts (JSON-LD + dataLayer init).
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      'default-src': ["'self'"],
+      'script-src': [
+        "'self'",
+        "'unsafe-inline'",
+        'https://www.googletagmanager.com',
+        'https://static.elfsight.com',
+      ],
+      'script-src-elem': [
+        "'self'",
+        "'unsafe-inline'",
+        'https://www.googletagmanager.com',
+        'https://static.elfsight.com',
+      ],
+      'connect-src': [
+        "'self'",
+        'https://www.google-analytics.com',
+        'https://region1.google-analytics.com',
+        'https://*.google-analytics.com',
+        'https://static.elfsight.com',
+        'https://core.service.elfsight.com',
+      ],
+      'media-src': [
+        "'self'",
+        'https://pub-bc3780d3394f41c6801ba2012e17903c.r2.dev',
+      ],
+      'img-src': [
+        "'self'",
+        'data:',
+        'https://pub-bc3780d3394f41c6801ba2012e17903c.r2.dev',
+        'https://www.google-analytics.com',
+        'https://static.elfsight.com',
+      ],
+      'style-src': [
+        "'self'",
+        "'unsafe-inline'",
+        'https://fonts.googleapis.com',
+      ],
+      'font-src': [
+        "'self'",
+        'data:',
+        'https://fonts.gstatic.com',
+      ],
+      'frame-src': ["'self'", 'https://static.elfsight.com'],
+      'upgrade-insecure-requests': null,
+    },
+  },
+}))
 app.use(cors({
   origin: process.env.FRONTEND_URL || (isProduction ? false : true),
   credentials: true,
