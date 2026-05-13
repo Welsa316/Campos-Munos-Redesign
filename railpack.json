@@ -2,8 +2,9 @@
   "$schema": "https://schema.railpack.com",
   "steps": {
     "install": {
+      "inputs": [{ "src": "." }],
       "commands": [
-        "cd site && npm ci --include=dev",
+        "cd site && npm ci",
         "cd server && npm ci --omit=dev"
       ]
     },
