@@ -1,4 +1,24 @@
 {
   "$schema": "https://schema.railpack.com",
-  "installCommand": "npm run install:all"
+  "steps": {
+    "install": {
+      "commands": [
+        "cd site && npm ci --include=dev",
+        "cd server && npm ci --omit=dev"
+      ]
+    },
+    "build": {
+      "inputs": [{ "step": "install" }],
+      "commands": ["cd site && npm run build"]
+    }
+  },
+  "deploy": {
+    "startCommand": "cd server && npm start",
+    "inputs": [
+      {
+        "step": "build",
+        "include": ["."]
+      }
+    ]
+  }
 }
