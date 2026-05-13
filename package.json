@@ -1,0 +1,10 @@
+{
+  "name": "campos-munos-redesign",
+  "private": true,
+  "description": "Monorepo root. Frontend lives in site/, backend in server/. The root scripts exist so Railway/Nixpacks detects this as a Node project and runs the right install/build/start commands.",
+  "scripts": {
+    "install:all": "cd site && npm ci && cd ../server && npm ci",
+    "build": "cd site && npm run build",
+    "start": "cd server && npm start"
+  }
+}

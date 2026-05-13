@@ -1,13 +1,10 @@
 providers = ["node"]
 
 [phases.install]
-cmds = [
-  "cd site && npm ci",
-  "cd server && npm ci",
-]
+cmds = ["npm run install:all"]
 
 [phases.build]
-cmds = ["cd site && npm run build"]
+cmds = ["npm run build"]
 
 [start]
-cmd = "cd server && npm start"
+cmd = "npm start"
