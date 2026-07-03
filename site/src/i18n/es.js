@@ -1,6 +1,6 @@
 export default {
   nav: {
-    home: 'Inicio',
+    home: 'INICIO',
     servicios: 'SERVICIOS',
     greenCards: 'GREEN CARDS',
     consulta: 'CONSULTA',
@@ -45,15 +45,15 @@ export default {
     consultaBtn: 'CONSULTA AQUÍ',
     virtualAvailable: 'Consulta virtual disponible',
     recognizedBy: 'Reconocido por',
-    reviewsTitle: 'Solo reseñas de 5 estrellas!',
+    reviewsTitle: '¡Reseñas de 5 Estrellas!',
     quienesSomos: '¿Quiénes Somos?',
-    quienesSomosText: 'Campos Munos Law está compuesto por abogados dedicados y comprometidos que practican exclusivamente el derecho de inmigración en los Estados Unidos. Nuestros abogados tienen diferentes trayectorias y áreas específicas de especialización, y son capaces de analizar su caso desde múltiples perspectivas.',
+    quienesSomosText: 'Campos Muños Law está compuesto por abogados dedicados y comprometidos que practican exclusivamente el derecho de inmigración en los Estados Unidos. Nuestros abogados tienen diferentes trayectorias y áreas específicas de especialización, y son capaces de analizar su caso desde múltiples perspectivas.',
     sobreNosotros: 'Sobre Nosotros',
     serviciosBtn: 'Servicios',
     porQueNosotros: '¿Por Qué Nosotros?',
     porQueNosotrosText: 'Porque nos aseguraremos de que entienda lo que está ocurriendo con su caso, nos esforzaremos por tratarle como a familia, y siempre estaremos disponibles para responder sus preguntas y preocupaciones. Haremos todo lo posible para mantenerle informado sobre los cambios en las leyes de inmigración y cómo estos pueden afectar su caso.',
     perfilesBtn: 'Perfiles de Abogados',
-    dondeEstamos: '¿Dónde Estamos?',
+    dondeEstamos: 'Dónde Encontrarnos',
     dondeEstamosText: 'Nuestras oficinas están ubicadas en el área metropolitana de Nueva Orleans; sin embargo, atendemos a clientes en los 50 estados de los Estados Unidos y en el extranjero.',
     contactenosBtn: 'Contáctenos',
     instagramTitle: 'Síguenos en Instagram',
@@ -71,7 +71,7 @@ export default {
     translateBtn: 'In English',
   },
   contact: {
-    title: 'Póngase En Contacto',
+    title: 'Agende Su Consulta Ahora',
     subtitle: 'Estamos aquí para ayudarle',
     subtitleAlt: 'Consultas confidenciales',
     firstName: 'Nombre',
@@ -95,7 +95,7 @@ export default {
     conCita: 'Con cita previa',
   },
   about: {
-    firmName: 'Campos Munos Law, LLC',
+    firmName: 'Campos Muños Law, LLC',
     quienesSomos: 'Quiénes somos',
     introText: 'En el despacho de abogados de inmigración Campos Muños, contamos con más de veinte años de experiencia dedicados exclusivamente a las complejas y cambiantes leyes que regulan la inmigración en los Estados Unidos. Este enfoque nos ha permitido construir una reputación de ofrecer soluciones excepcionales y eficientes para nuestros clientes inmigrantes en todo el sureste del país.',
     mision: 'Nuestra misión',
@@ -115,7 +115,7 @@ export default {
         name: 'Juan Campos-Gutierrez, Esq.',
         title: 'Socio Fundador',
         shortBio: 'Nacido en Coro, Venezuela, Juan aporta más de dos décadas de experiencia jurídica al despacho. Ex profesor de derecho y fiscal, ahora dedica su práctica a proteger los derechos de los inmigrantes en Luisiana con compasión, claridad y respeto.',
-        bio: 'El abogado Juan Campos-Gutierrez nació en Coro, Venezuela, y obtuvo su primer título en Derecho en 2006. Mientras cursaba la facultad de Derecho, comenzó a trabajar en el sistema judicial venezolano, empezando como Asistente Administrativo en el Tribunal Penal del Estado Lara y desempeñándose también como Secretario en el Tribunal Superior Civil y Contencioso Administrativo del mismo estado.\n\nEn Venezuela, también fue secretario de la Corte de Apelaciones Penal del Estado Falcón, ubicada en su ciudad natal de Coro, donde asistió a los jueces en la redacción de opiniones judiciales; y posteriormente se convirtió en Fiscal Auxiliar en ese mismo estado.\n\nEl señor Campos trabajó como profesor de Derecho en la Universidad de Falcón, donde impartió Derecho Penal y fue instructor de Investigación Criminal en el Centro de Instrucción para Oficiales de Policía del Estado Guárico. En 2010, el señor Campos inició una práctica de defensa penal, representando a acusados en los estados de Guárico, Falcón, Aragua y en el Distrito Capital. El señor Campos también compareció ante el Tribunal Supremo de Justicia de Venezuela.\n\nEn los Estados Unidos, el señor Campos obtuvo una Maestría en Derecho Comparado en la Universidad de Florida. Durante sus estudios de posgrado, desarrolló un interés en el Derecho de Inmigración y Nacionalidad y decidió continuar su carrera en el campo migratorio. El señor Campos está admitido por la Corte Suprema del Estado de Luisiana para ejercer la abogacía.\n\nLa práctica del señor Campos abarca la mayoría de las áreas del derecho de inmigración y se centra en desarrollar una relación sólida con sus clientes y en asistir a inmigrantes, minorías y personas en situación de desventaja. El señor Campos ha hecho de la protección de los derechos de los inmigrantes en casos migratorios su misión. Como inmigrante, comprende las necesidades y preocupaciones de sus clientes y procura explicar la compleja dinámica del derecho de inmigración de una manera sencilla y fácil de entender.',
+        bio: 'El derecho migratorio no es solo la profesión de Juan Campos-Gutiérrez — es algo personal. Nacido en Venezuela, aporta más de dos décadas de experiencia legal a su práctica, junto con una comprensión de primera mano de lo que significa empezar de nuevo en un país distinto.\n\nEx profesor de derecho y abogado defensor penal, Juan hoy dedica su práctica por completo a proteger los derechos de los inmigrantes en Luisiana — con compasión, claridad y respeto.\n\nFue durante sus estudios de posgrado en los Estados Unidos, mientras cursaba una Maestría en Derecho Comparado (LL.M.) en la Universidad de Florida, que Juan encontró el trabajo para el cual estaba destinado. El derecho de inmigración y nacionalidad resonó en él de una manera que nada más lo había hecho, y tomó la decisión de reconstruir su carrera en torno a esa vocación.\n\nAntes de fundar su propia práctica, Juan se desempeñó como Abogado de Caridades Católicas en New Orleans, donde representó a la población inmigrante principalmente de Centroamérica — defendiendo sus derechos en algunos de los procesos más delicados y complejos del sistema migratorio.\n\nJuan está admitido para ejercer la abogacía ante la Corte Suprema del Estado de Luisiana y es miembro de la American Immigration Lawyers Association (AILA). Ofrece servicios legales en todas las áreas del derecho de inmigración y nacionalidad, y mantiene una presencia activa en redes sociales, donde comparte orientación e información para mantener informadas a las comunidades inmigrantes.\n\nA lo largo de su carrera, Juan ha representado con éxito a cientos de clientes a nivel administrativo, compareciendo ante las Cortes de Inmigración, el Servicio de Ciudadanía e Inmigración de los Estados Unidos (USCIS) y el Departamento de Estado — representando clientes en distintas jurisdicciones a nivel nacional.\n\nJuan conoce a fondo el proceso migratorio, y aporta una pasión genuina a cada caso que asume. Su práctica abarca la mayoría de las áreas del derecho de inmigración, pero en el fondo, se trata de las personas: construir relaciones reales con sus clientes y acompañar a inmigrantes, minorías y personas en situación de desventaja. Proteger los derechos de los inmigrantes se ha convertido en algo más que una profesión para Juan — se ha convertido en su misión. Como inmigrante él mismo, comprende de primera mano las preocupaciones de sus clientes, y se esfuerza por explicar las complejidades del derecho migratorio de una manera sencilla, clara y fácil de entender.',
       },
       angenette: {
         name: 'Angenette Van Lieu-Munos, J.D., LL.M.',
@@ -131,14 +131,14 @@ export default {
       },
       rio: {
         name: 'Rio Shattuck',
-        title: 'Asistente Legal',
+        title: 'Paralegal',
         shortBio: 'Rio Shattuck es un egresado universitario con una sólida formación académica y experiencia profesional inicial en apoyo legal, investigación y atención directa al cliente. Obtuvo su Licenciatura en Psicología en Colorado College, con una especialización secundaria en Cine y Estudios de Medios.',
-        bio: 'Rio Shattuck es un egresado universitario con una sólida formación académica y experiencia profesional inicial en apoyo legal, investigación y atención directa al cliente. Obtuvo su Licenciatura en Psicología en Colorado College, con una especialización secundaria en Cine y Estudios de Medios, y aporta una base analítica sólida y un enfoque profesional a su trabajo en el ámbito legal. La formación académica de Rio puso énfasis en la psicología social, las políticas públicas, el periodismo y los estudios relacionados con los derechos humanos, brindándole una base firme en el pensamiento analítico, la comunicación escrita y el manejo de temas sensibles.\n\nRio ha adquirido experiencia práctica en el campo legal a través de pasantías y roles de apoyo con despachos de abogados y organizaciones legales en Nueva Orleans. Su experiencia incluye la asistencia a abogados y paralegales en la preparación de documentos, la organización de casos, la recopilación de pruebas y la presentación de trámites procesales. Ha brindado apoyo en asuntos relacionados con asilo, autorización de empleo y Estatus Especial de Inmigrante Juvenil (SIJS), realizando investigaciones, organizando expedientes y asistiendo con la documentación de clientes bajo supervisión.\n\nFluido en español, Rio cuenta con experiencia en la traducción de documentos legales y en la comunicación con clientes hispanohablantes en un entorno profesional. Es atento al detalle y se siente cómodo trabajando con personas de diversos contextos, ayudando a garantizar que la información se transmita con precisión y se documente correctamente. Su experiencia administrativa también incluye la preparación de paquetes legales, la gestión de archivos de casos, el seguimiento de pagos y la coordinación de comunicaciones con tribunales y clientes.\n\nAdemás de su experiencia legal, Rio aporta conocimientos en políticas públicas, servicio comunitario e investigación. Ha contribuido a iniciativas de políticas enfocadas en la juventud, participado en simulaciones legales educativas con Tulane Law y colaborado como voluntario con organizaciones comunitarias locales en Nueva Orleans. Su trayectoria refleja una sólida ética de trabajo, adaptabilidad y un compromiso constante con el aprendizaje y el crecimiento profesional, lo que lo convierte en un valioso miembro de apoyo dentro del equipo legal.',
+        bio: 'Rio Shattuck es un egresado universitario con una sólida formación académica y experiencia profesional inicial en apoyo legal, investigación y atención directa al cliente. Obtuvo su Licenciatura en Psicología en Colorado College, con una especialización secundaria en Cine y Estudios de Medios, y aporta una base analítica sólida y un enfoque profesional a su trabajo en el ámbito legal. La formación académica de Rio puso énfasis en la psicología social, las políticas públicas, el periodismo y los estudios relacionados con los derechos humanos, brindándole una base firme en el pensamiento analítico, la comunicación escrita y el manejo de temas sensibles.\n\nRio ha adquirido experiencia práctica en el campo legal a través de pasantías y roles de apoyo con despachos de abogados y organizaciones legales en Nueva Orleans. Su experiencia incluye la asistencia a abogados y paralegales en la preparación de documentos, la organización de casos, la recopilación de pruebas y la presentación de trámites procesales. Ha brindado apoyo en asuntos relacionados con asilo, autorización de empleo y Estatus Especial de Inmigrante Juvenil (SIJS), realizando investigaciones, organizando expedientes y asistiendo con la documentación de clientes bajo supervisión.\n\nFluido en español, Rio cuenta con experiencia en la traducción de documentos legales y en la comunicación con clientes hispanohablantes en un entorno profesional. Es atento al detalle y se siente cómodo trabajando con personas de diversos contextos, ayudando a garantizar que la información se transmita con precisión y se documente correctamente. Su experiencia administrativa también incluye la preparación de paquetes legales, la gestión de archivos de casos, el seguimiento de pagos y la coordinación de comunicaciones con tribunales y clientes.\n\nAdemás de su experiencia legal, Rio aporta conocimientos en políticas públicas, servicio comunitario e investigación. Ha contribuido a iniciativas de políticas enfocadas en la juventud, participado en simulaciones legales educativas con Tulane Law y colaborado como voluntario con organizaciones comunitarias locales en Nueva Orleans. Su trayectoria refleja una sólida ética de trabajo, adaptabilidad y un compromiso constante con el aprendizaje y el crecimiento profesional, lo que lo convierte en un valioso miembro de apoyo dentro del equipo legal.\n\nDomina el inglés y el español con fluidez.',
       },
     },
   },
   footer: {
-    firmName: "CAMPOS MUNOS LAW, LLC {'|'} IMMIGRATION ATTORNEYS",
+    firmName: "CAMPOS MUÑOS LAW, LLC {'|'} IMMIGRATION ATTORNEYS",
   },
   readMore: 'Leer más',
   a11y: {

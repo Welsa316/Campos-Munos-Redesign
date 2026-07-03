@@ -3,7 +3,7 @@
     <!-- Top bar -->
     <header class="h-16 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-6 z-10">
       <div class="flex items-center gap-4">
-        <img src="/logo.png" alt="Campos Munos Law" class="h-9" />
+        <img src="/logo.png" alt="Campos Muños Law" class="h-9" />
         <div class="w-px h-8 bg-gray-200"></div>
         <h1 class="font-heading text-lg text-brand-navy tracking-tight">Client Messages</h1>
         <span v-if="unreadCount > 0" class="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-brand-red text-white text-xs font-ui font-bold">

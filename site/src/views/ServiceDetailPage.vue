@@ -4,7 +4,9 @@
     <section class="relative pt-36 pb-24 bg-brand-surface overflow-hidden">
       <!-- Decorative -->
       <div class="absolute top-1/2 right-0 -translate-y-1/2 text-[300px] text-brand-navy/[0.04] pointer-events-none select-none">
-        <i :class="serviceIcon"></i>
+        <!-- Keyed <span> wrapper: FontAwesome's dom.watch() detaches the <i> it
+             converts, so Vue must swap an element FA never touches. -->
+        <span :key="serviceIcon"><i :class="serviceIcon"></i></span>
       </div>
 
       <div class="relative max-w-7xl mx-auto px-6">
@@ -16,7 +18,7 @@
 
         <div class="flex items-start gap-6">
           <div class="w-20 h-20 rounded-2xl bg-brand-navy/10 flex items-center justify-center flex-shrink-0">
-            <i :class="serviceIcon" class="text-3xl text-brand-navy"></i>
+            <span :key="serviceIcon" class="contents"><i :class="serviceIcon" class="text-3xl text-brand-navy"></i></span>
           </div>
           <div>
             <h1 class="font-heading text-4xl md:text-6xl lg:text-7xl font-bold text-brand-navy leading-[0.95]">
@@ -158,7 +160,7 @@
             <router-link v-for="related in relatedServices" :key="related.slug"
               :to="`/servicios/${related.slug}`"
               class="group flex items-center gap-3 p-5 rounded-xl border border-gray-200 bg-white hover:border-brand-navy/30 hover:shadow-md transition-all">
-              <i :class="related.icon" class="text-xl text-brand-navy/40 group-hover:text-brand-navy transition-colors"></i>
+              <span :key="related.icon" class="contents"><i :class="related.icon" class="text-xl text-brand-navy/40 group-hover:text-brand-navy transition-colors"></i></span>
               <span class="font-ui text-base font-semibold text-gray-600 group-hover:text-brand-navy transition-colors">
                 {{ related.name }}
               </span>

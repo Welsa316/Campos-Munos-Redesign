@@ -36,12 +36,6 @@
       <div class="max-w-7xl mx-auto px-6 py-24">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
           <div class="reveal-left">
-            <div class="inline-flex items-center gap-3 mb-6">
-              <div class="w-14 h-14 rounded-xl bg-brand-navy/10 flex items-center justify-center">
-                <i class="fa-solid fa-compass text-brand-navy text-xl"></i>
-              </div>
-              <p class="font-ui text-base tracking-[0.2em] text-brand-navy uppercase">01</p>
-            </div>
             <h2 class="font-heading text-4xl md:text-6xl text-brand-navy mb-4">{{ $t('about.mision') }}</h2>
             <div class="w-16 h-[2px] bg-brand-navy"></div>
           </div>
@@ -59,12 +53,6 @@
       <div class="max-w-7xl mx-auto px-6 py-24">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
           <div class="lg:order-2 reveal-right">
-            <div class="inline-flex items-center gap-3 mb-6">
-              <div class="w-14 h-14 rounded-xl bg-brand-navy/10 flex items-center justify-center">
-                <i class="fa-solid fa-eye text-brand-navy text-xl"></i>
-              </div>
-              <p class="font-ui text-base tracking-[0.2em] text-brand-navy uppercase">02</p>
-            </div>
             <h2 class="font-heading text-4xl md:text-6xl text-brand-navy mb-4">{{ $t('about.vision') }}</h2>
             <div class="w-16 h-[2px] bg-brand-navy"></div>
           </div>

@@ -3,7 +3,7 @@
     <div class="w-full max-w-md">
       <!-- Logo -->
       <div class="text-center mb-10">
-        <img src="/logo.png" alt="Campos Munos Law" class="h-16 mx-auto mb-6" />
+        <img src="/logo.png" alt="Campos Muños Law" class="h-16 mx-auto mb-6" />
         <h1 class="font-heading text-2xl text-brand-navy">Admin Portal</h1>
       </div>
 

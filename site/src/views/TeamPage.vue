@@ -4,7 +4,7 @@
     <section class="relative pt-36 pb-24 bg-brand-surface overflow-hidden">
       <div class="absolute bottom-0 left-0 w-96 h-96 rounded-full bg-brand-red/[0.03] blur-[120px] pointer-events-none"></div>
       <div class="relative max-w-7xl mx-auto px-6">
-        <p class="font-ui text-base tracking-[0.2em] text-brand-navy uppercase mb-4">Campos Munos Law</p>
+        <p class="font-ui text-base tracking-[0.2em] text-brand-navy uppercase mb-4">Campos Muños Law</p>
         <h1 class="font-heading text-5xl md:text-7xl lg:text-8xl font-bold text-brand-navy leading-[0.95]">
           {{ $t('team.title') }}
         </h1>

@@ -11,7 +11,7 @@
            + call CTA; expands to h-16 on 2xl when there's space to spare. -->
       <router-link to="/home" class="flex-shrink-0 relative group transition-all duration-500"
         :class="navSolid ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'">
-        <img src="/logo.png" alt="Campos Munos Law"
+        <img src="/logo.png" alt="Campos Muños Law"
           class="h-12 2xl:h-16 transition-all duration-500" />
       </router-link>
 
@@ -160,11 +160,11 @@ const socials = [
 const serviceLinks = [
   { key: 'greenCard', slug: 'green-card', icon: 'fa-solid fa-id-card' },
   { key: 'peticionesFamiliares', slug: 'peticiones-familiares', icon: 'fa-solid fa-people-roof' },
-  { key: 'ciudadania', slug: 'ciudadania', icon: 'fa-solid fa-certificate' },
+  { key: 'ciudadania', slug: 'ciudadania', icon: 'fa-solid fa-flag-usa' },
   { key: 'defensaDeportacion', slug: 'defensa-contra-la-deportacion', icon: 'fa-solid fa-gavel' },
-  { key: 'visasJovenes', slug: 'visas-especial-para-jovenes', icon: 'fa-solid fa-passport' },
-  { key: 'visasPrometido', slug: 'visas-de-prometido', icon: 'fa-solid fa-ring' },
-  { key: 'asilo', slug: 'asilo', icon: 'fa-solid fa-hand-holding-heart' },
+  { key: 'visasJovenes', slug: 'visas-especial-para-jovenes', icon: 'fa-solid fa-children' },
+  { key: 'visasPrometido', slug: 'visas-de-prometido', icon: 'fa-solid fa-church' },
+  { key: 'asilo', slug: 'asilo', icon: 'fa-solid fa-earth-americas' },
   { key: 'vawa', slug: 'vawa', icon: 'fa-solid fa-shield-halved' },
   { key: 'daca', slug: 'daca', icon: 'fa-solid fa-graduation-cap' },
   { key: 'tramiteConsular', slug: 'tramite-consular', icon: 'fa-solid fa-file-signature' },

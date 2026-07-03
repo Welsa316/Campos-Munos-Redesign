@@ -67,7 +67,7 @@ export const baseServices = {
   },
   'ciudadania': {
     key: 'ciudadania',
-    icon: 'fa-solid fa-certificate',
+    icon: 'fa-solid fa-flag-usa',
     video: true,
     videoFile: `${VIDEO_BASE}/Ciudadania.mp4`,
     thumbnail: '/thumbnails/ciudadania.svg',
@@ -76,7 +76,7 @@ export const baseServices = {
   },
   'asilo': {
     key: 'asilo',
-    icon: 'fa-solid fa-hand-holding-heart',
+    icon: 'fa-solid fa-earth-americas',
     video: false,
     headline: { es: 'Abogados de Asilo en Nueva Orleans', en: 'Asylum Attorneys in New Orleans' },
     relatedSlugs: ['visa-t', 'vawa', 'defensa-contra-la-deportacion'],
@@ -87,7 +87,7 @@ export const baseServices = {
     video: true,
     videoFile: `${VIDEO_BASE}/VAWA.mp4`,
     thumbnail: '/thumbnails/vawa.svg',
-    headline: { es: 'Abogados en Nueva Orleans para Víctimas de Crimen y Tráfico Humano', en: 'New Orleans Attorneys for Crime and Human Trafficking Victims' },
+    headline: { es: 'Abogados en Nueva Orleans para Green Cards bajo VAWA (Víctimas de Violencia Doméstica)', en: 'New Orleans Attorneys for Green Cards under VAWA (Victims of Domestic Violence)' },
     relatedSlugs: ['visa-u', 'visa-t', 'asilo'],
   },
   'visa-u': {
@@ -135,14 +135,14 @@ export const baseServices = {
   },
   'visas-de-prometido': {
     key: 'visasPrometido',
-    icon: 'fa-solid fa-ring',
+    icon: 'fa-solid fa-church',
     video: false,
     headline: { es: 'Abogados de Visas de Prometido(a) – K1 en Nueva Orleans', en: 'Fiancé(e) Visa (K-1) Attorneys in New Orleans' },
     relatedSlugs: ['tramite-consular', 'green-card', 'peticiones-familiares'],
   },
   'visas-especial-para-jovenes': {
     key: 'visasJovenes',
-    icon: 'fa-solid fa-passport',
+    icon: 'fa-solid fa-children',
     video: true,
     videoFile: `${VIDEO_BASE}/Jovenes.mp4`,
     thumbnail: '/thumbnails/visas-jovenes.svg',
@@ -195,20 +195,6 @@ export const serviceFaqs = {
       { q: 'What happens if the asylum office does not grant asylum?', a: 'If the applicant does not have a valid immigration status, the case will be referred to immigration court, where the applicant will have another opportunity to present their asylum claim before an immigration judge.' },
     ],
   },
-  ciudadania: {
-    es: [
-      { q: '¿Qué es la naturalización?', a: 'La "naturalización" es el nombre del proceso para convertirse en ciudadano estadounidense, si nació fuera de los Estados Unidos.' },
-      { q: '¿Cuánto tarda el proceso de ciudadanía?', a: 'Considerando los tiempos actuales de procesamiento, el proceso puede tardar más de un año desde la presentación de la solicitud hasta la decisión final.' },
-      { q: '¿Qué incluye la entrevista de naturalización?', a: 'Deberá asistir a una entrevista y realizar un examen donde deberá demostrar conocimiento básico sobre el sistema de gobierno y la historia de los Estados Unidos. También deberá demostrar dominio del idioma inglés.' },
-      { q: '¿Qué pasa si me mudo durante el proceso?', a: 'Si se muda, debe actualizar su dirección con el gobierno de manera inmediata mediante el formulario AR-11, el cual puede presentar en línea o en formato impreso.' },
-    ],
-    en: [
-      { q: 'What is naturalization?', a: 'Naturalization is the name of the process to become a U.S. citizen if you were born outside the United States.' },
-      { q: 'How long does the citizenship process take?', a: 'Considering current processing times, the process can take more than a year from the filing of the application to the final decision.' },
-      { q: 'What does the naturalization interview include?', a: 'You must attend an interview and take an exam where you must demonstrate basic knowledge of the U.S. government system and history. You must also demonstrate proficiency in the English language.' },
-      { q: 'What happens if I move during the process?', a: 'If you move, you must update your address with the government immediately using Form AR-11, which can be filed online or in print.' },
-    ],
-  },
   daca: {
     es: [
       { q: '¿Qué beneficios ofrece DACA?', a: 'DACA permite a los beneficiarios obtener un número de Seguro Social y, en algunos estados, una licencia de conducir. Esto significa que podrá solicitar atención médica, poner servicios públicos a su nombre e incluso comenzar a construir un historial de crédito.' },
@@ -243,12 +229,14 @@ export const serviceFaqs = {
       { q: '¿Quién califica para el TPS?', a: 'El solicitante debe demostrar que es ciudadano del país designado, demostrar su presencia física en los EE. UU. en la fecha de la designación, y demostrar residencia continua desde ese momento. Además, no debe ser inadmisible bajo la ley de inmigración.' },
       { q: '¿Cómo beneficia el TPS después de ser aprobado?', a: 'El TPS protege a los titulares contra la deportación y les autoriza a trabajar legalmente en los Estados Unidos. Un titular de TPS también puede solicitar autorización para viajar al extranjero.' },
       { q: '¿El TPS ofrece un camino hacia la residencia permanente?', a: 'La ley no permite ajustar el estatus a residente permanente únicamente por tener TPS. Sin embargo, si un titular de TPS obtiene una visa de inmigrante mientras mantiene su estatus TPS, podría ser posible convertirse en residente permanente.' },
+      { q: '¿Qué pasa si mi TPS es cancelado?', a: 'Si su TPS es cancelado o está por ser cancelado, debe consultar con un abogado de inmigración para explorar otras opciones basadas en familia, trabajo o razones humanitarias.' },
     ],
     en: [
       { q: 'What is Temporary Protected Status (TPS)?', a: 'TPS offers non-citizens a non-permanent immigration status in the United States. It protects people from designated countries who could face dangerous conditions or significant hardship if they returned to their home country.' },
       { q: 'Who qualifies for TPS?', a: 'The applicant must demonstrate citizenship of the designated country, physical presence in the U.S. on the designation date, and continuous residence since that time. Additionally, they must not be inadmissible under immigration law.' },
       { q: 'How does TPS benefit you after approval?', a: 'TPS protects holders from deportation and authorizes them to work legally in the United States. A TPS holder can also apply for authorization to travel abroad.' },
       { q: 'Does TPS offer a path to permanent residence?', a: 'The law does not allow adjusting status to permanent resident solely for having TPS. However, if a TPS holder obtains an immigrant visa while maintaining TPS status, it may be possible to become a permanent resident.' },
+      { q: 'What if my TPS is cancelled?', a: 'If your TPS is canceled or about to be canceled, you have to consult with an immigration attorney to explore other options based on family, work, or humanitarian grounds.' },
     ],
   },
   tramiteConsular: {

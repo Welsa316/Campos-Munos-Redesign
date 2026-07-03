@@ -89,7 +89,7 @@ app.use(helmet({
         'data:',
         'https://fonts.gstatic.com',
       ],
-      'frame-src': ["'self'", 'https://static.elfsight.com'],
+      'frame-src': ["'self'", 'https://static.elfsight.com', 'https://www.google.com'],
       'upgrade-insecure-requests': null,
     },
   },

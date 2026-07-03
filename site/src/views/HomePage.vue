@@ -21,7 +21,7 @@
         <div class="w-20 h-[3px] bg-brand-navy mb-6 hero-reveal" style="transition-delay: 0.2s"></div>
 
         <p class="font-ui text-white/80 text-base md:text-lg tracking-[0.3em] uppercase mb-4 hero-reveal" style="transition-delay: 0.4s">
-          Campos Munos Law, LLC
+          Campos Muños Law, LLC
         </p>
 
         <h1 class="font-heading text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white leading-[0.95] mb-4 hero-reveal" style="transition-delay: 0.6s">
@@ -163,7 +163,15 @@
           <div class="flex items-center justify-center gap-2 mb-3">
             <i v-for="n in 5" :key="n" class="fa-solid fa-star text-yellow-400 text-lg"></i>
           </div>
-          <h2 class="font-heading text-4xl md:text-5xl text-brand-navy">{{ $t('home.reviewsTitle') }}</h2>
+          <h2 class="font-heading text-4xl md:text-5xl text-brand-navy inline-flex items-center justify-center gap-4">
+            <svg class="w-9 h-9 md:w-11 md:h-11 flex-shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/>
+              <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/>
+              <path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"/>
+              <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"/>
+            </svg>
+            {{ $t('home.reviewsTitle') }}
+          </h2>
         </div>
         <div class="reveal elfsight-reviews-wrapper rounded-2xl overflow-hidden">
           <div class="elfsight-app-02c0cb8e-d132-4834-ae18-93002f5a819a" data-elfsight-app-lazy></div>
@@ -227,7 +235,7 @@
               src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3457.0!2d-90.0715!3d29.9511!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8620a67b1f0b7d2f%3A0x4b7a8c8b3b8b8b8b!2s812%20Gravier%20St%2C%20New%20Orleans%2C%20LA%2070112!5e0!3m2!1ses!2sus!4v1700000000000"
               class="w-full h-full border-0 rounded-2xl"
               allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"
-              title="Campos Munos Law Office Location">
+              title="Campos Muños Law Office Location">
             </iframe>
           </div>
         </div>
@@ -284,11 +292,12 @@ const badges = [
 
 const bentoServices = [
   { key: 'peticionesFamiliares', slug: 'peticiones-familiares', icon: 'fa-solid fa-people-roof' },
-  { key: 'ciudadania', slug: 'ciudadania', icon: 'fa-solid fa-certificate' },
+  { key: 'ciudadania', slug: 'ciudadania', icon: 'fa-solid fa-flag-usa' },
   { key: 'defensaDeportacion', slug: 'defensa-contra-la-deportacion', icon: 'fa-solid fa-gavel' },
-  { key: 'visasJovenes', slug: 'visas-especial-para-jovenes', icon: 'fa-solid fa-passport' },
-  { key: 'visasPrometido', slug: 'visas-de-prometido', icon: 'fa-solid fa-ring' },
-  { key: 'asilo', slug: 'asilo', icon: 'fa-solid fa-hand-holding-heart' },
+  { key: 'visasJovenes', slug: 'visas-especial-para-jovenes', icon: 'fa-solid fa-children' },
+  { key: 'visasPrometido', slug: 'visas-de-prometido', icon: 'fa-solid fa-church' },
+  { key: 'asilo', slug: 'asilo', icon: 'fa-solid fa-earth-americas' },
+  { key: 'vawa', slug: 'vawa', icon: 'fa-solid fa-shield-halved' },
 ]
 
 onMounted(() => {

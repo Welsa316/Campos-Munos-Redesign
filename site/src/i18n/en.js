@@ -1,6 +1,6 @@
 export default {
   nav: {
-    home: 'Home',
+    home: 'HOME',
     servicios: 'SERVICES',
     greenCards: 'GREEN CARDS',
     consulta: 'CONSULTATION',
@@ -45,15 +45,15 @@ export default {
     consultaBtn: 'CONSULTATION HERE',
     virtualAvailable: 'Virtual consultation available',
     recognizedBy: 'Recognized By',
-    reviewsTitle: 'Only 5-Star Reviews!',
+    reviewsTitle: '5-Star Reviews!',
     quienesSomos: 'Who Are We?',
-    quienesSomosText: 'Campos Munos Law is composed of dedicated and committed attorneys who practice exclusively immigration law in the United States. Our attorneys have different backgrounds and specific areas of specialization, and are able to analyze your case from multiple perspectives.',
+    quienesSomosText: 'Campos Muños Law is composed of dedicated and committed attorneys who practice exclusively immigration law in the United States. Our attorneys have different backgrounds and specific areas of specialization, and are able to analyze your case from multiple perspectives.',
     sobreNosotros: 'About Us',
     serviciosBtn: 'Services',
     porQueNosotros: 'Why Us?',
     porQueNosotrosText: 'Because we will make sure you understand what is happening with your case, we will strive to treat you like family, and we will always be available to answer your questions and concerns. We will do everything possible to keep you informed about changes in immigration laws and how they may affect your case.',
     perfilesBtn: 'Attorney Profiles',
-    dondeEstamos: 'Where Are We?',
+    dondeEstamos: 'Where to Find Us',
     dondeEstamosText: 'Our offices are located in the New Orleans metropolitan area; however, we serve clients in all 50 states and abroad.',
     contactenosBtn: 'Contact Us',
     instagramTitle: 'Follow Us on Instagram',
@@ -71,7 +71,7 @@ export default {
     translateBtn: 'En Español',
   },
   contact: {
-    title: 'Get In Touch',
+    title: 'Schedule Your Consultation Now',
     subtitle: 'We are here to help you',
     subtitleAlt: 'Confidential consultations',
     firstName: 'First Name',
@@ -95,7 +95,7 @@ export default {
     conCita: 'By appointment',
   },
   about: {
-    firmName: 'Campos Munos Law, LLC',
+    firmName: 'Campos Muños Law, LLC',
     quienesSomos: 'Who We Are',
     introText: 'At Campos Muños immigration law firm, we have over twenty years of experience dedicated exclusively to the complex and changing laws governing immigration in the United States. This focus has allowed us to build a reputation for providing exceptional and efficient solutions for our immigrant clients throughout the Southeast.',
     mision: 'Our Mission',
@@ -115,7 +115,7 @@ export default {
         name: 'Juan Campos-Gutierrez, Esq.',
         title: 'Founding Partner',
         shortBio: 'Born in Coro, Venezuela, Juan brings over two decades of legal experience to the firm. A former law professor and prosecutor, he now dedicates his practice to protecting the rights of immigrants in Louisiana with compassion, clarity, and respect.',
-        bio: 'Attorney Juan Campos-Gutierrez was born in Coro, Venezuela, and obtained his first law degree in 2006. While attending law school, he began working within the Venezuelan judicial system, starting as an Administrative Assistant at the Criminal Court of Lara State and also serving as Clerk at the Superior Civil and Administrative Litigation Court of that same state.\n\nIn Venezuela, he also served as Clerk of the Criminal Court of Appeals of Falcón State, located in his hometown of Coro, where he assisted judges in drafting judicial opinions; he subsequently became an Assistant Prosecutor in that same state.\n\nMr. Campos worked as a Law Professor at the University of Falcón, where he taught Criminal Law, and served as a Criminal Investigation Instructor at the Police Officer Training Center of Guárico State. In 2010, Mr. Campos began a criminal defense practice, representing defendants in the states of Guárico, Falcón, Aragua, and in the Capital District. Mr. Campos also appeared before the Supreme Court of Justice of Venezuela.\n\nIn the United States, Mr. Campos obtained a Master of Laws in Comparative Law from the University of Florida. During his graduate studies, he developed an interest in Immigration and Nationality Law and decided to continue his career in the immigration field. Mr. Campos is admitted by the Supreme Court of the State of Louisiana to practice law.\n\nMr. Campos\'s practice covers most areas of immigration law and focuses on developing a strong relationship with his clients and assisting immigrants, minorities, and disadvantaged individuals. Mr. Campos has made protecting the rights of immigrants in immigration cases his mission. As an immigrant himself, he understands the needs and concerns of his clients and strives to explain the complex dynamics of immigration law in a simple and easy-to-understand manner.',
+        bio: 'Immigration law isn\'t just Juan\'s profession — it\'s personal. Born in Venezuela, he brings more than two decades of legal experience to his practice, along with a firsthand understanding of what it means to start over in a new country.\n\nA former law professor and criminal defense attorney, Juan now devotes his practice entirely to protecting the rights of immigrants in Louisiana — with compassion, clarity, and respect.\n\nIt was during his graduate studies in the United States, while earning a Master of Comparative Law (LL.M.) from the University of Florida, that Juan found the work he was meant to do. Immigration and nationality law resonated with him in a way nothing else had, and he made the decision to rebuild his career around it.\n\nBefore opening his own practice, Juan served as a Staff Attorney with Catholic Charities Archdiocese of New Orleans, where he represented unaccompanied children — defending their rights in some of the most sensitive and complex proceedings in the immigration system.\n\nJuan is admitted to practice law before the Louisiana Supreme Court and is a member of the American Immigration Lawyers Association (AILA). He provides legal services across the full scope of Immigration and Nationality Law, and is active on social media, where he shares guidance and updates to help immigrant communities stay informed.\n\nOver the course of his career, Juan has successfully represented hundreds of clients at the administrative level, appearing before the Immigration Courts, U.S. Citizenship and Immigration Services, and the U.S. Department of State — representing clients across jurisdictions nationwide.\n\nJuan is intimately familiar with the immigration process, and he brings genuine passion to every case he takes on. His practice spans most areas of immigration law, but at its core, it\'s about people: building real relationships with his clients and standing beside immigrants, minorities, and those facing disadvantage. Protecting immigrants\' rights has become more than a profession for Juan — it\'s become his mission. As an immigrant himself, he understands his clients\' concerns firsthand, and works to explain the complexities of immigration law in a way that\'s simple, clear, and easy to understand.',
       },
       angenette: {
         name: 'Angenette Van Lieu-Munos, J.D., LL.M.',
@@ -131,14 +131,14 @@ export default {
       },
       rio: {
         name: 'Rio Shattuck',
-        title: 'Legal Assistant',
+        title: 'Paralegal',
         shortBio: 'Rio Shattuck is a college graduate with a strong academic background and early professional experience in legal support, research, and direct client service. He earned his Bachelor of Arts in Psychology from Colorado College, with a minor in Film and Media Studies.',
-        bio: 'Rio Shattuck is a college graduate with a strong academic background and early professional experience in legal support, research, and direct client service. He earned his Bachelor of Arts in Psychology from Colorado College, with a minor in Film and Media Studies, and brings a solid analytical foundation and professional approach to his work in the legal field. Rio\'s academic training emphasized social psychology, public policy, journalism, and human rights-related studies, providing him with a firm grounding in analytical thinking, written communication, and the handling of sensitive topics.\n\nRio has gained hands-on legal experience through internships and support roles with law firms and legal organizations in New Orleans. His experience includes assisting attorneys and paralegals with document preparation, case organization, evidence gathering, and procedural filings. He has provided support in matters related to asylum, employment authorization, and Special Immigrant Juvenile Status (SIJS), conducting research, organizing files, and assisting with client documentation under supervision.\n\nFluent in Spanish, Rio has experience translating legal documents and communicating with Spanish-speaking clients in a professional setting. He is detail-oriented and comfortable working with individuals from diverse backgrounds, helping to ensure that information is accurately conveyed and properly documented. His administrative experience also includes preparing legal packets, managing case files, tracking payments, and coordinating communications with courts and clients.\n\nBeyond his legal experience, Rio brings knowledge in public policy, community service, and research. He has contributed to youth-focused policy initiatives, participated in educational legal simulations with Tulane Law, and volunteered with local community organizations in New Orleans. His track record reflects a strong work ethic, adaptability, and a consistent commitment to learning and professional growth, making him a valuable support member within the legal team.',
+        bio: 'Rio Shattuck is a college graduate with a strong academic background and early professional experience in legal support, research, and direct client service. He earned his Bachelor of Arts in Psychology from Colorado College, with a minor in Film and Media Studies, and brings a solid analytical foundation and professional approach to his work in the legal field. Rio\'s academic training emphasized social psychology, public policy, journalism, and human rights-related studies, providing him with a firm grounding in analytical thinking, written communication, and the handling of sensitive topics.\n\nRio has gained hands-on legal experience through internships and support roles with law firms and legal organizations in New Orleans. His experience includes assisting attorneys and paralegals with document preparation, case organization, evidence gathering, and procedural filings. He has provided support in matters related to asylum, employment authorization, and Special Immigrant Juvenile Status (SIJS), conducting research, organizing files, and assisting with client documentation under supervision.\n\nFluent in Spanish, Rio has experience translating legal documents and communicating with Spanish-speaking clients in a professional setting. He is detail-oriented and comfortable working with individuals from diverse backgrounds, helping to ensure that information is accurately conveyed and properly documented. His administrative experience also includes preparing legal packets, managing case files, tracking payments, and coordinating communications with courts and clients.\n\nBeyond his legal experience, Rio brings knowledge in public policy, community service, and research. He has contributed to youth-focused policy initiatives, participated in educational legal simulations with Tulane Law, and volunteered with local community organizations in New Orleans. His track record reflects a strong work ethic, adaptability, and a consistent commitment to learning and professional growth, making him a valuable support member within the legal team.\n\nFluent in both English and Spanish.',
       },
     },
   },
   footer: {
-    firmName: "CAMPOS MUNOS LAW, LLC {'|'} IMMIGRATION ATTORNEYS",
+    firmName: "CAMPOS MUÑOS LAW, LLC {'|'} IMMIGRATION ATTORNEYS",
   },
   readMore: 'Read More',
   a11y: {

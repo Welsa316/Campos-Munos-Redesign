@@ -9,7 +9,7 @@
         <!-- Brand column -->
         <div class="md:col-span-4">
           <router-link to="/home" class="inline-block mb-6">
-            <img src="/logo.png" alt="Campos Munos Law" class="h-20 brightness-0 invert" />
+            <img src="/logo.png" alt="Campos Muños Law" class="h-20 brightness-0 invert" />
           </router-link>
           <!-- Social icons -->
           <div class="flex items-center gap-3 mt-6">
@@ -28,7 +28,6 @@
             {{ $t('nav.servicios') }}
           </h4>
           <div class="space-y-3">
-            <router-link to="/servicios" class="footer-link">{{ $t('nav.servicios') }}</router-link>
             <router-link to="/servicios/green-card" class="footer-link">{{ $t('nav.greenCards') }}</router-link>
             <router-link to="/consulta" class="footer-link">{{ $t('nav.consulta') }}</router-link>
           </div>
@@ -39,7 +38,6 @@
             {{ $t('nav.acercaDe') }}
           </h4>
           <div class="space-y-3">
-            <router-link to="/acerca-de" class="footer-link">{{ $t('nav.acercaDe') }}</router-link>
             <router-link to="/el-equipo" class="footer-link">{{ $t('nav.elEquipo') }}</router-link>
           </div>
         </div>
@@ -50,13 +48,15 @@
             {{ $t('contact.direccion') }}
           </h4>
           <div class="space-y-4 text-white/70 text-base font-ui">
-            <div class="flex items-start gap-3">
+            <a href="https://www.google.com/maps/dir/?api=1&destination=812+Gravier+St+Suite+330+New+Orleans+LA+70112"
+              target="_blank" rel="noopener"
+              class="flex items-start gap-3 hover:text-white transition-colors">
               <i class="fa-solid fa-location-dot text-white/40 mt-1"></i>
               <div>
                 <p>812 Gravier Street, Suite 330</p>
                 <p>New Orleans, LA 70112</p>
               </div>
-            </div>
+            </a>
             <div class="flex items-start gap-3">
               <i class="fa-solid fa-envelope text-white/40 mt-1"></i>
               <div>
@@ -77,11 +77,11 @@
 
       <!-- Bottom bar -->
       <div class="border-t border-white/15 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-        <p class="font-ui text-sm tracking-[0.2em] text-white/50 uppercase">
+        <p class="font-ui text-sm tracking-[0.2em] text-white uppercase">
           {{ $t('footer.firmName') }}
         </p>
-        <p class="font-ui text-sm text-white/40">
-          &copy; Campos Munos Law, LLC
+        <p class="font-ui text-sm text-white">
+          Campos Muños Law, LLC
         </p>
       </div>
     </div>

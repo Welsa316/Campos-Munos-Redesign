@@ -170,7 +170,15 @@
           <div class="flex items-center justify-center gap-2 mb-3">
             <i v-for="n in 5" :key="n" class="fa-solid fa-star text-yellow-400 text-xl"></i>
           </div>
-          <h2 class="font-heading text-4xl md:text-5xl text-brand-navy">{{ $t('home.reviewsTitle') }}</h2>
+          <h2 class="font-heading text-4xl md:text-5xl text-brand-navy inline-flex items-center justify-center gap-4">
+            <svg class="w-9 h-9 md:w-11 md:h-11 flex-shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/>
+              <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/>
+              <path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"/>
+              <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"/>
+            </svg>
+            {{ $t('home.reviewsTitle') }}
+          </h2>
         </div>
         <div class="reveal elfsight-reviews-wrapper rounded-2xl overflow-hidden">
           <div class="elfsight-app-924b81dc-21bf-470e-b66f-9137cae00590" data-elfsight-app-lazy></div>
@@ -184,7 +192,7 @@
       <iframe
         src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3457.0!2d-90.0715!3d29.9511!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8620a67b1f0b7d2f%3A0x4b7a8c8b3b8b8b8b!2s812%20Gravier%20St%2C%20New%20Orleans%2C%20LA%2070112!5e0!3m2!1ses!2sus!4v1700000000000"
         class="w-full h-full border-0" allowfullscreen loading="lazy"
-        referrerpolicy="no-referrer-when-downgrade" title="Campos Munos Law Office Location">
+        referrerpolicy="no-referrer-when-downgrade" title="Campos Muños Law Office Location">
       </iframe>
     </section>
   </div>
@@ -215,7 +223,7 @@ const socials = [
 ]
 
 const contactCards = computed(() => [
-  { titleKey: 'direccion', icon: 'fa-solid fa-location-dot', content: '<p>812 Gravier Street, Office 330</p><p>New Orleans, LA 70112</p><p class="text-gray-500 text-sm mt-1">PO Box 6224, Metairie, LA 70009</p>' },
+  { titleKey: 'direccion', icon: 'fa-solid fa-location-dot', content: '<a href="https://www.google.com/maps/dir/?api=1&destination=812+Gravier+St+Suite+330+New+Orleans+LA+70112" target="_blank" rel="noopener" class="block hover:text-[var(--color-brand-navy)] transition-colors"><p>812 Gravier Street, Suite 330</p><p>New Orleans, LA 70112</p></a><p class="text-gray-500 text-sm mt-1">PO Box 6224, Metairie, LA 70009</p>' },
   { titleKey: 'telefono', icon: 'fa-solid fa-phone', content: '<a href="tel:+15049106508" class="hover:text-[var(--color-brand-navy)] transition-colors">+1 (504) 910-6508</a>' },
   { titleKey: 'correo', icon: 'fa-solid fa-envelope', content: '<a href="mailto:office@camulaw.com" class="hover:text-[var(--color-brand-navy)] transition-colors">office@camulaw.com</a>' },
 ])
