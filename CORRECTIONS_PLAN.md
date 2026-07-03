@@ -12,53 +12,53 @@ they can be finished (listed together in "Questions for the client" at the botto
 ## Phase 1 — Text fixes & one-liners (a few hours, no blockers)
 
 ### Footer & branding
-- [ ] **1.2.1** Add the ñ: `footer.firmName` in `site/src/i18n/es.js:141` + `en.js:141` → "CAMPOS MUÑOS LAW, LLC"; hardcoded "© Campos Munos Law, LLC" in `SiteFooter.vue:84`; logo alt at `SiteFooter.vue:12`. Sweep the rest of the repo (`about.firmName`, `TeamPage.vue:7`, `HomePage.vue:24`, `PaymentPage.vue:6`, `SiteHeader.vue:14`, iframe titles) — "Munos" appears ~12 more places. Do **not** touch "Van Lieu-Munos" in the team bios (person's actual name).
-- [ ] **1.2.2** Footer firm name white, not gray: `text-white/50` → `text-white` at `SiteFooter.vue:80` (and `/40` → `text-white` at :83 for the right-hand line).
-- [ ] **1.2.3** Remove the © symbol at `SiteFooter.vue:84`.
-- [ ] **1.2.4** Footer duplicate "Services"/"About Us": column headings and first links use the same i18n key (`SiteFooter.vue:27-31` and :38-42). Remove the self-duplicating first link in each column.
+- [x] **1.2.1** Add the ñ: `footer.firmName` in `site/src/i18n/es.js:141` + `en.js:141` → "CAMPOS MUÑOS LAW, LLC"; hardcoded "© Campos Munos Law, LLC" in `SiteFooter.vue:84`; logo alt at `SiteFooter.vue:12`. Sweep the rest of the repo (`about.firmName`, `TeamPage.vue:7`, `HomePage.vue:24`, `PaymentPage.vue:6`, `SiteHeader.vue:14`, iframe titles) — "Munos" appears ~12 more places. Do **not** touch "Van Lieu-Munos" in the team bios (person's actual name).
+- [x] **1.2.2** Footer firm name white, not gray: `text-white/50` → `text-white` at `SiteFooter.vue:80` (and `/40` → `text-white` at :83 for the right-hand line).
+- [x] **1.2.3** Remove the © symbol at `SiteFooter.vue:84`.
+- [x] **1.2.4** Footer duplicate "Services"/"About Us": column headings and first links use the same i18n key (`SiteFooter.vue:27-31` and :38-42). Remove the self-duplicating first link in each column.
 
 ### Map + address (the "big" item that's actually tiny)
-- [ ] **2.4.2** Fix the map: add `https://www.google.com` to `frame-src` in `server/index.js:92`. Root cause is our production CSP blocking the Google Maps iframe — the embed URL itself works (verified live). Verify on Railway after deploy; local dev doesn't exercise CSP.
-- [ ] **2.4.3** Make the address clickable → `https://www.google.com/maps/dir/?api=1&destination=812+Gravier+St+Suite+330+New+Orleans+LA+70112` everywhere the address appears (footer, home location section, contact page).
-- [ ] **2.4.4 + 6.5** Standardize "Suite 330": `ContactPage.vue:218` says "Office 330". Consider centralizing the address string so it can't drift again.
+- [x] **2.4.2** Fix the map: add `https://www.google.com` to `frame-src` in `server/index.js:92`. Root cause is our production CSP blocking the Google Maps iframe — the embed URL itself works (verified live). Verify on Railway after deploy; local dev doesn't exercise CSP.
+- [x] **2.4.3** Make the address clickable → `https://www.google.com/maps/dir/?api=1&destination=812+Gravier+St+Suite+330+New+Orleans+LA+70112` everywhere the address appears (footer, home location section, contact page).
+- [x] **2.4.4 + 6.5** Standardize "Suite 330": `ContactPage.vue:218` says "Office 330". Consider centralizing the address string so it can't drift again.
 
 ### Reviews section text
-- [ ] **2.3.1** Remove "Only"/"Solo" from the five-star reviews heading (both locales).
-- [ ] **2.3.3** Add Google icon (`fa-brands fa-google`) next to the reviews heading — brands set already in the FontAwesome build.
-- [ ] **2.4.1** Rename "Where Are We" → "Where to Find Us" (`en.js:56`; ES: "Dónde Encontrarnos").
+- [x] **2.3.1** Remove "Only"/"Solo" from the five-star reviews heading (both locales).
+- [x] **2.3.3** Add Google icon (`fa-brands fa-google`) next to the reviews heading — brands set already in the FontAwesome build.
+- [x] **2.4.1** Rename "Where Are We" → "Where to Find Us" (`en.js:56`; ES: "Dónde Encontrarnos").
 
 ### Navigation text
-- [ ] **3.4** Capitalize "Home"/"Inicio" consistently in the mobile menu (`en.js:3`, `es.js:3`).
-- [ ] **4.4** Fix lowercase "Inicio"/back-link casing on service pages (sentence-case i18n key instead of reusing the all-caps nav key).
+- [x] **3.4** Capitalize "Home"/"Inicio" consistently in the mobile menu (`en.js:3`, `es.js:3`).
+- [x] **4.4** Fix lowercase "Inicio"/back-link casing on service pages (sentence-case i18n key instead of reusing the all-caps nav key).
 
 ### FontAwesome icon swaps (already in installed FA 7.2.0, register in icons.js)
-- [ ] **2.2.2** Citizenship → `fa-flag-usa` (gray US flag)
-- [ ] **2.2.4** SIJS → `fa-children`
-- [ ] **2.2.5** Fiancé Visa → `fa-church` (chapel, not ring)
-- [ ] **2.2.6** Asylum → `fa-earth-americas` (world map)
-- [ ] **2.2-intro** Add VAWA + Deportation Defense cards to the home services grid (`bentoServices` in `HomePage.vue`) — icons already registered.
+- [x] **2.2.2** Citizenship → `fa-flag-usa` (gray US flag)
+- [x] **2.2.4** SIJS → `fa-children`
+- [x] **2.2.5** Fiancé Visa → `fa-church` (chapel, not ring)
+- [x] **2.2.6** Asylum → `fa-earth-americas` (world map)
+- [x] **2.2-intro** Add VAWA + Deportation Defense cards to the home services grid (`bentoServices` in `HomePage.vue`) — icons already registered.
 
 ### Service content deletions (`site/src/data/serviceContent.js`, both locales; line refs from audit)
-- [ ] **5.1.2** Citizenship: delete blocks idx 3–26 (ES 47-70, EN 369-392) + delete the `ciudadania` FAQ from `seoServices.js`. Leaves only "What is Naturalization" + video — transcript description (Phase 5) fills the hole.
-- [ ] **5.3.2** Asylum: trim "may apply for permanent residence one year after" sentence (ES 23, EN 345).
-- [ ] **5.3.3** Asylum: remove "requested at a port of entry" sentence (ES 34, EN 356).
-- [ ] **5.3.5** Asylum: delete "quickly and correctly" paragraph (ES 39, EN 361).
-- [ ] **5.4.1-2** DACA: delete eligibility-criteria + renewals sections (ES 79-98, EN 401-420).
-- [ ] **5.5.1-5** EAD: delete all five listed sections (ES 115-147, EN 437-469).
-- [ ] **5.6.1-2** U Visa: delete "What is the U Visa" + "Who is eligible" (ES 279-294, EN 599-614).
-- [ ] **5.9.3-4** Fiancé: delete "Step 3" + "don't marry within 90 days" blocks (ES 259-261 + 267-269, EN 580-582 + 588-590); renumber remaining steps.
-- [ ] **5.10.1** VAWA headline → "New Orleans Attorneys for Green Cards under VAWA (Victims of Domestic Violence)" in `seoServices.js:90` (both locales).
-- [ ] **5.10.2** VAWA: delete eligibility section (ES 321-334, EN 639-652), keep closing CTA.
-- [ ] **5.11.1-3** Consular processing: delete the three listed sections (ES 212-237, EN 534-559).
-- [ ] **5.12.1-3** TPS: reword heading to past tense ("Countries That Have Been Designated for TPS"), add FAQ "What if my TPS is cancelled?" with client-supplied answer.
+- [x] **5.1.2** Citizenship: delete blocks idx 3–26 (ES 47-70, EN 369-392) + delete the `ciudadania` FAQ from `seoServices.js`. Leaves only "What is Naturalization" + video — transcript description (Phase 5) fills the hole.
+- [x] **5.3.2** Asylum: trim "may apply for permanent residence one year after" sentence (ES 23, EN 345).
+- [x] **5.3.3** Asylum: remove "requested at a port of entry" sentence (ES 34, EN 356).
+- [x] **5.3.5** Asylum: delete "quickly and correctly" paragraph (ES 39, EN 361).
+- [x] **5.4.1-2** DACA: delete eligibility-criteria + renewals sections (ES 79-98, EN 401-420).
+- [x] **5.5.1-5** EAD: delete all five listed sections (ES 115-147, EN 437-469).
+- [x] **5.6.1-2** U Visa: delete "What is the U Visa" + "Who is eligible" (ES 279-294, EN 599-614).
+- [x] **5.9.3-4** Fiancé: delete "Step 3" + "don't marry within 90 days" blocks (ES 259-261 + 267-269, EN 580-582 + 588-590); renumber remaining steps.
+- [x] **5.10.1** VAWA headline → "New Orleans Attorneys for Green Cards under VAWA (Victims of Domestic Violence)" in `seoServices.js:90` (both locales).
+- [x] **5.10.2** VAWA: delete eligibility section (ES 321-334, EN 639-652), keep closing CTA.
+- [x] **5.11.1-3** Consular processing: delete the three listed sections (ES 212-237, EN 534-559).
+- [x] **5.12.1-3** TPS: reword heading to past tense ("Countries That Have Been Designated for TPS"), add FAQ "What if my TPS is cancelled?" with client-supplied answer.
 
 ### About / team quick edits
-- [ ] **8.3** Remove the numbered compass/eye icons above Mission/Vision (`AboutPage.vue:39-44`, :62-67).
-- [ ] **8.5.1-2** Rios: title → "Paralegal" (`en.js:134`, `es.js:134`), add "Fluent in English and Spanish" to bio.
-- [ ] **8.5.4** Add Juan's bio — full EN + ES text supplied in the client doc, paste into team data + `TeamMemberPage`.
+- [x] **8.3** Remove the numbered compass/eye icons above Mission/Vision (`AboutPage.vue:39-44`, :62-67).
+- [x] **8.5.1-2** Rios: title → "Paralegal" (`en.js:134`, `es.js:134`), add "Fluent in English and Spanish" to bio.
+- [x] **8.5.4** Add Juan's bio — full EN + ES text supplied in the client doc, paste into team data + `TeamMemberPage`.
 
 ### Consultation page text
-- [ ] **6.1** Header → "Schedule Your Consultation Now" (`en.js:74`; ES: "Agende Su Consulta Ahora").
+- [x] **6.1** Header → "Schedule Your Consultation Now" (`en.js:74`; ES: "Agende Su Consulta Ahora").
 
 ---
 
