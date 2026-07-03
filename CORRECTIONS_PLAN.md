@@ -64,20 +64,20 @@ they can be finished (listed together in "Questions for the client" at the botto
 
 ## Phase 2 — Small component changes (~1 day)
 
-- [ ] **1.1.1 + 1.1.2** Favicon: the current tab icon is the 500×100 wordmark squashed into a square — that IS the "stretched unreadable text". Generate a square "CM" monogram favicon set (favicon.ico 16/32 + 32px PNG + 180px apple-touch-icon) in brand navy, update `index.html` links. **[CLIENT]** ideal: a real square logo mark; monogram works as stopgap.
-- [ ] **1.3.1** Language toggle: invert flags so the button shows the language you'd switch **to** (`LanguageToggle.vue:7-9` ternaries). Stretch: both-flags side-by-side pill like the old Wix site.
-- [ ] **3.2** Mobile toggle: "ESPAÑOL" all caps, larger font, flag icon.
-- [ ] **1.4.2** Video label "Watch a video about {service}" above each video (new i18n key with interpolation) + bigger play button.
-- [ ] **1.4.5 + 3.7** Ukrainian community note + 🇺🇦 flag on home + services pages, desktop and mobile, both locales.
-- [ ] **2.6.1 + 3.6** Services page: replace "Our team is here to help you" with "Click on any service to watch a short video" (new i18n key, both locales).
-- [ ] **2.6.2 + 4.3** Move Related Services below the CTA block; subtitle → "You may also be interested in the following services".
-- [ ] **2.7.1 + 3.5** Popup: it is NOT hidden on mobile — it needs 30s of zero activity and has a 24h dismiss cookie, which is why testers never saw it. Change to show-on-load (2-5s delay); fix photo crop (`aspect-[4/3]` instead of fixed heights + object-cover). **[CLIENT]** confirm mobile behavior + dismiss TTL.
-- [ ] **3.9** Add "Text Us" (`sms:+15049106508`) alongside the mobile "Call Us" pill — call stays bottom-center, text-us above it.
-- [ ] **6.2** Make the phone number prominent on consultation page (large tel: CTA in hero).
-- [ ] **6.3** Make consultation-type, country, message optional: remove `required` + red asterisks in `ContactPage.vue` (lines 48-49, 57+), AND relax express-validator rules in `server/routes/submissions.js`. Same for ChatWidget if it shares validators.
-- [ ] **6.4** Move reviews section above the form on consultation page (+ Google icon).
-- [ ] **7.3** Payment page → simple "Please contact our office to arrange payment" message (keep route + nav). **[CLIENT]** confirm keep-vs-remove; recommend keep-with-message for SEO continuity.
-- [ ] **2.5.1** Instagram embeds: Elfsight widget markup already exists; it broke in production because the pre-CSP-fix deploy blocked `platform.js`. Extend CSP (`img-src`, `media-src`, `font-src`) with `*.elfsightcdn.com`, `*.cdninstagram.com`, `*.fbcdn.net`; verify on Railway. Auto-scroll is an Elfsight dashboard setting. **[CLIENT]** Elfsight account access.
+- [x] **1.1.1 + 1.1.2** Favicon: the current tab icon is the 500×100 wordmark squashed into a square — that IS the "stretched unreadable text". Generate a square "CM" monogram favicon set (favicon.ico 16/32 + 32px PNG + 180px apple-touch-icon) in brand navy, update `index.html` links. **[CLIENT]** ideal: a real square logo mark; monogram works as stopgap.
+- [x] **1.3.1** Language toggle: invert flags so the button shows the language you'd switch **to** (`LanguageToggle.vue:7-9` ternaries). Stretch: both-flags side-by-side pill like the old Wix site.
+- [x] **3.2** Mobile toggle: "ESPAÑOL" all caps, larger font, flag icon.
+- [x] **1.4.2** Video label "Watch a video about {service}" above each video (new i18n key with interpolation) + bigger play button.
+- [x] **1.4.5 + 3.7** Ukrainian community note + 🇺🇦 flag on home + services pages, desktop and mobile, both locales.
+- [x] **2.6.1 + 3.6** Services page: replace "Our team is here to help you" with "Click on any service to watch a short video" (new i18n key, both locales).
+- [x] **2.6.2 + 4.3** Move Related Services below the CTA block; subtitle → "You may also be interested in the following services".
+- [x] **2.7.1 + 3.5** Popup: it is NOT hidden on mobile — it needs 30s of zero activity and has a 24h dismiss cookie, which is why testers never saw it. Change to show-on-load (2-5s delay); fix photo crop (`aspect-[4/3]` instead of fixed heights + object-cover). **[CLIENT]** confirm mobile behavior + dismiss TTL.
+- [x] **3.9** Add "Text Us" (`sms:+15049106508`) alongside the mobile "Call Us" pill — call stays bottom-center, text-us above it.
+- [x] **6.2** Make the phone number prominent on consultation page (large tel: CTA in hero).
+- [x] **6.3** Make consultation-type, country, message optional: remove `required` + red asterisks in `ContactPage.vue` (lines 48-49, 57+), AND relax express-validator rules in `server/routes/submissions.js`. Same for ChatWidget if it shares validators.
+- [x] **6.4** Move reviews section above the form on consultation page (+ Google icon).
+- [x] **7.3** Payment page → simple "Please contact our office to arrange payment" message (keep route + nav). **[CLIENT]** confirm keep-vs-remove; recommend keep-with-message for SEO continuity.
+- [x] **2.5.1** Instagram embeds: Elfsight widget markup already exists; it broke in production because the pre-CSP-fix deploy blocked `platform.js`. Extend CSP (`img-src`, `media-src`, `font-src`) with `*.elfsightcdn.com`, `*.cdninstagram.com`, `*.fbcdn.net`; verify on Railway. Auto-scroll is an Elfsight dashboard setting. **[CLIENT]** Elfsight account access.
 
 ---
 
