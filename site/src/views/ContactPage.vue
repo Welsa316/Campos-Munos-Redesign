@@ -11,6 +11,36 @@
             {{ $t('contact.title') }}
           </h1>
           <p class="text-gray-500 text-2xl mt-4 max-w-lg">{{ $t('contact.subtitle') }}</p>
+          <a href="tel:+15049106508"
+            class="inline-flex items-center gap-4 mt-8 font-heading text-2xl md:text-3xl text-brand-navy hover:opacity-80 transition-opacity">
+            <span class="w-14 h-14 rounded-xl bg-brand-navy/10 flex items-center justify-center flex-shrink-0">
+              <i class="fa-solid fa-phone text-xl" aria-hidden="true"></i>
+            </span>
+            +1 (504) 910-6508
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Google Reviews Carousel -->
+    <section class="py-20 bg-brand-light">
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="text-center mb-10 reveal">
+          <div class="flex items-center justify-center gap-2 mb-3">
+            <i v-for="n in 5" :key="n" class="fa-solid fa-star text-yellow-400 text-xl"></i>
+          </div>
+          <h2 class="font-heading text-4xl md:text-5xl text-brand-navy inline-flex items-center justify-center gap-4">
+            <svg class="w-9 h-9 md:w-11 md:h-11 flex-shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/>
+              <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/>
+              <path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"/>
+              <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"/>
+            </svg>
+            {{ $t('home.reviewsTitle') }}
+          </h2>
+        </div>
+        <div class="reveal elfsight-reviews-wrapper rounded-2xl overflow-hidden">
+          <div class="elfsight-app-924b81dc-21bf-470e-b66f-9137cae00590" data-elfsight-app-lazy></div>
         </div>
       </div>
     </section>
@@ -45,8 +75,8 @@
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div class="form-group">
-                  <label class="form-label">{{ $t('consultationForm.consultationType') }} <span class="text-brand-red">*</span></label>
-                  <select v-model="form.consultationType" required class="form-input">
+                  <label class="form-label">{{ $t('consultationForm.consultationType') }}</label>
+                  <select v-model="form.consultationType" class="form-input">
                     <option value="" disabled>{{ $t('consultationForm.selectConsultation') }}</option>
                     <option v-for="key in CONSULTATION_KEYS" :key="key" :value="key">
                       {{ key === 'other' ? $t('consultationForm.notSure') : $t(`services.${key}`) }}
@@ -54,8 +84,8 @@
                   </select>
                 </div>
                 <div class="form-group">
-                  <label class="form-label">{{ $t('consultationForm.country') }} <span class="text-brand-red">*</span></label>
-                  <select v-model="form.location" required class="form-input">
+                  <label class="form-label">{{ $t('consultationForm.country') }}</label>
+                  <select v-model="form.location" class="form-input">
                     <option value="" disabled>{{ $t('consultationForm.selectCountry') }}</option>
                     <option v-for="c in COUNTRIES" :key="c.code" :value="c.code">
                       {{ locale === 'en' ? c.nameEn : c.nameEs }}
@@ -65,8 +95,8 @@
               </div>
 
               <div class="form-group">
-                <label class="form-label">{{ $t('contact.message') }} <span class="text-brand-red">*</span></label>
-                <textarea v-model="form.message" rows="4" required maxlength="5000" class="form-input resize-none"></textarea>
+                <label class="form-label">{{ $t('contact.message') }}</label>
+                <textarea v-model="form.message" rows="4" maxlength="5000" class="form-input resize-none"></textarea>
               </div>
 
               <button type="submit" :disabled="loading"
@@ -163,32 +193,9 @@
       </div>
     </section>
 
-    <!-- Google Reviews Carousel -->
-    <section class="py-20 bg-brand-light">
-      <div class="max-w-7xl mx-auto px-6">
-        <div class="text-center mb-10 reveal">
-          <div class="flex items-center justify-center gap-2 mb-3">
-            <i v-for="n in 5" :key="n" class="fa-solid fa-star text-yellow-400 text-xl"></i>
-          </div>
-          <h2 class="font-heading text-4xl md:text-5xl text-brand-navy inline-flex items-center justify-center gap-4">
-            <svg class="w-9 h-9 md:w-11 md:h-11 flex-shrink-0" viewBox="0 0 24 24" aria-hidden="true">
-              <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/>
-              <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/>
-              <path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"/>
-              <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"/>
-            </svg>
-            {{ $t('home.reviewsTitle') }}
-          </h2>
-        </div>
-        <div class="reveal elfsight-reviews-wrapper rounded-2xl overflow-hidden">
-          <div class="elfsight-app-924b81dc-21bf-470e-b66f-9137cae00590" data-elfsight-app-lazy></div>
-        </div>
-      </div>
-    </section>
-
     <!-- Map - edge to edge -->
     <section class="h-[450px] relative">
-      <div class="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-brand-light to-transparent z-10 pointer-events-none"></div>
+      <div class="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-white to-transparent z-10 pointer-events-none"></div>
       <iframe
         src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3457.0!2d-90.0715!3d29.9511!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8620a67b1f0b7d2f%3A0x4b7a8c8b3b8b8b8b!2s812%20Gravier%20St%2C%20New%20Orleans%2C%20LA%2070112!5e0!3m2!1ses!2sus!4v1700000000000"
         class="w-full h-full border-0" allowfullscreen loading="lazy"

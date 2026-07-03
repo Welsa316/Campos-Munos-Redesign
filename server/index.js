@@ -67,10 +67,14 @@ app.use(helmet({
         'https://*.google-analytics.com',
         'https://static.elfsight.com',
         'https://core.service.elfsight.com',
+        'https://*.service.elfsight.com',
       ],
       'media-src': [
         "'self'",
         'https://pub-bc3780d3394f41c6801ba2012e17903c.r2.dev',
+        'https://*.elfsightcdn.com',
+        'https://*.cdninstagram.com',
+        'https://*.fbcdn.net',
       ],
       'img-src': [
         "'self'",
@@ -78,6 +82,10 @@ app.use(helmet({
         'https://pub-bc3780d3394f41c6801ba2012e17903c.r2.dev',
         'https://www.google-analytics.com',
         'https://static.elfsight.com',
+        'https://*.elfsightcdn.com',
+        'https://*.cdninstagram.com',
+        'https://*.fbcdn.net',
+        'https://lh3.googleusercontent.com',
       ],
       'style-src': [
         "'self'",
@@ -88,6 +96,7 @@ app.use(helmet({
         "'self'",
         'data:',
         'https://fonts.gstatic.com',
+        'https://*.elfsightcdn.com',
       ],
       'frame-src': ["'self'", 'https://static.elfsight.com', 'https://www.google.com'],
       'upgrade-insecure-requests': null,

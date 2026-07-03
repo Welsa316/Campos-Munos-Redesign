@@ -46,10 +46,12 @@ router.post(
   body('lastName').trim().notEmpty().isLength({ max: 255 }).withMessage('Last name is required (max 255 chars)'),
   body('email').isEmail().normalizeEmail().isLength({ max: 255 }).withMessage('Valid email required'),
   body('phone').trim().notEmpty().isLength({ max: 50 }).matches(/^[0-9+\-() ]+$/).withMessage('Valid phone number required'),
-  body('message').trim().notEmpty().isLength({ max: 5000 }).withMessage('Message is required (max 5000 chars)'),
+  // Message is optional on the contact form but required for chat — a chat session without text is meaningless.
+  body('message').if(body('source').equals('chat')).trim().notEmpty().withMessage('Message is required for chat'),
+  body('message').optional({ values: 'falsy' }).trim().isLength({ max: 5000 }).withMessage('Message too long (max 5000 chars)'),
   body('source').optional().isIn(['contact', 'chat']).withMessage('Invalid source'),
-  body('consultationType').trim().notEmpty().isIn(CONSULTATION_TYPES).withMessage('Valid consultation type is required'),
-  body('location').trim().notEmpty().matches(COUNTRY_CODE_REGEX).withMessage('Valid country is required'),
+  body('consultationType').optional({ values: 'falsy' }).trim().isIn(CONSULTATION_TYPES).withMessage('Invalid consultation type'),
+  body('location').optional({ values: 'falsy' }).trim().matches(COUNTRY_CODE_REGEX).withMessage('Invalid country'),
   validate,
   async (req, res) => {
     try {
@@ -57,10 +59,12 @@ router.post(
       const lastName = stripHtml(req.body.lastName)
       const email = req.body.email
       const phone = stripHtml(req.body.phone)
-      const message = stripHtml(req.body.message)
+      // Optional fields on the contact form — coerce to the columns' NOT NULL defaults
+      // ('' for message/location, 'other' for consultation_type per its CHECK constraint).
+      const message = stripHtml(req.body.message || '')
       const source = req.body.source === 'chat' ? 'chat' : 'contact'
-      const consultationType = req.body.consultationType
-      const location = stripHtml(req.body.location)
+      const consultationType = req.body.consultationType || 'other'
+      const location = stripHtml(req.body.location || '')
       const chatToken = source === 'chat' ? crypto.randomBytes(24).toString('base64url') : null
 
       const result = await getPool().query(

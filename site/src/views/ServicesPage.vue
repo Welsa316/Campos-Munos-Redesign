@@ -8,7 +8,7 @@
           <h1 class="font-heading text-5xl md:text-7xl lg:text-8xl font-bold text-brand-navy leading-[0.95]">
             {{ $t('nav.servicios') }}
           </h1>
-          <p class="text-gray-500 text-xl mt-4 max-w-lg font-ui">{{ $t('home.popupSubtitle') }}</p>
+          <p class="text-gray-500 text-xl mt-4 max-w-lg font-ui">{{ $t('home.servicesSubtitle') }}</p>
         </div>
       </div>
     </section>
@@ -45,6 +45,19 @@
               </p>
             </div>
           </router-link>
+        </div>
+      </div>
+    </section>
+
+    <!-- Ukrainian community note -->
+    <section class="bg-white pb-16">
+      <div class="max-w-3xl mx-auto px-6 reveal">
+        <div class="flex items-center justify-center gap-3 bg-brand-surface border border-gray-200 rounded-xl px-6 py-4">
+          <svg class="w-6 h-4 rounded-sm flex-shrink-0" viewBox="0 0 24 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect width="24" height="8" fill="#005BBB"/>
+            <rect y="8" width="24" height="8" fill="#FFD500"/>
+          </svg>
+          <p class="font-ui text-gray-600 text-sm md:text-base text-center">{{ $t('home.ukrainianNote') }}</p>
         </div>
       </div>
     </section>

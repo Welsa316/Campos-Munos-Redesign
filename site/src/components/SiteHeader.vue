@@ -118,6 +118,23 @@
             {{ link.label }}
           </router-link>
           <div class="w-16 h-px bg-brand-navy/30 my-2"></div>
+          <button @click="toggleLang"
+            class="flex items-center gap-3 px-7 py-3 rounded-full border border-brand-navy/25 text-brand-navy font-ui text-base font-bold tracking-wider hover:bg-brand-navy/5 transition-colors">
+            <svg v-if="currentLang === 'es'" viewBox="0 0 20 14" class="w-5 h-3.5 rounded-sm ring-1 ring-black/10 flex-shrink-0" aria-hidden="true">
+              <rect width="20" height="14" fill="#B22234" />
+              <path stroke="#FFFFFF" stroke-width="1.08" d="M0 2.15h20M0 4.31h20M0 6.46h20M0 8.62h20M0 10.77h20M0 12.92h20" />
+              <rect width="9" height="7.54" fill="#3C3B6E" />
+            </svg>
+            <svg v-else viewBox="0 0 20 14" class="w-5 h-3.5 rounded-sm ring-1 ring-black/10 flex-shrink-0" aria-hidden="true">
+              <rect width="20" height="14" fill="#FFFFFF" />
+              <rect width="6.7" height="14" fill="#006847" />
+              <rect x="13.3" width="6.7" height="14" fill="#CE1126" />
+              <!-- Stylized eagle crest — without it the flag reads as Italy's -->
+              <ellipse cx="10" cy="6.6" rx="1.7" ry="1.9" fill="#7A5C22" />
+              <path d="M8.2 8.4 Q10 10 11.8 8.4 Q10 9.1 8.2 8.4Z" fill="#4E7C31" />
+            </svg>
+            {{ currentLang === 'es' ? 'ENGLISH' : 'ESPAÑOL' }}
+          </button>
           <a href="tel:+15049106508" class="text-brand-red font-ui text-3xl tracking-wider font-bold">
             (504) 910-6508
           </a>
@@ -138,9 +155,11 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
+import { useLocaleToggle } from '../composables/useLocaleToggle.js'
 import { HEADER_SCROLL_THRESHOLD } from '../data/timing.js'
 
 const { t } = useI18n()
+const { currentLang, toggleLang } = useLocaleToggle()
 const route = useRoute()
 const scrolled = ref(false)
 const showServices = ref(false)

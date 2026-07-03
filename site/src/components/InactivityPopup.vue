@@ -21,7 +21,7 @@
         <div class="relative overflow-hidden rounded-3xl">
           <!-- Image section -->
           <div class="relative">
-            <img src="/PopupPhoto.jpg" alt="" loading="lazy" decoding="async" class="w-full h-[260px] sm:h-[420px] object-cover object-center" />
+            <img src="/PopupPhoto.jpg" alt="" loading="lazy" decoding="async" class="w-full aspect-[4/3] h-auto object-cover" />
           </div>
 
           <!-- Content - solid blue, completely separate from image -->
@@ -53,12 +53,10 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 
-import { INACTIVITY_POPUP_DELAY_MS, INACTIVITY_POPUP_DISMISS_TTL_MS } from '../data/timing.js'
+import { POPUP_ONLOAD_DELAY_MS, INACTIVITY_POPUP_DISMISS_TTL_MS } from '../data/timing.js'
 
 const visible = ref(false)
 let timer = null
-let hasTriggered = false
-const events = ['mousemove', 'keydown', 'scroll', 'touchstart']
 const DISMISS_KEY = 'cm_inactivity_dismissed_at'
 
 function isRecentlyDismissed() {
@@ -68,36 +66,19 @@ function isRecentlyDismissed() {
   } catch { return false }
 }
 
-function stopListening() {
-  clearTimeout(timer)
-  events.forEach(e => window.removeEventListener(e, resetTimer))
-}
-
-function resetTimer() {
-  clearTimeout(timer)
-  if (hasTriggered) return
-  timer = setTimeout(() => {
-    visible.value = true
-    hasTriggered = true
-    stopListening()
-  }, INACTIVITY_POPUP_DELAY_MS)
-}
-
 function close() {
   visible.value = false
   try { localStorage.setItem(DISMISS_KEY, String(Date.now())) } catch { /* ignore */ }
 }
 
 onMounted(() => {
-  if (isRecentlyDismissed()) {
-    hasTriggered = true
-    return
-  }
-  resetTimer()
-  events.forEach(e => window.addEventListener(e, resetTimer, { passive: true }))
+  if (isRecentlyDismissed()) return
+  timer = setTimeout(() => {
+    visible.value = true
+  }, POPUP_ONLOAD_DELAY_MS)
 })
 onUnmounted(() => {
-  stopListening()
+  clearTimeout(timer)
 })
 </script>
 

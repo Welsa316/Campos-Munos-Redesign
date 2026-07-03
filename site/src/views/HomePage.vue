@@ -156,6 +156,19 @@
       </div>
     </section>
 
+    <!-- ===================== UKRAINIAN COMMUNITY NOTE ===================== -->
+    <section class="bg-brand-light pb-16">
+      <div class="max-w-3xl mx-auto px-6 reveal">
+        <div class="flex items-center justify-center gap-3 bg-white border border-gray-200 rounded-xl px-6 py-4">
+          <svg class="w-6 h-4 rounded-sm flex-shrink-0" viewBox="0 0 24 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect width="24" height="8" fill="#005BBB"/>
+            <rect y="8" width="24" height="8" fill="#FFD500"/>
+          </svg>
+          <p class="font-ui text-gray-600 text-sm md:text-base text-center">{{ $t('home.ukrainianNote') }}</p>
+        </div>
+      </div>
+    </section>
+
     <!-- ===================== GOOGLE REVIEWS ===================== -->
     <section class="py-24 bg-white relative overflow-hidden">
       <div class="max-w-7xl mx-auto px-6">

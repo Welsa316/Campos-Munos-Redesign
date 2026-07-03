@@ -80,15 +80,55 @@
             </ul>
 
             <!-- Video embed marker -->
-            <div v-else-if="block.type === 'video' && hasVideo"
-              class="reveal rounded-2xl overflow-hidden my-8 shadow-lg">
+            <div v-else-if="block.type === 'video' && hasVideo" class="reveal my-8">
+              <p class="font-heading text-xl text-brand-navy mb-3">
+                <i class="fa-solid fa-circle-play text-brand-navy/60 mr-2" aria-hidden="true"></i>{{ $t('serviceDetail.watchVideo', { service: serviceName }) }}
+              </p>
+              <div class="rounded-2xl overflow-hidden shadow-lg">
+                <div class="aspect-video relative bg-brand-navy">
+                  <img v-if="!videoPlaying" :src="thumbnailSrc" :alt="serviceName"
+                    class="absolute inset-0 w-full h-full object-cover" />
+                  <div v-if="!videoPlaying" @click="playVideo"
+                    class="absolute inset-0 cursor-pointer group z-10">
+                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 sm:w-24 sm:h-24">
+                      <span class="absolute inset-0 rounded-full border-2 border-white/70 play-pulse-ring" aria-hidden="true"></span>
+                      <div class="relative w-full h-full rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-all duration-300 shadow-2xl">
+                        <i class="fa-solid fa-play text-brand-navy text-2xl sm:text-3xl ml-1"></i>
+                      </div>
+                    </div>
+                  </div>
+                  <video
+                    v-if="videoPlaying"
+                    :src="videoFile"
+                    class="w-full h-full object-contain bg-black"
+                    controls
+                    autoplay
+                    playsinline
+                    preload="metadata"
+                  ></video>
+                </div>
+              </div>
+            </div>
+          </template>
+        </template>
+
+        <!-- Fallback: no .txt content — just show video if available -->
+        <template v-else>
+          <div v-if="hasVideo" class="reveal mb-8">
+            <p class="font-heading text-xl text-brand-navy mb-3">
+              <i class="fa-solid fa-circle-play text-brand-navy/60 mr-2" aria-hidden="true"></i>{{ $t('serviceDetail.watchVideo', { service: serviceName }) }}
+            </p>
+            <div class="rounded-2xl overflow-hidden shadow-lg">
               <div class="aspect-video relative bg-brand-navy">
                 <img v-if="!videoPlaying" :src="thumbnailSrc" :alt="serviceName"
                   class="absolute inset-0 w-full h-full object-cover" />
                 <div v-if="!videoPlaying" @click="playVideo"
                   class="absolute inset-0 cursor-pointer group z-10">
-                  <div class="absolute bottom-4 right-4 w-14 h-14 rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-all duration-300 shadow-2xl">
-                    <i class="fa-solid fa-play text-brand-navy text-lg ml-0.5"></i>
+                  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 sm:w-24 sm:h-24">
+                    <span class="absolute inset-0 rounded-full border-2 border-white/70 play-pulse-ring" aria-hidden="true"></span>
+                    <div class="relative w-full h-full rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-all duration-300 shadow-2xl">
+                      <i class="fa-solid fa-play text-brand-navy text-2xl sm:text-3xl ml-1"></i>
+                    </div>
                   </div>
                 </div>
                 <video
@@ -98,33 +138,8 @@
                   controls
                   autoplay
                   playsinline
-                  preload="metadata"
                 ></video>
               </div>
-            </div>
-          </template>
-        </template>
-
-        <!-- Fallback: no .txt content — just show video if available -->
-        <template v-else>
-          <div v-if="hasVideo" class="reveal rounded-2xl overflow-hidden mb-8 shadow-lg">
-            <div class="aspect-video relative bg-brand-navy">
-              <img v-if="!videoPlaying" :src="thumbnailSrc" :alt="serviceName"
-                class="absolute inset-0 w-full h-full object-cover" />
-              <div v-if="!videoPlaying" @click="playVideo"
-                class="absolute inset-0 cursor-pointer group z-10">
-                <div class="absolute bottom-4 right-4 w-14 h-14 rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-all duration-300 shadow-2xl">
-                  <i class="fa-solid fa-play text-brand-navy text-lg ml-0.5"></i>
-                </div>
-              </div>
-              <video
-                v-if="videoPlaying"
-                :src="videoFile"
-                class="w-full h-full object-contain bg-black"
-                controls
-                autoplay
-                playsinline
-              ></video>
             </div>
           </div>
         </template>
@@ -148,6 +163,21 @@
           </div>
         </div>
 
+        <!-- CTA -->
+        <div class="reveal mt-12 p-10 rounded-2xl bg-brand-surface border border-gray-200 text-center">
+          <p class="text-gray-500 text-2xl mb-8 font-body">{{ $t('home.popupTitle') }}</p>
+          <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <router-link to="/consulta"
+              class="inline-flex items-center gap-3 bg-brand-navy text-white font-ui font-bold tracking-wider text-base px-10 py-5 rounded-xl btn-magnetic">
+              {{ $t('home.consultaBtn') }} <i class="fa-solid fa-arrow-right text-sm"></i>
+            </router-link>
+            <a href="tel:+15049106508"
+              class="inline-flex items-center gap-3 border border-gray-300 text-gray-500 hover:text-brand-navy hover:border-brand-navy/30 font-ui font-medium tracking-wider text-base px-10 py-5 rounded-xl transition-all">
+              <i class="fa-solid fa-phone text-sm"></i> (504) 910-6508
+            </a>
+          </div>
+        </div>
+
         <!-- Related Services (Internal Linking) -->
         <div v-if="relatedServices.length" class="reveal mt-12">
           <h2 class="font-heading text-2xl md:text-3xl text-brand-navy mb-4">
@@ -165,21 +195,6 @@
                 {{ related.name }}
               </span>
             </router-link>
-          </div>
-        </div>
-
-        <!-- CTA -->
-        <div class="reveal mt-12 p-10 rounded-2xl bg-brand-surface border border-gray-200 text-center">
-          <p class="text-gray-500 text-2xl mb-8 font-body">{{ $t('home.popupTitle') }}</p>
-          <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <router-link to="/consulta"
-              class="inline-flex items-center gap-3 bg-brand-navy text-white font-ui font-bold tracking-wider text-base px-10 py-5 rounded-xl btn-magnetic">
-              {{ $t('home.consultaBtn') }} <i class="fa-solid fa-arrow-right text-sm"></i>
-            </router-link>
-            <a href="tel:+15049106508"
-              class="inline-flex items-center gap-3 border border-gray-300 text-gray-500 hover:text-brand-navy hover:border-brand-navy/30 font-ui font-medium tracking-wider text-base px-10 py-5 rounded-xl transition-all">
-              <i class="fa-solid fa-phone text-sm"></i> (504) 910-6508
-            </a>
           </div>
         </div>
       </div>
@@ -315,3 +330,14 @@ watch(
   }
 )
 </script>
+
+<style scoped>
+/* Subtle expanding ring behind the play button (same easing as .btn-magnetic) */
+@keyframes play-pulse {
+  0% { transform: scale(1); opacity: 0.7; }
+  70%, 100% { transform: scale(1.35); opacity: 0; }
+}
+.play-pulse-ring {
+  animation: play-pulse 2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+</style>

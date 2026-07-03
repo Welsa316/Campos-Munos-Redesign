@@ -69,6 +69,8 @@ export default {
     slideSubtitle4: 'Ayudando a sobrevivientes',
     slideSubtitle5: 'Visas para esposos',
     translateBtn: 'In English',
+    ukrainianNote: 'Servimos con orgullo a la comunidad inmigrante ucraniana y contamos con recursos en ucraniano y ruso para atender sus necesidades migratorias.',
+    servicesSubtitle: 'Haga clic en cualquiera de los servicios para ver un video corto con información sobre ese servicio.',
   },
   contact: {
     title: 'Agende Su Consulta Ahora',
@@ -153,19 +155,25 @@ export default {
   },
   mobileContact: {
     cta: 'Llámenos',
+    textUs: 'Envíenos un Texto',
     callLabel: 'Llamar a (504) 910-6508',
+  },
+  mobileCta: {
+    textUs: 'Envíenos un Texto',
   },
   payment: {
     subtitle: 'Realice su pago de forma segura',
     portalTitle: 'Portal de Pagos',
     portalDescription: 'Haga clic a continuación para realizar su pago de forma segura.',
     makePayment: 'Realizar Pago',
+    contactMessage: 'Por favor contacte a nuestra oficina para coordinar el pago de los servicios que le ofrecemos.',
   },
   serviceDetail: {
     servingPrefix: 'Atendemos clientes',
     faqTitle: 'Preguntas Frecuentes',
+    watchVideo: 'Vea un video sobre {service}',
     relatedTitle: 'Servicios Relacionados',
-    relatedSubtitle: 'También ofrecemos asistencia con los siguientes servicios:',
+    relatedSubtitle: 'También le pueden interesar los siguientes servicios:',
   },
   consultationForm: {
     consultationType: 'Tipo de consulta',

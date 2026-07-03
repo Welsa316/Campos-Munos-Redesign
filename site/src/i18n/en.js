@@ -69,6 +69,8 @@ export default {
     slideSubtitle4: 'Helping survivors',
     slideSubtitle5: 'Visas for spouses',
     translateBtn: 'En Español',
+    ukrainianNote: 'We proudly serve the Ukrainian immigrant community and have resources in Ukrainian and Russian to meet their immigration needs.',
+    servicesSubtitle: 'Click on any of the services to watch a short video about that service.',
   },
   contact: {
     title: 'Schedule Your Consultation Now',
@@ -153,19 +155,25 @@ export default {
   },
   mobileContact: {
     cta: 'Call us',
+    textUs: 'Text Us',
     callLabel: 'Call (504) 910-6508',
+  },
+  mobileCta: {
+    textUs: 'Text Us',
   },
   payment: {
     subtitle: 'Make your payment securely',
     portalTitle: 'Payment Portal',
     portalDescription: 'Click below to make your payment securely.',
     makePayment: 'Make Payment',
+    contactMessage: 'Please contact our office to arrange payment for the services we are offering.',
   },
   serviceDetail: {
     servingPrefix: 'Serving clients',
     faqTitle: 'Frequently Asked Questions',
+    watchVideo: 'Watch a video about {service}',
     relatedTitle: 'Related Services',
-    relatedSubtitle: 'We also offer assistance with the following services:',
+    relatedSubtitle: 'You may also be interested in the following services:',
   },
   consultationForm: {
     consultationType: 'Type of consultation',
