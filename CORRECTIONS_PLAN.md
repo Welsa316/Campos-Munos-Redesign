@@ -124,6 +124,12 @@ All of these need images sourced/approved first. **[CLIENT]** supplies or approv
 9. **About merge (8.1)** — team bio URLs change from `/el-equipo/...`; OK? Should the home page keep short teasers of Who We Are / Why Us, or remove completely?
 10. **Square logo mark (1.1.1)** — is there a square emblem/monogram version of the logo for the favicon? A "CM" monogram will be generated if not.
 11. **Spelling (1.2.1)** — canonical is "Muños" everywhere? ("Van Lieu-Munos" in team bios kept as the person's legal spelling.)
+12. **Juan's bio wording (8.5.4)** — the client-supplied text differs by language: the EN bio says he "represented unaccompanied children" at Catholic Charities, while the ES bio says "la población inmigrante principalmente de Centroamérica" (the immigrant population, mainly from Central America). Which is authoritative so both locales match? (The ES bio also says "New Orleans"; the rest of the ES site uses "Nueva Orleans" — align?)
+13. **Residual asylum port-of-entry line (5.3.3)** — the specific sentence flagged for removal is gone, but a second clause making the same claim survives in the defensive-asylum paragraph ("…o al llegar a un puerto de entrada sin una visa válida" / "…or upon arriving at a port of entry without a valid visa"). If the concern was outdated port-of-entry guidance, should this be trimmed too?
+
+## Known future work (surfaced by the Phase 1+2 review, not yet actioned)
+
+- **VAWA FAQ (parallel to 5.10.2)** — the client removed the "Who is eligible for VAWA self-petition" prose from the body; a "¿Quién es elegible para VAWA?" / "Who is eligible for VAWA?" entry still exists in the FAQ accordion (`seoServices.js` `serviceFaqs.vawa`). Not flagged for removal in the client doc, but same pattern as the U-Visa/Consular FAQ cleanup already done — confirm whether to remove it.
 
 ---
 

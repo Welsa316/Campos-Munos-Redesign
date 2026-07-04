@@ -125,7 +125,7 @@ const threadItems = computed(() => {
     {
       type: 'user',
       id: `initial-${props.submission.id}`,
-      body: props.submission.message,
+      body: props.submission.message || '(no message provided)',
       timestamp: props.submission.created_at,
     },
     ...(props.submission.chat_messages || []).map(m => ({

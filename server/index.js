@@ -98,7 +98,8 @@ app.use(helmet({
         'https://fonts.gstatic.com',
         'https://*.elfsightcdn.com',
       ],
-      'frame-src': ["'self'", 'https://static.elfsight.com', 'https://www.google.com'],
+      // Path-scoped so only the Maps embed can be framed, not arbitrary google.com pages.
+      'frame-src': ["'self'", 'https://static.elfsight.com', 'https://www.google.com/maps/'],
       'upgrade-insecure-requests': null,
     },
   },

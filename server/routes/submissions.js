@@ -99,7 +99,7 @@ router.post(
                   <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Service:</td><td>${escapeHtml(consultationType)}</td></tr>
                   <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Location:</td><td>${escapeHtml(location)}</td></tr>
                 </table>
-                <div style="background: #f0f2f7; border-radius: 8px; padding: 16px; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${escapeHtml(message)}</div>
+                <div style="background: #f0f2f7; border-radius: 8px; padding: 16px; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${message ? escapeHtml(message) : '<em style="color: #9ca3af;">(no message provided)</em>'}</div>
                 <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0 12px;" />
                 <p style="font-size: 12px; color: #6b7280;">Log in to the admin dashboard to reply.</p>
               </div>

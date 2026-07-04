@@ -95,8 +95,9 @@
                 <i class="fa-solid fa-location-dot text-[9px] mr-0.5" aria-hidden="true"></i>{{ countryLabel(sub.location, locale.value) }}
               </span>
             </div>
-            <p class="text-xs text-gray-500 font-ui truncate leading-relaxed">
-              {{ sub.message }}
+            <p class="text-xs text-gray-500 font-ui truncate leading-relaxed"
+              :class="{ 'italic text-gray-400': !sub.message }">
+              {{ sub.message || '(no message)' }}
             </p>
           </div>
         </div>
