@@ -70,7 +70,7 @@ export default {
     slideSubtitle5: 'Visas para esposos',
     translateBtn: 'In English',
     ukrainianNote: 'Servimos con orgullo a la comunidad inmigrante ucraniana y contamos con recursos en ucraniano y ruso para atender sus necesidades migratorias.',
-    servicesSubtitle: 'Haga clic en cualquiera de los servicios para ver un video corto con información sobre ese servicio.',
+    servicesSubtitle: 'Haga clic en cualquier servicio para conocer más; la mayoría incluye un video corto.',
   },
   contact: {
     title: 'Agende Su Consulta Ahora',
@@ -158,14 +158,8 @@ export default {
     textUs: 'Envíenos un Texto',
     callLabel: 'Llamar a (504) 910-6508',
   },
-  mobileCta: {
-    textUs: 'Envíenos un Texto',
-  },
   payment: {
     subtitle: 'Realice su pago de forma segura',
-    portalTitle: 'Portal de Pagos',
-    portalDescription: 'Haga clic a continuación para realizar su pago de forma segura.',
-    makePayment: 'Realizar Pago',
     contactMessage: 'Por favor contacte a nuestra oficina para coordinar el pago de los servicios que le ofrecemos.',
   },
   serviceDetail: {

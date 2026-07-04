@@ -77,7 +77,7 @@
                 <div class="form-group">
                   <label class="form-label">{{ $t('consultationForm.consultationType') }}</label>
                   <select v-model="form.consultationType" class="form-input">
-                    <option value="" disabled>{{ $t('consultationForm.selectConsultation') }}</option>
+                    <option value="">{{ $t('consultationForm.selectConsultation') }}</option>
                     <option v-for="key in CONSULTATION_KEYS" :key="key" :value="key">
                       {{ key === 'other' ? $t('consultationForm.notSure') : $t(`services.${key}`) }}
                     </option>
@@ -86,7 +86,7 @@
                 <div class="form-group">
                   <label class="form-label">{{ $t('consultationForm.country') }}</label>
                   <select v-model="form.location" class="form-input">
-                    <option value="" disabled>{{ $t('consultationForm.selectCountry') }}</option>
+                    <option value="">{{ $t('consultationForm.selectCountry') }}</option>
                     <option v-for="c in COUNTRIES" :key="c.code" :value="c.code">
                       {{ locale === 'en' ? c.nameEn : c.nameEs }}
                     </option>

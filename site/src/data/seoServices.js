@@ -242,13 +242,9 @@ export const serviceFaqs = {
   tramiteConsular: {
     es: [
       { q: '¿Qué es el procesamiento consular?', a: 'El procesamiento consular es un procedimiento mediante el cual el beneficiario de una petición de inmigración aprobada solicita una visa en uno de los consulados de los Estados Unidos en el extranjero.' },
-      { q: '¿Cuál es la diferencia entre el procesamiento consular y el ajuste de estatus?', a: 'El ajuste de estatus permite cambiar su estatus sin salir del país. El procesamiento consular requiere que el inmigrante esté físicamente presente en el país donde tiene programada su cita.' },
-      { q: '¿Cuándo debo contratar a un abogado para el proceso consular?', a: 'Lo ideal es que contacte a un abogado lo antes posible. El proceso consular puede ser muy complicado, y un error podría hacerle perder tiempo valioso o poner en riesgo su posibilidad de ingresar a los Estados Unidos en el futuro.' },
     ],
     en: [
       { q: 'What is consular processing?', a: 'Consular processing is a procedure whereby the beneficiary of an approved immigration petition applies for a visa at one of the United States consulates abroad.' },
-      { q: 'What is the difference between consular processing and adjustment of status?', a: 'Adjustment of status allows you to change your status without leaving the country. Consular processing requires the immigrant to be physically present in the country where the appointment is scheduled.' },
-      { q: 'When should I hire an attorney for consular processing?', a: 'Ideally, you should contact an attorney as soon as possible. Consular processing can be very complicated, and a mistake could cost you valuable time or jeopardize your ability to enter the United States in the future.' },
     ],
   },
   vawa: {
@@ -265,13 +261,9 @@ export const serviceFaqs = {
   },
   visaU: {
     es: [
-      { q: '¿Qué es la Visa U?', a: 'La Visa U es una visa no inmigrante para víctimas de ciertos delitos que han sufrido abuso físico o mental y que pueden ayudar a las autoridades de los Estados Unidos a investigar o enjuiciar actividades criminales.' },
-      { q: '¿Quién es elegible para una Visa U?', a: 'Debe ser víctima de ciertos delitos especificados, poseer información relacionada con la actividad criminal, haber ayudado o ser probable que ayude a una agencia gubernamental en la investigación del delito, y haber sufrido abuso físico o mental sustancial como resultado.' },
       { q: '¿Pueden las víctimas de Visa U obtener residencia permanente?', a: 'Las víctimas de crimen pueden eventualmente calificar para una residencia permanente (Green Card) en el futuro, pero primero deben obtener el estatus no inmigrante U.' },
     ],
     en: [
-      { q: 'What is a U Visa?', a: 'The U Visa is a nonimmigrant visa for victims of certain crimes who have suffered physical or mental abuse and can help U.S. authorities investigate or prosecute criminal activity.' },
-      { q: 'Who is eligible for a U Visa?', a: 'You must be a victim of certain specified crimes, possess information related to the criminal activity, have helped or be likely to help a government agency in the investigation, and have suffered substantial physical or mental abuse as a result.' },
       { q: 'Can U Visa victims obtain permanent residence?', a: 'Crime victims may eventually qualify for permanent residence (Green Card) in the future, but they must first obtain U nonimmigrant status.' },
     ],
   },
