@@ -1,19 +1,18 @@
 <template>
   <transition name="popup">
-    <div v-if="visible"
+    <div v-if="visible" ref="dialogEl"
       class="fixed inset-0 z-[150] flex items-center justify-center p-4 overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-labelledby="inactivity-popup-title"
-      @click.self="close"
-      @keydown.esc="close">
+      @click.self="close">
       <!-- Backdrop -->
       <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-hidden="true" @click="close"></div>
 
       <!-- Modal -->
       <div class="relative w-full max-w-2xl rounded-3xl my-auto">
         <!-- Close button — outside overflow-hidden so it never gets clipped -->
-        <button @click="close" type="button"
+        <button ref="closeBtn" @click="close" type="button"
           :aria-label="$t('a11y.close')"
           class="absolute top-3 right-3 sm:top-4 sm:right-4 w-11 h-11 sm:w-10 sm:h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-all active:scale-95 touch-manipulation z-20">
           <i class="fa-solid fa-xmark text-lg sm:text-base" aria-hidden="true"></i>
@@ -51,18 +50,22 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 
-import { POPUP_ONLOAD_DELAY_MS, INACTIVITY_POPUP_DISMISS_TTL_MS } from '../data/timing.js'
+import { POPUP_ONLOAD_DELAY_MS, POPUP_DISMISS_TTL_MS } from '../data/timing.js'
 
 const visible = ref(false)
+const dialogEl = ref(null)
+const closeBtn = ref(null)
 let timer = null
+let lastFocused = null
+// Legacy key name kept as-is so visitors' existing 24h dismissals survive.
 const DISMISS_KEY = 'cm_inactivity_dismissed_at'
 
 function isRecentlyDismissed() {
   try {
     const ts = parseInt(localStorage.getItem(DISMISS_KEY) || '0', 10)
-    return ts && Date.now() - ts < INACTIVITY_POPUP_DISMISS_TTL_MS
+    return ts && Date.now() - ts < POPUP_DISMISS_TTL_MS
   } catch { return false }
 }
 
@@ -71,7 +74,34 @@ function close() {
   try { localStorage.setItem(DISMISS_KEY, String(Date.now())) } catch { /* ignore */ }
 }
 
+// Modal focus handling: move focus into the dialog on open, trap Tab within
+// it, close on Escape, and restore focus to the trigger element on close.
+function onKeydown(e) {
+  if (!visible.value) return
+  if (e.key === 'Escape') { close(); return }
+  if (e.key !== 'Tab' || !dialogEl.value) return
+  const focusables = dialogEl.value.querySelectorAll(
+    'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  )
+  if (!focusables.length) return
+  const first = focusables[0]
+  const last = focusables[focusables.length - 1]
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+}
+
+watch(visible, (v) => {
+  if (v) {
+    lastFocused = document.activeElement
+    nextTick(() => closeBtn.value?.focus())
+  } else if (lastFocused && typeof lastFocused.focus === 'function') {
+    lastFocused.focus()
+    lastFocused = null
+  }
+})
+
 onMounted(() => {
+  document.addEventListener('keydown', onKeydown)
   if (isRecentlyDismissed()) return
   timer = setTimeout(() => {
     visible.value = true
@@ -79,6 +109,7 @@ onMounted(() => {
 })
 onUnmounted(() => {
   clearTimeout(timer)
+  document.removeEventListener('keydown', onKeydown)
 })
 </script>
 

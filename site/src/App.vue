@@ -21,11 +21,13 @@
 
     <template v-if="!isAdminRoute">
       <SiteFooter />
-      <LanguageToggle />
-      <InactivityPopup />
+      <!-- Corner toggle is desktop/tablet only; on phones it would sit under the
+           centered call pill, and the mobile menu already has a language switch. -->
       <div class="hidden sm:contents">
+        <LanguageToggle />
         <ChatWidget />
       </div>
+      <InactivityPopup />
       <div class="sm:hidden">
         <MobileContactWidget />
       </div>

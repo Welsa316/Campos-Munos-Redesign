@@ -88,15 +88,16 @@
                 <div class="aspect-video relative bg-brand-navy">
                   <img v-if="!videoPlaying" :src="thumbnailSrc" :alt="serviceName"
                     class="absolute inset-0 w-full h-full object-cover" />
-                  <div v-if="!videoPlaying" @click="playVideo"
-                    class="absolute inset-0 cursor-pointer group z-10">
-                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 sm:w-24 sm:h-24">
+                  <button v-if="!videoPlaying" type="button" @click="playVideo"
+                    :aria-label="$t('serviceDetail.watchVideo', { service: serviceName })"
+                    class="absolute inset-0 cursor-pointer group z-10 bg-transparent border-0 p-0 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/80 focus-visible:ring-inset rounded-2xl">
+                    <span class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 sm:w-24 sm:h-24">
                       <span class="absolute inset-0 rounded-full border-2 border-white/70 play-pulse-ring" aria-hidden="true"></span>
-                      <div class="relative w-full h-full rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-all duration-300 shadow-2xl">
+                      <span class="relative w-full h-full rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-all duration-300 shadow-2xl">
                         <i class="fa-solid fa-play text-brand-navy text-2xl sm:text-3xl ml-1"></i>
-                      </div>
-                    </div>
-                  </div>
+                      </span>
+                    </span>
+                  </button>
                   <video
                     v-if="videoPlaying"
                     :src="videoFile"
@@ -122,15 +123,16 @@
               <div class="aspect-video relative bg-brand-navy">
                 <img v-if="!videoPlaying" :src="thumbnailSrc" :alt="serviceName"
                   class="absolute inset-0 w-full h-full object-cover" />
-                <div v-if="!videoPlaying" @click="playVideo"
-                  class="absolute inset-0 cursor-pointer group z-10">
-                  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 sm:w-24 sm:h-24">
+                <button v-if="!videoPlaying" type="button" @click="playVideo"
+                  :aria-label="$t('serviceDetail.watchVideo', { service: serviceName })"
+                  class="absolute inset-0 cursor-pointer group z-10 bg-transparent border-0 p-0 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/80 focus-visible:ring-inset rounded-2xl">
+                  <span class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 sm:w-24 sm:h-24">
                     <span class="absolute inset-0 rounded-full border-2 border-white/70 play-pulse-ring" aria-hidden="true"></span>
-                    <div class="relative w-full h-full rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-all duration-300 shadow-2xl">
+                    <span class="relative w-full h-full rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-all duration-300 shadow-2xl">
                       <i class="fa-solid fa-play text-brand-navy text-2xl sm:text-3xl ml-1"></i>
-                    </div>
-                  </div>
-                </div>
+                    </span>
+                  </span>
+                </button>
                 <video
                   v-if="videoPlaying"
                   :src="videoFile"
@@ -339,5 +341,8 @@ watch(
 }
 .play-pulse-ring {
   animation: play-pulse 2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .play-pulse-ring { animation: none; }
 }
 </style>
