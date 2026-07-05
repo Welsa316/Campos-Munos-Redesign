@@ -1,5 +1,5 @@
 <template>
-  <div class="h-screen flex flex-col bg-brand-surface overflow-hidden">
+  <div class="h-dvh flex flex-col bg-brand-surface overflow-hidden">
     <!-- Top bar -->
     <header class="h-16 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-6 z-10">
       <div class="flex items-center gap-4">

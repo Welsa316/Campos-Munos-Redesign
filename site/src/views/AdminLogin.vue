@@ -11,8 +11,9 @@
       <div class="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
         <form @submit.prevent="handleLogin" class="space-y-5">
           <div class="form-group">
-            <label class="form-label">Email</label>
+            <label for="admin-login-email" class="form-label">Email</label>
             <input
+              id="admin-login-email"
               v-model="email"
               type="email"
               required
@@ -23,8 +24,9 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Password</label>
+            <label for="admin-login-password" class="form-label">Password</label>
             <input
+              id="admin-login-password"
               v-model="password"
               type="password"
               required

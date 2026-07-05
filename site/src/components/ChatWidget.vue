@@ -21,7 +21,7 @@
       </div>
 
       <!-- Chat bubble trigger -->
-      <button @click="openChat" type="button"
+      <button ref="launcherRef" @click="openChat" type="button"
         class="group relative"
         :aria-label="$t('chat.openChat')">
         <!-- Avatar -->
@@ -38,7 +38,8 @@
 
   <!-- Chat modal -->
   <transition name="modal">
-    <div v-if="isOpen"
+    <div v-if="isOpen" ref="panelRef"
+      role="dialog" aria-modal="true" :aria-label="$t('chat.openChat')" tabindex="-1"
       class="fixed inset-x-3 bottom-3 sm:inset-x-auto sm:bottom-6 sm:right-6 z-[150] w-auto sm:w-[380px] max-w-[420px] h-[calc(100dvh-1.5rem)] sm:h-[560px] sm:max-h-[calc(100dvh-3rem)] flex flex-col bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
       <!-- Header -->
       <div class="flex items-center gap-3 px-4 py-3 bg-brand-navy text-white flex-shrink-0">
@@ -52,7 +53,7 @@
             {{ $t('chat.online') }}
           </p>
         </div>
-        <button @click="closeChat" type="button"
+        <button ref="closeBtn" @click="closeChat" type="button"
           class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-white transition-colors"
           :aria-label="$t('chat.close')">
           <i class="fa-solid fa-xmark text-base"></i>
@@ -136,7 +137,7 @@
 
         <!-- Chat thread -->
         <template v-else>
-          <div ref="threadRef" class="flex-1 overflow-y-auto p-4 space-y-3 bg-brand-light">
+          <div ref="threadRef" aria-live="polite" class="flex-1 overflow-y-auto p-4 space-y-3 bg-brand-light">
             <!-- Bot welcome -->
             <div class="flex gap-2 items-end">
               <div class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
@@ -232,8 +233,12 @@ const session = ref(null) // { id, firstName, lastName, email, phone, startedAt 
 const messages = ref([])  // [{ id, body, sent_at }]
 const newMessage = ref('')
 const threadRef = ref(null)
+const panelRef = ref(null)
+const closeBtn = ref(null)
+const launcherRef = ref(null)
 
 let greetingTimer = null
+let lastFocused = null
 
 const allUserMessages = computed(() => messages.value)
 
@@ -296,6 +301,40 @@ function scrollThreadToBottom() {
     threadRef.value.scrollTop = threadRef.value.scrollHeight
   }
 }
+
+// Dialog keyboard handling: Escape closes; Tab is trapped within the panel so
+// focus can't wander into the page behind the open chat. Mirrors the pattern
+// in InactivityPopup.vue and SiteHeader.vue.
+function onKeydown(e) {
+  if (!isOpen.value) return
+  if (e.key === 'Escape') { closeChat(); return }
+  if (e.key !== 'Tab' || !panelRef.value) return
+  const focusables = Array.from(panelRef.value.querySelectorAll(
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  )).filter(el => el.offsetParent !== null || el === document.activeElement)
+  if (!focusables.length) return
+  const first = focusables[0]
+  const last = focusables[focusables.length - 1]
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+}
+
+// Move focus into the panel on open, restore it to the launcher on close.
+watch(isOpen, (open) => {
+  if (open) {
+    lastFocused = document.activeElement
+    nextTick(() => closeBtn.value?.focus())
+  } else {
+    nextTick(() => {
+      if (launcherRef.value && typeof launcherRef.value.focus === 'function') {
+        launcherRef.value.focus()
+      } else if (lastFocused && typeof lastFocused.focus === 'function') {
+        lastFocused.focus()
+      }
+      lastFocused = null
+    })
+  }
+})
 
 async function startChat() {
   formError.value = ''
@@ -393,6 +432,7 @@ watch(messages, () => {
 
 onMounted(() => {
   loadSession()
+  document.addEventListener('keydown', onKeydown)
   if (shouldShowGreeting()) {
     greetingTimer = window.setTimeout(() => {
       if (!isOpen.value && !session.value) {
@@ -404,6 +444,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (greetingTimer) clearTimeout(greetingTimer)
+  document.removeEventListener('keydown', onKeydown)
 })
 </script>
 

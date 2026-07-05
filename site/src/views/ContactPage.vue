@@ -54,29 +54,29 @@
             <form @submit.prevent="submitForm" class="space-y-6">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div class="form-group">
-                  <label class="form-label">{{ $t('contact.firstName') }} <span class="text-brand-red">*</span></label>
-                  <input v-model="form.firstName" type="text" required maxlength="255" class="form-input" />
+                  <label for="contact-firstName" class="form-label">{{ $t('contact.firstName') }} <span class="text-brand-red">*</span></label>
+                  <input id="contact-firstName" v-model="form.firstName" type="text" required maxlength="255" class="form-input" />
                 </div>
                 <div class="form-group">
-                  <label class="form-label">{{ $t('contact.lastName') }} <span class="text-brand-red">*</span></label>
-                  <input v-model="form.lastName" type="text" required maxlength="255" class="form-input" />
+                  <label for="contact-lastName" class="form-label">{{ $t('contact.lastName') }} <span class="text-brand-red">*</span></label>
+                  <input id="contact-lastName" v-model="form.lastName" type="text" required maxlength="255" class="form-input" />
                 </div>
               </div>
 
               <div class="form-group">
-                <label class="form-label">{{ $t('contact.email') }} <span class="text-brand-red">*</span></label>
-                <input v-model="form.email" type="email" required maxlength="255" class="form-input" />
+                <label for="contact-email" class="form-label">{{ $t('contact.email') }} <span class="text-brand-red">*</span></label>
+                <input id="contact-email" v-model="form.email" type="email" required maxlength="255" class="form-input" />
               </div>
 
               <div class="form-group">
-                <label class="form-label">{{ $t('contact.phone') }} <span class="text-brand-red">*</span></label>
-                <input v-model="form.phone" type="tel" required maxlength="50" class="form-input" />
+                <label for="contact-phone" class="form-label">{{ $t('contact.phone') }} <span class="text-brand-red">*</span></label>
+                <input id="contact-phone" v-model="form.phone" type="tel" required maxlength="50" class="form-input" />
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div class="form-group">
-                  <label class="form-label">{{ $t('consultationForm.consultationType') }}</label>
-                  <select v-model="form.consultationType" class="form-input">
+                  <label for="contact-consultationType" class="form-label">{{ $t('consultationForm.consultationType') }}</label>
+                  <select id="contact-consultationType" v-model="form.consultationType" class="form-input">
                     <option value="">{{ $t('consultationForm.selectConsultation') }}</option>
                     <option v-for="key in CONSULTATION_KEYS" :key="key" :value="key">
                       {{ key === 'other' ? $t('consultationForm.notSure') : $t(`services.${key}`) }}
@@ -84,8 +84,8 @@
                   </select>
                 </div>
                 <div class="form-group">
-                  <label class="form-label">{{ $t('consultationForm.country') }}</label>
-                  <select v-model="form.location" class="form-input">
+                  <label for="contact-location" class="form-label">{{ $t('consultationForm.country') }}</label>
+                  <select id="contact-location" v-model="form.location" class="form-input">
                     <option value="">{{ $t('consultationForm.selectCountry') }}</option>
                     <option v-for="c in COUNTRIES" :key="c.code" :value="c.code">
                       {{ locale === 'en' ? c.nameEn : c.nameEs }}
@@ -95,8 +95,8 @@
               </div>
 
               <div class="form-group">
-                <label class="form-label">{{ $t('contact.message') }}</label>
-                <textarea v-model="form.message" rows="4" maxlength="5000" class="form-input resize-none"></textarea>
+                <label for="contact-message" class="form-label">{{ $t('contact.message') }}</label>
+                <textarea id="contact-message" v-model="form.message" rows="4" maxlength="5000" class="form-input resize-none"></textarea>
               </div>
 
               <button type="submit" :disabled="loading"
@@ -121,7 +121,7 @@
               <transition name="fade">
                 <div v-if="error" role="alert" aria-live="assertive" class="p-4 rounded-xl bg-red-50 border border-red-200 text-center">
                   <p class="text-red-600 text-base font-ui">
-                    <i class="fa-solid fa-exclamation-circle mr-2" aria-hidden="true"></i>{{ $t('contact.errorMessage') }}
+                    <i class="fa-solid fa-exclamation-circle mr-2" aria-hidden="true"></i>{{ errorText }}
                   </p>
                 </div>
               </transition>
@@ -214,12 +214,13 @@ import { CONSULTATION_KEYS } from '../data/consultationTypes.js'
 import { COUNTRIES } from '../data/countries.js'
 
 useScrollReveal()
-const { locale } = useI18n()
+const { t, locale } = useI18n()
 
 const form = ref({ firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '' })
 const submitted = ref(false)
 const loading = ref(false)
 const error = ref(false)
+const errorText = ref('')
 
 const socials = [
   { icon: 'fa-brands fa-whatsapp', href: 'https://wa.me/15049106508', label: 'WhatsApp', color: '#25D366' },
@@ -246,15 +247,21 @@ async function submitForm() {
     })
 
     if (!res.ok) {
-      throw new Error('Submission failed')
+      // Read the JSON error body so we can surface a specific message.
+      const data = await res.json().catch(() => ({}))
+      errorText.value = res.status === 429
+        ? t('contact.rateLimitError')
+        : t('contact.errorMessage')
+      throw new Error(data.error || 'Submission failed')
     }
 
     submitted.value = true
     form.value = { firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '' }
     setTimeout(() => { submitted.value = false }, 5000)
   } catch {
+    if (!errorText.value) errorText.value = t('contact.errorMessage')
     error.value = true
-    setTimeout(() => { error.value = false }, 5000)
+    setTimeout(() => { error.value = false; errorText.value = '' }, 5000)
   } finally {
     loading.value = false
   }

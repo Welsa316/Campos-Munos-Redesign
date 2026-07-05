@@ -26,24 +26,24 @@
 
         <form @submit.prevent="submit" class="px-6 py-5 space-y-4">
           <div>
-            <label class="block text-xs font-ui font-semibold tracking-wide uppercase text-gray-500 mb-1.5">
+            <label for="change-current-password" class="block text-xs font-ui font-semibold tracking-wide uppercase text-gray-500 mb-1.5">
               Current password
             </label>
-            <input v-model="form.currentPassword" type="password" required autocomplete="current-password"
+            <input id="change-current-password" v-model="form.currentPassword" type="password" required autocomplete="current-password"
               class="w-full px-3 py-2.5 rounded-lg bg-brand-surface border border-gray-200 focus:border-brand-navy/40 focus:ring-2 focus:ring-brand-navy/10 focus:outline-none text-sm font-ui text-gray-800" />
           </div>
           <div>
-            <label class="block text-xs font-ui font-semibold tracking-wide uppercase text-gray-500 mb-1.5">
+            <label for="change-new-password" class="block text-xs font-ui font-semibold tracking-wide uppercase text-gray-500 mb-1.5">
               New password
             </label>
-            <input v-model="form.newPassword" type="password" required minlength="10" autocomplete="new-password"
+            <input id="change-new-password" v-model="form.newPassword" type="password" required minlength="10" autocomplete="new-password"
               class="w-full px-3 py-2.5 rounded-lg bg-brand-surface border border-gray-200 focus:border-brand-navy/40 focus:ring-2 focus:ring-brand-navy/10 focus:outline-none text-sm font-ui text-gray-800" />
           </div>
           <div>
-            <label class="block text-xs font-ui font-semibold tracking-wide uppercase text-gray-500 mb-1.5">
+            <label for="change-confirm-password" class="block text-xs font-ui font-semibold tracking-wide uppercase text-gray-500 mb-1.5">
               Confirm new password
             </label>
-            <input v-model="form.confirmPassword" type="password" required minlength="10" autocomplete="new-password"
+            <input id="change-confirm-password" v-model="form.confirmPassword" type="password" required minlength="10" autocomplete="new-password"
               class="w-full px-3 py-2.5 rounded-lg bg-brand-surface border border-gray-200 focus:border-brand-navy/40 focus:ring-2 focus:ring-brand-navy/10 focus:outline-none text-sm font-ui text-gray-800" />
           </div>
 

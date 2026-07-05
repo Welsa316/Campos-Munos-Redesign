@@ -92,7 +92,7 @@
                 {{ consultationLabel(sub.consultation_type) }}
               </span>
               <span v-if="sub.location" class="text-[11px] text-gray-500 font-ui truncate">
-                <i class="fa-solid fa-location-dot text-[9px] mr-0.5" aria-hidden="true"></i>{{ countryLabel(sub.location, locale.value) }}
+                <i class="fa-solid fa-location-dot text-[9px] mr-0.5" aria-hidden="true"></i>{{ formatCountry(sub.location) }}
               </span>
             </div>
             <p class="text-xs text-gray-500 font-ui truncate leading-relaxed"
@@ -125,6 +125,7 @@ const filter = ref('all')
 const consultationFilter = ref('')
 
 const consultationLabel = (key) => consultationLabelShared(key, t, te)
+const formatCountry = (code) => countryLabel(code, locale.value)
 
 const unreadCount = computed(() => props.submissions.filter(s => !s.is_read).length)
 

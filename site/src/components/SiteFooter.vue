@@ -24,7 +24,7 @@
 
         <!-- Navigation -->
         <div class="md:col-span-2">
-          <h4 class="font-ui text-sm tracking-[0.2em] text-white/40 uppercase mb-5">
+          <h4 class="font-ui text-sm tracking-[0.2em] text-white/70 uppercase mb-5">
             {{ $t('nav.servicios') }}
           </h4>
           <div class="space-y-3">
@@ -34,7 +34,7 @@
         </div>
 
         <div class="md:col-span-2">
-          <h4 class="font-ui text-sm tracking-[0.2em] text-white/40 uppercase mb-5">
+          <h4 class="font-ui text-sm tracking-[0.2em] text-white/70 uppercase mb-5">
             {{ $t('nav.acercaDe') }}
           </h4>
           <div class="space-y-3">
@@ -45,7 +45,7 @@
 
         <!-- Contact info -->
         <div class="md:col-span-4">
-          <h4 class="font-ui text-sm tracking-[0.2em] text-white/40 uppercase mb-5">
+          <h4 class="font-ui text-sm tracking-[0.2em] text-white/70 uppercase mb-5">
             {{ $t('contact.direccion') }}
           </h4>
           <div class="space-y-4 text-white/70 text-base font-ui">
