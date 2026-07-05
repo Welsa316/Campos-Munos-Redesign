@@ -73,7 +73,7 @@ const members = {
   },
   angenette: {
     key: 'angenette', image: '/AngenetteHeadshot.jpg',
-    bio: 'Angenette Van Lieu-Munos es la socia fundadora de Campos Muños Law, LLC. Con títulos de J.D. y LL.M., Angenette aporta una formación académica excepcional al equipo. Su experiencia en derecho de inmigración y su dedicación al servicio de la comunidad inmigrante la convierten en una pieza fundamental del bufete.',
+    bio: 'Angenette Van Lieu-Muños es la socia fundadora de Campos Muños Law, LLC. Con títulos de J.D. y LL.M., Angenette aporta una formación académica excepcional al equipo. Su experiencia en derecho de inmigración y su dedicación al servicio de la comunidad inmigrante la convierten en una pieza fundamental del bufete.',
   },
   diana: {
     key: 'diana', image: '/DianaHeadshot.jpg',

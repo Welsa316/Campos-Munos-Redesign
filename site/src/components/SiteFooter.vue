@@ -77,12 +77,9 @@
       </div>
 
       <!-- Bottom bar -->
-      <div class="border-t border-white/15 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="border-t border-white/15 pt-8">
         <p class="font-ui text-sm tracking-[0.2em] text-white uppercase">
           {{ $t('footer.firmName') }}
-        </p>
-        <p class="font-ui text-sm text-white">
-          Campos Muños Law, LLC
         </p>
       </div>
     </div>
