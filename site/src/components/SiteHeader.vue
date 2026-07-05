@@ -119,7 +119,7 @@
         @click="mobileOpen = false" aria-hidden="true"></div>
 
       <!-- Panel -->
-      <div id="mobile-nav" role="dialog" aria-modal="true" aria-label="Menu"
+      <div id="mobile-nav" ref="drawerPanel" role="dialog" aria-modal="true" aria-label="Menu"
         :inert="!mobileOpen"
         class="absolute top-0 right-0 bottom-0 z-[106] w-[85%] max-w-sm bg-white shadow-2xl flex flex-col overflow-y-auto transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
         :class="mobileOpen ? 'translate-x-0' : 'translate-x-full'">
@@ -128,7 +128,7 @@
           <router-link to="/home" @click="mobileOpen = false">
             <img src="/logo.png" alt="Campos Muños Law" class="h-10" />
           </router-link>
-          <button @click="mobileOpen = false" aria-label="Close menu"
+          <button ref="closeBtn" @click="mobileOpen = false" aria-label="Close menu"
             class="w-11 h-11 -mr-2 flex items-center justify-center rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-navy/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy/40">
             <i class="fa-solid fa-xmark text-2xl" aria-hidden="true"></i>
           </button>
@@ -158,8 +158,9 @@
                 </svg>
               </button>
             </div>
-            <div id="drawer-services" class="overflow-hidden transition-[max-height] duration-300 ease-out"
-              :class="servicesOpen ? 'max-h-[40rem]' : 'max-h-0'">
+            <div id="drawer-services" :inert="!servicesOpen"
+              class="overflow-hidden transition-[max-height] duration-300 ease-out"
+              :class="servicesOpen ? 'max-h-[56rem]' : 'max-h-0'">
               <div class="pl-3 pr-1 py-1 flex flex-col gap-0.5 border-l border-brand-navy/10 ml-4">
                   <router-link v-for="service in serviceLinks" :key="service.slug"
                     :to="`/servicios/${service.slug}`"
@@ -218,7 +219,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLocaleToggle } from '../composables/useLocaleToggle.js'
 import { useMobileMenu } from '../composables/useMobileMenu.js'
@@ -231,6 +232,9 @@ const scrolled = ref(false)
 const showServices = ref(false)
 const servicesOpen = ref(false)
 const { isOpen: mobileOpen } = useMobileMenu()
+const drawerPanel = ref(null)
+const closeBtn = ref(null)
+let lastFocused = null
 
 const isHome = computed(() => route.path === '/home' || route.path === '/')
 const navSolid = computed(() => scrolled.value || !isHome.value)
@@ -262,14 +266,34 @@ const serviceLinks = [
 
 function onScroll() { scrolled.value = window.scrollY > HEADER_SCROLL_THRESHOLD }
 
-// Close the drawer on Escape while it's open.
+// Drawer keyboard handling: Escape closes; Tab is trapped within the panel so
+// focus can't wander into the page behind the modal dialog. Collapsed-accordion
+// links live inside an [inert] subtree and are filtered out of the trap.
 function onKeydown(e) {
-  if (e.key === 'Escape' && mobileOpen.value) mobileOpen.value = false
+  if (!mobileOpen.value) return
+  if (e.key === 'Escape') { mobileOpen.value = false; return }
+  if (e.key !== 'Tab' || !drawerPanel.value) return
+  const focusables = Array.from(drawerPanel.value.querySelectorAll(
+    'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  )).filter(el => !el.closest('[inert]'))
+  if (!focusables.length) return
+  const first = focusables[0]
+  const last = focusables[focusables.length - 1]
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
 }
 
-// Lock body scroll while the drawer is open; restore on close.
+// Lock body scroll while the drawer is open; move focus into the drawer on
+// open and restore it to the trigger (hamburger) on close.
 watch(mobileOpen, (open) => {
   document.body.style.overflow = open ? 'hidden' : ''
+  if (open) {
+    lastFocused = document.activeElement
+    nextTick(() => closeBtn.value?.focus())
+  } else if (lastFocused && typeof lastFocused.focus === 'function') {
+    lastFocused.focus()
+    lastFocused = null
+  }
 })
 
 // Close the drawer (and collapse the accordion) whenever the route changes,
