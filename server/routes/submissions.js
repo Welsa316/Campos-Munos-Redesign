@@ -202,8 +202,9 @@ router.post(
   validate,
   async (req, res) => {
     const pool = getPool()
-    const client = await pool.connect()
+    let client
     try {
+      client = await pool.connect()
       const submissionId = req.params.id
       const messageBody = stripHtml(req.body.body)
       const incomingToken = req.body.chatToken
@@ -260,11 +261,11 @@ router.post(
         req.log.error({ err: notifyErr }, 'Admin chat notification email failed')
       }
     } catch (err) {
-      try { await client.query('ROLLBACK') } catch { /* ignore */ }
+      try { if (client) await client.query('ROLLBACK') } catch { /* ignore */ }
       req.log.error({ err: err }, 'Chat message error')
       res.status(500).json({ error: 'Failed to send message. Please try again.' })
     } finally {
-      client.release()
+      if (client) client.release()
     }
   }
 )
@@ -327,8 +328,9 @@ router.patch(
 // to the response, so a 50k-row inbox doesn't materialise the whole result set
 // in memory before writing.
 router.get('/export/csv', requireAuth, async (req, res) => {
-  const client = await getPool().connect()
+  let client
   try {
+    client = await getPool().connect()
     res.setHeader('Content-Type', 'text/csv')
     res.setHeader('Content-Disposition', `attachment; filename="submissions-${new Date().toISOString().slice(0, 10)}.csv"`)
     res.write('First Name,Last Name,Email,Phone,Message,Service,Location,Read,Archived,Submitted\n')
@@ -359,14 +361,14 @@ router.get('/export/csv', requireAuth, async (req, res) => {
     res.end()
   } catch (err) {
     req.log.error({ err: err }, 'CSV export error')
-    try { await client.query('ROLLBACK') } catch { /* ignore */ }
+    try { if (client) await client.query('ROLLBACK') } catch { /* ignore */ }
     if (!res.headersSent) {
       res.status(500).json({ error: 'Internal server error' })
     } else {
       res.end()
     }
   } finally {
-    client.release()
+    if (client) client.release()
   }
 })
 

@@ -131,7 +131,7 @@ router.post(
   }
 )
 
-router.get('/verify', (req, res) => {
+router.get('/verify', async (req, res) => {
   const token = req.cookies.token
   if (!token) {
     return res.status(401).json({ authenticated: false })
@@ -139,7 +139,23 @@ router.get('/verify', (req, res) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    res.json({ authenticated: true, email: decoded.email })
+    // Mirror requireAuth: confirm the admin still exists and the token version
+    // matches, so a password change (which bumps token_version) invalidates
+    // older sessions here too instead of passing on signature alone.
+    const result = await getPool().query(
+      'SELECT id, email, token_version FROM admin_users WHERE id = $1',
+      [decoded.id]
+    )
+    if (result.rows.length === 0) {
+      return res.status(401).json({ authenticated: false })
+    }
+    // Tokens issued before token_version existed carry no `tv` claim — treat
+    // them as version 1, the schema default.
+    const tokenVersion = typeof decoded.tv === 'number' ? decoded.tv : 1
+    if (tokenVersion !== result.rows[0].token_version) {
+      return res.status(401).json({ authenticated: false })
+    }
+    res.json({ authenticated: true, email: result.rows[0].email })
   } catch {
     return res.status(401).json({ authenticated: false })
   }

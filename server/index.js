@@ -168,7 +168,7 @@ if (fs.existsSync(distDir)) {
     },
   }))
 
-  app.get('*', (_req, res) => res.sendFile(join(distDir, 'index.html')))
+  app.get('*', (req, res, next) => res.sendFile(join(distDir, 'index.html'), (err) => { if (err) next(err) }))
 } else {
   app.use((req, res) => res.status(404).json({ error: 'Not found' }))
 }
@@ -192,3 +192,8 @@ function shutdown(signal) {
 }
 process.on('SIGTERM', () => shutdown('SIGTERM'))
 process.on('SIGINT', () => shutdown('SIGINT'))
+process.on('unhandledRejection', (reason) => logger.error({ reason }, 'Unhandled promise rejection'))
+process.on('uncaughtException', (err) => {
+  logger.fatal({ err }, 'Uncaught exception')
+  shutdown('uncaughtException')
+})
