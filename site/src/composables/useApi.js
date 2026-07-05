@@ -20,7 +20,7 @@ export function useApi() {
       throw new Error('Unauthorized')
     }
 
-    const data = await res.json()
+    const data = await res.json().catch(() => ({}))
 
     if (!res.ok) {
       throw new Error(data.error || 'Request failed')

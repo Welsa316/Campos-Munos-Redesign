@@ -6,4 +6,3 @@ export const POPUP_DISMISS_TTL_MS = 24 * 60 * 60 * 1000
 export const CHAT_GREETING_DELAY_MS = 7000
 export const CHAT_GREETING_DISMISS_TTL_MS = 24 * 60 * 60 * 1000
 export const HERO_SLIDE_DURATION_MS = 8000
-export const TOAST_DURATION_MS = 5000

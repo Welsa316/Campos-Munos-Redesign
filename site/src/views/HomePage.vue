@@ -278,7 +278,12 @@ const bentoServices = [
 ]
 
 onMounted(() => {
-  slideTimer = setInterval(nextSlide, HERO_SLIDE_DURATION_MS)
+  // Respect prefers-reduced-motion: skip the auto-advancing slideshow.
+  // Users can still change slides manually via the progress dots.
+  const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  if (!prefersReducedMotion) {
+    slideTimer = setInterval(nextSlide, HERO_SLIDE_DURATION_MS)
+  }
   nextTick(() => {
     document.querySelectorAll('.hero-reveal').forEach((el, i) => {
       el.style.opacity = '0'

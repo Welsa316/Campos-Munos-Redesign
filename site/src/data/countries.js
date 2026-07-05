@@ -6,8 +6,6 @@
 // firm), then Mexico + the Northern Triangle countries the firm regularly
 // serves, then the rest alphabetised by English name.
 
-export const PRIORITY_CODES = ['US', 'MX', 'GT', 'HN', 'SV', 'NI', 'CR', 'PA', 'VE', 'CO', 'CU', 'DO', 'EC', 'PE', 'BR']
-
 export const COUNTRIES = [
   // Pinned for ergonomics — most common visitors / consular-processing origins.
   { code: 'US', nameEn: 'United States',     nameEs: 'Estados Unidos' },
@@ -209,8 +207,6 @@ export const COUNTRIES = [
   { code: 'ZM', nameEn: 'Zambia',             nameEs: 'Zambia' },
   { code: 'ZW', nameEn: 'Zimbabwe',           nameEs: 'Zimbabue' },
 ]
-
-export const COUNTRY_CODES = COUNTRIES.map(c => c.code)
 
 const codeToCountry = new Map(COUNTRIES.map(c => [c.code, c]))
 

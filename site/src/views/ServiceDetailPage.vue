@@ -44,9 +44,15 @@
           </p>
           <div class="rounded-2xl overflow-hidden shadow-lg">
             <div class="aspect-video relative bg-brand-navy">
+              <!-- Graceful fallback when the video source fails to load -->
+              <div v-if="videoError"
+                class="absolute inset-0 flex items-center justify-center text-center px-6 text-white/70 font-ui text-base">
+                {{ $t('serviceDetail.videoUnavailable') }}
+              </div>
+
               <!-- Desktop: autoplay muted on load; native controls let the user unmute -->
               <video
-                v-if="isDesktop"
+                v-if="isDesktop && !videoError"
                 :src="videoFile"
                 :poster="thumbnailSrc"
                 class="w-full h-full object-contain bg-black"
@@ -55,10 +61,11 @@
                 muted
                 playsinline
                 preload="metadata"
+                @error="videoError = true"
               ></video>
 
               <!-- Mobile: click-to-play (thumbnail + play button, then video with sound) -->
-              <template v-else>
+              <template v-else-if="!videoError">
                 <img v-if="!videoPlaying" :src="thumbnailSrc" :alt="serviceName"
                   class="absolute inset-0 w-full h-full object-cover" />
                 <button v-if="!videoPlaying" type="button" @click="playVideo"
@@ -78,6 +85,7 @@
                   controls
                   autoplay
                   playsinline
+                  @error="videoError = true"
                 ></video>
               </template>
             </div>
@@ -297,6 +305,9 @@ const relatedServices = computed(() => {
 
 // Video player
 const videoPlaying = ref(false)
+// Set true when a <video> emits an error (missing/unreachable source);
+// hides the broken player and shows a graceful notice.
+const videoError = ref(false)
 
 // Desktop autoplays muted; mobile uses click-to-play (with sound).
 const isDesktop = ref(false)
@@ -329,6 +340,7 @@ watch(
   () => [props.slug, props.service, props.location],
   () => {
     videoPlaying.value = false
+    videoError.value = false
     nextTick(observeRevealElements)
   }
 )
