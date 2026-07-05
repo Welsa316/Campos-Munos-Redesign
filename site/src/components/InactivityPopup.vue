@@ -1,7 +1,6 @@
 <template>
-  <transition name="popup">
     <div v-if="visible" ref="dialogEl"
-      class="fixed inset-0 z-[150] flex items-center justify-center p-4 overflow-y-auto"
+      class="popup-root fixed inset-0 z-[150] flex items-center justify-center p-4 overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-labelledby="inactivity-popup-title"
@@ -10,7 +9,7 @@
       <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-hidden="true" @click="close"></div>
 
       <!-- Modal -->
-      <div class="relative w-full max-w-2xl rounded-3xl my-auto">
+      <div class="popup-card relative w-full max-w-2xl rounded-3xl my-auto">
         <!-- Close button — outside overflow-hidden so it never gets clipped -->
         <button ref="closeBtn" @click="close" type="button"
           :aria-label="$t('a11y.close')"
@@ -46,7 +45,6 @@
         </div>
       </div>
     </div>
-  </transition>
 </template>
 
 <script setup>
@@ -114,12 +112,17 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.popup-enter-active { transition: opacity 0.4s ease; }
-.popup-enter-active .relative { transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease; }
-.popup-leave-active { transition: opacity 0.2s ease; }
-.popup-leave-active .relative { transition: transform 0.2s ease; }
-.popup-enter-from { opacity: 0; }
-.popup-enter-from .relative { transform: translateY(30px) scale(0.95); opacity: 0; }
-.popup-leave-to { opacity: 0; }
-.popup-leave-to .relative { transform: scale(0.95); }
+/* CSS keyframe animations run on mount and settle at the final state (both),
+   so the popup can't get stuck invisible the way a Vue <transition> can when
+   transitionend doesn't fire (observed on mobile). */
+.popup-root { animation: popup-fade 0.35s ease both; }
+.popup-card { animation: popup-rise 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes popup-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes popup-rise {
+  from { opacity: 0; transform: translateY(30px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .popup-root, .popup-card { animation: none; }
+}
 </style>
