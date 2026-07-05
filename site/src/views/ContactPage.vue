@@ -40,7 +40,7 @@
           </h2>
         </div>
         <div class="reveal elfsight-reviews-wrapper rounded-2xl overflow-hidden">
-          <div class="elfsight-app-924b81dc-21bf-470e-b66f-9137cae00590" data-elfsight-app-lazy></div>
+          <div class="elfsight-app-02c0cb8e-d132-4834-ae18-93002f5a819a" data-elfsight-app-lazy></div>
         </div>
       </div>
     </section>
