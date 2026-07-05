@@ -107,7 +107,7 @@ All of these need images sourced/approved first. **[CLIENT]** supplies or approv
 ## Phase 5 — Content production & integrations (heaviest, multi-day)
 
 - [ ] **1.4.3** Transcript-based video descriptions for ~11 service videos: transcribe each video (Whisper on the R2 MP4s), paraphrase Juan's words into body copy (NOT captions), translate to both locales, insert as content blocks below each video. This backfills the pages gutted in Phase 1 (citizenship, DACA, EAD, U Visa, VAWA, consular, deportation defense per 5.8.1, U Visa per 5.6.4). Largest single work item in the doc.
-- [ ] **2.3.2** Real Google reviews module: auto-scrolling carousel of actual reviews. Recommended: Elfsight Google Reviews widget (account already used for Instagram) — dashboard config + CSP allowlist + placement on home + consultation pages. Alternative: Google Places API (needs API key, quota, custom carousel). **[CLIENT]** Elfsight account/plan.
+- [x] **2.3.2** Real Google reviews module (Elfsight Google Reviews widget wired + rendering real reviews on home + consultation): auto-scrolling carousel of actual reviews. Recommended: Elfsight Google Reviews widget (account already used for Instagram) — dashboard config + CSP allowlist + placement on home + consultation pages. Alternative: Google Places API (needs API key, quota, custom carousel). **[CLIENT]** Elfsight account/plan.
 
 ---
 
@@ -115,17 +115,17 @@ All of these need images sourced/approved first. **[CLIENT]** supplies or approv
 
 1. ~~**Video autoplay (1.4.1)**~~ — RESOLVED: desktop autoplays muted (native controls to unmute), mobile keeps click-to-play to save cellular data.
 2. ~~**Hero size on video pages (1.4.1)**~~ — RESOLVED: service-page hero shrunk (pt-28 pb-10) and video hoisted to the top of the content.
-3. **Popup (2.7.1/3.5)** — it was never hidden on mobile; it needs 30s of inactivity and hides for 24h once dismissed. Want it on-load (2-5s) on both desktop + mobile? Keep the 24h suppression?
-4. **Footer right line (1.2.3/1.2.4)** — after removing ©, both bottom corners say "Campos Muños Law, LLC". Drop the right-hand one, or replace with something else?
-5. **Payment page (7.3)** — remove entirely, or keep the page with the "contact our office" message? (Recommend keep.)
+3. ~~**Popup (2.7.1/3.5)**~~ — RESOLVED: now shows 4s after load on all devices; the mobile-invisible bug (stuck Vue transition) fixed with a CSS keyframe animation. — it was never hidden on mobile; it needs 30s of inactivity and hides for 24h once dismissed. Want it on-load (2-5s) on both desktop + mobile? Keep the 24h suppression?
+4. ~~**Footer right line (1.2.3/1.2.4)**~~ — RESOLVED: removed the right-hand "Campos Muños Law, LLC"; bottom bar shows the firm name once. — after removing ©, both bottom corners say "Campos Muños Law, LLC". Drop the right-hand one, or replace with something else?
+5. ~~**Payment page (7.3)**~~ — RESOLVED: keep the page with the "contact our office" message. — remove entirely, or keep the page with the "contact our office" message? (Recommend keep.)
 6. ~~**Mobile menu (3.3)**~~ — RESOLVED: right-side slide-in drawer with a Services accordion (all 14 services), scroll-lock, close on route/backdrop/Escape.
 7. **Photos (Phase 4)** — client supplies, or we source a stock shortlist for approval? 4 subjects specified (DACA, EAD, T Visa, Green Card); 10 more services need consistent covers.
-8. **Elfsight (2.3.2/2.5.1)** — need dashboard access (or plan confirmation) for the Google Reviews widget and Instagram feed settings.
+8. ~~**Elfsight (2.3.2/2.5.1)**~~ — RESOLVED: client supplied both widget embeds; Google Reviews + Instagram now wired, script + CSP updated. — need dashboard access (or plan confirmation) for the Google Reviews widget and Instagram feed settings.
 9. ~~**About merge (8.1)**~~ — RESOLVED: bio URLs preserved (`/el-equipo/:member` unchanged; `/el-equipo` redirects to `/acerca-de#equipo`); home teasers removed per the client's explicit instruction.
-10. **Square logo mark (1.1.1)** — is there a square emblem/monogram version of the logo for the favicon? A "CM" monogram will be generated if not.
-11. **Spelling (1.2.1)** — canonical is "Muños" everywhere? ("Van Lieu-Munos" in team bios kept as the person's legal spelling.)
+10. ~~**Square logo mark (1.1.1)**~~ — RESOLVED: client supplied the square CM emblem; favicon set regenerated from it. — is there a square emblem/monogram version of the logo for the favicon? A "CM" monogram will be generated if not.
+11. ~~**Spelling (1.2.1)**~~ — RESOLVED: canonical "Muños"; "Van Lieu-Muños" now carries the accent. — canonical is "Muños" everywhere? ("Van Lieu-Munos" in team bios kept as the person's legal spelling.)
 12. **Juan's bio wording (8.5.4)** — the client-supplied text differs by language: the EN bio says he "represented unaccompanied children" at Catholic Charities, while the ES bio says "la población inmigrante principalmente de Centroamérica" (the immigrant population, mainly from Central America). Which is authoritative so both locales match? (The ES bio also says "New Orleans"; the rest of the ES site uses "Nueva Orleans" — align?)
-13. **Residual asylum port-of-entry line (5.3.3)** — the specific sentence flagged for removal is gone, but a second clause making the same claim survives in the defensive-asylum paragraph ("…o al llegar a un puerto de entrada sin una visa válida" / "…or upon arriving at a port of entry without a valid visa"). If the concern was outdated port-of-entry guidance, should this be trimmed too?
+13. ~~**Residual asylum port-of-entry line (5.3.3)**~~ — RESOLVED: client approved; the "upon arriving at a port of entry" clause is trimmed. — the specific sentence flagged for removal is gone, but a second clause making the same claim survives in the defensive-asylum paragraph ("…o al llegar a un puerto de entrada sin una visa válida" / "…or upon arriving at a port of entry without a valid visa"). If the concern was outdated port-of-entry guidance, should this be trimmed too?
 
 ## Known future work (surfaced by the Phase 1+2 review, not yet actioned)
 
