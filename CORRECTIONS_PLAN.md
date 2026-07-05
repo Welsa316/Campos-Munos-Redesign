@@ -83,11 +83,11 @@ they can be finished (listed together in "Questions for the client" at the botto
 
 ## Phase 3 — Structural / layout work (~2-3 days)
 
-- [ ] **2.1** Home page reorder → hero → reviews → services → instagram → recognized-by → statistics → location. Sections are inline template blocks; re-balance alternating backgrounds; keep scroll-reveal classes intact. Remove "Who We Are" (:175-189) + "Why Us" (:192-208) from home (they migrate in 8.1).
-- [ ] **8.1** Merge About Us + Who We Are + Why Us + Our Team into one page, team grid at bottom. Redirect `/el-equipo` → `/acerca-de`, keep `/el-equipo/:member` bio pages (or redirect). Update nav (SiteHeader:65-67, :183; SiteFooter:43), TeamMemberPage back-link, all CTAs pointing at `/el-equipo`. **[CLIENT]** confirm bio URLs may change + whether home keeps teasers.
-- [ ] **8.2** Shrink or replace the About "Who We Are" main photo (min-h-screen hero → shorter banner). **[CLIENT]** replacement photo or shrink-only.
-- [ ] **3.3** Mobile hamburger menu redesign: slide-in panel, Services accordion (14 services currently unreachable on mobile), active-link styling, body scroll-lock, Escape/route-change close. **[CLIENT]** style direction or approve a proposed mockup.
-- [ ] **1.4.1** Video autoplay + top placement: render `<video>` with `autoplay muted playsinline controls :poster` (browsers force muted), hoist video above the SEO h2, add `preload="metadata"`. **[CLIENT]** hero must shrink for "visible without scrolling" — needs OK. Note: autoplay = real mobile-data cost.
+- [x] **2.1** Home page reorder → hero → reviews → services → instagram → recognized-by → statistics → location. Sections are inline template blocks; re-balance alternating backgrounds; keep scroll-reveal classes intact. Remove "Who We Are" (:175-189) + "Why Us" (:192-208) from home (they migrate in 8.1).
+- [x] **8.1** Merge About Us + Who We Are + Why Us + Our Team into one page, team grid at bottom. Redirect `/el-equipo` → `/acerca-de`, keep `/el-equipo/:member` bio pages (or redirect). Update nav (SiteHeader:65-67, :183; SiteFooter:43), TeamMemberPage back-link, all CTAs pointing at `/el-equipo`. **[CLIENT]** confirm bio URLs may change + whether home keeps teasers.
+- [x] **8.2** Shrink or replace the About "Who We Are" main photo (min-h-screen hero → shorter banner). **[CLIENT]** replacement photo or shrink-only.
+- [x] **3.3** Mobile hamburger menu redesign: slide-in panel, Services accordion (14 services currently unreachable on mobile), active-link styling, body scroll-lock, Escape/route-change close. **[CLIENT]** style direction or approve a proposed mockup.
+- [x] **1.4.1** Video autoplay + top placement: render `<video>` with `autoplay muted playsinline controls :poster` (browsers force muted), hoist video above the SEO h2, add `preload="metadata"`. **[CLIENT]** hero must shrink for "visible without scrolling" — needs OK. Note: autoplay = real mobile-data cost.
 
 ---
 
@@ -113,15 +113,15 @@ All of these need images sourced/approved first. **[CLIENT]** supplies or approv
 
 ## Questions for the client (blockers, answer in the corrections doc)
 
-1. **Video autoplay (1.4.1)** — browsers only allow muted autoplay. OK to autoplay muted with a tap-to-unmute, or keep click-to-play with a bigger button?
-2. **Hero size on video pages (1.4.1)** — to get the video visible without scrolling, the hero must shrink. OK?
+1. ~~**Video autoplay (1.4.1)**~~ — RESOLVED: desktop autoplays muted (native controls to unmute), mobile keeps click-to-play to save cellular data.
+2. ~~**Hero size on video pages (1.4.1)**~~ — RESOLVED: service-page hero shrunk (pt-28 pb-10) and video hoisted to the top of the content.
 3. **Popup (2.7.1/3.5)** — it was never hidden on mobile; it needs 30s of inactivity and hides for 24h once dismissed. Want it on-load (2-5s) on both desktop + mobile? Keep the 24h suppression?
 4. **Footer right line (1.2.3/1.2.4)** — after removing ©, both bottom corners say "Campos Muños Law, LLC". Drop the right-hand one, or replace with something else?
 5. **Payment page (7.3)** — remove entirely, or keep the page with the "contact our office" message? (Recommend keep.)
-6. **Mobile menu (3.3)** — slide-in drawer with a Services accordion is the proposal; approve or describe preference.
+6. ~~**Mobile menu (3.3)**~~ — RESOLVED: right-side slide-in drawer with a Services accordion (all 14 services), scroll-lock, close on route/backdrop/Escape.
 7. **Photos (Phase 4)** — client supplies, or we source a stock shortlist for approval? 4 subjects specified (DACA, EAD, T Visa, Green Card); 10 more services need consistent covers.
 8. **Elfsight (2.3.2/2.5.1)** — need dashboard access (or plan confirmation) for the Google Reviews widget and Instagram feed settings.
-9. **About merge (8.1)** — team bio URLs change from `/el-equipo/...`; OK? Should the home page keep short teasers of Who We Are / Why Us, or remove completely?
+9. ~~**About merge (8.1)**~~ — RESOLVED: bio URLs preserved (`/el-equipo/:member` unchanged; `/el-equipo` redirects to `/acerca-de#equipo`); home teasers removed per the client's explicit instruction.
 10. **Square logo mark (1.1.1)** — is there a square emblem/monogram version of the logo for the favicon? A "CM" monogram will be generated if not.
 11. **Spelling (1.2.1)** — canonical is "Muños" everywhere? ("Van Lieu-Munos" in team bios kept as the person's legal spelling.)
 12. **Juan's bio wording (8.5.4)** — the client-supplied text differs by language: the EN bio says he "represented unaccompanied children" at Catholic Charities, while the ES bio says "la población inmigrante principalmente de Centroamérica" (the immigrant population, mainly from Central America). Which is authoritative so both locales match? (The ES bio also says "New Orleans"; the rest of the ES site uses "Nueva Orleans" — align?)
