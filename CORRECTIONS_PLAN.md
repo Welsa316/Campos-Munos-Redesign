@@ -148,3 +148,16 @@ Notable root causes discovered during the audit:
 - The "stretched tab text" (1.1.2) is the wide wordmark squashed into the favicon slot, not a title bug.
 - The "missing mobile popup" (3.5) was the 30s-inactivity trigger + 24h dismissal, not a hidden component.
 - The Instagram section (2.5.1) broke because the pre-CSP-fix deploy blocked Elfsight's script; partially fixed already, needs CDN hosts allowlisted.
+
+---
+
+## Whole-project audit (July 5) — status
+
+A full 6-dimension audit (security, backend, frontend/a11y, code quality, SEO, resilience) found no P0 security holes. All 10 P1 + 24 P2 findings were fixed except the one below. Commits: e4b019b (backend stability), d5f5cfa (a11y), e67f9d9 (SEO), fe9e7ed (dead code + resilience).
+
+### Deferred — needs its own effort (the big SEO lever)
+- **SSR / prerender (the #1 SEO issue).** The site is a client-rendered Vue SPA: the shipped HTML is an empty `#app` shell, so all page content — including the "Abogados de X en Nueva Orleans" service pages the whole site is built to rank for — is JS-injected. Google renders JS on a slower second pass; non-Google/social crawlers see nothing. A `vite-ssg` prerender was attempted earlier and rolled back (`document is not defined` in App.vue watchers; dynamic routes emitted `:slug` literally). **Remediation:** finish the prerender/SSG so every route ships static HTML with its real content + per-route meta (the client-side per-route canonical/OG/description added in e67f9d9 is a stopgap that only helps JS-rendering crawlers). This is the highest-impact SEO work remaining and should be its own focused task. Related decisions still open: the 70 orphan `/servicios/:service/:location` pages (link + sitemap them, or drop them).
+
+### Still open from earlier (client)
+- **Q7 — service photos** (Phase 4): DACA, EAD, T-Visa, Statue of Liberty + consistent covers.
+- **Q12 — Juan's bio wording** differs EN vs ES; needs Juan to confirm which is authoritative.
