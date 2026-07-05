@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- Hero with large icon -->
-    <section class="relative pt-36 pb-24 bg-brand-surface overflow-hidden">
+    <section class="relative pt-28 pb-10 bg-brand-surface overflow-hidden">
       <!-- Decorative -->
       <div class="absolute top-1/2 right-0 -translate-y-1/2 text-[300px] text-brand-navy/[0.04] pointer-events-none select-none">
         <!-- Keyed <span> wrapper: FontAwesome's dom.watch() detaches the <i> it
@@ -36,6 +36,53 @@
     <!-- Content -->
     <section class="py-16 bg-white">
       <div ref="contentRef" class="max-w-4xl mx-auto px-6">
+
+        <!-- Video (hoisted to top of content so it's visible with minimal scroll) -->
+        <div v-if="hasVideo" class="reveal mb-10">
+          <p class="font-heading text-xl text-brand-navy mb-3">
+            <i class="fa-solid fa-circle-play text-brand-navy/60 mr-2" aria-hidden="true"></i>{{ $t('serviceDetail.watchVideo', { service: serviceName }) }}
+          </p>
+          <div class="rounded-2xl overflow-hidden shadow-lg">
+            <div class="aspect-video relative bg-brand-navy">
+              <!-- Desktop: autoplay muted on load; native controls let the user unmute -->
+              <video
+                v-if="isDesktop"
+                :src="videoFile"
+                :poster="thumbnailSrc"
+                class="w-full h-full object-contain bg-black"
+                controls
+                autoplay
+                muted
+                playsinline
+                preload="metadata"
+              ></video>
+
+              <!-- Mobile: click-to-play (thumbnail + play button, then video with sound) -->
+              <template v-else>
+                <img v-if="!videoPlaying" :src="thumbnailSrc" :alt="serviceName"
+                  class="absolute inset-0 w-full h-full object-cover" />
+                <button v-if="!videoPlaying" type="button" @click="playVideo"
+                  :aria-label="$t('serviceDetail.watchVideo', { service: serviceName })"
+                  class="absolute inset-0 cursor-pointer group z-10 bg-transparent border-0 p-0 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/80 focus-visible:ring-inset rounded-2xl">
+                  <span class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 sm:w-24 sm:h-24">
+                    <span class="absolute inset-0 rounded-full border-2 border-white/70 play-pulse-ring" aria-hidden="true"></span>
+                    <span class="relative w-full h-full rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-all duration-300 shadow-2xl">
+                      <i class="fa-solid fa-play text-brand-navy text-2xl sm:text-3xl ml-1"></i>
+                    </span>
+                  </span>
+                </button>
+                <video
+                  v-if="videoPlaying"
+                  :src="videoFile"
+                  class="w-full h-full object-contain bg-black"
+                  controls
+                  autoplay
+                  playsinline
+                ></video>
+              </template>
+            </div>
+          </div>
+        </div>
 
         <!-- Location service area note -->
         <p v-if="locationData" class="reveal text-gray-500 text-lg font-ui mb-6 flex items-center gap-2">
@@ -79,71 +126,9 @@
               </li>
             </ul>
 
-            <!-- Video embed marker -->
-            <div v-else-if="block.type === 'video' && hasVideo" class="reveal my-8">
-              <p class="font-heading text-xl text-brand-navy mb-3">
-                <i class="fa-solid fa-circle-play text-brand-navy/60 mr-2" aria-hidden="true"></i>{{ $t('serviceDetail.watchVideo', { service: serviceName }) }}
-              </p>
-              <div class="rounded-2xl overflow-hidden shadow-lg">
-                <div class="aspect-video relative bg-brand-navy">
-                  <img v-if="!videoPlaying" :src="thumbnailSrc" :alt="serviceName"
-                    class="absolute inset-0 w-full h-full object-cover" />
-                  <button v-if="!videoPlaying" type="button" @click="playVideo"
-                    :aria-label="$t('serviceDetail.watchVideo', { service: serviceName })"
-                    class="absolute inset-0 cursor-pointer group z-10 bg-transparent border-0 p-0 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/80 focus-visible:ring-inset rounded-2xl">
-                    <span class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 sm:w-24 sm:h-24">
-                      <span class="absolute inset-0 rounded-full border-2 border-white/70 play-pulse-ring" aria-hidden="true"></span>
-                      <span class="relative w-full h-full rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-all duration-300 shadow-2xl">
-                        <i class="fa-solid fa-play text-brand-navy text-2xl sm:text-3xl ml-1"></i>
-                      </span>
-                    </span>
-                  </button>
-                  <video
-                    v-if="videoPlaying"
-                    :src="videoFile"
-                    class="w-full h-full object-contain bg-black"
-                    controls
-                    autoplay
-                    playsinline
-                    preload="metadata"
-                  ></video>
-                </div>
-              </div>
-            </div>
+            <!-- Video is hoisted to the top of the content area (see above);
+                 the inline marker renders nothing to avoid a duplicate player. -->
           </template>
-        </template>
-
-        <!-- Fallback: no .txt content — just show video if available -->
-        <template v-else>
-          <div v-if="hasVideo" class="reveal mb-8">
-            <p class="font-heading text-xl text-brand-navy mb-3">
-              <i class="fa-solid fa-circle-play text-brand-navy/60 mr-2" aria-hidden="true"></i>{{ $t('serviceDetail.watchVideo', { service: serviceName }) }}
-            </p>
-            <div class="rounded-2xl overflow-hidden shadow-lg">
-              <div class="aspect-video relative bg-brand-navy">
-                <img v-if="!videoPlaying" :src="thumbnailSrc" :alt="serviceName"
-                  class="absolute inset-0 w-full h-full object-cover" />
-                <button v-if="!videoPlaying" type="button" @click="playVideo"
-                  :aria-label="$t('serviceDetail.watchVideo', { service: serviceName })"
-                  class="absolute inset-0 cursor-pointer group z-10 bg-transparent border-0 p-0 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/80 focus-visible:ring-inset rounded-2xl">
-                  <span class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 sm:w-24 sm:h-24">
-                    <span class="absolute inset-0 rounded-full border-2 border-white/70 play-pulse-ring" aria-hidden="true"></span>
-                    <span class="relative w-full h-full rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-all duration-300 shadow-2xl">
-                      <i class="fa-solid fa-play text-brand-navy text-2xl sm:text-3xl ml-1"></i>
-                    </span>
-                  </span>
-                </button>
-                <video
-                  v-if="videoPlaying"
-                  :src="videoFile"
-                  class="w-full h-full object-contain bg-black"
-                  controls
-                  autoplay
-                  playsinline
-                ></video>
-              </div>
-            </div>
-          </div>
         </template>
 
         <!-- FAQ Section -->
@@ -312,6 +297,22 @@ const relatedServices = computed(() => {
 
 // Video player
 const videoPlaying = ref(false)
+
+// Desktop autoplays muted; mobile uses click-to-play (with sound).
+const isDesktop = ref(false)
+let desktopMql = null
+function updateIsDesktop(e) {
+  isDesktop.value = e.matches
+}
+onMounted(() => {
+  if (typeof window === 'undefined' || !window.matchMedia) return
+  desktopMql = window.matchMedia('(min-width: 640px)')
+  isDesktop.value = desktopMql.matches
+  desktopMql.addEventListener('change', updateIsDesktop)
+})
+onUnmounted(() => {
+  if (desktopMql) desktopMql.removeEventListener('change', updateIsDesktop)
+})
 
 function playVideo() {
   videoPlaying.value = true

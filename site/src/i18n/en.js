@@ -6,7 +6,7 @@ export default {
     consulta: 'CONSULTATION',
     pago: 'PAYMENT',
     acercaDe: 'ABOUT US',
-    elEquipo: 'OUR TEAM',
+    verTodosServicios: 'View all services',
   },
   services: {
     visasJovenes: 'Special Immigrant Juvenile Visas',

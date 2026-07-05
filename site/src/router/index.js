@@ -17,8 +17,7 @@ const routes = [
     meta: { title: 'Pago' } },
   { path: '/acerca-de', name: 'About', component: () => import('../views/AboutPage.vue'),
     meta: { title: 'Acerca de Nosotros' } },
-  { path: '/el-equipo', name: 'Team', component: () => import('../views/TeamPage.vue'),
-    meta: { title: 'Nuestro Equipo' } },
+  { path: '/el-equipo', redirect: '/acerca-de#equipo' },
   { path: '/el-equipo/:member', name: 'TeamMember', component: () => import('../views/TeamMemberPage.vue'), props: true },
   { path: '/admin/login', name: 'AdminLogin', component: () => import('../views/AdminLogin.vue'),
     meta: { title: 'Admin Login' } },
@@ -30,7 +29,10 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior() {
+  scrollBehavior(to) {
+    if (to.hash) {
+      return { el: to.hash, behavior: 'smooth' }
+    }
     return { top: 0 }
   },
 })

@@ -62,9 +62,6 @@
         <router-link to="/acerca-de" class="nav-item" :class="navSolid ? 'nav-scrolled' : 'nav-top'">
           <span>{{ $t('nav.acercaDe') }}</span>
         </router-link>
-        <router-link to="/el-equipo" class="nav-item" :class="navSolid ? 'nav-scrolled' : 'nav-top'">
-          <span>{{ $t('nav.elEquipo') }}</span>
-        </router-link>
         <router-link to="/pago" class="nav-item" :class="navSolid ? 'nav-scrolled' : 'nav-top'">
           <span>{{ $t('nav.pago') }}</span>
         </router-link>
@@ -108,51 +105,131 @@
       </button>
     </nav>
 
-    <!-- Mobile full-screen overlay -->
-    <transition name="mobile-nav">
-      <div v-show="mobileOpen" id="mobile-nav" class="xl:hidden fixed inset-0 top-0 bg-white/98 backdrop-blur-xl z-[105] overflow-y-auto">
-        <div class="flex flex-col justify-center items-center min-h-full gap-6 px-8 py-24">
-          <router-link v-for="link in mobileLinks" :key="link.to" :to="link.to"
-            class="text-4xl font-heading text-gray-800 hover:text-brand-navy transition-colors"
-            @click="mobileOpen = false">
-            {{ link.label }}
+    <!-- Mobile drawer + backdrop. Always rendered; visibility is driven by
+         class toggles (not v-show + <transition>) so closing never waits on a
+         transitionend that may not fire. The full-viewport wrapper clips the
+         off-screen panel so translate-x-full can't cause horizontal scroll,
+         and goes pointer-events-none when closed so the transparent backdrop
+         can't swallow taps. -->
+    <div class="xl:hidden fixed inset-0 z-[104] overflow-hidden"
+      :class="mobileOpen ? '' : 'pointer-events-none'">
+      <!-- Backdrop -->
+      <div class="absolute inset-0 bg-brand-navy/40 backdrop-blur-sm transition-opacity duration-300"
+        :class="mobileOpen ? 'opacity-100' : 'opacity-0'"
+        @click="mobileOpen = false" aria-hidden="true"></div>
+
+      <!-- Panel -->
+      <div id="mobile-nav" role="dialog" aria-modal="true" aria-label="Menu"
+        :inert="!mobileOpen"
+        class="absolute top-0 right-0 bottom-0 z-[106] w-[85%] max-w-sm bg-white shadow-2xl flex flex-col overflow-y-auto transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+        :class="mobileOpen ? 'translate-x-0' : 'translate-x-full'">
+        <!-- Drawer header: logo + close -->
+        <div class="flex items-center justify-between px-6 h-20 border-b border-gray-100 flex-shrink-0">
+          <router-link to="/home" @click="mobileOpen = false">
+            <img src="/logo.png" alt="Campos Muños Law" class="h-10" />
           </router-link>
-          <div class="w-16 h-px bg-brand-navy/30 my-2"></div>
+          <button @click="mobileOpen = false" aria-label="Close menu"
+            class="w-11 h-11 -mr-2 flex items-center justify-center rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-navy/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy/40">
+            <i class="fa-solid fa-xmark text-2xl" aria-hidden="true"></i>
+          </button>
+        </div>
+
+        <!-- Nav links -->
+        <nav class="flex flex-col px-4 py-4 gap-0.5">
+          <router-link to="/home" class="drawer-link" @click="mobileOpen = false">
+            {{ $t('nav.home') }}
+          </router-link>
+
+          <!-- Services accordion -->
+          <div>
+            <div class="flex items-stretch">
+              <router-link to="/servicios" class="drawer-link flex-1"
+                :class="route.path.startsWith('/servicios') ? 'drawer-link-active' : ''"
+                @click="mobileOpen = false">
+                {{ $t('nav.servicios') }}
+              </router-link>
+              <button type="button" @click="servicesOpen = !servicesOpen"
+                :aria-expanded="servicesOpen" aria-controls="drawer-services"
+                aria-label="Ver servicios"
+                class="w-12 flex items-center justify-center text-gray-400 hover:text-brand-navy rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy/40">
+                <svg class="w-5 h-5 transition-transform duration-300" :class="servicesOpen ? 'rotate-180' : ''"
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+            <div id="drawer-services" class="overflow-hidden transition-[max-height] duration-300 ease-out"
+              :class="servicesOpen ? 'max-h-[40rem]' : 'max-h-0'">
+              <div class="pl-3 pr-1 py-1 flex flex-col gap-0.5 border-l border-brand-navy/10 ml-4">
+                  <router-link v-for="service in serviceLinks" :key="service.slug"
+                    :to="`/servicios/${service.slug}`"
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:text-brand-navy hover:bg-brand-navy/5 transition-colors"
+                    :class="route.path === `/servicios/${service.slug}` ? 'text-brand-navy bg-brand-navy/5 font-semibold' : ''"
+                    @click="mobileOpen = false">
+                    <i :class="[service.icon, 'text-brand-navy/50 w-5 text-center text-sm']" aria-hidden="true"></i>
+                    <span class="font-ui text-[0.95rem]">{{ $t(`services.${service.key}`) }}</span>
+                  </router-link>
+                  <router-link to="/servicios"
+                    class="px-3 py-2.5 rounded-lg text-brand-red font-ui text-sm font-semibold tracking-wide hover:bg-brand-red/5 transition-colors"
+                    @click="mobileOpen = false">
+                    {{ $t('nav.verTodosServicios') }} &rarr;
+                  </router-link>
+                </div>
+              </div>
+          </div>
+
+          <router-link to="/servicios/green-card" class="drawer-link" @click="mobileOpen = false">
+            {{ $t('nav.greenCards') }}
+          </router-link>
+          <router-link to="/consulta" class="drawer-link" @click="mobileOpen = false">
+            {{ $t('nav.consulta') }}
+          </router-link>
+          <router-link to="/acerca-de" class="drawer-link" @click="mobileOpen = false">
+            {{ $t('nav.acercaDe') }}
+          </router-link>
+          <router-link to="/pago" class="drawer-link" @click="mobileOpen = false">
+            {{ $t('nav.pago') }}
+          </router-link>
+        </nav>
+
+        <!-- Footer: language + phone + socials -->
+        <div class="mt-auto px-6 py-6 border-t border-gray-100 flex flex-col gap-5">
           <button @click="toggleLang"
-            class="flex items-center gap-3 px-7 py-3 rounded-full border border-brand-navy/25 text-brand-navy font-ui text-base font-bold tracking-wider hover:bg-brand-navy/5 transition-colors">
+            class="flex items-center justify-center gap-3 w-full px-5 py-3 rounded-full border border-brand-navy/25 text-brand-navy font-ui text-sm font-bold tracking-wider hover:bg-brand-navy/5 transition-colors">
             <FlagIcon :country="currentLang === 'es' ? 'us' : 'mx'" class="w-5 h-3.5" />
             {{ currentLang === 'es' ? 'ENGLISH' : 'ESPAÑOL' }}
           </button>
-          <a href="tel:+15049106508" class="text-brand-red font-ui text-3xl tracking-wider font-bold">
+          <a href="tel:+15049106508"
+            class="flex items-center justify-center gap-2 w-full px-5 py-3 rounded-full bg-brand-red hover:bg-brand-red-light text-white font-ui text-base font-semibold tracking-wider transition-colors">
+            <i class="fa-solid fa-phone text-sm" aria-hidden="true"></i>
             (504) 910-6508
           </a>
-          <div class="flex items-center gap-5 mt-4">
+          <div class="flex items-center justify-center gap-6">
             <a v-for="social in socials" :key="social.label" :href="social.href" target="_blank" rel="noopener"
-              :aria-label="social.label" class="text-2xl transition-colors hover:opacity-70"
+              :aria-label="social.label" class="text-xl transition-opacity hover:opacity-70"
               :style="{ color: social.color }">
-              <i :class="social.icon"></i>
+              <i :class="social.icon" aria-hidden="true"></i>
             </a>
           </div>
         </div>
       </div>
-    </transition>
+    </div>
   </header>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLocaleToggle } from '../composables/useLocaleToggle.js'
 import { useMobileMenu } from '../composables/useMobileMenu.js'
 import { HEADER_SCROLL_THRESHOLD } from '../data/timing.js'
 import FlagIcon from './FlagIcon.vue'
 
-const { t } = useI18n()
 const { currentLang, toggleLang } = useLocaleToggle()
 const route = useRoute()
 const scrolled = ref(false)
 const showServices = ref(false)
+const servicesOpen = ref(false)
 const { isOpen: mobileOpen } = useMobileMenu()
 
 const isHome = computed(() => route.path === '/home' || route.path === '/')
@@ -183,19 +260,34 @@ const serviceLinks = [
   { key: 'visaT', slug: 'visa-t', icon: 'fa-solid fa-link' },
 ]
 
-const mobileLinks = computed(() => [
-  { to: '/home', label: t('nav.home') },
-  { to: '/servicios', label: t('nav.servicios') },
-  { to: '/servicios/green-card', label: t('nav.greenCards') },
-  { to: '/consulta', label: t('nav.consulta') },
-  { to: '/acerca-de', label: t('nav.acercaDe') },
-  { to: '/el-equipo', label: t('nav.elEquipo') },
-  { to: '/pago', label: t('nav.pago') },
-])
-
 function onScroll() { scrolled.value = window.scrollY > HEADER_SCROLL_THRESHOLD }
-onMounted(() => window.addEventListener('scroll', onScroll, { passive: true }))
-onUnmounted(() => window.removeEventListener('scroll', onScroll))
+
+// Close the drawer on Escape while it's open.
+function onKeydown(e) {
+  if (e.key === 'Escape' && mobileOpen.value) mobileOpen.value = false
+}
+
+// Lock body scroll while the drawer is open; restore on close.
+watch(mobileOpen, (open) => {
+  document.body.style.overflow = open ? 'hidden' : ''
+})
+
+// Close the drawer (and collapse the accordion) whenever the route changes,
+// so the MobileContactWidget pills reappear after navigating.
+watch(() => route.path, () => {
+  mobileOpen.value = false
+  servicesOpen.value = false
+})
+
+onMounted(() => {
+  window.addEventListener('scroll', onScroll, { passive: true })
+  document.addEventListener('keydown', onKeydown)
+})
+onUnmounted(() => {
+  window.removeEventListener('scroll', onScroll)
+  document.removeEventListener('keydown', onKeydown)
+  document.body.style.overflow = ''
+})
 </script>
 
 <style scoped>
@@ -240,7 +332,33 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 .mega-enter-from, .mega-leave-to { opacity: 0; }
 .mega-enter-to, .mega-leave-from { opacity: 1; }
 
-.mobile-nav-enter-active { transition: opacity 0.4s ease; }
-.mobile-nav-leave-active { transition: opacity 0.2s ease; }
-.mobile-nav-enter-from, .mobile-nav-leave-to { opacity: 0; }
+/* Mobile drawer rows */
+.drawer-link {
+  display: block;
+  padding: 0.75rem 0.75rem;
+  border-radius: 0.5rem;
+  font-family: var(--font-ui);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(31, 41, 55, 1);
+  transition: color 0.2s, background-color 0.2s;
+}
+.drawer-link:hover {
+  color: var(--color-brand-navy);
+  background: color-mix(in srgb, var(--color-brand-navy) 6%, transparent);
+}
+/* Active state: exact-active for leaf links, .drawer-link-active for the
+   Services row (set manually since it has child routes). */
+.drawer-link.router-link-exact-active,
+.drawer-link-active {
+  color: var(--color-brand-navy);
+  background: color-mix(in srgb, var(--color-brand-navy) 8%, transparent);
+}
+
+/* Backdrop fade */
+/* Drawer + backdrop + accordion now animate via Tailwind class toggles
+   (transition-transform / transition-opacity / transition-[max-height]) on
+   always-rendered elements, so no Vue <transition> classes are needed here. */
 </style>

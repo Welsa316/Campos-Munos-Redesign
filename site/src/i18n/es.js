@@ -6,7 +6,7 @@ export default {
     consulta: 'CONSULTA',
     pago: 'PAGO',
     acercaDe: 'ACERCA DE',
-    elEquipo: 'EL EQUIPO',
+    verTodosServicios: 'Ver todos los servicios',
   },
   services: {
     visasJovenes: 'Visas Especial para Jóvenes',
