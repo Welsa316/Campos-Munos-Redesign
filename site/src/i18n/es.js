@@ -165,7 +165,7 @@ export default {
   serviceDetail: {
     servingPrefix: 'Atendemos clientes',
     faqTitle: 'Preguntas Frecuentes',
-    watchVideo: 'Vea un video sobre {service}',
+    watchVideo: 'Vea nuestro video de {service}',
     relatedTitle: 'Servicios Relacionados',
     relatedSubtitle: 'También le pueden interesar los siguientes servicios:',
   },
