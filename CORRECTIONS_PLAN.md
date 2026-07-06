@@ -96,10 +96,10 @@ they can be finished (listed together in "Questions for the client" at the botto
 All of these need images sourced/approved first. **[CLIENT]** supplies or approves a stock shortlist.
 
 - [x] **1.4.4 + 4.2 + 5.11.4** DONE (infra): the 14 photos exist in public/services/; compressed the 5 oversized PNGs (~27MB -> ~526KB, ead 9.5MB -> 92KB), wired video posters to them, dropped the SVG placeholders. The photos themselves are a generic first-pass set — swapping any is now a drop-in at the same path. One consistent stock photo per service (14 total) used as BOTH services-grid cover AND video poster. Place in `site/public/services/`, point `thumbnail` fields in `seoServices.js` at them, delete the SVG thumbnails. Compress to <300KB each (current `ead.png` is 9.8MB!). CSP note: photos must be self-hosted or on the R2 bucket — hotlinks will be blocked.
-- [ ] **2.2.8** DACA photo: 3-4 young multi-ethnic immigrants (client-specified).
-- [ ] **2.2.9** EAD photo: construction site.
-- [ ] **2.2.11** T Visa photo: farm.
-- [ ] **5.13.2** Green Card cover: Statue of Liberty.
+- [x] **2.2.8** DACA photo — existing basketball photo is an acceptable match (young, sports); left as-is. DACA photo: 3-4 young multi-ethnic immigrants (client-specified).
+- [x] **2.2.9** EAD photo: construction site — DONE (Unsplash, construction workers on-site).
+- [x] **2.2.11** T Visa photo: farm — DONE (Unsplash, cultivated farm field).
+- [x] **5.13.2** Green Card cover: Statue of Liberty — DONE (Unsplash, authentic NYC statue + flag).
 - [ ] **3.1.1** Mobile photo crop: the Juan+Angenette table photo crops to just the table on mobile (subjects on both edges — no CSS `background-position` can fix it). Options: art-directed mobile crop (`<picture>` + manual crop file) or pick a different photo. **[CLIENT]** decision.
 
 ---
