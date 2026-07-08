@@ -29,6 +29,44 @@ const es = {
     { type: 'paragraph', text: 'Contáctenos si desea iniciar o revisar su proceso de green card.' },
   ],
 
+  visasJovenes: [
+    { type: 'heading', text: '¿Qué es la Visa Especial para Jóvenes?' },
+    { type: 'paragraph', text: 'La Visa Especial para Jóvenes (SIJS) es una figura migratoria pensada para amparar a menores que han sufrido abandono, maltrato o negligencia por parte de uno o de ambos padres. Cuando un niño o adolescente no convive con sus padres por alguna de estas causas, la ley puede abrirle un camino hacia la residencia permanente. Con el tiempo, este estatus también le permite aspirar a la ciudadanía estadounidense.' },
+    { type: 'heading', text: 'Requisitos para calificar' },
+    { type: 'paragraph', text: 'Para acceder a este beneficio, el caso debe contar con una orden de una corte estatal que determine que el menor no puede reunirse con uno o ambos de sus padres a causa del abandono, el abuso o la negligencia. Esa misma decisión debe reflejar que regresar a su país de origen no responde al interés superior del niño. Existen, además, requisitos de edad y normas migratorias específicas que es necesario cumplir.' },
+    { type: 'heading', text: 'Retos y posibles complicaciones' },
+    { type: 'paragraph', text: 'Estos casos son especialmente delicados porque dependen de dos instancias distintas: por un lado, la corte estatal y, por otro, USCIS. Se trata de trámites sensibles al tiempo y de gran complejidad legal. Un error en la orden judicial, hallazgos poco claros o cualquier retraso pueden comprometer el resultado del caso.' },
+    { type: 'heading', text: '¿Cómo le ayuda nuestra firma?' },
+    { type: 'paragraph', text: 'En Campos Muños Law atendemos los casos de Visa Especial para Jóvenes con cuidado y responsabilidad, acompañando a la familia en cada etapa del proceso. Preparamos solicitudes sólidas y bien sustentadas, siempre desde un enfoque humano y ético orientado a proteger al menor.' },
+    { type: 'paragraph', text: 'Contáctenos si desea evaluar si un menor a su cargo podría calificar para la Visa Especial para Jóvenes.' },
+  ],
+
+  peticionesFamiliares: [
+    { type: 'heading', text: '¿Qué son las peticiones familiares?' },
+    { type: 'paragraph', text: 'La reunificación familiar constituye uno de los pilares del sistema migratorio estadounidense. A través de una petición familiar, los ciudadanos estadounidenses y los residentes permanentes pueden solicitar la residencia para ciertos parientes, con el fin de vivir junto a sus seres queridos y construir un hogar estable y seguro.' },
+    { type: 'heading', text: '¿Quién puede pedir a quién?' },
+    { type: 'paragraph', text: 'Los ciudadanos estadounidenses pueden presentar peticiones por sus cónyuges, hijos, hermanos y padres; en el caso de los hijos, la edad y el estado civil no representan un impedimento. Los residentes permanentes, por su parte, pueden pedir a sus cónyuges y a sus hijos, sin importar la edad, siempre que estos permanezcan solteros.' },
+    { type: 'heading', text: 'Peticiones basadas en el matrimonio' },
+    { type: 'paragraph', text: 'Cuando la petición se fundamenta en un matrimonio, hay que probar que la relación es auténtica y de buena fe. Por ello, USCIS examina con detenimiento el historial de la pareja y las pruebas que usted aporte.' },
+    { type: 'heading', text: 'Retos y posibles complicaciones' },
+    { type: 'paragraph', text: 'Un caso puede tornarse complejo cuando existen matrimonios anteriores, divorcios, hijos de relaciones previas, entradas sin inspección, domicilios distintos o antecedentes migratorios o penales. Las solicitudes mal preparadas en el pasado también pueden ocasionar retrasos o consecuencias negativas al momento de decidir su caso.' },
+    { type: 'heading', text: '¿Cómo le ayuda nuestra firma?' },
+    { type: 'paragraph', text: 'En Campos Muños Law ayudamos a cada familia a identificar el tipo de petición que corresponde a su situación y a preparar solicitudes claras y debidamente documentadas. Acompañamos todo el proceso con estrategia, cuidado y atención personalizada, guiados siempre por la honestidad y la experiencia.' },
+    { type: 'paragraph', text: 'Contáctenos si desea conocer qué tipo de petición familiar corresponde a su caso y dar el siguiente paso con la orientación de nuestro equipo.' },
+  ],
+
+  defensaDeportacion: [
+    { type: 'heading', text: '¿Qué es la defensa contra la deportación?' },
+    { type: 'paragraph', text: 'Recibir una cita en la corte de inmigración indica que usted se encuentra en un proceso de deportación. Aunque la situación puede provocar temor, tener una audiencia no significa necesariamente que su caso esté perdido. Esta defensa consiste en representar y proteger a quienes deben comparecer ante un juez de inmigración, buscando las formas de alivio que, según cada caso, le permitan permanecer legalmente en el país. En ocasiones, la mejor estrategia es facilitar un regreso ordenado al país de origen con la posibilidad de retornar por la vía legal.' },
+    { type: 'heading', text: 'Opciones generales de defensa' },
+    { type: 'paragraph', text: 'Existen distintos alivios que pueden aplicarse a su situación, entre ellos las solicitudes humanitarias, la cancelación de la deportación, los ajustes de estatus y, en ciertos casos, peticiones de discreción dirigidas al fiscal o a la corte. La opción más adecuada depende de factores como el tiempo de residencia en el país, los vínculos familiares y el historial migratorio y criminal, entre otros.' },
+    { type: 'heading', text: 'Retos y posibles complicaciones' },
+    { type: 'paragraph', text: 'Los procedimientos ante la corte de inmigración son sumamente técnicos y se rigen por plazos estrictos. Un error de procedimiento, la ausencia de una estrategia o el desconocimiento de las consecuencias legales pueden derivar en una orden de deportación. Por esa razón, una evaluación legal minuciosa resulta indispensable.' },
+    { type: 'heading', text: '¿Cómo le ayuda nuestra firma?' },
+    { type: 'paragraph', text: 'En Campos Muños Law representamos a cada cliente con preparación, análisis estratégico y verdadero compromiso. Nuestro objetivo es identificar todas las acciones disponibles, resguardar sus derechos y presentar una defensa sólida, siempre con claridad.' },
+    { type: 'paragraph', text: 'Contáctenos si tiene una audiencia en la corte de inmigración y desea evaluar sus opciones de defensa.' },
+  ],
+
   asilo: [
     { type: 'heading', text: '¿Qué es el Asilo?' },
     { type: 'paragraph', text: 'El asilo puede ser otorgado a personas que ya se encuentran en los Estados Unidos y que no pueden o no desean regresar a su país de origen debido a persecución o a un temor bien fundado de persecución por motivos de raza, religión, nacionalidad, pertenencia a un grupo social determinado o por opinión política.' },
@@ -52,10 +90,15 @@ const es = {
   ],
 
   ciudadania: [
-    { type: 'heading', text: '¿Qué es la naturalización en los Estados Unidos?' },
-    { type: 'paragraph', text: 'La "naturalización" es el nombre del proceso para convertirse en ciudadano estadounidense, si nació fuera de los Estados Unidos.' },
-    { type: 'video' },
-    { type: 'paragraph', text: 'Contácte a nuestros abogados si está solicitando la ciudadanía o naturalización estadounidense.' },
+    { type: 'heading', text: '¿Qué es la ciudadanía estadounidense?' },
+    { type: 'paragraph', text: 'La ciudadanía es el estatus migratorio más sólido que existe y, para muchas personas, representa mucho más que un trámite: significa tranquilidad, pertenencia plena y la seguridad de dejar atrás el miedo. Le permite votar, solicitar a ciertos familiares, viajar con mayor libertad y construir un futuro estable para usted y su familia. Para quienes ya son residentes permanentes, suele ser el cierre de un camino largo y muchas veces lleno de sacrificio.' },
+    { type: 'heading', text: 'Requisitos para solicitar la ciudadanía' },
+    { type: 'paragraph', text: 'Por lo general, la naturalización exige haber sido residente permanente durante un periodo determinado y haber mantenido presencia física y residencia continua en el país. También es necesario demostrar buen carácter moral y aprobar los exámenes de inglés y educación cívica. Aun así, la elegibilidad de cada persona depende de su historia migratoria y personal, por lo que conviene revisarla con cuidado antes de comenzar.' },
+    { type: 'heading', text: 'Retos y posibles complicaciones' },
+    { type: 'paragraph', text: 'Aunque parezca un trámite sencillo, muchas solicitudes enfrentan retrasos y obstáculos. Entradas previas al país, antecedentes penales por muy antiguos que sean, viajes prolongados fuera de los Estados Unidos, asuntos pendientes con el IRS o inconsistencias con casos anteriores pueden complicar el proceso. En algunas situaciones, presentar la solicitud en el momento equivocado puede incluso generar un riesgo.' },
+    { type: 'heading', text: '¿Cómo le ayuda nuestra firma?' },
+    { type: 'paragraph', text: 'En Campos Muños Law ayudamos a cada cliente a evaluar si realmente está listo para dar este paso, a identificar posibles obstáculos antes de presentar la solicitud y a preparar el caso con estrategia y cuidado. Nuestro objetivo es acompañarle durante este momento tan importante con claridad, honestidad y atención personalizada.' },
+    { type: 'paragraph', text: 'Contáctenos si desea evaluar su elegibilidad o iniciar su proceso de ciudadanía.' },
   ],
 
   daca: [
@@ -76,11 +119,15 @@ const es = {
   ],
 
   ead: [
-    { type: 'video' },
-    { type: 'heading', text: '¿Qué es un Documento de Autorización de Empleo?' },
-    { type: 'paragraph', text: 'El Formulario I-765, también conocido como Documento de Autorización de Empleo (EAD) o permiso de trabajo, le permite demostrar que está autorizado para trabajar legalmente dentro de los Estados Unidos. Con un EAD, usted puede trabajar en el país incluso si su visa no lo permite directamente.' },
-    { type: 'paragraph', text: 'El EAD está diseñado para ciertos visitantes no inmigrantes que necesitan trabajar en los Estados Unidos, como estudiantes, refugiados o solicitantes de asilo.' },
-    { type: 'paragraph', text: 'En Campos Muños, estamos listos para ayudarle durante todo el proceso, desde la recopilación de la evidencia necesaria hasta su entrevista ante la junta de inmigración.' },
+    { type: 'heading', text: '¿Cómo se obtiene un permiso de trabajo?' },
+    { type: 'paragraph', text: 'Un permiso de trabajo no es algo que se consiga con facilidad ni que llegue de manera automática. En la mayoría de los casos, las autoridades de inmigración lo otorgan únicamente a la persona que ya tiene un caso en trámite. Por eso es fundamental entender bien su situación antes de presentar cualquier solicitud.' },
+    { type: 'heading', text: 'Requisitos: un caso pendiente de buena fe' },
+    { type: 'paragraph', text: 'Por lo general, para que se le considere debe contar con un caso de buena fe pendiente ante inmigración y ser elegible para el permiso. Como la elegibilidad depende de cada situación particular, conviene revisarla con un abogado de inmigración antes de dar cualquier paso.' },
+    { type: 'heading', text: 'Cuidado con las ofertas engañosas' },
+    { type: 'paragraph', text: 'Tenga precaución con quienes ofrecen permisos de trabajo sin conocer su caso. Solicitar un beneficio que no le corresponde puede perjudicar seriamente su situación migratoria en lugar de ayudarle. No se deje engañar por promesas fáciles.' },
+    { type: 'heading', text: '¿Cómo le ayuda nuestra firma?' },
+    { type: 'paragraph', text: 'En Campos Muños Law revisamos si usted tiene un caso pendiente que lo haga elegible, le explicamos sus opciones reales y le ayudamos a evitar riesgos innecesarios. Nuestra firma lo acompaña con honestidad para que ninguna oferta engañosa ponga en peligro su proceso.' },
+    { type: 'paragraph', text: 'Contáctenos si desea revisar su elegibilidad para un permiso de trabajo.' },
   ],
 
   tps: [
@@ -142,9 +189,15 @@ const es = {
   ],
 
   tramiteConsular: [
-    { type: 'video' },
-    { type: 'paragraph', text: 'El procesamiento consular es un procedimiento mediante el cual el beneficiario de una petición de inmigración aprobada solicita una visa en uno de los consulados de los Estados Unidos en el extranjero. Para iniciar este proceso, deben existir números de visa disponibles para el país del posible inmigrante.' },
-    { type: 'paragraph', text: 'Si está interesado en solicitar una visa en una oficina consular fuera de los Estados Unidos, debe buscar la asistencia de un abogado de inmigración calificado que lo guíe durante todo el proceso.' },
+    { type: 'heading', text: '¿Qué es el trámite consular?' },
+    { type: 'paragraph', text: 'El trámite consular es la vía por la cual su proceso migratorio se resuelve desde su país de origen. En lugar de completar todo dentro de los Estados Unidos, usted acude a una embajada o consulado de los Estados Unidos en el extranjero para solicitar su residencia.' },
+    { type: 'heading', text: 'Requisitos y preparación' },
+    { type: 'paragraph', text: 'Estos procesos exigen una preparación cuidadosa ante las autoridades consulares. Es fundamental que toda su documentación esté completa y presentada de manera correcta antes de acudir a la embajada o el consulado.' },
+    { type: 'heading', text: 'Consideraciones al viajar al extranjero' },
+    { type: 'paragraph', text: 'Si usted se encuentra en los Estados Unidos, viajar al extranjero es un paso importante dentro de su camino migratorio. Cualquier descuido en la preparación puede dar lugar a errores, por lo que conviene atender cada detalle con anticipación.' },
+    { type: 'heading', text: '¿Cómo le ayuda nuestra firma?' },
+    { type: 'paragraph', text: 'En Campos Muños Law le acompañamos en cada etapa del trámite consular para ayudarle a evitar errores. Nuestra firma le orienta paso a paso hasta obtener su residencia en la embajada o el consulado.' },
+    { type: 'paragraph', text: 'Contáctenos o envíenos un mensaje si desea que nuestra firma le guíe en su trámite consular.' },
   ],
 
   // User-supplied content verbatim — covers what the live Wix /visas-de-prometido page shows.
@@ -179,7 +232,15 @@ const es = {
 
   // Visa U content — from VAWA.txt (Visa U section)
   visaU: [
-    { type: 'video' },
+    { type: 'heading', text: '¿Qué es la visa U?' },
+    { type: 'paragraph', text: 'La visa U es un beneficio migratorio dirigido a personas que fueron víctimas de delitos graves en los Estados Unidos y que colaboraron con las autoridades o están dispuestas a hacerlo. Esa colaboración puede incluir participar en la investigación, en el procesamiento del delito y en el juicio correspondiente. El objetivo del programa es proteger a las víctimas y, al mismo tiempo, fomentar la cooperación con las fuerzas del orden.' },
+    { type: 'heading', text: 'Requisitos generales' },
+    { type: 'paragraph', text: 'Para calificar, la persona debe haber sufrido un daño físico o psicológico importante a causa del delito. También necesita una certificación emitida por una autoridad, como la policía o la fiscalía, que confirme su colaboración. A esto se suman otros requisitos migratorios previstos en la ley que igualmente deben cumplirse.' },
+    { type: 'heading', text: 'Retos y posibles complicaciones' },
+    { type: 'paragraph', text: 'Los casos de visa U suelen ser prolongados y complejos. Debido a que cada año existe un número limitado de visas, los tiempos de espera pueden extenderse considerablemente. Por eso resulta esencial reunir la evidencia adecuada, obtener la certificación correcta y manejar con cuidado cualquier antecedente migratorio o penal que usted pueda tener.' },
+    { type: 'heading', text: '¿Cómo le ayuda nuestra firma?' },
+    { type: 'paragraph', text: 'En nuestra firma contamos con experiencia acompañando a las víctimas de delitos desde el inicio, para determinar si reúnen los requisitos. Le orientamos durante el proceso de certificación y preparamos solicitudes completas y bien documentadas. Nuestro compromiso es brindar apoyo legal con sensibilidad, claridad y dedicación en cada etapa.' },
+    { type: 'paragraph', text: 'Contáctenos si desea evaluar su caso de visa U y conocer las opciones disponibles para usted. En Campos Muños Law estamos listos para orientarle.' },
   ],
 
   // Visa T content — from VAWA.txt (Visa T section)
@@ -225,6 +286,44 @@ const en = {
     { type: 'paragraph', text: 'Contact us if you would like to begin or review your green card process.' },
   ],
 
+  visasJovenes: [
+    { type: 'heading', text: 'What Is the Special Immigrant Juvenile Visa?' },
+    { type: 'paragraph', text: 'Special Immigrant Juvenile Status (SIJS) is an immigration protection designed for minors who have experienced abandonment, mistreatment, or neglect at the hands of one or both parents. When a child no longer lives with a parent for one of these reasons, the law may open a path toward permanent residence. Over time, this status can also lead to eligibility for U.S. citizenship.' },
+    { type: 'heading', text: 'Requirements to Qualify' },
+    { type: 'paragraph', text: 'To pursue this benefit, the case must include an order from a state court finding that the child cannot be reunited with one or both parents because of abandonment, abuse, or neglect. That same ruling must also conclude that returning to the child’s home country is not in his or her best interest. In addition, specific age requirements and immigration rules must be satisfied.' },
+    { type: 'heading', text: 'Challenges and Possible Complications' },
+    { type: 'paragraph', text: 'These matters are especially sensitive because they depend on two separate authorities: the state court on one side and USCIS on the other. They are time-sensitive cases that carry significant legal complexity. A flaw in the court order, unclear findings, or any delay can jeopardize the outcome.' },
+    { type: 'heading', text: 'How Our Firm Helps' },
+    { type: 'paragraph', text: 'At Campos Muños Law, we handle Special Immigrant Juvenile cases with care and responsibility, standing beside the family at every stage of the process. We prepare strong, well-supported petitions, always guided by a humane and ethical approach centered on protecting the child.' },
+    { type: 'paragraph', text: 'Contact us if you would like to find out whether a minor in your care may qualify for Special Immigrant Juvenile Status.' },
+  ],
+
+  peticionesFamiliares: [
+    { type: 'heading', text: 'What Are Family Petitions?' },
+    { type: 'paragraph', text: 'Family reunification is one of the cornerstones of the U.S. immigration system. Through a family petition, U.S. citizens and permanent residents can request residency for certain relatives, so they can live alongside their loved ones and build a stable, secure home.' },
+    { type: 'heading', text: 'Who Can Petition for Whom?' },
+    { type: 'paragraph', text: 'U.S. citizens may file petitions for their spouses, children, siblings, and parents; for children, neither age nor marital status stands in the way. Permanent residents, in turn, may petition for their spouses and their children of any age, provided those children remain unmarried.' },
+    { type: 'heading', text: 'Marriage-Based Petitions' },
+    { type: 'paragraph', text: 'When a petition rests on a marriage, the couple must show that the relationship is genuine and made in good faith. USCIS will look closely at the couple’s history and at the evidence you provide.' },
+    { type: 'heading', text: 'Challenges and Possible Complications' },
+    { type: 'paragraph', text: 'A case can grow complicated when there are prior marriages, divorces, children from earlier relationships, entries without inspection, separate addresses, or immigration or criminal records. Applications that were poorly prepared in the past can likewise lead to delays or unfavorable outcomes when your case is decided.' },
+    { type: 'heading', text: 'How Our Firm Helps' },
+    { type: 'paragraph', text: 'At Campos Muños Law we help each family identify the type of petition that fits their circumstances and prepare clear, thoroughly documented applications. We guide the entire process with strategy, care, and personalized attention, always grounded in honesty and experience.' },
+    { type: 'paragraph', text: 'Contact us if you would like to find out which family petition applies to your case and take the next step with our team’s guidance.' },
+  ],
+
+  defensaDeportacion: [
+    { type: 'heading', text: 'What Is Deportation Defense?' },
+    { type: 'paragraph', text: 'Receiving a notice to appear in immigration court means you are in removal proceedings. Although the situation can be frightening, having a hearing does not necessarily mean your case is lost. This defense involves representing and protecting people who must appear before an immigration judge, pursuing the forms of relief that, depending on the case, may allow you to remain in the country lawfully. At times, the best strategy is to arrange an orderly return to your home country, with the option of coming back through legal channels.' },
+    { type: 'heading', text: 'General Defense Options' },
+    { type: 'paragraph', text: 'Several forms of relief may apply to your circumstances, including humanitarian applications, cancellation of removal, adjustments of status and, in certain cases, requests for discretion directed to the prosecutor or the court. The most suitable option depends on factors such as your length of residence in the country, your family ties, and your immigration and criminal history, among others.' },
+    { type: 'heading', text: 'Challenges and Possible Complications' },
+    { type: 'paragraph', text: 'Proceedings before the immigration court are highly technical and governed by strict deadlines. A procedural mistake, the lack of a clear strategy, or a misunderstanding of the legal consequences can lead to an order of removal. For that reason, a careful legal evaluation is essential.' },
+    { type: 'heading', text: 'How Our Firm Helps' },
+    { type: 'paragraph', text: 'At Campos Muños Law, we represent each client with preparation, strategic analysis, and genuine commitment. Our goal is to identify every available course of action, safeguard your rights, and present a strong defense, always with clarity.' },
+    { type: 'paragraph', text: 'Contact us if you have a hearing in immigration court and would like to review your defense options.' },
+  ],
+
   asilo: [
     { type: 'heading', text: 'What Is Asylum?' },
     { type: 'paragraph', text: 'Asylum may be granted to people already in the United States who are unable or unwilling to return to their home country because of persecution, or a well-founded fear of persecution, on account of race, religion, nationality, membership in a particular social group, or political opinion.' },
@@ -248,10 +347,15 @@ const en = {
   ],
 
   ciudadania: [
-    { type: 'heading', text: 'What Is Naturalization in the United States?' },
-    { type: 'paragraph', text: '"Naturalization" is the name for the process of becoming a U.S. citizen if you were born outside the United States.' },
-    { type: 'video' },
-    { type: 'paragraph', text: 'Contact our attorneys if you are applying for U.S. citizenship or naturalization.' },
+    { type: 'heading', text: 'What Is U.S. Citizenship?' },
+    { type: 'paragraph', text: 'Citizenship is the strongest immigration status there is, and for many people it means far more than paperwork: it brings peace of mind, a true sense of belonging, and the security of leaving fear behind. It lets you vote, petition for certain relatives, travel with greater freedom, and build a stable future for yourself and your family. For those who are already permanent residents, it often marks the close of a long road, one frequently filled with sacrifice.' },
+    { type: 'heading', text: 'Requirements to Apply for Citizenship' },
+    { type: 'paragraph', text: 'Naturalization generally requires having been a permanent resident for a set period, along with continuous residence and physical presence in the country. You must also show good moral character and pass the English and civics exams. Even so, each person’s eligibility depends on their immigration and personal history, so it is worth reviewing carefully before you begin.' },
+    { type: 'heading', text: 'Challenges and Possible Complications' },
+    { type: 'paragraph', text: 'Although it may look like a simple procedure, many applications run into delays and obstacles. Prior entries to the country, criminal records no matter how old, long trips outside the United States, unresolved matters with the IRS, or inconsistencies with earlier cases can all complicate the process. In some situations, filing at the wrong time can even create risk.' },
+    { type: 'heading', text: 'How Our Firm Helps' },
+    { type: 'paragraph', text: 'At Campos Muños Law, we help each client assess whether they are truly ready to take this step, identify possible obstacles before filing, and prepare the case with strategy and care. Our goal is to stand beside you through this important moment with clarity, honesty, and personalized attention.' },
+    { type: 'paragraph', text: 'Contact us if you would like to review your eligibility or begin your citizenship process.' },
   ],
 
   daca: [
@@ -272,11 +376,15 @@ const en = {
   ],
 
   ead: [
-    { type: 'video' },
-    { type: 'heading', text: 'What Is an Employment Authorization Document?' },
-    { type: 'paragraph', text: 'Form I-765, also known as the Employment Authorization Document (EAD) or work permit, lets you prove that you are authorized to work legally inside the United States. With an EAD, you can work in the country even if your visa doesn’t directly permit it.' },
-    { type: 'paragraph', text: 'The EAD is designed for certain nonimmigrant visitors who need to work in the U.S., such as students, refugees, or asylum applicants.' },
-    { type: 'paragraph', text: 'At Campos Muños, we are ready to help you through the entire process — from gathering the necessary evidence to your interview before the immigration board.' },
+    { type: 'heading', text: 'How Do You Get a Work Permit?' },
+    { type: 'paragraph', text: 'A work permit is not something that comes easily or arrives on its own. In most cases, immigration authorities grant one only to a person who already has a case in progress. That is why it is essential to understand your situation clearly before filing any application.' },
+    { type: 'heading', text: 'Requirements: A Pending, Good-Faith Case' },
+    { type: 'paragraph', text: 'Generally, to be considered you must have a good-faith case pending with immigration and be eligible for the permit. Because eligibility depends on your particular situation, it is best to review it with an immigration attorney before taking any step.' },
+    { type: 'heading', text: 'Beware of Misleading Offers' },
+    { type: 'paragraph', text: 'Be cautious of anyone who offers work permits without knowing your case. Applying for a benefit you are not entitled to can seriously harm your immigration situation rather than help it. Don’t be fooled by easy promises.' },
+    { type: 'heading', text: 'How Our Firm Helps' },
+    { type: 'paragraph', text: 'At Campos Muños Law, we review whether you have a pending case that makes you eligible, explain your real options, and help you avoid unnecessary risks. Our firm stands beside you with honesty so that no misleading offer puts your process at risk.' },
+    { type: 'paragraph', text: 'Contact us if you would like to review your eligibility for a work permit.' },
   ],
 
   tps: [
@@ -338,9 +446,15 @@ const en = {
   ],
 
   tramiteConsular: [
-    { type: 'video' },
-    { type: 'paragraph', text: 'Consular processing is a procedure in which the beneficiary of an approved immigration petition applies for a visa at one of the U.S. consulates abroad. To start this process, visa numbers must be available for the prospective immigrant’s country.' },
-    { type: 'paragraph', text: 'If you are interested in applying for a visa at a consular office outside the United States, you should seek the help of a qualified immigration attorney to guide you through the entire process.' },
+    { type: 'heading', text: 'What Is Consular Processing?' },
+    { type: 'paragraph', text: 'Consular processing is the path through which your immigration case is resolved from your country of origin. Instead of completing everything within the United States, you attend a U.S. embassy or consulate abroad to request your residency.' },
+    { type: 'heading', text: 'Requirements and Preparation' },
+    { type: 'paragraph', text: 'These processes require careful preparation before the consular authorities. It is essential that all of your documentation be complete and properly submitted before you go to the embassy or consulate.' },
+    { type: 'heading', text: 'Considerations When Traveling Abroad' },
+    { type: 'paragraph', text: 'If you are currently in the United States, traveling abroad is an important step in your immigration journey. Any oversight in your preparation can lead to mistakes, so every detail deserves careful attention beforehand.' },
+    { type: 'heading', text: 'How Our Firm Helps' },
+    { type: 'paragraph', text: 'At Campos Muños Law, we accompany you at every stage of consular processing to help you avoid errors. Our firm guides you step by step until you obtain your residency at the embassy or consulate.' },
+    { type: 'paragraph', text: 'Contact us or send us a message if you would like our firm to guide you through your consular process.' },
   ],
 
   visasPrometido: [
@@ -373,7 +487,15 @@ const en = {
   ],
 
   visaU: [
-    { type: 'video' },
+    { type: 'heading', text: 'What Is the U Visa?' },
+    { type: 'paragraph', text: 'The U visa is an immigration benefit created for people who were victims of serious crimes in the United States and who assisted law enforcement or are willing to do so. That cooperation may involve taking part in the investigation, in the prosecution of the offense, and in the related court proceedings. The program is designed to protect victims while encouraging collaboration with law enforcement.' },
+    { type: 'heading', text: 'General Requirements' },
+    { type: 'paragraph', text: 'To qualify, a person must have suffered significant physical or psychological harm because of the crime. They must also obtain a certification from an authority, such as the police or the prosecutor’s office, confirming their cooperation. In addition, other immigration requirements set out in the law must be met.' },
+    { type: 'heading', text: 'Challenges and Possible Complications' },
+    { type: 'paragraph', text: 'U visa cases tend to be lengthy and complex. Because only a limited number of visas are available each year, waiting times can become quite long. For that reason, it is essential to gather the right evidence, secure the proper certification, and carefully address any immigration or criminal history you may have.' },
+    { type: 'heading', text: 'How Our Firm Helps' },
+    { type: 'paragraph', text: 'Our firm has experience guiding crime victims from the very beginning to determine whether they meet the requirements. We assist with the certification process and prepare complete, well-documented applications. Our commitment is to provide legal support with sensitivity, clarity, and dedication at every stage.' },
+    { type: 'paragraph', text: 'Contact us if you would like to review your U visa case and learn about the options available to you. At Campos Muños Law, we are ready to guide you.' },
   ],
 
   visaT: [
