@@ -100,7 +100,7 @@
                 :class="!form.consultationType ? 'text-gray-500' : 'text-gray-800'">
                 <option value="" disabled>{{ $t('consultationForm.selectConsultation') }}</option>
                 <option v-for="key in CONSULTATION_KEYS" :key="key" :value="key">
-                  {{ key === 'other' ? $t('consultationForm.notSure') : $t(`services.${key}`) }}
+                  {{ consultationLabel(key, t, te) }}
                 </option>
               </select>
               <select v-model="form.location" required
@@ -208,10 +208,10 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { rawFetch } from '../composables/useApi.js'
-import { CONSULTATION_KEYS } from '../data/consultationTypes.js'
+import { CONSULTATION_KEYS, consultationLabel } from '../data/consultationTypes.js'
 import { COUNTRIES } from '../data/countries.js'
 
-const { t, locale } = useI18n()
+const { t, te, locale } = useI18n()
 
 import { CHAT_GREETING_DELAY_MS, CHAT_GREETING_DISMISS_TTL_MS } from '../data/timing.js'
 

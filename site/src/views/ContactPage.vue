@@ -79,7 +79,7 @@
                   <select id="contact-consultationType" v-model="form.consultationType" class="form-input">
                     <option value="">{{ $t('consultationForm.selectConsultation') }}</option>
                     <option v-for="key in CONSULTATION_KEYS" :key="key" :value="key">
-                      {{ key === 'other' ? $t('consultationForm.notSure') : $t(`services.${key}`) }}
+                      {{ consultationLabel(key, t, te) }}
                     </option>
                   </select>
                 </div>
@@ -210,11 +210,11 @@ import { ref, computed, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useScrollReveal } from '../composables/useScrollReveal.js'
 import { rawFetch } from '../composables/useApi.js'
-import { CONSULTATION_KEYS } from '../data/consultationTypes.js'
+import { CONSULTATION_KEYS, consultationLabel } from '../data/consultationTypes.js'
 import { COUNTRIES } from '../data/countries.js'
 
 useScrollReveal()
-const { t, locale } = useI18n()
+const { t, te, locale } = useI18n()
 
 const form = ref({ firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '' })
 const submitted = ref(false)
