@@ -181,6 +181,22 @@ export const baseServices = {
 // FAQ data sourced STRICTLY from .txt files in public/
 // Services without .txt files have no FAQs.
 export const serviceFaqs = {
+  ciudadania: {
+    es: [
+      { q: '¿Cuánto tiempo debo esperar para solicitar la ciudadanía después de hacerme residente?', a: 'Entre tres y cinco años, dependiendo de cómo obtuvo su green card.' },
+      { q: '¿Qué agencia determina si puedo hacerme ciudadano?', a: 'USCIS, el Servicio de Ciudadanía e Inmigración de los Estados Unidos.' },
+      { q: '¿Tengo que tomar un examen para hacerme ciudadano?', a: 'Sí. Debe demostrar que habla inglés y aprobar el examen de educación cívica. Existen algunas excepciones según su edad y el tiempo que haya tenido su green card.' },
+      { q: 'Después de hacerme ciudadano, ¿tengo que conservar mi green card?', a: 'No. Usted entrega su green card en el momento en que se convierte en ciudadano.' },
+      { q: '¿Puede un abogado acompañarme a mi examen de ciudadanía?', a: 'Sí. Un abogado puede ayudarle a determinar si califica, completar los cuestionarios, organizar la evidencia y representarlo en el lugar.' },
+    ],
+    en: [
+      { q: 'How long after becoming a resident can I apply for citizenship?', a: 'Three to five years, depending on how you obtained your green card.' },
+      { q: 'Which agency determines whether I can become a citizen?', a: 'USCIS, U.S. Citizenship and Immigration Services.' },
+      { q: 'Do I have to take an exam to become a citizen?', a: 'Yes. You must show that you speak English and pass the civics exam. There are some exceptions depending on your age and how long you have held your green card.' },
+      { q: 'After I become a citizen, do I keep my green card?', a: 'No. You surrender your green card at the moment you become a citizen.' },
+      { q: 'Can an attorney come with me to my citizenship exam?', a: 'Yes. An attorney can help determine whether you qualify, complete the questionnaires, organize your evidence, and represent you on site.' },
+    ],
+  },
   asilo: {
     es: [
       { q: '¿Puede un asilado regresar a su país de origen?', a: 'No se recomienda que los solicitantes de asilo o los asilados regresen a su país de origen. Sin aprobación previa, una solicitud de asilo abierta se considerará abandonada por USCIS.' },
