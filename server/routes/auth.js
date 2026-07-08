@@ -9,6 +9,12 @@ import requireAuth from '../middleware/auth.js'
 
 const router = Router()
 
+// A valid bcrypt hash compared against only when the submitted email is unknown,
+// so login response time is the same whether or not an account exists. Without
+// this, an early return on "no such email" skips bcrypt.compare and leaks
+// account existence via timing. Computed once at boot.
+const DUMMY_HASH = bcrypt.hashSync('cm-login-timing-guard', 12)
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
@@ -47,13 +53,11 @@ router.post(
         [email]
       )
 
-      if (result.rows.length === 0) {
-        return res.status(401).json({ error: 'Invalid email or password' })
-      }
-
+      // Always run a bcrypt comparison — against DUMMY_HASH when the email is
+      // unknown — so response timing doesn't reveal whether the account exists.
       const admin = result.rows[0]
-      const valid = await bcrypt.compare(password, admin.password_hash)
-      if (!valid) {
+      const valid = await bcrypt.compare(password, admin ? admin.password_hash : DUMMY_HASH)
+      if (!admin || !valid) {
         return res.status(401).json({ error: 'Invalid email or password' })
       }
 

@@ -301,7 +301,7 @@ router.patch(
   '/:id/archive',
   requireAuth,
   param('id').isInt().withMessage('Invalid submission ID'),
-  body('archived').optional().isBoolean(),
+  body('archived').optional().isBoolean({ strict: true }),
   validate,
   async (req, res) => {
     try {

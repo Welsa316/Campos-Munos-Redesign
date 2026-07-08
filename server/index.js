@@ -175,7 +175,11 @@ if (fs.existsSync(distDir)) {
 
 app.use((err, req, res, _next) => {
   req.log?.error({ err }, 'Unhandled error in request')
-  res.status(500).json({ error: 'Internal server error', requestId: req.id })
+  // Honor errors that carry a status (e.g. express.json() rejecting malformed
+  // JSON → 400, or an oversized body → 413) instead of masking them all as 500.
+  const status = err.status || err.statusCode || 500
+  const message = status === 500 ? 'Internal server error' : (err.message || 'Request error')
+  res.status(status).json({ error: message, requestId: req.id })
 })
 
 const server = app.listen(PORT, () => {
