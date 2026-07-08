@@ -8,7 +8,7 @@
           class="absolute inset-0 transition-opacity duration-[3500ms] ease-in-out"
           :class="currentSlide === i ? 'opacity-100' : 'opacity-0'">
           <div class="absolute inset-0 bg-cover bg-center kenburns"
-            :style="{ backgroundImage: `url('${slide.img}')`, animationDelay: `${i * -4}s` }"></div>
+            :style="{ backgroundImage: `url('${slide.img}')`, animationDelay: `${i * -4}s`, animationPlayState: currentSlide === i ? 'running' : 'paused' }"></div>
         </div>
         <!-- Layered overlays for depth -->
         <div class="absolute inset-0 bg-gradient-to-b from-brand-darker/60 via-black/40 to-brand-darker"></div>

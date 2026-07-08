@@ -5,8 +5,8 @@
     </a>
     <template v-if="!isAdminRoute">
       <!-- Scroll progress bar — kept BELOW header z-index so modals can fully cover it -->
-      <div class="fixed top-0 left-0 h-[2px] bg-brand-navy z-[5] transition-all duration-75"
-        :style="{ width: scrollProgress + '%' }"
+      <div class="fixed top-0 left-0 w-full h-[2px] bg-brand-navy z-[5] origin-left transition-transform duration-75"
+        :style="{ transform: `scaleX(${scrollProgress / 100})` }"
         aria-hidden="true"></div>
       <SiteHeader />
     </template>
@@ -58,6 +58,15 @@ function updateScroll() {
   scrollProgress.value = Math.min(100, Math.max(0, progress))
 }
 
+// Coalesce scroll events through rAF so the forced-reflow reads (scrollHeight /
+// clientHeight) happen at most once per frame instead of on every scroll event.
+let ticking = false
+function onScroll() {
+  if (ticking) return
+  ticking = true
+  requestAnimationFrame(() => { updateScroll(); ticking = false })
+}
+
 // Keep <html lang> in sync with the active locale so screen readers + Google
 // announce/index the right language whenever the user toggles ES <-> EN.
 watch(locale, (v) => {
@@ -78,6 +87,6 @@ watch(isAdminRoute, (isAdmin) => {
   }
 }, { immediate: true })
 
-onMounted(() => window.addEventListener('scroll', updateScroll, { passive: true }))
-onUnmounted(() => window.removeEventListener('scroll', updateScroll))
+onMounted(() => window.addEventListener('scroll', onScroll, { passive: true }))
+onUnmounted(() => window.removeEventListener('scroll', onScroll))
 </script>
