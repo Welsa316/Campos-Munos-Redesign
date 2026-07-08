@@ -89,7 +89,7 @@
             {{ $t('home.reviewsTitle') }}
           </h2>
         </div>
-        <div class="reveal elfsight-reviews-wrapper rounded-2xl overflow-hidden">
+        <div class="reveal elfsight-reviews-wrapper rounded-2xl overflow-hidden min-h-[180px]">
           <div class="elfsight-app-02c0cb8e-d132-4834-ae18-93002f5a819a" data-elfsight-app-lazy></div>
         </div>
       </div>
@@ -173,7 +173,7 @@
             </a>
           </h2>
         </div>
-        <div class="reveal">
+        <div class="reveal min-h-[180px]">
           <div class="elfsight-app-0e227880-d4a2-4817-98ac-2a5ed69f20a7" data-elfsight-app-lazy></div>
         </div>
       </div>
@@ -187,6 +187,7 @@
           <div class="flex flex-wrap items-center justify-center gap-12 md:gap-20">
             <img v-for="(badge, i) in badges" :key="i"
               :src="badge.src" :alt="badge.alt"
+              @error="$event.target.style.display = 'none'"
               class="h-24 md:h-32 w-auto object-contain opacity-70 hover:opacity-100 transition-opacity duration-300" />
           </div>
         </div>

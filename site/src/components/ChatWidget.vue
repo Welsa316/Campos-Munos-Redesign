@@ -177,6 +177,12 @@
             </div>
           </div>
 
+          <!-- Follow-up send error (message is also restored to the input for retry) -->
+          <p v-if="formError" role="alert"
+            class="px-4 pt-2 -mb-1 text-xs font-ui text-red-600 flex-shrink-0">
+            {{ formError }}
+          </p>
+
           <!-- Composer -->
           <form @submit.prevent="sendFollowUp" class="flex items-center gap-2 px-3 py-3 border-t border-gray-100 bg-white flex-shrink-0">
             <input v-model="newMessage" type="text" maxlength="5000"
@@ -399,6 +405,7 @@ async function sendFollowUp() {
   sending.value = true
   pendingText.value = body
   newMessage.value = ''
+  formError.value = ''
 
   try {
     const res = await rawFetch(`/api/submissions/${session.value.id}/chat-message`, {

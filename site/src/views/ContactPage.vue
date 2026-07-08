@@ -206,7 +206,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useScrollReveal } from '../composables/useScrollReveal.js'
 import { rawFetch } from '../composables/useApi.js'
@@ -221,6 +221,12 @@ const submitted = ref(false)
 const loading = ref(false)
 const error = ref(false)
 const errorText = ref('')
+
+// Auto-dismiss timer for the success/error banners; cleared on unmount so the
+// callback can't fire on a destroyed component if the user navigates away.
+let resetTimer = null
+const scheduleReset = (fn) => { clearTimeout(resetTimer); resetTimer = setTimeout(fn, 5000) }
+onUnmounted(() => clearTimeout(resetTimer))
 
 const socials = [
   { icon: 'fa-brands fa-whatsapp', href: 'https://wa.me/15049106508', label: 'WhatsApp', color: '#25D366' },
@@ -257,11 +263,11 @@ async function submitForm() {
 
     submitted.value = true
     form.value = { firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '' }
-    setTimeout(() => { submitted.value = false }, 5000)
+    scheduleReset(() => { submitted.value = false })
   } catch {
     if (!errorText.value) errorText.value = t('contact.errorMessage')
     error.value = true
-    setTimeout(() => { error.value = false; errorText.value = '' }, 5000)
+    scheduleReset(() => { error.value = false; errorText.value = '' })
   } finally {
     loading.value = false
   }
