@@ -106,3 +106,57 @@ variant instead of the full 1800-2000w hero. Easiest path: a Vite plugin
 like `vite-imagetools` that generates variants at build time.
 
 Scope: ~2 hours.
+
+## Megareview (July) — flagged refactors / trade-offs (NOT auto-fixed)
+
+The July megareview verified these as real but they were **not** applied in the
+safe-fix pass because each is a refactor or a deliberate trade-off that needs a
+decision or carries regression risk. The safe findings were fixed in commits
+`7e22796` (backend), `c80e99e` (resilience), `cf2ac2e` (a11y), `ebd5c07`
+(motion-perf), `0d6545f` (dedup).
+
+- **FontAwesome `dom.watch()` MutationObserver** (`site/src/icons.js:96`) — a
+  document-wide observer runs for the whole SPA lifetime to swap `<i>`→`<svg>`.
+  Proper fix: render via `<font-awesome-icon>` (compile-time SVG). Touches ~76
+  `<i>` usages and `dom.watch()` is currently relied on for dynamically-rendered
+  icons, so it's a real refactor (~2-3h + full icon regression check).
+- **CSP `unsafe-inline`** (`server/index.js:53,60`) — needed today for the inline
+  JSON-LD + gtag/dataLayer scripts. Hardening = per-response nonces (helmet
+  nonce fn) or hashed/external scripts; risk of breaking analytics/JSON-LD on a
+  static SPA index. ~2h + verify.
+- **Build config (nixpacks) untangling** — root `nixpacks.toml` install phase
+  calls `npm run install:all`, which does NOT exist in root `package.json`
+  (only `postinstall`/`build`/`start`, per Railpack). BUT `site/nixpacks.toml`
+  runs `git lfs pull` for the ~474MB of LFS videos. So it's NOT simply dead —
+  which builder Railway actually uses (Railpack vs Nixpacks) must be confirmed
+  from the Railway dashboard before deleting/editing either file. Do not touch
+  blind; verify against a real deploy.
+- **`pool.js` `rejectUnauthorized:false`** (`server/db/pool.js:10`) — standard
+  Railway-Postgres trade-off (self-signed internal cert). Flipping to `true`
+  needs the provider CA / internal-network URL or it breaks the DB connection.
+- **Admin submissions pagination** (`server/routes/submissions.js:140,149`) —
+  list silently caps at 100 (max 200) and returns a bare array with no total /
+  has_more. Low urgency (won't hit the cap at launch); needs a small pagination
+  UI in `AdminDashboard.vue` + a `count(*) OVER()` or header. ~1-2h.
+- **CSV export cursor-in-transaction** (`server/routes/submissions.js:340`) —
+  holds one pooled connection idle-in-transaction for the whole download. The
+  transaction is required for the DB cursor; admin-only + rare, so low impact.
+- **`socials` array duplication** (`SiteHeader.vue:242`, `SiteFooter.vue:93`,
+  `ContactPage.vue:225`) — hrefs/labels are shareable, but the brand colors
+  DIFFER between header (true brand colors) and footer (softer variants), which
+  may be intentional. Extract href/icon/label to `data/socials.js`; keep color
+  a per-surface override. Needs a design call so unifying doesn't regress a
+  surface's look.
+- **`src/data/source/*.txt`** (7 files) — reference transcripts checked into the
+  source tree but never imported. Move to a top-level `content-source/` (or
+  delete) so `src/` is code-only. Cosmetic; safe `git mv`.
+- **Mobile drawer accordion `max-height` animation** (`SiteHeader.vue`) —
+  animates a layout property. A grid-rows `0fr→1fr` reveal is nicer, but the
+  current `max-h-[56rem]` was set deliberately to fix a services-list clipping
+  bug; changing it risks re-introducing that. Low priority.
+
+Dropped as false positives during verification: `frontend/` "dead dir" (empty +
+untracked), committed secrets (none; gitignored), missing i18n keys (parity is
+160/160), ContactPage `v-html` XSS (static content), unprotected admin routes
+(`requireAuth` present), `seed.js` default admin (already guarded), the
+`icons.js` console.log (DEV-gated).
