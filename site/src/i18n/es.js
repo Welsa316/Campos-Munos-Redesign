@@ -157,6 +157,7 @@ export default {
     cta: 'Llámenos',
     textUs: 'Envíenos un Texto',
     callLabel: 'Llamar a (504) 910-6508',
+    whatsappLabel: 'Escríbanos por WhatsApp',
   },
   payment: {
     subtitle: 'Realice su pago de forma segura',
