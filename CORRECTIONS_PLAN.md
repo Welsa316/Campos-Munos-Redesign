@@ -114,7 +114,10 @@ Full re-audit of the photo layer: reference integrity clean (all 14 resolve in g
 
 ## Phase 5 — Content production & integrations (heaviest, multi-day)
 
-- [ ] **1.4.3** Transcript-based video descriptions for ~11 service videos: transcribe each video (Whisper on the R2 MP4s), paraphrase Juan's words into body copy (NOT captions), translate to both locales, insert as content blocks below each video. This backfills the pages gutted in Phase 1 (citizenship, DACA, EAD, U Visa, VAWA, consular, deportation defense per 5.8.1, U Visa per 5.6.4). Largest single work item in the doc.
+- [x] **1.4.3** Transcript-based video descriptions — DONE (July). Transcribed all 11 service videos locally (mlx-whisper large-v3-turbo, Spanish), paraphrased Juan's words into body copy (NOT captions), both locales, inserted as content blocks in `serviceContent.js`. Generated/verified via a 2-stage workflow (draft → adversarial fidelity/parity/artifact check).
+  - Written: **green-card** (pilot), **family petitions**, **deportation defense**, **SIJS/visas jóvenes** (new pages); **citizenship, U visa, consular processing, EAD** (expanded from stubs). All ES+EN with matching block structure; build passes; rendered-checked both locales.
+  - Left as-is: **daca** (existing 314-word page is fuller than the 59-word video), **visaT** (existing page already has full eligibility detail), **vawa** (see flag below).
+  - ⚠️ **[CLIENT] VAWA enhancement** — the VAWA video stresses two points the current page omits: that abuse doesn't have to be physical (verbal/emotional/financial), and that the process is **100% confidential**. The current page also trails into generic boilerplate. Recommend replacing that page's copy with transcript-based content like the others — held pending client OK since the existing copy may have been approved.
 - [x] **2.3.2** Real Google reviews module (Elfsight Google Reviews widget wired + rendering real reviews on home + consultation): auto-scrolling carousel of actual reviews. Recommended: Elfsight Google Reviews widget (account already used for Instagram) — dashboard config + CSP allowlist + placement on home + consultation pages. Alternative: Google Places API (needs API key, quota, custom carousel). **[CLIENT]** Elfsight account/plan.
 
 ---
