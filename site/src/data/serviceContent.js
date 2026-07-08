@@ -17,6 +17,18 @@
  */
 
 const es = {
+  greenCard: [
+    { type: 'heading', text: '¿Qué es la Green Card (Residencia Permanente)?' },
+    { type: 'paragraph', text: 'Obtener la green card es uno de los pasos más importantes en la vida de un inmigrante: significa estabilidad, nuevas oportunidades y la posibilidad de construir un futuro en los Estados Unidos. La residencia permanente le permite vivir y trabajar en el país de manera indefinida y abre el camino hacia la ciudadanía. Después de la ciudadanía, es la mayor protección migratoria que existe.' },
+    { type: 'heading', text: 'Caminos para obtener la residencia' },
+    { type: 'paragraph', text: 'Existen varios caminos hacia la residencia permanente. Los más comunes son las peticiones familiares, las peticiones basadas en el empleo y ciertos procesos humanitarios. Cada caso es distinto: la elegibilidad depende de factores como la forma en que ingresó al país, su historial migratorio, sus antecedentes personales y su relación con la persona que presenta la petición, entre otros.' },
+    { type: 'heading', text: 'Retos y posibles complicaciones' },
+    { type: 'paragraph', text: 'El proceso puede volverse complejo cuando existen entradas sin inspección, salidas prolongadas del país, antecedentes penales o casos de inmigración que se manejaron mal en el pasado. Incluso errores pequeños o documentos incompletos pueden causar retrasos importantes o negaciones.' },
+    { type: 'heading', text: '¿Cómo le ayuda nuestra firma?' },
+    { type: 'paragraph', text: 'En Campos Muños Law ayudamos a cada cliente a entender qué opciones reales tiene, a identificar posibles riesgos desde el inicio y a preparar su solicitud de residencia con estrategia y atención al detalle. Acompañamos a cada persona y a cada familia durante todo el proceso con claridad, honestidad y un trato humano y personalizado.' },
+    { type: 'paragraph', text: 'Contáctenos si desea iniciar o revisar su proceso de green card.' },
+  ],
+
   asilo: [
     { type: 'heading', text: '¿Qué es el Asilo?' },
     { type: 'paragraph', text: 'El asilo puede ser otorgado a personas que ya se encuentran en los Estados Unidos y que no pueden o no desean regresar a su país de origen debido a persecución o a un temor bien fundado de persecución por motivos de raza, religión, nacionalidad, pertenencia a un grupo social determinado o por opinión política.' },
@@ -201,6 +213,18 @@ const es = {
 }
 
 const en = {
+  greenCard: [
+    { type: 'heading', text: 'What Is a Green Card (Permanent Residence)?' },
+    { type: 'paragraph', text: 'Getting a green card is one of the most important steps in an immigrant’s life: it means stability, new opportunities, and the chance to build a future in the United States. Permanent residence lets you live and work in the country indefinitely and opens the path to citizenship. After citizenship, it is the strongest immigration protection available.' },
+    { type: 'heading', text: 'Paths to Permanent Residence' },
+    { type: 'paragraph', text: 'There are several paths to permanent residence. The most common are family petitions, employment-based petitions, and certain humanitarian processes. Every case is different: eligibility depends on factors such as how you entered the country, your immigration history, your personal background, and your relationship to the person filing the petition, among others.' },
+    { type: 'heading', text: 'Challenges and Possible Complications' },
+    { type: 'paragraph', text: 'The process can become complex when there are entries without inspection, long absences from the country, criminal records, or immigration cases that were mishandled in the past. Even small mistakes or incomplete documents can cause significant delays or denials.' },
+    { type: 'heading', text: 'How Our Firm Helps' },
+    { type: 'paragraph', text: 'At Campos Muños Law, we help each client understand their real options, identify potential risks from the start, and prepare their residence application with strategy and attention to detail. We stand beside every person and every family throughout the entire process with clarity, honesty, and humane, personalized care.' },
+    { type: 'paragraph', text: 'Contact us if you would like to begin or review your green card process.' },
+  ],
+
   asilo: [
     { type: 'heading', text: 'What Is Asylum?' },
     { type: 'paragraph', text: 'Asylum may be granted to people already in the United States who are unable or unwilling to return to their home country because of persecution, or a well-founded fear of persecution, on account of race, religion, nationality, membership in a particular social group, or political opinion.' },
