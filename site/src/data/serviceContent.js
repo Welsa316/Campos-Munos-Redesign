@@ -263,13 +263,17 @@ const es = {
 
   // VAWA content — from VAWA.txt (VAWA self-petition section)
   vawa: [
-    { type: 'video' },
-    { type: 'heading', text: '¿Qué es una Auto-Petición VAWA?' },
-    { type: 'paragraph', text: 'VAWA significa Violence Against Women Act (Ley de Violencia Contra la Mujer), aprobada por el Congreso en 1994. VAWA creó una vía especial para obtener estatus migratorio legal para víctimas de abuso doméstico que normalmente tendrían que depender de sus abusadores para solicitar estatus migratorio.' },
-    { type: 'paragraph', text: 'La auto-petición VAWA permite que las víctimas de abuso que son familiares cercanos de ciudadanos estadounidenses o residentes permanentes legales (cónyuges, hijos y padres) soliciten el estatus migratorio por su cuenta, sin necesidad del abusador.' },
-    { type: 'paragraph', text: '¿Quieres solicitar una visa para sobrevivientes de violencia o trata de personas? ¡Estamos aquí para ayudarte!' },
-    { type: 'paragraph', text: 'En Campos Muños Law, nos encanta brindar servicios legales y asesoría a inmigrantes en cada etapa de su proceso para convertirse en residentes permanentes y ciudadanos estadounidenses. Sabemos bien la importancia que tiene la diversidad en la cultura de un país.' },
-    { type: 'paragraph', text: 'Nuestro equipo de abogados está compuesto por profesionales de diferentes orígenes y áreas de experiencia, listos para identificar las necesidades especiales de tu caso desde distintas perspectivas.' },
+    { type: 'heading', text: '¿Qué es VAWA?' },
+    { type: 'paragraph', text: 'VAWA es una ley migratoria que protege a las personas que han sido víctimas de abuso por parte de un cónyuge, un padre o un hijo que es ciudadano estadounidense o residente permanente. Lo más importante: le permite solicitar la residencia permanente por su cuenta, sin la ayuda —ni el conocimiento— de la persona que le hizo daño. Nadie debería depender de su agresor para poder vivir con tranquilidad.' },
+    { type: 'heading', text: 'El abuso no tiene que ser físico' },
+    { type: 'paragraph', text: 'Muchas personas no saben que el abuso va más allá de lo físico: también cuenta el abuso verbal, emocional, psicológico y económico. Si le han maltratado, humillado, controlado económicamente o incluso amenazado con llamar a inmigración, es posible que califique.' },
+    { type: 'heading', text: '¿Quién puede solicitar VAWA?' },
+    { type: 'paragraph', text: 'Pueden solicitar los cónyuges de ciudadanos o residentes que han sufrido abuso, los hijos maltratados por un padre ciudadano o residente, y los padres abusados por un hijo ciudadano mayor de 21 años. Cada caso es único; lo esencial es demostrar la relación familiar y cómo le impactó el abuso.' },
+    { type: 'heading', text: 'Un proceso 100% confidencial' },
+    { type: 'paragraph', text: 'Estos casos son delicados y requieren evidencia, declaraciones personales y un manejo muy cuidadoso. Lo más importante es que el proceso es completamente confidencial: nadie tiene que enterarse, mucho menos su agresor.' },
+    { type: 'heading', text: '¿Cómo le ayuda nuestra firma?' },
+    { type: 'paragraph', text: 'En Campos Muños Law tratamos estos casos con empatía, respeto y experiencia. Le ayudamos a construir una petición sólida para que pueda recuperar su tranquilidad y avanzar hacia un estatus migratorio seguro, sin miedo.' },
+    { type: 'paragraph', text: 'Si algo de esto le resulta familiar, no está solo. Contáctenos, con total confidencialidad, para evaluar su caso.' },
   ],
 }
 
@@ -516,13 +520,17 @@ const en = {
   ],
 
   vawa: [
-    { type: 'video' },
-    { type: 'heading', text: 'What Is a VAWA Self-Petition?' },
-    { type: 'paragraph', text: 'VAWA stands for the Violence Against Women Act, passed by Congress in 1994. VAWA created a special pathway to legal immigration status for victims of domestic abuse who would normally have to rely on their abusers to file for immigration status.' },
-    { type: 'paragraph', text: 'The VAWA self-petition allows abuse victims who are close family members of U.S. citizens or lawful permanent residents (spouses, children, and parents) to apply for immigration status on their own, without the abuser.' },
-    { type: 'paragraph', text: 'Want to apply for a visa for survivors of violence or human trafficking? We are here to help!' },
-    { type: 'paragraph', text: 'At Campos Muños Law, we love providing legal services and counsel to immigrants at every stage of their journey to becoming permanent residents and U.S. citizens. We know how important diversity is in a country’s culture.' },
-    { type: 'paragraph', text: 'Our team is made up of professionals from different backgrounds and areas of expertise, ready to identify your case’s special needs from multiple perspectives.' },
+    { type: 'heading', text: 'What Is VAWA?' },
+    { type: 'paragraph', text: 'VAWA is an immigration law that protects people who have been abused by a spouse, parent, or child who is a U.S. citizen or permanent resident. Most importantly, it lets you apply for permanent residence on your own — without the help, or even the knowledge, of the person who harmed you. No one should have to depend on their abuser to live in peace.' },
+    { type: 'heading', text: 'Abuse Doesn’t Have to Be Physical' },
+    { type: 'paragraph', text: 'Many people don’t realize that abuse goes beyond the physical: verbal, emotional, psychological, and financial abuse all count. If you have been mistreated, humiliated, financially controlled, or even threatened with a call to immigration, you may qualify.' },
+    { type: 'heading', text: 'Who Can Apply for VAWA?' },
+    { type: 'paragraph', text: 'Abused spouses of citizens or residents, children mistreated by a citizen or resident parent, and parents abused by a citizen child over 21 can all apply. Every case is unique; what matters is showing the family relationship and how the abuse affected you.' },
+    { type: 'heading', text: 'A 100% Confidential Process' },
+    { type: 'paragraph', text: 'These cases are sensitive and require evidence, personal declarations, and very careful handling. Most importantly, the process is completely confidential: no one has to find out — least of all your abuser.' },
+    { type: 'heading', text: 'How Our Firm Helps' },
+    { type: 'paragraph', text: 'At Campos Muños Law we handle these cases with empathy, respect, and experience. We help you build a strong petition so you can regain your peace of mind and move toward a secure immigration status, without fear.' },
+    { type: 'paragraph', text: 'If any of this sounds familiar, you are not alone. Contact us, in full confidence, to review your case.' },
   ],
 }
 
