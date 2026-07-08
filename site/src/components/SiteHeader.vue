@@ -92,8 +92,8 @@
         :aria-expanded="mobileOpen"
         aria-controls="mobile-nav"
         class="xl:hidden relative z-[110] w-12 h-12 flex items-center justify-center mr-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy/40 rounded-lg"
-        aria-label="Menu">
-        <span class="sr-only">Menu</span>
+        :aria-label="$t('a11y.menu')">
+        <span class="sr-only">{{ $t('a11y.menu') }}</span>
         <div class="flex flex-col items-end gap-1.5 transition-all">
           <span class="block h-[2px] rounded-full transition-all duration-300"
             :class="[mobileOpen ? 'bg-gray-800 w-7 rotate-45 translate-y-[5px]' : (navSolid ? 'bg-gray-800' : 'bg-white') + ' w-7']"></span>
@@ -119,7 +119,7 @@
         @click="mobileOpen = false" aria-hidden="true"></div>
 
       <!-- Panel -->
-      <div id="mobile-nav" ref="drawerPanel" role="dialog" aria-modal="true" aria-label="Menu"
+      <div id="mobile-nav" ref="drawerPanel" role="dialog" aria-modal="true" :aria-label="$t('a11y.menu')"
         :inert="!mobileOpen"
         class="absolute top-0 right-0 bottom-0 z-[106] w-[85%] max-w-sm bg-white shadow-2xl flex flex-col overflow-y-auto transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
         :class="mobileOpen ? 'translate-x-0' : 'translate-x-full'">
@@ -128,7 +128,7 @@
           <router-link to="/home" @click="mobileOpen = false">
             <img src="/logo.png" alt="Campos Muños Law" class="h-10" />
           </router-link>
-          <button ref="closeBtn" @click="mobileOpen = false" aria-label="Close menu"
+          <button ref="closeBtn" @click="mobileOpen = false" :aria-label="$t('a11y.closeMenu')"
             class="w-11 h-11 -mr-2 flex items-center justify-center rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-navy/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy/40">
             <i class="fa-solid fa-xmark text-2xl" aria-hidden="true"></i>
           </button>
@@ -150,7 +150,7 @@
               </router-link>
               <button type="button" @click="servicesOpen = !servicesOpen"
                 :aria-expanded="servicesOpen" aria-controls="drawer-services"
-                aria-label="Ver servicios"
+                :aria-label="$t('a11y.toggleServices')"
                 class="w-12 flex items-center justify-center text-gray-400 hover:text-brand-navy rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy/40">
                 <svg class="w-5 h-5 transition-transform duration-300" :class="servicesOpen ? 'rotate-180' : ''"
                   fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">

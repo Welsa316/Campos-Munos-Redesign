@@ -143,6 +143,9 @@ export default {
   a11y: {
     skipToContent: 'Skip to main content',
     close: 'Close',
+    menu: 'Menu',
+    closeMenu: 'Close menu',
+    toggleServices: 'View services',
   },
   notFound: {
     title: 'Page not found',
