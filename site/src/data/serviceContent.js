@@ -91,7 +91,7 @@ const es = {
 
   ciudadania: [
     { type: 'heading', text: '¿Qué es la ciudadanía estadounidense?' },
-    { type: 'paragraph', text: 'La ciudadanía es el estatus migratorio más sólido que existe y, para muchas personas, representa mucho más que un trámite: significa tranquilidad, pertenencia plena y la seguridad de dejar atrás el miedo. Le permite votar, solicitar a ciertos familiares, viajar con mayor libertad y construir un futuro estable para usted y su familia. Para quienes ya son residentes permanentes, suele ser el cierre de un camino largo y muchas veces lleno de sacrificio.' },
+    { type: 'paragraph', text: 'Para muchas personas, hacerse ciudadano no es solo un papeleo: es tranquilidad, es dejar de vivir con miedo y es la seguridad de pertenecer plenamente a los Estados Unidos. La ciudadanía es el estatus migratorio más sólido que existe: le permite votar, solicitar a ciertos familiares, viajar con mayor libertad y, sobre todo, vivir sin incertidumbre. Para quienes ya son residentes permanentes, suele ser el cierre de un camino largo y muchas veces lleno de sacrificio.' },
     { type: 'heading', text: 'Requisitos para solicitar la ciudadanía' },
     { type: 'paragraph', text: 'Por lo general, la naturalización exige haber sido residente permanente durante un periodo determinado y haber mantenido presencia física y residencia continua en el país. También es necesario demostrar buen carácter moral y aprobar los exámenes de inglés y educación cívica. Aun así, la elegibilidad de cada persona depende de su historia migratoria y personal, por lo que conviene revisarla con cuidado antes de comenzar.' },
     { type: 'heading', text: 'Retos y posibles complicaciones' },
@@ -352,7 +352,7 @@ const en = {
 
   ciudadania: [
     { type: 'heading', text: 'What Is U.S. Citizenship?' },
-    { type: 'paragraph', text: 'Citizenship is the strongest immigration status there is, and for many people it means far more than paperwork: it brings peace of mind, a true sense of belonging, and the security of leaving fear behind. It lets you vote, petition for certain relatives, travel with greater freedom, and build a stable future for yourself and your family. For those who are already permanent residents, it often marks the close of a long road, one frequently filled with sacrifice.' },
+    { type: 'paragraph', text: 'For many people, becoming a citizen is not just paperwork: it is peace of mind, it is no longer living in fear, and it is the security of belonging fully to the United States. Citizenship is the strongest immigration status there is: it lets you vote, petition for certain relatives, travel with greater freedom, and, above all, live without uncertainty. For those who are already permanent residents, it often marks the close of a long road, one frequently filled with sacrifice.' },
     { type: 'heading', text: 'Requirements to Apply for Citizenship' },
     { type: 'paragraph', text: 'Naturalization generally requires having been a permanent resident for a set period, along with continuous residence and physical presence in the country. You must also show good moral character and pass the English and civics exams. Even so, each person’s eligibility depends on their immigration and personal history, so it is worth reviewing carefully before you begin.' },
     { type: 'heading', text: 'Challenges and Possible Complications' },
