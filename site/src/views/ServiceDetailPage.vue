@@ -1,9 +1,11 @@
 <template>
   <div>
-    <!-- Hero with large icon -->
-    <section class="relative pt-28 pb-10 bg-brand-surface overflow-hidden">
-      <!-- Decorative -->
-      <div class="absolute top-1/2 right-0 -translate-y-1/2 text-[300px] text-brand-navy/[0.04] pointer-events-none select-none">
+    <!-- Hero: title + video side-by-side on desktop, stacked on mobile, so the
+         video is in the first viewport on EVERY screen size (no scrolling to it,
+         regardless of viewport height/aspect ratio). -->
+    <section class="relative pt-24 pb-10 sm:pb-12 bg-brand-surface overflow-hidden">
+      <!-- Decorative watermark — only on very wide screens where it won't crowd the video -->
+      <div class="absolute top-1/2 right-0 -translate-y-1/2 text-[300px] text-brand-navy/[0.04] pointer-events-none select-none hidden 2xl:block">
         <!-- Keyed <span> wrapper: FontAwesome's dom.watch() detaches the <i> it
              converts, so Vue must swap an element FA never touches. -->
         <span :key="serviceIcon"><i :class="serviceIcon"></i></span>
@@ -11,23 +13,69 @@
 
       <div class="relative max-w-7xl mx-auto px-6">
         <router-link to="/servicios"
-          class="inline-flex items-center gap-2 text-gray-500 hover:text-brand-navy text-base font-ui tracking-wider uppercase mb-8 transition-colors group">
+          class="inline-flex items-center gap-2 text-gray-500 hover:text-brand-navy text-base font-ui tracking-wider uppercase mb-6 transition-colors group">
           <i class="fa-solid fa-arrow-left text-xs group-hover:-translate-x-1 transition-transform"></i>
           {{ $t('nav.servicios') }}
         </router-link>
 
-        <div class="flex items-start gap-6">
-          <div class="w-20 h-20 rounded-2xl bg-brand-navy/10 flex items-center justify-center flex-shrink-0">
-            <span :key="serviceIcon" class="contents"><i :class="serviceIcon" class="text-3xl text-brand-navy"></i></span>
+        <div class="grid gap-8 items-center" :class="hasVideo ? 'lg:grid-cols-2 lg:gap-12' : ''">
+          <!-- Title block -->
+          <div class="flex items-start gap-5">
+            <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-brand-navy/10 flex items-center justify-center flex-shrink-0">
+              <span :key="serviceIcon" class="contents"><i :class="serviceIcon" class="text-3xl text-brand-navy"></i></span>
+            </div>
+            <div>
+              <h1 class="font-heading text-4xl md:text-5xl lg:text-6xl font-bold text-brand-navy leading-[0.98]">
+                {{ serviceName }}
+              </h1>
+              <p v-if="locationData" class="mt-3 text-gray-500 text-lg font-ui tracking-wider">
+                <i class="fa-solid fa-location-dot text-brand-navy/40 mr-2"></i>
+                {{ locale === 'es' ? locationData.nameEs : locationData.nameEn }}
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 class="font-heading text-4xl md:text-6xl lg:text-7xl font-bold text-brand-navy leading-[0.95]">
-              {{ serviceName }}
-            </h1>
-            <p v-if="locationData" class="mt-3 text-gray-500 text-lg font-ui tracking-wider">
-              <i class="fa-solid fa-location-dot text-brand-navy/40 mr-2"></i>
-              {{ locale === 'es' ? locationData.nameEs : locationData.nameEn }}
+
+          <!-- Video — top of the page, visible without scrolling on any screen -->
+          <div v-if="hasVideo">
+            <p class="font-heading text-lg sm:text-xl text-brand-navy mb-3">
+              <i class="fa-solid fa-circle-play text-brand-navy/60 mr-2" aria-hidden="true"></i>{{ $t('serviceDetail.watchVideo', { service: serviceName }) }}
             </p>
+            <div class="rounded-2xl overflow-hidden shadow-xl">
+              <div class="aspect-video relative bg-brand-navy">
+                <!-- Graceful fallback when the video source fails to load -->
+                <div v-if="videoError"
+                  class="absolute inset-0 flex items-center justify-center text-center px-6 text-white/70 font-ui text-base">
+                  {{ $t('serviceDetail.videoUnavailable') }}
+                </div>
+
+                <!-- Click-to-play everywhere (no autoplay, per client decision) -->
+                <template v-else>
+                  <img v-if="!videoPlaying" :src="thumbnailSrc" :alt="serviceName"
+                    class="absolute inset-0 w-full h-full object-cover" />
+                  <button v-if="!videoPlaying" type="button" @click="playVideo"
+                    :aria-label="$t('serviceDetail.watchVideo', { service: serviceName })"
+                    class="absolute inset-0 cursor-pointer group z-10 bg-transparent border-0 p-0 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/80 focus-visible:ring-inset rounded-2xl">
+                    <span class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 sm:w-24 sm:h-24">
+                      <span class="absolute inset-0 rounded-full border-2 border-white/70 play-pulse-ring" aria-hidden="true"></span>
+                      <span class="relative w-full h-full rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-transform duration-300 shadow-2xl">
+                        <i class="fa-solid fa-play text-brand-navy text-2xl sm:text-3xl ml-1"></i>
+                      </span>
+                    </span>
+                  </button>
+                  <video
+                    v-if="videoPlaying"
+                    ref="detailVideoRef"
+                    :src="videoFile"
+                    :aria-label="$t('serviceDetail.watchVideo', { service: serviceName })"
+                    class="w-full h-full object-contain bg-black"
+                    controls
+                    autoplay
+                    playsinline
+                    @error="videoError = true"
+                  ></video>
+                </template>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -36,49 +84,6 @@
     <!-- Content -->
     <section class="py-16 bg-white">
       <div ref="contentRef" class="max-w-4xl mx-auto px-6">
-
-        <!-- Video (hoisted to top of content so it's visible with minimal scroll) -->
-        <div v-if="hasVideo" class="reveal mb-10">
-          <p class="font-heading text-xl text-brand-navy mb-3">
-            <i class="fa-solid fa-circle-play text-brand-navy/60 mr-2" aria-hidden="true"></i>{{ $t('serviceDetail.watchVideo', { service: serviceName }) }}
-          </p>
-          <div class="rounded-2xl overflow-hidden shadow-lg">
-            <div class="aspect-video relative bg-brand-navy">
-              <!-- Graceful fallback when the video source fails to load -->
-              <div v-if="videoError"
-                class="absolute inset-0 flex items-center justify-center text-center px-6 text-white/70 font-ui text-base">
-                {{ $t('serviceDetail.videoUnavailable') }}
-              </div>
-
-              <!-- Click-to-play everywhere (no autoplay, per client decision): the
-                   thumbnail stays visible until the visitor taps play, then it
-                   plays with sound. -->
-              <template v-else>
-                <img v-if="!videoPlaying" :src="thumbnailSrc" :alt="serviceName"
-                  class="absolute inset-0 w-full h-full object-cover" />
-                <button v-if="!videoPlaying" type="button" @click="playVideo"
-                  :aria-label="$t('serviceDetail.watchVideo', { service: serviceName })"
-                  class="absolute inset-0 cursor-pointer group z-10 bg-transparent border-0 p-0 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/80 focus-visible:ring-inset rounded-2xl">
-                  <span class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 sm:w-24 sm:h-24">
-                    <span class="absolute inset-0 rounded-full border-2 border-white/70 play-pulse-ring" aria-hidden="true"></span>
-                    <span class="relative w-full h-full rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-all duration-300 shadow-2xl">
-                      <i class="fa-solid fa-play text-brand-navy text-2xl sm:text-3xl ml-1"></i>
-                    </span>
-                  </span>
-                </button>
-                <video
-                  v-if="videoPlaying"
-                  :src="videoFile"
-                  class="w-full h-full object-contain bg-black"
-                  controls
-                  autoplay
-                  playsinline
-                  @error="videoError = true"
-                ></video>
-              </template>
-            </div>
-          </div>
-        </div>
 
         <!-- Location service area note -->
         <p v-if="locationData" class="reveal text-gray-500 text-lg font-ui mb-6 flex items-center gap-2">
@@ -291,34 +296,22 @@ const relatedServices = computed(() => {
   }).filter(Boolean)
 })
 
-// Video player
+// Video player (click-to-play with sound; no autoplay per client decision)
 const videoPlaying = ref(false)
+const detailVideoRef = ref(null)
 // Set true when a <video> emits an error (missing/unreachable source);
 // hides the broken player and shows a graceful notice.
 const videoError = ref(false)
 
-// Desktop autoplays muted; mobile uses click-to-play (with sound).
-const isDesktop = ref(false)
-let desktopMql = null
-function updateIsDesktop(e) {
-  isDesktop.value = e.matches
-}
-onMounted(() => {
-  if (typeof window === 'undefined' || !window.matchMedia) return
-  desktopMql = window.matchMedia('(min-width: 640px)')
-  isDesktop.value = desktopMql.matches
-  desktopMql.addEventListener('change', updateIsDesktop)
-})
-onUnmounted(() => {
-  if (desktopMql) desktopMql.removeEventListener('change', updateIsDesktop)
-})
-
 function playVideo() {
   videoPlaying.value = true
   nextTick(() => {
-    const video = document.querySelector('video')
+    const video = detailVideoRef.value
     if (video) {
       video.play().catch(() => {})
+      // Move keyboard focus onto the player: the play <button> just unmounted,
+      // so without this focus would fall back to <body>.
+      video.focus()
     }
   })
 }
