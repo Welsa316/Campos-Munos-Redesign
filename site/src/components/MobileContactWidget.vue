@@ -8,7 +8,7 @@
       class="group relative flex-1 min-w-0 flex items-center justify-center pl-14 pr-5 py-3.5 rounded-full text-white
         bg-gradient-to-b from-brand-navy-light to-brand-navy-dark ring-1 ring-white/10
         shadow-[inset_0_1px_0_rgba(255,255,255,0.3),inset_0_-3px_9px_rgba(0,0,0,0.3),0_10px_26px_rgba(0,45,102,0.5),0_3px_8px_rgba(0,0,0,0.22)]
-        active:scale-[0.98] active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.4)] transition-all"
+        active:scale-[0.98] active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.4)] transition-transform"
       :aria-label="$t('mobileContact.callLabel')">
       <!-- Juan's face overlapping the left edge (Morgan & Morgan style) -->
       <span class="absolute -left-1 top-1/2 -translate-y-1/2 w-[3.4rem] h-[3.4rem] rounded-full overflow-hidden ring-[3px] ring-white shadow-md bg-white">
@@ -27,14 +27,14 @@
       class="relative w-14 h-14 rounded-full flex items-center justify-center text-white flex-shrink-0
         shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_26px_rgba(0,0,0,0.32)]
         active:scale-95 transition-all"
-      :class="isSpanish ? 'bg-[#25D366]' : 'bg-brand-navy'"
+      :class="isSpanish ? 'bg-brand-whatsapp' : 'bg-brand-navy'"
       :aria-label="isSpanish ? $t('mobileContact.whatsappLabel') : $t('mobileContact.textUs')">
       <!-- Pulsating halo rings (compositor-only transform/opacity; removed for
            reduced-motion). pointer-events-none so the expanded ring never eats taps. -->
       <span aria-hidden="true" class="contact-pulse pointer-events-none absolute inset-0 rounded-full"
-        :class="isSpanish ? 'bg-[#25D366]' : 'bg-brand-navy'"></span>
+        :class="isSpanish ? 'bg-brand-whatsapp' : 'bg-brand-navy'"></span>
       <span aria-hidden="true" class="contact-pulse contact-pulse--delay pointer-events-none absolute inset-0 rounded-full"
-        :class="isSpanish ? 'bg-[#25D366]' : 'bg-brand-navy'"></span>
+        :class="isSpanish ? 'bg-brand-whatsapp' : 'bg-brand-navy'"></span>
       <!-- Keyed wrapper: FontAwesome's dom.watch() replaces the <i> it converts with
            an <svg>, so a plain :class swap on locale change leaves a stale icon
            (whatsapp logo stuck in the blue bubble). Re-keying forces a fresh node. -->
