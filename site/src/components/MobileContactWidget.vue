@@ -4,9 +4,10 @@
   <div v-show="!mobileMenuOpen" class="fixed bottom-4 left-4 right-4 z-[145] flex items-center gap-2.5">
     <!-- Call Us — primary, keeps Juan's face -->
     <a href="tel:+15049106508"
-      class="flex-1 min-w-0 flex items-center justify-center gap-3 pl-2 pr-5 py-2.5 rounded-full bg-brand-navy text-white shadow-[0_12px_34px_rgba(0,63,141,0.45)] active:scale-[0.98] transition-all"
+      class="relative flex-1 min-w-0 flex items-center justify-center pl-14 pr-5 py-3.5 rounded-full bg-brand-navy text-white shadow-[0_12px_34px_rgba(0,63,141,0.45)] active:scale-[0.98] transition-all"
       :aria-label="$t('mobileContact.callLabel')">
-      <span class="w-11 h-11 rounded-full overflow-hidden bg-white/15 ring-2 ring-white/40 flex-shrink-0">
+      <!-- Juan's face overlapping the left edge (Morgan & Morgan style) -->
+      <span class="absolute -left-1 top-1/2 -translate-y-1/2 w-[3.4rem] h-[3.4rem] rounded-full overflow-hidden ring-[3px] ring-white shadow-md bg-white">
         <img src="/JuanChatBubble.png" alt="" class="w-full h-full object-cover" />
       </span>
       <span class="font-ui text-lg font-bold tracking-wide whitespace-nowrap flex items-center gap-2">
