@@ -21,7 +21,7 @@
       <article v-for="(v, i) in videos" :key="v.slug"
         class="deck-card" :class="{ 'is-active': i === activeIndex }"
         :style="cardStyle(i)"
-        :aria-hidden="Math.abs(i - activeIndex) > 2 ? 'true' : null"
+        :aria-hidden="Math.abs(i - activeIndex) > 1 ? 'true' : null"
         @click="i !== activeIndex && goTo(i, true)">
         <div class="relative w-full aspect-video rounded-3xl overflow-hidden shadow-2xl bg-brand-navy">
           <!-- YouTube badge -->
@@ -53,9 +53,6 @@
                 <i class="fa-solid fa-play text-brand-navy text-xl sm:text-2xl ml-1" aria-hidden="true"></i>
               </span>
             </button>
-            <h3 class="absolute bottom-0 left-0 right-0 p-4 sm:p-5 text-white font-heading text-xl sm:text-2xl leading-tight pointer-events-none">
-              {{ $t(`services.${v.key}`) }}
-            </h3>
           </template>
         </div>
       </article>
@@ -120,8 +117,7 @@ function cardStyle(i) {
   let x, tz, ry, sc, op, zi, pe
   if (off === 0)    { x = -50;            tz = 0;    ry = 0;         sc = 1;    op = 1;    zi = 30; pe = 'auto' }
   else if (a === 1) { x = -50 + dir * 30; tz = -130; ry = -dir * 18; sc = 0.82; op = 0.55; zi = 20; pe = 'auto' }
-  else if (a === 2) { x = -50 + dir * 50; tz = -280; ry = -dir * 22; sc = 0.68; op = 0.22; zi = 10; pe = 'auto' }
-  else              { x = -50 + dir * 64; tz = -380; ry = -dir * 24; sc = 0.6;  op = 0;    zi = 5;  pe = 'none' }
+  else              { x = -50 + dir * 44; tz = -300; ry = -dir * 22; sc = 0.72; op = 0;    zi = 5;  pe = 'none' }
   return {
     transform: `translateX(${x}%) translateZ(${tz}px) rotateY(${ry}deg) scale(${sc})`,
     zIndex: zi,
