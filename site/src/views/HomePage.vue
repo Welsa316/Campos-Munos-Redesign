@@ -8,13 +8,13 @@
           class="absolute inset-0 transition-opacity duration-[3500ms] ease-in-out"
           :class="currentSlide === i ? 'opacity-100' : 'opacity-0'">
           <div class="absolute inset-0 bg-cover bg-center kenburns"
-            :style="{ backgroundImage: `url('${slideImg(slide)}')`, animationDelay: `${i * -4}s`, animationPlayState: currentSlide === i ? 'running' : 'paused' }"></div>
+            :style="{ backgroundImage: `url('${slideImg(slide)}')`, backgroundPosition: slidePos(slide), animationDelay: `${i * -4}s`, animationPlayState: currentSlide === i ? 'running' : 'paused' }"></div>
         </div>
-        <!-- Lighter, friendly blue tint (client felt the old black tint was too
-             dark). A soft navy wash lets the photo show through; a slightly
-             stronger navy gradient on the left keeps the white heading readable. -->
-        <div class="absolute inset-0 bg-gradient-to-b from-brand-navy/40 via-brand-navy/20 to-brand-navy/45"></div>
-        <div class="absolute inset-0 bg-gradient-to-r from-brand-navy/55 via-brand-navy/10 to-transparent"></div>
+        <!-- Very subtle tint: a soft NEUTRAL gradient (near-black) on the left keeps
+             the white heading readable without a heavy wash, plus only a faint
+             blue hint on top (client wanted the blue very subtle). -->
+        <div class="absolute inset-0 bg-gradient-to-r from-brand-darker/55 via-brand-darker/15 to-brand-darker/5"></div>
+        <div class="absolute inset-0 bg-brand-navy/8"></div>
       </div>
 
       <!-- Hero content - left-aligned; sits in the upper-middle (moved up from
@@ -189,8 +189,8 @@
             </a>
           </h2>
         </div>
-        <div class="reveal min-h-[180px]">
-          <div class="elfsight-app-0e227880-d4a2-4817-98ac-2a5ed69f20a7" data-elfsight-app-lazy></div>
+        <div class="reveal min-h-[180px] flex justify-center">
+          <div class="elfsight-app-0e227880-d4a2-4817-98ac-2a5ed69f20a7 w-full" data-elfsight-app-lazy></div>
         </div>
       </div>
     </section>
@@ -273,8 +273,8 @@ const slides = [
   // Juan + Angenette — standing photo on mobile (crops cleanly), the original
   // table photo on desktop (wide crop works there).
   { img: '/Slideshow2.jpg?v=2', imgDesktop: '/Slideshow2-desktop.jpg', subtitleKey: 'home.slideSubtitle2' },
-  { img: '/Slideshow5.jpg', subtitleKey: 'home.slideSubtitle5' }, // wedding couple
-  { img: '/Slideshow4.jpg', subtitleKey: 'home.slideSubtitle4' },
+  { img: '/Slideshow5.jpg', posMobile: '64% 38%', subtitleKey: 'home.slideSubtitle5' }, // wedding couple (center-right)
+  { img: '/Slideshow4.jpg', posMobile: '42% center', subtitleKey: 'home.slideSubtitle4' },
 ]
 const currentSlide = ref(0)
 let slideTimer = null
@@ -283,6 +283,8 @@ let slideTimer = null
 const isMobileHero = ref(typeof window !== 'undefined' && window.innerWidth < 640)
 const onHeroResize = () => { isMobileHero.value = window.innerWidth < 640 }
 const slideImg = (slide) => (!isMobileHero.value && slide.imgDesktop) ? slide.imgDesktop : slide.img
+// On mobile, nudge the crop toward the subject for photos that aren't centered.
+const slidePos = (slide) => (isMobileHero.value && slide.posMobile) ? slide.posMobile : undefined
 
 function goToSlide(i) { currentSlide.value = i }
 function nextSlide() { currentSlide.value = (currentSlide.value + 1) % slides.length }
