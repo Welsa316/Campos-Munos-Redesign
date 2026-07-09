@@ -6,11 +6,11 @@
       <div class="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-brand-navy/[0.03] to-transparent pointer-events-none"></div>
       <div class="relative max-w-7xl mx-auto px-6">
         <div class="reveal">
-          <p class="font-ui text-base tracking-[0.2em] text-brand-navy uppercase mb-4">{{ $t('contact.subtitleAlt') }}</p>
+          <p class="hidden md:block font-ui text-base tracking-[0.2em] text-brand-navy uppercase mb-4">{{ $t('contact.subtitleAlt') }}</p>
           <h1 class="font-heading text-5xl md:text-7xl lg:text-8xl font-bold text-brand-navy leading-[0.95]">
             {{ $t('contact.title') }}
           </h1>
-          <p class="text-gray-500 text-2xl mt-4 max-w-lg">{{ $t('contact.subtitle') }}</p>
+          <p class="hidden md:block text-gray-500 text-2xl mt-4 max-w-lg">{{ $t('contact.subtitle') }}</p>
           <a href="tel:+15049106508"
             class="inline-flex items-center gap-4 mt-8 font-heading text-2xl md:text-3xl text-brand-navy hover:opacity-80 transition-opacity">
             <span class="w-14 h-14 rounded-xl bg-brand-navy/10 flex items-center justify-center flex-shrink-0">
@@ -22,8 +22,11 @@
       </div>
     </section>
 
+    <!-- Reviews + form. On mobile the form comes first (reviews drop to the
+         bottom); on desktop reviews stay above the form (per doc 6.4). -->
+    <div class="flex flex-col">
     <!-- Google Reviews Carousel -->
-    <section class="py-20 bg-brand-light">
+    <section class="py-20 bg-brand-light order-2 lg:order-1">
       <div class="max-w-7xl mx-auto px-6">
         <div class="text-center mb-10 reveal">
           <div class="flex items-center justify-center gap-2 mb-3">
@@ -46,7 +49,7 @@
     </section>
 
     <!-- Form + Info split layout -->
-    <section class="py-20 bg-white">
+    <section class="py-20 bg-white order-1 lg:order-2">
       <div class="max-w-7xl mx-auto px-6">
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-16">
           <!-- Form - takes 7 cols -->
@@ -192,6 +195,7 @@
         </div>
       </div>
     </section>
+    </div>
 
     <!-- Map - edge to edge -->
     <section class="h-[450px] relative">
