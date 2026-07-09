@@ -19,7 +19,7 @@
 
       <!-- Hero content - left-aligned; sits in the upper-middle (moved up from
            dead-center so there isn't a big empty gap above the heading). -->
-      <div class="relative h-full max-w-7xl mx-auto px-6 flex flex-col justify-start pt-[20vh] md:pt-[16vh]">
+      <div class="relative h-full max-w-7xl mx-auto px-6 flex flex-col justify-start pt-[15vh] md:pt-[16vh]">
         <!-- Accent line -->
         <div class="w-20 h-[3px] bg-brand-navy mb-6 hero-reveal" style="transition-delay: 0.2s"></div>
 

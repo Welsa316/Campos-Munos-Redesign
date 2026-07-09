@@ -11,7 +11,7 @@
       <SiteHeader />
     </template>
 
-    <main id="main" class="flex-1">
+    <main id="main" class="flex-1" :class="{ 'pb-24 sm:pb-0': !isAdminRoute }">
       <router-view v-slot="{ Component }">
         <transition name="page" mode="out-in">
           <component :is="Component" />
