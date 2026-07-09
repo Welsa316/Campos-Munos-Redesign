@@ -10,9 +10,11 @@
           <div class="absolute inset-0 bg-cover bg-center kenburns"
             :style="{ backgroundImage: `url('${slide.img}')`, animationDelay: `${i * -4}s`, animationPlayState: currentSlide === i ? 'running' : 'paused' }"></div>
         </div>
-        <!-- Layered overlays for depth -->
-        <div class="absolute inset-0 bg-gradient-to-b from-brand-darker/60 via-black/40 to-brand-darker"></div>
-        <div class="absolute inset-0 bg-gradient-to-r from-brand-darker/80 via-transparent to-transparent"></div>
+        <!-- Lighter, friendly blue tint (client felt the old black tint was too
+             dark). A soft navy wash lets the photo show through; a slightly
+             stronger navy gradient on the left keeps the white heading readable. -->
+        <div class="absolute inset-0 bg-gradient-to-b from-brand-navy/40 via-brand-navy/20 to-brand-navy/45"></div>
+        <div class="absolute inset-0 bg-gradient-to-r from-brand-navy/55 via-brand-navy/10 to-transparent"></div>
       </div>
 
       <!-- Hero content - left-aligned; sits in the upper-middle (moved up from
@@ -250,11 +252,11 @@ useScrollReveal()
 const { toggleLang } = useLocaleToggle()
 
 const slides = [
-  { img: '/Slideshow1.jpg', subtitleKey: 'home.slideSubtitle1' },
-  { img: '/Slideshow2.jpg?v=2', subtitleKey: 'home.slideSubtitle2' },
-  { img: '/Slideshow3.jpg', subtitleKey: 'home.slideSubtitle3' },
+  { img: '/Slideshow3.jpg', subtitleKey: 'home.slideSubtitle3' }, // US flag — shows first
+  { img: '/Slideshow1.jpg', subtitleKey: 'home.slideSubtitle1' }, // Statue of Liberty
+  { img: '/Slideshow2.jpg?v=2', subtitleKey: 'home.slideSubtitle2' }, // Juan + Angenette
+  { img: '/Slideshow5.jpg', subtitleKey: 'home.slideSubtitle5' }, // wedding couple
   { img: '/Slideshow4.jpg', subtitleKey: 'home.slideSubtitle4' },
-  { img: '/Slideshow5.jpg', subtitleKey: 'home.slideSubtitle5' },
 ]
 const currentSlide = ref(0)
 let slideTimer = null
