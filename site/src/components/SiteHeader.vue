@@ -202,8 +202,8 @@
         <!-- Footer: language + phone (socials moved to the top of the drawer) -->
         <div class="mt-auto px-6 py-6 border-t border-gray-100 flex flex-col gap-5">
           <button @click="toggleLang"
-            class="flex items-center justify-center gap-3 w-full px-5 py-3 rounded-full border border-brand-navy/25 text-brand-navy font-ui text-sm font-bold tracking-wider hover:bg-brand-navy/5 transition-colors">
-            <FlagIcon :country="currentLang === 'es' ? 'us' : 'mx'" class="w-5 h-3.5" />
+            class="flex items-center justify-center gap-3 w-full px-5 py-3.5 rounded-full border border-brand-navy/25 text-brand-navy font-ui text-base font-bold tracking-wider hover:bg-brand-navy/5 transition-colors">
+            <FlagIcon :country="currentLang === 'es' ? 'us' : 'mx'" class="w-6 h-4" />
             {{ currentLang === 'es' ? 'ENGLISH' : 'ESPAÑOL' }}
           </button>
           <a href="tel:+15049106508"

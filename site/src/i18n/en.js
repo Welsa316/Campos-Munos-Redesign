@@ -167,7 +167,7 @@ export default {
     whatsappLabel: 'Message us on WhatsApp',
   },
   payment: {
-    subtitle: 'Make your payment securely',
+    subtitle: 'How to pay for our services',
     contactMessage: 'Please contact our office to arrange payment for the services we are offering.',
   },
   serviceDetail: {
