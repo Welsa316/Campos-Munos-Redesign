@@ -38,11 +38,11 @@
 
             <video v-if="inView && !errored.has(i)"
               :src="v.videoFile" :aria-label="$t(`services.${v.key}`)"
-              class="absolute inset-0 w-full h-full object-contain bg-black"
+              class="absolute inset-0 w-full h-full object-contain bg-black rounded-3xl"
               autoplay muted playsinline controls @error="errored.add(i)"></video>
             <template v-else>
               <img :src="`${v.thumbnail}?v=2`" :alt="$t(`services.${v.key}`)"
-                class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" />
+                class="absolute inset-0 w-full h-full object-cover rounded-3xl" loading="lazy" decoding="async" />
               <div class="absolute inset-0 bg-gradient-to-t from-brand-navy/95 via-brand-navy/20 to-brand-navy/10"></div>
               <div v-if="errored.has(i)" class="absolute inset-0 flex items-center justify-center text-center px-6 z-10">
                 <p class="text-white/85 font-ui text-sm">{{ $t('serviceDetail.videoUnavailable') }}</p>
