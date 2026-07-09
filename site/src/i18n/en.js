@@ -45,7 +45,7 @@ export default {
     consultaBtn: 'CONSULTATION HERE',
     virtualAvailable: 'Virtual consultation available',
     recognizedBy: 'Recognized By',
-    reviewsTitle: '5-Star Reviews!',
+    reviewsTitle: 'We Are a Five-Star Review Firm',
     serviciosBtn: 'Services',
     porQueNosotros: 'Why Us?',
     porQueNosotrosText: 'Because we will make sure you understand what is happening with your case, we will strive to treat you like family, and we will always be available to answer your questions and concerns. We will do everything possible to keep you informed about changes in immigration laws and how they may affect your case.',

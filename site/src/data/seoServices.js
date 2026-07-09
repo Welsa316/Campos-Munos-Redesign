@@ -101,7 +101,7 @@ export const baseServices = {
   },
   'visa-t': {
     key: 'visaT',
-    icon: 'fa-solid fa-link',
+    icon: 'fa-solid fa-tractor',
     video: true,
     videoFile: `${VIDEO_BASE}/3-Listo-Visa-T-fx-Listo.mp4`,
     thumbnail: '/services/visa-t.jpg',
@@ -160,7 +160,7 @@ export const baseServices = {
   },
   'ead': {
     key: 'ead',
-    icon: 'fa-solid fa-briefcase',
+    icon: 'fa-solid fa-helmet-safety',
     video: true,
     videoFile: `${VIDEO_BASE}/2-Listo-Permiso-de-Trabajo-FX-Listo.mp4`,
     thumbnail: '/services/ead.jpg',

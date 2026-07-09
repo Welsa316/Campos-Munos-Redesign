@@ -45,7 +45,7 @@ export default {
     consultaBtn: 'CONSULTA AQUÍ',
     virtualAvailable: 'Consulta virtual disponible',
     recognizedBy: 'Reconocido por',
-    reviewsTitle: '¡Reseñas de 5 Estrellas!',
+    reviewsTitle: 'Somos una firma con reseñas de cinco estrellas',
     serviciosBtn: 'Servicios',
     porQueNosotros: '¿Por Qué Nosotros?',
     porQueNosotrosText: 'Porque nos aseguraremos de que entienda lo que está ocurriendo con su caso, nos esforzaremos por tratarle como a familia, y siempre estaremos disponibles para responder sus preguntas y preocupaciones. Haremos todo lo posible para mantenerle informado sobre los cambios en las leyes de inmigración y cómo estos pueden afectar su caso.',

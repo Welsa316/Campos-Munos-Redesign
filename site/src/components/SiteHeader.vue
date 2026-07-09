@@ -257,10 +257,10 @@ const serviceLinks = [
   { key: 'vawa', slug: 'vawa', icon: 'fa-solid fa-shield-halved' },
   { key: 'daca', slug: 'daca', icon: 'fa-solid fa-graduation-cap' },
   { key: 'tramiteConsular', slug: 'tramite-consular', icon: 'fa-solid fa-file-signature' },
-  { key: 'ead', slug: 'ead', icon: 'fa-solid fa-briefcase' },
+  { key: 'ead', slug: 'ead', icon: 'fa-solid fa-helmet-safety' },
   { key: 'tps', slug: 'estatus-de-proteccion-temporal', icon: 'fa-solid fa-umbrella' },
   { key: 'visaU', slug: 'visa-u', icon: 'fa-solid fa-scale-balanced' },
-  { key: 'visaT', slug: 'visa-t', icon: 'fa-solid fa-link' },
+  { key: 'visaT', slug: 'visa-t', icon: 'fa-solid fa-tractor' },
 ]
 
 function onScroll() { scrolled.value = window.scrollY > HEADER_SCROLL_THRESHOLD }
