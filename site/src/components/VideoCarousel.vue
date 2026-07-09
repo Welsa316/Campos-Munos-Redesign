@@ -1,5 +1,5 @@
 <template>
-  <section ref="sectionRef" class="py-14 sm:py-24 bg-brand-surface overflow-hidden">
+  <section ref="sectionRef" class="py-14 sm:py-24 bg-brand-light overflow-hidden">
     <div class="max-w-7xl mx-auto px-6">
       <div class="text-center mb-8 sm:mb-12 reveal">
         <p class="font-ui text-base tracking-[0.2em] text-brand-navy uppercase mb-3">{{ $t('home.videosEyebrow') }}</p>
@@ -23,9 +23,10 @@
         :style="cardStyle(i)"
         :aria-hidden="Math.abs(i - activeIndex) > 1 ? 'true' : null"
         @click="i !== activeIndex && goTo(i, true)">
-        <div class="relative w-full aspect-video rounded-3xl overflow-hidden shadow-2xl bg-brand-navy">
+        <div class="relative w-full aspect-video rounded-3xl overflow-hidden shadow-2xl"
+          :class="i === activeIndex ? 'bg-brand-navy' : 'bg-neutral-300'">
           <!-- Only the active card shows its video/poster. The peeking neighbours
-               are just faded boxes hinting there's another video to swipe to. -->
+               are just plain faded (neutral) boxes hinting there's another video. -->
           <template v-if="i === activeIndex">
             <!-- YouTube badge -->
             <a :href="YOUTUBE_CHANNEL" target="_blank" rel="noopener" @click.stop

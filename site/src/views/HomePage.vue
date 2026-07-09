@@ -168,7 +168,7 @@
     <!-- ===================== UKRAINIAN COMMUNITY NOTE ===================== -->
     <!-- Same surface as the video carousel above, so the two read as one block
          rather than a mismatched colour band. -->
-    <section class="bg-brand-surface pb-16">
+    <section class="bg-brand-light pb-16">
       <div class="max-w-3xl mx-auto px-6 reveal">
         <div class="flex items-center justify-center gap-3 bg-white border border-gray-200 rounded-xl px-6 py-4">
           <svg class="w-6 h-4 rounded-sm flex-shrink-0" viewBox="0 0 24 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
