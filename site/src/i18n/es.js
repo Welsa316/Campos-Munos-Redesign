@@ -69,8 +69,10 @@ export default {
     servicesSubtitle: 'Haga clic en cualquier servicio para conocer más; la mayoría incluye un video corto.',
     videosEyebrow: 'Videos',
     videosTitle: 'Conozca nuestros servicios en video',
-    videosSubtitle: 'Toque reproducir para ver, deslice para el siguiente — sin tener que leer.',
+    videosSubtitle: 'El video se reproduce mientras explora — use las flechas o deslice para ver el siguiente.',
     watchOnYoutube: 'Vea nuestro canal de YouTube',
+    prevVideo: 'Video anterior',
+    nextVideo: 'Video siguiente',
   },
   contact: {
     title: 'Agende Su Consulta Ahora',

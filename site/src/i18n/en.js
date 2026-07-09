@@ -69,8 +69,10 @@ export default {
     servicesSubtitle: 'Click on any service to learn more — most include a short video.',
     videosEyebrow: 'Videos',
     videosTitle: 'See our services in video',
-    videosSubtitle: 'Tap play to watch, swipe for the next one — no reading required.',
+    videosSubtitle: 'The video plays as you browse — use the arrows or swipe to see the next one.',
     watchOnYoutube: 'Watch on our YouTube channel',
+    prevVideo: 'Previous video',
+    nextVideo: 'Next video',
   },
   contact: {
     title: 'Schedule Your Consultation Now',

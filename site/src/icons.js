@@ -21,6 +21,8 @@ import {
   faBriefcase,
   faCheckCircle,
   faChevronDown,
+  faChevronLeft,
+  faChevronRight,
   faChildren,
   faChurch,
   faCircleExclamation,
@@ -74,7 +76,7 @@ import {
 library.add(
   // solid
   faArchive, faArrowLeft, faArrowRight, faArrowRightFromBracket, faAt,
-  faBriefcase, faCheckCircle, faChevronDown, faChildren,
+  faBriefcase, faCheckCircle, faChevronDown, faChevronLeft, faChevronRight, faChildren,
   faChurch, faCircleExclamation, faCirclePlay, faClock, faCommentDots,
   faCreditCard, faDownload, faEarthAmericas, faEnvelope, faEnvelopeOpen,
   faExclamationCircle, faExclamationTriangle, faFileSignature,
