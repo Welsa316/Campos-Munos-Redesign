@@ -49,7 +49,7 @@
             {{ $t('contact.direccion') }}
           </h4>
           <div class="space-y-4 text-white/70 text-base font-ui">
-            <a href="https://www.google.com/maps/dir/?api=1&destination=812+Gravier+St+Suite+330+New+Orleans+LA+70112"
+            <a :href="MAPS_PROFILE_URL"
               target="_blank" rel="noopener"
               class="flex items-start gap-3 hover:text-white transition-colors">
               <i class="fa-solid fa-location-dot text-white/40 mt-1"></i>
@@ -90,6 +90,8 @@
 </template>
 
 <script setup>
+import { MAPS_PROFILE_URL } from '../data/contact.js'
+
 const socials = [
   { icon: 'fa-brands fa-whatsapp', href: 'https://wa.me/15049106508', label: 'WhatsApp', color: '#25D366' },
   { icon: 'fa-brands fa-instagram', href: 'https://www.instagram.com/juancamposlaw/', label: 'Instagram', color: '#E4405F' },

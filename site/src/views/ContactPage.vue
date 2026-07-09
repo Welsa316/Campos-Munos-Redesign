@@ -215,6 +215,7 @@ import { useI18n } from 'vue-i18n'
 import { useScrollReveal } from '../composables/useScrollReveal.js'
 import { rawFetch } from '../composables/useApi.js'
 import { CONSULTATION_KEYS, consultationLabel } from '../data/consultationTypes.js'
+import { MAPS_PROFILE_URL } from '../data/contact.js'
 import { COUNTRIES } from '../data/countries.js'
 
 useScrollReveal()
@@ -241,7 +242,7 @@ const socials = [
 ]
 
 const contactCards = computed(() => [
-  { titleKey: 'direccion', icon: 'fa-solid fa-location-dot', content: '<a href="https://www.google.com/maps/dir/?api=1&destination=812+Gravier+St+Suite+330+New+Orleans+LA+70112" target="_blank" rel="noopener" class="block hover:text-[var(--color-brand-navy)] transition-colors"><p>812 Gravier Street, Suite 330</p><p>New Orleans, LA 70112</p></a><p class="text-gray-500 text-sm mt-1">PO Box 6224, Metairie, LA 70009</p>' },
+  { titleKey: 'direccion', icon: 'fa-solid fa-location-dot', content: `<a href="${MAPS_PROFILE_URL}" target="_blank" rel="noopener" class="block hover:text-[var(--color-brand-navy)] transition-colors"><p>812 Gravier Street, Suite 330</p><p>New Orleans, LA 70112</p></a><p class="text-gray-500 text-sm mt-1">PO Box 6224, Metairie, LA 70009</p>` },
   { titleKey: 'telefono', icon: 'fa-solid fa-phone', content: '<a href="tel:+15049106508" class="hover:text-[var(--color-brand-navy)] transition-colors">+1 (504) 910-6508</a>' },
   { titleKey: 'correo', icon: 'fa-solid fa-envelope', content: '<a href="mailto:office@camulaw.com" class="hover:text-[var(--color-brand-navy)] transition-colors">office@camulaw.com</a>' },
 ])
