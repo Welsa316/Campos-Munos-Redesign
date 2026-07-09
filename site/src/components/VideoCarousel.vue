@@ -172,7 +172,7 @@ onUnmounted(() => {
 
 <style scoped>
 .deck {
-  --card-w: min(620px, 74vw);
+  --card-w: min(720px, 82vw);
   position: relative;
   width: 100%;
   height: calc(var(--card-w) * 9 / 16);
