@@ -69,7 +69,8 @@ export default {
     servicesSubtitle: 'Haga clic en cualquier servicio para conocer más; la mayoría incluye un video corto.',
     videosEyebrow: 'Videos',
     videosTitle: 'Conozca nuestros servicios en video',
-    videosSubtitle: 'Haga clic en cualquiera para ver un video corto sobre ese servicio — sin tener que leer.',
+    videosSubtitle: 'Toque reproducir para ver, deslice para el siguiente — sin tener que leer.',
+    watchOnYoutube: 'Vea nuestro canal de YouTube',
   },
   contact: {
     title: 'Agende Su Consulta Ahora',
@@ -169,7 +170,7 @@ export default {
   serviceDetail: {
     servingPrefix: 'Atendemos clientes',
     faqTitle: 'Preguntas Frecuentes',
-    watchVideo: 'Vea nuestro video de {service}',
+    watchVideo: 'Haga clic para ver un video sobre {service}',
     videoUnavailable: 'Video no disponible temporalmente',
     relatedTitle: 'Servicios Relacionados',
     relatedSubtitle: 'También le pueden interesar los siguientes servicios:',

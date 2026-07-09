@@ -69,7 +69,8 @@ export default {
     servicesSubtitle: 'Click on any service to learn more — most include a short video.',
     videosEyebrow: 'Videos',
     videosTitle: 'See our services in video',
-    videosSubtitle: 'Click any of them to watch a short video about that service — no reading required.',
+    videosSubtitle: 'Tap play to watch, swipe for the next one — no reading required.',
+    watchOnYoutube: 'Watch on our YouTube channel',
   },
   contact: {
     title: 'Schedule Your Consultation Now',
@@ -169,7 +170,7 @@ export default {
   serviceDetail: {
     servingPrefix: 'Serving clients',
     faqTitle: 'Frequently Asked Questions',
-    watchVideo: 'Watch our {service} video',
+    watchVideo: 'Click to watch a video about {service}',
     videoUnavailable: 'Video temporarily unavailable',
     relatedTitle: 'Related Services',
     relatedSubtitle: 'You may also be interested in the following services:',
