@@ -86,12 +86,14 @@
         </a>
       </div>
 
-      <!-- Mobile hamburger -->
+      <!-- Mobile hamburger — hidden while the drawer is open so its X doesn't
+           stack on top of the drawer's own close button (only one X visible). -->
       <button
         @click="mobileOpen = !mobileOpen"
         :aria-expanded="mobileOpen"
         aria-controls="mobile-nav"
-        class="xl:hidden relative z-[110] w-12 h-12 flex items-center justify-center mr-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy/40 rounded-lg"
+        class="xl:hidden relative z-[110] w-12 h-12 flex items-center justify-center mr-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy/40 rounded-lg transition-opacity"
+        :class="{ 'opacity-0 pointer-events-none': mobileOpen }"
         :aria-label="$t('a11y.menu')">
         <span class="sr-only">{{ $t('a11y.menu') }}</span>
         <div class="flex flex-col items-end gap-1.5 transition-all">
@@ -123,11 +125,15 @@
         :inert="!mobileOpen"
         class="absolute top-0 right-0 bottom-0 z-[106] w-[85%] max-w-sm bg-white shadow-2xl flex flex-col overflow-y-auto transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
         :class="mobileOpen ? 'translate-x-0' : 'translate-x-full'">
-        <!-- Drawer header: logo + close -->
+        <!-- Drawer header: social bar + close (logo removed per client) -->
         <div class="flex items-center justify-between px-6 h-20 border-b border-gray-100 flex-shrink-0">
-          <router-link to="/home" @click="mobileOpen = false">
-            <img src="/logo.png" alt="Campos Muños Law" class="h-10" />
-          </router-link>
+          <div class="flex items-center gap-5">
+            <a v-for="social in socials" :key="social.label" :href="social.href" target="_blank" rel="noopener"
+              :aria-label="social.label" class="text-xl transition-opacity hover:opacity-70"
+              :style="{ color: social.color }">
+              <i :class="social.icon" aria-hidden="true"></i>
+            </a>
+          </div>
           <button ref="closeBtn" @click="mobileOpen = false" :aria-label="$t('a11y.closeMenu')"
             class="w-11 h-11 -mr-2 flex items-center justify-center rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-navy/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy/40">
             <i class="fa-solid fa-xmark text-2xl" aria-hidden="true"></i>
@@ -193,7 +199,7 @@
           </router-link>
         </nav>
 
-        <!-- Footer: language + phone + socials -->
+        <!-- Footer: language + phone (socials moved to the top of the drawer) -->
         <div class="mt-auto px-6 py-6 border-t border-gray-100 flex flex-col gap-5">
           <button @click="toggleLang"
             class="flex items-center justify-center gap-3 w-full px-5 py-3 rounded-full border border-brand-navy/25 text-brand-navy font-ui text-sm font-bold tracking-wider hover:bg-brand-navy/5 transition-colors">
@@ -205,13 +211,6 @@
             <i class="fa-solid fa-phone text-sm" aria-hidden="true"></i>
             (504) 910-6508
           </a>
-          <div class="flex items-center justify-center gap-6">
-            <a v-for="social in socials" :key="social.label" :href="social.href" target="_blank" rel="noopener"
-              :aria-label="social.label" class="text-xl transition-opacity hover:opacity-70"
-              :style="{ color: social.color }">
-              <i :class="social.icon" aria-hidden="true"></i>
-            </a>
-          </div>
         </div>
       </div>
     </div>
