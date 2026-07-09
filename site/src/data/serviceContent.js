@@ -186,6 +186,8 @@ const es = {
     { type: 'paragraph', text: 'Esto no significa que una persona con doble ciudadanía no pueda solicitar el TPS, pero sí requiere un análisis detallado de la relación real entre el solicitante y el país designado o no designado para TPS.' },
     { type: 'paragraph', text: 'Factores como cómo se adquirió la segunda ciudadanía, las barreras lingüísticas, el tiempo de residencia en ese otro país, la frecuencia de viajes, los lazos familiares, las propiedades u otras conexiones con dicho país pueden ser evaluados para determinar si el solicitante se ha establecido de manera permanente en el tercer país.' },
     { type: 'paragraph', text: 'Si ese fuera el caso, es poco probable que se apruebe una solicitud de TPS, ya que se considera que la persona puede encontrar refugio seguro en otro lugar.' },
+    { type: 'heading', text: '¿Qué pasa si mi TPS es cancelado?' },
+    { type: 'paragraph', text: 'Si su TPS es cancelado o está a punto de ser cancelado, debe consultar con un abogado de inmigración para explorar otras opciones basadas en motivos familiares, laborales o humanitarios.' },
   ],
 
   tramiteConsular: [
@@ -219,9 +221,7 @@ const es = {
     { type: 'subheading', text: 'Paso 2 – Solicitud de la Visa' },
     { type: 'paragraph', text: 'Una vez que la embajada reciba el formulario, programará una entrevista con su prometido(a). Es importante que su prometido(a) asista a la entrevista en la fecha acordada con todos los formularios y documentos requeridos.' },
     { type: 'paragraph', text: 'Durante la entrevista, un oficial del Departamento de Estado determinará si la relación es genuina y si su prometido(a) califica para una visa K-1. Si el oficial aprueba la visa, su prometido(a) deberá viajar a los Estados Unidos para continuar el proceso.' },
-    { type: 'subheading', text: 'Paso 3 – Matrimonio' },
-    { type: 'paragraph', text: 'Una vez que su prometido(a) haya sido admitido(a) en los Estados Unidos, tendrán 90 días para casarse.' },
-    { type: 'subheading', text: 'Paso 4 – Ajuste de Estatus' },
+    { type: 'subheading', text: 'Paso 3 – Ajuste de Estatus' },
     { type: 'paragraph', text: 'Si usted y su cónyuge se casan dentro de los 90 días posteriores a la entrada, su pareja puede presentar el Formulario I-485 para solicitar la residencia permanente (Green Card).' },
     { type: 'paragraph', text: 'Como en procesos anteriores, USCIS puede solicitar información adicional sobre el matrimonio antes de programar una entrevista para aprobar la residencia permanente.' },
     { type: 'heading', text: 'Mi prometido(a) tiene hijos — ¿Puede traerlos a los Estados Unidos?' },
@@ -447,6 +447,8 @@ const en = {
     { type: 'paragraph', text: 'That doesn’t mean a person with dual citizenship can’t apply for TPS — but it does require careful analysis of the applicant’s real connection to the designated or non-designated country.' },
     { type: 'paragraph', text: 'Factors such as how the second citizenship was acquired, language barriers, length of residence in the other country, travel frequency, family ties, property, or other connections can be weighed to determine whether the applicant has permanently settled in the third country.' },
     { type: 'paragraph', text: 'If so, a TPS application is unlikely to be approved, since the person can find safe refuge elsewhere.' },
+    { type: 'heading', text: 'What If My TPS Is Cancelled?' },
+    { type: 'paragraph', text: 'If your TPS is canceled or about to be canceled, you have to consult with an immigration attorney to explore other options based on family, work, or humanitarian grounds.' },
   ],
 
   tramiteConsular: [
@@ -479,9 +481,7 @@ const en = {
     { type: 'subheading', text: 'Step 2 — Visa Application' },
     { type: 'paragraph', text: 'Once the embassy receives the form, it will schedule an interview with your fiancé(e). It is important that your fiancé(e) attend the interview on the agreed date with all the required forms and documents.' },
     { type: 'paragraph', text: 'During the interview, an officer from the Department of State will determine whether the relationship is genuine and whether your fiancé(e) qualifies for a K-1 visa. If the officer approves the visa, your fiancé(e) will need to travel to the United States to continue the process.' },
-    { type: 'subheading', text: 'Step 3 — Marriage' },
-    { type: 'paragraph', text: 'Once your fiancé(e) has been admitted into the United States, you will have 90 days to marry.' },
-    { type: 'subheading', text: 'Step 4 — Adjustment of Status' },
+    { type: 'subheading', text: 'Step 3 — Adjustment of Status' },
     { type: 'paragraph', text: 'If you and your spouse marry within 90 days of entry, your partner can file Form I-485 to apply for permanent residence (Green Card).' },
     { type: 'paragraph', text: 'As in previous steps, USCIS may request additional information about the marriage before scheduling an interview to approve permanent residence.' },
     { type: 'heading', text: 'My Fiancé(e) Has Children — Can They Be Brought to the United States?' },
