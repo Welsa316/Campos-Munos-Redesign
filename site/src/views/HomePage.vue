@@ -8,7 +8,7 @@
           class="absolute inset-0 transition-opacity duration-[3500ms] ease-in-out"
           :class="currentSlide === i ? 'opacity-100' : 'opacity-0'">
           <div class="absolute inset-0 bg-cover bg-center kenburns"
-            :style="{ backgroundImage: `url('${slide.img}')`, animationDelay: `${i * -4}s`, animationPlayState: currentSlide === i ? 'running' : 'paused' }"></div>
+            :style="{ backgroundImage: `url('${slideImg(slide)}')`, animationDelay: `${i * -4}s`, animationPlayState: currentSlide === i ? 'running' : 'paused' }"></div>
         </div>
         <!-- Lighter, friendly blue tint (client felt the old black tint was too
              dark). A soft navy wash lets the photo show through; a slightly
@@ -266,12 +266,19 @@ const setLang = (l) => { if (currentLang.value !== l) toggleLang() }
 const slides = [
   { img: '/Slideshow3.jpg', subtitleKey: 'home.slideSubtitle3' }, // US flag — shows first
   { img: '/Slideshow1.jpg', subtitleKey: 'home.slideSubtitle1' }, // Statue of Liberty
-  { img: '/Slideshow2.jpg?v=2', subtitleKey: 'home.slideSubtitle2' }, // Juan + Angenette
+  // Juan + Angenette — standing photo on mobile (crops cleanly), the original
+  // table photo on desktop (wide crop works there).
+  { img: '/Slideshow2.jpg?v=2', imgDesktop: '/Slideshow2-desktop.jpg', subtitleKey: 'home.slideSubtitle2' },
   { img: '/Slideshow5.jpg', subtitleKey: 'home.slideSubtitle5' }, // wedding couple
   { img: '/Slideshow4.jpg', subtitleKey: 'home.slideSubtitle4' },
 ]
 const currentSlide = ref(0)
 let slideTimer = null
+
+// Pick the desktop variant of a slide (if it has one) above the sm breakpoint.
+const isMobileHero = ref(typeof window !== 'undefined' && window.innerWidth < 640)
+const onHeroResize = () => { isMobileHero.value = window.innerWidth < 640 }
+const slideImg = (slide) => (!isMobileHero.value && slide.imgDesktop) ? slide.imgDesktop : slide.img
 
 function goToSlide(i) { currentSlide.value = i }
 function nextSlide() { currentSlide.value = (currentSlide.value + 1) % slides.length }
@@ -294,6 +301,7 @@ const bentoServices = [
 ]
 
 onMounted(() => {
+  window.addEventListener('resize', onHeroResize, { passive: true })
   // Respect prefers-reduced-motion: skip the auto-advancing slideshow.
   // Users can still change slides manually via the progress dots.
   const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -312,7 +320,10 @@ onMounted(() => {
     })
   })
 })
-onUnmounted(() => clearInterval(slideTimer))
+onUnmounted(() => {
+  clearInterval(slideTimer)
+  window.removeEventListener('resize', onHeroResize)
+})
 </script>
 
 <style scoped>
