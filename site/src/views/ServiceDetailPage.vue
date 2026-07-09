@@ -50,22 +50,10 @@
                 {{ $t('serviceDetail.videoUnavailable') }}
               </div>
 
-              <!-- Desktop: autoplay muted on load; native controls let the user unmute -->
-              <video
-                v-if="isDesktop && !videoError"
-                :src="videoFile"
-                :poster="thumbnailSrc"
-                class="w-full h-full object-contain bg-black"
-                controls
-                autoplay
-                muted
-                playsinline
-                preload="metadata"
-                @error="videoError = true"
-              ></video>
-
-              <!-- Mobile: click-to-play (thumbnail + play button, then video with sound) -->
-              <template v-else-if="!videoError">
+              <!-- Click-to-play everywhere (no autoplay, per client decision): the
+                   thumbnail stays visible until the visitor taps play, then it
+                   plays with sound. -->
+              <template v-else>
                 <img v-if="!videoPlaying" :src="thumbnailSrc" :alt="serviceName"
                   class="absolute inset-0 w-full h-full object-cover" />
                 <button v-if="!videoPlaying" type="button" @click="playVideo"
