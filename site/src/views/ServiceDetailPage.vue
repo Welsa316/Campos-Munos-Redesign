@@ -257,7 +257,7 @@ const serviceName = computed(() => t(`services.${serviceData.value.key}`))
 const serviceIcon = computed(() => serviceData.value.icon)
 const hasVideo = computed(() => serviceData.value.video)
 const videoFile = computed(() => serviceData.value.videoFile || '')
-const thumbnailSrc = computed(() => serviceData.value.thumbnail || '/logo.png')
+const thumbnailSrc = computed(() => serviceData.value.thumbnail ? `${serviceData.value.thumbnail}?v=2` : '/logo.png')
 
 // Structured content blocks (bilingual; falls back to ES when EN missing)
 const contentBlocks = computed(() => getServiceContent(serviceData.value.key, locale.value))

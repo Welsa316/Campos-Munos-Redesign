@@ -25,7 +25,7 @@
           >
             <!-- Background image -->
             <img
-              :src="service.image"
+              :src="`${service.image}?v=2`"
               :alt="$t(`services.${service.key}`)"
               class="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-70 group-hover:scale-[1.03] transition-all duration-700 ease-out"
               :style="service.position ? { objectPosition: service.position } : {}"

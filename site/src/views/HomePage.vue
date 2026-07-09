@@ -15,8 +15,9 @@
         <div class="absolute inset-0 bg-gradient-to-r from-brand-darker/80 via-transparent to-transparent"></div>
       </div>
 
-      <!-- Hero content - left-aligned for dramatic asymmetry -->
-      <div class="relative h-full max-w-7xl mx-auto px-6 flex flex-col justify-center pt-20">
+      <!-- Hero content - left-aligned; sits in the upper-middle (moved up from
+           dead-center so there isn't a big empty gap above the heading). -->
+      <div class="relative h-full max-w-7xl mx-auto px-6 flex flex-col justify-start pt-[16vh] md:pt-[17vh]">
         <!-- Accent line -->
         <div class="w-20 h-[3px] bg-brand-navy mb-6 hero-reveal" style="transition-delay: 0.2s"></div>
 
@@ -250,7 +251,7 @@ const { toggleLang } = useLocaleToggle()
 
 const slides = [
   { img: '/Slideshow1.jpg', subtitleKey: 'home.slideSubtitle1' },
-  { img: '/Slideshow2.jpg', subtitleKey: 'home.slideSubtitle2' },
+  { img: '/Slideshow2.jpg?v=2', subtitleKey: 'home.slideSubtitle2' },
   { img: '/Slideshow3.jpg', subtitleKey: 'home.slideSubtitle3' },
   { img: '/Slideshow4.jpg', subtitleKey: 'home.slideSubtitle4' },
   { img: '/Slideshow5.jpg', subtitleKey: 'home.slideSubtitle5' },

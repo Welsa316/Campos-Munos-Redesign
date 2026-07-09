@@ -19,7 +19,7 @@
         <div class="relative overflow-hidden rounded-3xl">
           <!-- Image section -->
           <div class="relative">
-            <img src="/PopupPhoto.jpg" alt="" loading="lazy" decoding="async" class="w-full aspect-[4/3] h-auto object-cover" />
+            <img src="/PopupPhoto.jpg?v=2" alt="" loading="lazy" decoding="async" class="w-full aspect-[4/3] h-auto object-cover" />
           </div>
 
           <!-- Content - solid blue, completely separate from image -->
