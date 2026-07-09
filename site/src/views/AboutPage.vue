@@ -1,9 +1,9 @@
 <template>
   <div>
-    <!-- Hero banner (shorter, contained) -->
-    <section class="relative pt-24 flex items-end overflow-hidden h-[55vh] min-h-[420px]">
+    <!-- Hero banner (taller; crop sits on the team, not the building above them) -->
+    <section class="relative pt-24 flex items-end overflow-hidden h-[64vh] min-h-[520px]">
       <div class="absolute inset-0">
-        <img src="/Team.jpg" alt="" decoding="async" class="w-full h-full object-cover object-[center_28%]" />
+        <img src="/Team.jpg" alt="" decoding="async" class="w-full h-full object-cover object-[center_42%]" />
         <div class="absolute inset-0 bg-gradient-to-t from-brand-darker via-brand-darker/30 to-transparent"></div>
         <div class="absolute inset-0 bg-gradient-to-r from-brand-darker/50 to-transparent"></div>
       </div>
