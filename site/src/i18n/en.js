@@ -67,6 +67,9 @@ export default {
     translateBtn: 'En Español',
     ukrainianNote: 'We proudly serve the Ukrainian immigrant community and have resources in Ukrainian and Russian to meet their immigration needs.',
     servicesSubtitle: 'Click on any service to learn more — most include a short video.',
+    videosEyebrow: 'Videos',
+    videosTitle: 'See our services in video',
+    videosSubtitle: 'Click any of them to watch a short video about that service — no reading required.',
   },
   contact: {
     title: 'Schedule Your Consultation Now',

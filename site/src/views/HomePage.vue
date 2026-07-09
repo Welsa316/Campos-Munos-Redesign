@@ -162,6 +162,9 @@
       </div>
     </section>
 
+    <!-- ===================== SERVICE VIDEOS CAROUSEL ===================== -->
+    <VideoCarousel />
+
     <!-- ===================== UKRAINIAN COMMUNITY NOTE ===================== -->
     <section class="bg-brand-light pb-16">
       <div class="max-w-3xl mx-auto px-6 reveal">
@@ -258,6 +261,7 @@ import { useScrollReveal } from '../composables/useScrollReveal.js'
 import { useLocaleToggle } from '../composables/useLocaleToggle.js'
 import { HERO_SLIDE_DURATION_MS } from '../data/timing.js'
 import FlagIcon from '../components/FlagIcon.vue'
+import VideoCarousel from '../components/VideoCarousel.vue'
 
 useScrollReveal()
 const { currentLang, toggleLang } = useLocaleToggle()

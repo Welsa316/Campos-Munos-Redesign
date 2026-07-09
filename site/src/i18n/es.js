@@ -67,6 +67,9 @@ export default {
     translateBtn: 'In English',
     ukrainianNote: 'Servimos con orgullo a la comunidad inmigrante ucraniana y contamos con recursos en ucraniano y ruso para atender sus necesidades migratorias.',
     servicesSubtitle: 'Haga clic en cualquier servicio para conocer más; la mayoría incluye un video corto.',
+    videosEyebrow: 'Videos',
+    videosTitle: 'Conozca nuestros servicios en video',
+    videosSubtitle: 'Haga clic en cualquiera para ver un video corto sobre ese servicio — sin tener que leer.',
   },
   contact: {
     title: 'Agende Su Consulta Ahora',
