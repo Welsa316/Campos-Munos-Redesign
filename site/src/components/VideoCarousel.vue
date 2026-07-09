@@ -24,35 +24,36 @@
         :aria-hidden="Math.abs(i - activeIndex) > 1 ? 'true' : null"
         @click="i !== activeIndex && goTo(i, true)">
         <div class="relative w-full aspect-video rounded-3xl overflow-hidden shadow-2xl bg-brand-navy">
-          <!-- YouTube badge -->
-          <a :href="YOUTUBE_CHANNEL" target="_blank" rel="noopener" @click.stop
-            class="absolute top-3 right-3 z-20 inline-flex items-center gap-1.5 pl-2 pr-2.5 py-1 rounded-full bg-black/60 backdrop-blur-sm text-white text-xs font-ui font-semibold hover:bg-black/75 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
-            :aria-label="$t('home.watchOnYoutube')" :tabindex="i === activeIndex ? 0 : -1">
-            <i class="fa-brands fa-youtube text-[#FF3D3D] text-base" aria-hidden="true"></i>
-            <span>YouTube</span>
-          </a>
+          <!-- Only the active card shows its video/poster. The peeking neighbours
+               are just faded boxes hinting there's another video to swipe to. -->
+          <template v-if="i === activeIndex">
+            <!-- YouTube badge -->
+            <a :href="YOUTUBE_CHANNEL" target="_blank" rel="noopener" @click.stop
+              class="absolute top-3 right-3 z-20 inline-flex items-center gap-1.5 pl-2 pr-2.5 py-1 rounded-full bg-black/60 backdrop-blur-sm text-white text-xs font-ui font-semibold hover:bg-black/75 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+              :aria-label="$t('home.watchOnYoutube')">
+              <i class="fa-brands fa-youtube text-[#FF3D3D] text-base" aria-hidden="true"></i>
+              <span>YouTube</span>
+            </a>
 
-          <!-- Active + in-view card plays; everything else shows its poster. -->
-          <video v-if="i === activeIndex && inView && !errored.has(i)"
-            :src="v.videoFile" :aria-label="$t(`services.${v.key}`)"
-            class="absolute inset-0 w-full h-full object-contain bg-black"
-            autoplay muted playsinline controls @error="errored.add(i)"></video>
-          <template v-else>
-            <img :src="`${v.thumbnail}?v=2`" :alt="$t(`services.${v.key}`)"
-              class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" />
-            <div class="absolute inset-0 bg-gradient-to-t from-brand-navy/95 via-brand-navy/20 to-brand-navy/10"></div>
-            <!-- Video failed to load: the active card has no play button, so surface a notice. -->
-            <div v-if="errored.has(i)" class="absolute inset-0 flex items-center justify-center text-center px-6 z-10">
-              <p class="text-white/85 font-ui text-sm">{{ $t('serviceDetail.videoUnavailable') }}</p>
-            </div>
-            <!-- Play button only on the active (paused) card; neighbours are promoted by tapping the whole card. -->
-            <button v-if="i === activeIndex" type="button" @click="goTo(i, true)"
-              :aria-label="$t('serviceDetail.watchVideo', { service: $t(`services.${v.key}`) })"
-              class="absolute inset-0 flex items-center justify-center group focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/70 focus-visible:ring-inset rounded-3xl">
-              <span class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-transform duration-300 shadow-xl">
-                <i class="fa-solid fa-play text-brand-navy text-xl sm:text-2xl ml-1" aria-hidden="true"></i>
-              </span>
-            </button>
+            <video v-if="inView && !errored.has(i)"
+              :src="v.videoFile" :aria-label="$t(`services.${v.key}`)"
+              class="absolute inset-0 w-full h-full object-contain bg-black"
+              autoplay muted playsinline controls @error="errored.add(i)"></video>
+            <template v-else>
+              <img :src="`${v.thumbnail}?v=2`" :alt="$t(`services.${v.key}`)"
+                class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" />
+              <div class="absolute inset-0 bg-gradient-to-t from-brand-navy/95 via-brand-navy/20 to-brand-navy/10"></div>
+              <div v-if="errored.has(i)" class="absolute inset-0 flex items-center justify-center text-center px-6 z-10">
+                <p class="text-white/85 font-ui text-sm">{{ $t('serviceDetail.videoUnavailable') }}</p>
+              </div>
+              <button type="button" @click="goTo(i, true)"
+                :aria-label="$t('serviceDetail.watchVideo', { service: $t(`services.${v.key}`) })"
+                class="absolute inset-0 flex items-center justify-center group focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/70 focus-visible:ring-inset rounded-3xl">
+                <span class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-transform duration-300 shadow-xl">
+                  <i class="fa-solid fa-play text-brand-navy text-xl sm:text-2xl ml-1" aria-hidden="true"></i>
+                </span>
+              </button>
+            </template>
           </template>
         </div>
       </article>
