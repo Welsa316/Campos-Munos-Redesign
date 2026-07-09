@@ -73,6 +73,7 @@ export default {
     watchOnYoutube: 'Watch on our YouTube channel',
     prevVideo: 'Previous video',
     nextVideo: 'Next video',
+    tapForSound: 'Tap for sound',
   },
   contact: {
     title: 'Schedule Your Consultation Now',

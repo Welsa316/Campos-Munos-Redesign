@@ -198,7 +198,7 @@
     </section>
 
     <!-- ===================== RECOGNITION BAR ===================== -->
-    <section class="py-14 bg-brand-surface border-y border-gray-200">
+    <section class="py-14 bg-brand-light border-y border-gray-200">
       <div class="max-w-6xl mx-auto px-6">
         <div class="flex flex-col items-center gap-10">
           <p class="font-ui text-base tracking-[0.2em] text-gray-500 uppercase">{{ $t('home.recognizedBy') }}</p>
@@ -245,7 +245,7 @@
 
           <div class="reveal-right rounded-2xl overflow-hidden h-[400px] shadow-lg">
             <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3457.0!2d-90.0715!3d29.9511!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8620a67b1f0b7d2f%3A0x4b7a8c8b3b8b8b8b!2s812%20Gravier%20St%2C%20New%20Orleans%2C%20LA%2070112!5e0!3m2!1ses!2sus!4v1700000000000"
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3457.0!2d-90.0716173!3d29.952047!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8620b1f6f0a175e5%3A0x64631669ef4c8a8a!2sCampos%20Mu%C3%B1os%20Law%20LLC!5e0!3m2!1ses!2sus!4v1700000000000"
               class="w-full h-full border-0 rounded-2xl"
               allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"
               title="Campos Muños Law Office Location">

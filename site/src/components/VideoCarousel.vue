@@ -39,7 +39,15 @@
             <video v-if="inView && !errored.has(i)"
               :src="v.videoFile" :aria-label="$t(`services.${v.key}`)"
               class="absolute inset-0 w-full h-full object-contain bg-black rounded-3xl"
-              autoplay muted playsinline controls @error="errored.add(i)"></video>
+              autoplay :muted="!soundOn" playsinline controls @error="errored.add(i)"></video>
+            <!-- The video autoplays muted (browsers require it); this cue tells the
+                 viewer sound is available and unmutes on tap. -->
+            <button v-if="inView && !errored.has(i) && !soundOn" type="button" @click.stop="soundOn = true"
+              :aria-label="$t('home.tapForSound')"
+              class="absolute top-3 left-3 z-20 inline-flex items-center gap-1.5 pl-2 pr-2.5 py-1 rounded-full bg-black/60 backdrop-blur-sm text-white text-xs font-ui font-semibold hover:bg-black/75 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70">
+              <i class="fa-solid fa-volume-xmark text-sm" aria-hidden="true"></i>
+              <span>{{ $t('home.tapForSound') }}</span>
+            </button>
             <template v-else>
               <img :src="`${v.thumbnail}?v=2`" :alt="$t(`services.${v.key}`)"
                 class="absolute inset-0 w-full h-full object-cover rounded-3xl" loading="lazy" decoding="async" />
@@ -106,6 +114,7 @@ const deckRef = ref(null)
 const sectionRef = ref(null)
 const activeIndex = ref(0)
 const inView = ref(false)
+const soundOn = ref(false) // flips true after the first "tap for sound" gesture, then persists across videos
 const errored = reactive(new Set())
 
 // Position each card relative to the active one: the active is flat + forward,

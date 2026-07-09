@@ -73,6 +73,7 @@ export default {
     watchOnYoutube: 'Vea nuestro canal de YouTube',
     prevVideo: 'Video anterior',
     nextVideo: 'Video siguiente',
+    tapForSound: 'Toque para el sonido',
   },
   contact: {
     title: 'Agende Su Consulta Ahora',

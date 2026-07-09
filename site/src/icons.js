@@ -61,6 +61,7 @@ import {
   faTractor,
   faUmbrella,
   faUser,
+  faVolumeXmark,
   faVideo,
   faXmark,
 } from '@fortawesome/free-solid-svg-icons'
@@ -84,7 +85,7 @@ library.add(
   faIdCard, faInbox, faKey, faLink, faLocationDot, faMapMarkerAlt,
   faMessage, faPaperPlane, faPeopleRoof, faPhone, faPlay,
   faRotateRight, faScaleBalanced, faShieldHalved, faSpinner, faStar, faTractor, faUmbrella,
-  faUser, faVideo, faXmark,
+  faUser, faVideo, faVolumeXmark, faXmark,
   // brands
   faFacebookF, faInstagram, faTiktok, faWhatsapp, faYoutube,
 )
