@@ -53,6 +53,8 @@ app.use(helmet({
         "'unsafe-inline'",
         'https://www.googletagmanager.com',
         'https://static.elfsight.com',
+        'https://*.elfsight.com',
+        'https://*.elfsightcdn.com',
         'https://elfsightcdn.com',
       ],
       'script-src-elem': [
@@ -60,6 +62,8 @@ app.use(helmet({
         "'unsafe-inline'",
         'https://www.googletagmanager.com',
         'https://static.elfsight.com',
+        'https://*.elfsight.com',
+        'https://*.elfsightcdn.com',
         'https://elfsightcdn.com',
       ],
       'connect-src': [
@@ -67,10 +71,12 @@ app.use(helmet({
         'https://www.google-analytics.com',
         'https://region1.google-analytics.com',
         'https://*.google-analytics.com',
-        'https://static.elfsight.com',
+        // Elfsight loads widget code + review data from many subdomains
+        // (service-reviews-ultimate.elfsight.com, phosphor.utils.elfsightcdn.com,
+        // etc.) — wildcard both so the Google Reviews fetch isn't blocked in prod.
+        'https://*.elfsight.com',
+        'https://*.elfsightcdn.com',
         'https://elfsightcdn.com',
-        'https://core.service.elfsight.com',
-        'https://*.service.elfsight.com',
       ],
       'media-src': [
         "'self'",
@@ -86,6 +92,7 @@ app.use(helmet({
         'https://pub-bc3780d3394f41c6801ba2012e17903c.r2.dev',
         'https://www.google-analytics.com',
         'https://static.elfsight.com',
+        'https://*.elfsight.com',
         'https://elfsightcdn.com',
         'https://*.elfsightcdn.com',
         'https://*.cdninstagram.com',
