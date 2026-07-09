@@ -19,7 +19,7 @@
 
       <!-- Hero content - left-aligned; sits in the upper-middle (moved up from
            dead-center so there isn't a big empty gap above the heading). -->
-      <div class="relative h-full max-w-7xl mx-auto px-6 flex flex-col justify-start pt-[16vh] md:pt-[17vh]">
+      <div class="relative h-full max-w-7xl mx-auto px-6 flex flex-col justify-start pt-[20vh] md:pt-[16vh]">
         <!-- Accent line -->
         <div class="w-20 h-[3px] bg-brand-navy mb-6 hero-reveal" style="transition-delay: 0.2s"></div>
 
@@ -46,11 +46,20 @@
             {{ $t('home.consultaBtn') }}
             <i class="fa-solid fa-arrow-right text-sm transition-transform group-hover:translate-x-1"></i>
           </router-link>
-          <button @click="toggleLang"
-            class="relative z-20 group inline-flex items-center gap-3 border-2 border-white/40 text-white font-ui font-semibold tracking-wider text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-5 rounded-xl hover:bg-white hover:text-brand-navy transition-all duration-300">
-            <i class="fa-solid fa-globe text-lg sm:text-xl"></i>
-            {{ $t('home.translateBtn') }}
-          </button>
+          <!-- Dual-flag language toggle (both flags side by side, friendlier per
+               doc 1.3.1) — replaces the single "In English" button on the hero. -->
+          <div class="relative z-20 h-14 sm:h-[3.75rem] p-1.5 rounded-2xl bg-white/95 backdrop-blur-sm shadow-lg flex items-center gap-1">
+            <button @click="setLang('es')" :aria-pressed="currentLang === 'es'" aria-label="Español"
+              class="h-full px-4 rounded-[10px] flex items-center gap-2 font-ui text-sm sm:text-base font-bold tracking-wider transition-all duration-300"
+              :class="currentLang === 'es' ? 'bg-brand-navy text-white' : 'text-brand-navy/80 hover:bg-brand-navy/5'">
+              <FlagIcon country="mx" class="w-6 h-4" /> ES
+            </button>
+            <button @click="setLang('en')" :aria-pressed="currentLang === 'en'" aria-label="English"
+              class="h-full px-4 rounded-[10px] flex items-center gap-2 font-ui text-sm sm:text-base font-bold tracking-wider transition-all duration-300"
+              :class="currentLang === 'en' ? 'bg-brand-navy text-white' : 'text-brand-navy/80 hover:bg-brand-navy/5'">
+              <FlagIcon country="us" class="w-6 h-4" /> EN
+            </button>
+          </div>
         </div>
       </div>
 
@@ -247,9 +256,11 @@ import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useScrollReveal } from '../composables/useScrollReveal.js'
 import { useLocaleToggle } from '../composables/useLocaleToggle.js'
 import { HERO_SLIDE_DURATION_MS } from '../data/timing.js'
+import FlagIcon from '../components/FlagIcon.vue'
 
 useScrollReveal()
-const { toggleLang } = useLocaleToggle()
+const { currentLang, toggleLang } = useLocaleToggle()
+const setLang = (l) => { if (currentLang.value !== l) toggleLang() }
 
 const slides = [
   { img: '/Slideshow3.jpg', subtitleKey: 'home.slideSubtitle3' }, // US flag — shows first
