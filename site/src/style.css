@@ -12,6 +12,7 @@
   --color-brand-red: #CE1D1D;
   --color-brand-red-light: #e53535;
   --color-brand-whatsapp: #25D366;
+  --color-youtube: #CC0000; /* white text clears WCAG AA (~5.9:1); reads as YouTube red */
   --color-brand-cream: #f5f0e8;
   --color-brand-gray: #2a2a2a;
   --color-brand-muted: #161616;

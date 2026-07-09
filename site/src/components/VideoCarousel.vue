@@ -7,7 +7,7 @@
         <p class="text-gray-500 text-lg font-ui max-w-2xl mx-auto mt-3">{{ $t('home.videosSubtitle') }}</p>
         <!-- Prominent link to the firm's YouTube channel -->
         <a :href="YOUTUBE_CHANNEL" target="_blank" rel="noopener"
-          class="mt-5 inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-[#FF0000] text-white font-ui font-bold tracking-wide shadow-md hover:bg-[#e60000] hover:scale-[1.03] transition-transform focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#FF0000]/30">
+          class="mt-5 inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-youtube text-white font-ui font-bold tracking-wide shadow-md hover:bg-[#b30000] hover:scale-[1.03] transition-transform focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-youtube/40">
           <i class="fa-brands fa-youtube text-xl" aria-hidden="true"></i>
           {{ $t('home.watchOnYoutube') }}
         </a>
@@ -40,6 +40,10 @@
               <img :src="`${v.thumbnail}?v=2`" :alt="$t(`services.${v.key}`)"
                 class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" />
               <div class="absolute inset-0 bg-gradient-to-t from-brand-navy/95 via-brand-navy/20 to-brand-navy/10"></div>
+              <!-- Video failed to load: the active card has no play button, so surface a notice. -->
+              <div v-if="errored.has(i)" class="absolute inset-0 flex items-center justify-center text-center px-6 z-10">
+                <p class="text-white/85 font-ui text-sm">{{ $t('serviceDetail.videoUnavailable') }}</p>
+              </div>
               <!-- Tapping a non-active card promotes it (and it starts playing). -->
               <button v-if="i !== activeIndex" type="button" @click="goTo(i, true)"
                 :aria-label="$t('serviceDetail.watchVideo', { service: $t(`services.${v.key}`) })"
@@ -72,7 +76,7 @@
       <p class="font-heading text-2xl sm:text-3xl text-brand-navy" aria-live="polite">
         {{ $t(`services.${videos[activeIndex].key}`) }}
       </p>
-      <p class="text-gray-400 font-ui text-sm mt-1">{{ activeIndex + 1 }} / {{ videos.length }}</p>
+      <p class="text-gray-600 font-ui text-sm mt-1">{{ activeIndex + 1 }} / {{ videos.length }}</p>
       <router-link to="/servicios"
         class="mt-4 inline-flex items-center gap-2 text-brand-navy font-ui font-bold tracking-wider group">
         {{ $t('nav.verTodosServicios') }}
@@ -109,7 +113,9 @@ function goTo(i, focusVideo = false) {
     const cardRect = card.getBoundingClientRect()
     const reelRect = reel.getBoundingClientRect()
     const delta = (cardRect.left + cardRect.width / 2) - (reelRect.left + reelRect.width / 2)
-    reel.scrollBy({ left: delta, behavior: 'smooth' })
+    const reduceMotion = typeof window !== 'undefined' && window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    reel.scrollBy({ left: delta, behavior: reduceMotion ? 'auto' : 'smooth' })
   }
   if (focusVideo) {
     nextTick(() => {

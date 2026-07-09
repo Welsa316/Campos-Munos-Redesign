@@ -162,7 +162,7 @@ export default {
   mobileContact: {
     cta: 'Llámenos',
     textUs: 'Envíenos un Texto',
-    callLabel: 'Llamar a (504) 910-6508',
+    callLabel: 'Llámenos al (504) 910-6508',
     whatsappLabel: 'Escríbanos por WhatsApp',
   },
   payment: {

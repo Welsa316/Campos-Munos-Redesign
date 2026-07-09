@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- ===================== CINEMATIC HERO ===================== -->
-    <section class="relative h-screen min-h-[600px] sm:min-h-[700px] overflow-hidden">
+    <section class="relative h-dvh min-h-[600px] sm:min-h-[700px] overflow-hidden">
       <!-- Slideshow with Ken Burns -->
       <div class="absolute inset-0">
         <div v-for="(slide, i) in slides" :key="i"
