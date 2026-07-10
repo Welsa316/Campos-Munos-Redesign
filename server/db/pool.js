@@ -7,7 +7,12 @@ export default function getPool() {
   if (!pool) {
     pool = new pg.Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+      // Verify the DB server certificate when a CA is provided (set PG_CA_CERT to
+      // Railway's CA to close the MITM gap); otherwise fall back to encrypted-but-
+      // unverified TLS, which is the Railway default when no CA is pinned.
+      ssl: process.env.NODE_ENV === 'production'
+        ? { rejectUnauthorized: !!process.env.PG_CA_CERT, ca: process.env.PG_CA_CERT || undefined }
+        : false,
       connectionTimeoutMillis: 10000,
       max: 10,
       idleTimeoutMillis: 30000,

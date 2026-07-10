@@ -163,7 +163,7 @@ router.get('/', requireAuth, async (req, res) => {
 router.get(
   '/:id',
   requireAuth,
-  param('id').isInt().withMessage('Invalid submission ID'),
+  param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid submission ID'),
   validate,
   async (req, res) => {
     try {
@@ -202,7 +202,7 @@ router.get(
 router.post(
   '/:id/chat-message',
   chatMessageLimiter,
-  param('id').isInt().withMessage('Invalid session ID'),
+  param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid session ID'),
   body('body').trim().notEmpty().isLength({ max: 5000 }).withMessage('Message is required (max 5000 chars)'),
   body('chatToken').isString().isLength({ min: 16, max: 64 }).withMessage('Valid chat token is required'),
   validate,
@@ -284,7 +284,7 @@ router.post(
 router.patch(
   '/:id/read',
   requireAuth,
-  param('id').isInt().withMessage('Invalid submission ID'),
+  param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid submission ID'),
   body('read').optional().isBoolean({ strict: true }),
   validate,
   async (req, res) => {
@@ -312,7 +312,7 @@ router.patch(
 router.patch(
   '/:id/archive',
   requireAuth,
-  param('id').isInt().withMessage('Invalid submission ID'),
+  param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid submission ID'),
   body('archived').optional().isBoolean({ strict: true }),
   validate,
   async (req, res) => {
@@ -343,12 +343,12 @@ router.get('/export/csv', requireAuth, async (req, res) => {
   let client
   try {
     client = await getPool().connect()
-    res.setHeader('Content-Type', 'text/csv')
-    res.setHeader('Content-Disposition', `attachment; filename="submissions-${new Date().toISOString().slice(0, 10)}.csv"`)
-    res.write('First Name,Last Name,Email,Phone,Message,Service,Location,Read,Archived,Submitted\n')
 
     // pg's stream-result mode via the `rowMode: 'array'` + manual iteration
     // would need pg-query-stream; instead we batch with a server-side cursor.
+    // Open the cursor and pull the FIRST batch before writing any response bytes:
+    // if the DB errors here, we're still in the !headersSent branch and can return
+    // a real 500, instead of a header-only CSV that looks like a successful export.
     await client.query('BEGIN')
     await client.query(
       `DECLARE submissions_csv_cursor CURSOR FOR
@@ -357,15 +357,21 @@ router.get('/export/csv', requireAuth, async (req, res) => {
     )
 
     const BATCH = 500
-    while (true) {
-      const batch = await client.query(`FETCH ${BATCH} FROM submissions_csv_cursor`)
-      if (batch.rows.length === 0) break
+    let batch = await client.query(`FETCH ${BATCH} FROM submissions_csv_cursor`)
+
+    // First fetch succeeded — now commit to the response and stream.
+    res.setHeader('Content-Type', 'text/csv')
+    res.setHeader('Content-Disposition', `attachment; filename="submissions-${new Date().toISOString().slice(0, 10)}.csv"`)
+    res.write('First Name,Last Name,Email,Phone,Message,Service,Location,Read,Archived,Submitted\n')
+
+    while (batch.rows.length > 0) {
       const chunk = batch.rows.map(r => {
         const date = new Date(r.created_at).toISOString()
         return `${escapeCsvField(r.first_name)},${escapeCsvField(r.last_name)},${escapeCsvField(r.email)},${escapeCsvField(r.phone)},${escapeCsvField(r.message)},${escapeCsvField(r.consultation_type)},${escapeCsvField(r.location)},${r.is_read},${r.is_archived},"${date}"`
       }).join('\n')
       res.write(chunk + '\n')
       if (batch.rows.length < BATCH) break
+      batch = await client.query(`FETCH ${BATCH} FROM submissions_csv_cursor`)
     }
 
     await client.query('CLOSE submissions_csv_cursor')
@@ -388,7 +394,7 @@ router.get('/export/csv', requireAuth, async (req, res) => {
 router.post(
   '/:id/reply',
   requireAuth,
-  param('id').isInt().withMessage('Invalid submission ID'),
+  param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid submission ID'),
   body('body').trim().notEmpty().isLength({ max: 10000 }).withMessage('Reply body is required (max 10000 chars)'),
   validate,
   async (req, res) => {

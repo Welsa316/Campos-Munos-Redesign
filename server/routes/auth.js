@@ -34,7 +34,10 @@ const passwordChangeLimiter = rateLimit({
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  // Lax, not None: the SPA and API share an origin (one Railway service), so the
+  // cookie doesn't need to travel cross-site. None would leave the body-less
+  // POST /logout forgeable cross-site (logout-CSRF) for no benefit.
+  sameSite: 'lax',
   maxAge: 8 * 60 * 60 * 1000,
   path: '/',
 }
@@ -42,14 +45,17 @@ const COOKIE_OPTIONS = {
 router.post(
   '/login',
   loginLimiter,
-  body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
+  // Do NOT normalizeEmail() here: it lowercases and strips Gmail dots/+tags, but
+  // the admin row is stored verbatim from ADMIN_EMAIL, so a normalized login value
+  // could never match. We match case-insensitively in the query instead.
+  body('email').isEmail().withMessage('Valid email required'),
   body('password').notEmpty().withMessage('Password required'),
   validate,
   async (req, res) => {
     try {
       const { email, password } = req.body
       const result = await getPool().query(
-        'SELECT id, email, password_hash, token_version FROM admin_users WHERE email = $1',
+        'SELECT id, email, password_hash, token_version FROM admin_users WHERE LOWER(email) = LOWER($1)',
         [email]
       )
 

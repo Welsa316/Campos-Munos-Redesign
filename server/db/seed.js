@@ -36,8 +36,9 @@ async function seed() {
       }
     }
 
-    // Seed admin user
-    const email = process.env.ADMIN_EMAIL || 'admin@camulaw.com'
+    // Seed admin user. Store the email lowercased so it agrees with the
+    // case-insensitive login lookup (LOWER(email) = LOWER($1)).
+    const email = (process.env.ADMIN_EMAIL || 'admin@camulaw.com').trim().toLowerCase()
     const password = process.env.ADMIN_INITIAL_PASSWORD || 'changeme'
     const hash = await bcrypt.hash(password, 12)
 
