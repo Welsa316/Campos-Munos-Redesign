@@ -73,7 +73,7 @@
 
               <div class="form-group">
                 <label for="contact-phone" class="form-label">{{ $t('contact.phone') }} <span class="text-brand-red">*</span></label>
-                <input id="contact-phone" v-model="form.phone" type="tel" required maxlength="50" class="form-input" />
+                <input id="contact-phone" :value="form.phone" @input="form.phone = maskPhone($event.target.value)" type="tel" inputmode="tel" required maxlength="20" class="form-input" />
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -217,6 +217,7 @@ import { rawFetch } from '../composables/useApi.js'
 import { CONSULTATION_KEYS, consultationLabel } from '../data/consultationTypes.js'
 import { MAPS_PROFILE_URL } from '../data/contact.js'
 import { COUNTRIES } from '../data/countries.js'
+import { maskPhone } from '../utils/phone.js'
 
 useScrollReveal()
 const { t, te, locale } = useI18n()

@@ -275,17 +275,20 @@ router.post(
   }
 )
 
-// Admin — mark as read
+// Admin — mark as read / unread. No body → mark read (the dashboard auto-calls
+// this on open); an explicit { read: false } re-flags it as unread.
 router.patch(
   '/:id/read',
   requireAuth,
   param('id').isInt().withMessage('Invalid submission ID'),
+  body('read').optional().isBoolean({ strict: true }),
   validate,
   async (req, res) => {
     try {
+      const read = typeof req.body?.read === 'boolean' ? req.body.read : true
       const result = await getPool().query(
-        'UPDATE submissions SET is_read = true WHERE id = $1 RETURNING id, is_read',
-        [req.params.id]
+        'UPDATE submissions SET is_read = $2 WHERE id = $1 RETURNING id, is_read',
+        [req.params.id, read]
       )
 
       if (result.rows.length === 0) {

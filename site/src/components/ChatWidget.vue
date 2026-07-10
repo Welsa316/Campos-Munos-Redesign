@@ -89,7 +89,7 @@
                 :aria-label="$t('chat.email')"
                 autocomplete="email"
                 class="chat-input w-full" />
-              <input v-model="form.phone" type="tel" required maxlength="50"
+              <input :value="form.phone" @input="form.phone = maskPhone($event.target.value)" type="tel" inputmode="tel" required maxlength="20"
                 :placeholder="$t('chat.phone')"
                 :aria-label="$t('chat.phone')"
                 autocomplete="tel"
@@ -214,6 +214,7 @@ import { COUNTRIES } from '../data/countries.js'
 const { t, te, locale } = useI18n()
 
 import { CHAT_GREETING_DELAY_MS, CHAT_GREETING_DISMISS_TTL_MS } from '../data/timing.js'
+import { maskPhone } from '../utils/phone.js'
 
 const SESSION_KEY = 'cm_chat_session_v1'
 const GREETING_KEY = 'cm_chat_greeting_dismissed_at'

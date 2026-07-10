@@ -24,8 +24,8 @@
               <a :href="'mailto:' + submission.email" class="text-brand-navy hover:text-brand-navy-light transition-colors">
                 <i class="fa-solid fa-envelope mr-1.5 text-xs"></i>{{ submission.email }}
               </a>
-              <a :href="'tel:' + submission.phone" class="text-brand-navy hover:text-brand-navy-light transition-colors">
-                <i class="fa-solid fa-phone mr-1.5 text-xs"></i>{{ submission.phone }}
+              <a :href="telHref(submission.phone)" class="text-brand-navy hover:text-brand-navy-light transition-colors">
+                <i class="fa-solid fa-phone mr-1.5 text-xs"></i>{{ formatPhone(submission.phone) }}
               </a>
             </div>
             <div class="flex items-center gap-3 text-xs font-ui mt-2">
@@ -44,6 +44,16 @@
               <span class="w-1.5 h-1.5 rounded-full bg-brand-red"></span>
               Unread
             </span>
+            <button
+              v-if="submission.is_read"
+              @click="markUnread"
+              :disabled="markingUnread"
+              class="p-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface transition-colors"
+              title="Mark as unread"
+              aria-label="Mark as unread"
+            >
+              <i class="fa-solid fa-envelope text-sm" aria-hidden="true"></i>
+            </button>
             <button
               @click="toggleArchive"
               :disabled="archiving"
@@ -102,6 +112,7 @@ import { useI18n } from 'vue-i18n'
 import { useApi } from '../../composables/useApi.js'
 import { consultationLabel as consultationLabelShared } from '../../data/consultationTypes.js'
 import { countryLabel } from '../../data/countries.js'
+import { formatPhone, telHref } from '../../utils/phone.js'
 import ReplyBox from './ReplyBox.vue'
 
 const { t, te, locale } = useI18n()
@@ -113,10 +124,26 @@ const props = defineProps({
   showBack: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['replied', 'back', 'archived'])
+const emit = defineEmits(['replied', 'back', 'archived', 'unread'])
 
 const { patch } = useApi()
 const archiving = ref(false)
+const markingUnread = ref(false)
+
+// Re-flag a message the admin already opened (opening auto-marks it read) so it
+// resurfaces as unread for whoever reads the inbox next.
+async function markUnread() {
+  if (!props.submission || markingUnread.value) return
+  markingUnread.value = true
+  try {
+    await patch(`/api/submissions/${props.submission.id}/read`, { read: false })
+    emit('unread', props.submission.id)
+  } catch {
+    // silently fail
+  } finally {
+    markingUnread.value = false
+  }
+}
 
 // Interleave the original message, any follow-up chat messages, and admin replies, all sorted by timestamp.
 const threadItems = computed(() => {

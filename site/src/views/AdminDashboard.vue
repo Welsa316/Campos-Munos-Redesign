@@ -87,6 +87,7 @@
           @replied="refreshSelected"
           @back="selectedId = null"
           @archived="handleArchived"
+          @unread="handleUnread"
         />
       </div>
     </div>
@@ -172,6 +173,16 @@ async function handleArchived() {
   selectedId.value = null
   selectedSubmission.value = null
   await fetchSubmissions()
+}
+
+// Reflect a mark-as-unread in the list (dot + counters) and the open detail (pill),
+// without refetching — the row is already loaded.
+function handleUnread(id) {
+  const sub = submissions.value.find(s => s.id === id)
+  if (sub) sub.is_read = false
+  if (selectedSubmission.value && selectedSubmission.value.id === id) {
+    selectedSubmission.value.is_read = false
+  }
 }
 
 async function exportCsv() {
