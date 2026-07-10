@@ -86,6 +86,9 @@ router.post(
           await resend.emails.send({
             from: process.env.RESEND_FROM_EMAIL || 'contact@camulaw.com',
             to: adminEmail,
+            // Reply-To = the person who submitted, so hitting "Reply" in the
+            // office inbox goes straight to the client, not back to our system.
+            replyTo: email,
             subject: `${subjectPrefix} ${firstName} ${lastName}`,
             html: `
               <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1a1a1a;">
@@ -243,6 +246,8 @@ router.post(
           await resend.emails.send({
             from: process.env.RESEND_FROM_EMAIL || 'contact@camulaw.com',
             to: adminEmail,
+            // Reply-To = the client, so the office can reply from its inbox directly.
+            replyTo: submission.email,
             subject: `New chat message from ${submission.first_name} ${submission.last_name}`,
             html: `
               <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1a1a1a;">
@@ -415,6 +420,9 @@ router.post(
         await resend.emails.send({
           from: process.env.RESEND_FROM_EMAIL || 'contact@camulaw.com',
           to: submission.email,
+          // Reply-To = the office inbox so a client's reply lands with the firm,
+          // even when we send from a noreply-style RESEND_FROM_EMAIL.
+          replyTo: process.env.ADMIN_EMAIL || process.env.RESEND_FROM_EMAIL || 'contact@camulaw.com',
           subject: `Re: Your inquiry — Campos Muños Law`,
           html: `
             <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1a1a1a;">
@@ -426,7 +434,7 @@ router.post(
               <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0 16px;" />
               <p style="font-size: 12px; color: #6b7280; line-height: 1.5;">
                 This is a reply to your inquiry submitted on ${submittedDate}.<br/>
-                Please do not reply to this email. To contact us, call (504) 910-6508 or visit our website.
+                You can reply directly to this email or call us at (504) 910-6508.
               </p>
             </div>
           `,
