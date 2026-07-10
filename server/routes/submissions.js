@@ -450,7 +450,6 @@ router.post(
               <div style="border-bottom: 3px solid #003F8D; padding-bottom: 16px; margin-bottom: 24px;">
                 <h2 style="margin: 0; color: #003F8D; font-size: 20px;">Campos Muños Law</h2>
               </div>
-              <p style="font-size: 15px; line-height: 1.6;">Dear ${escapeHtml(submission.first_name)},</p>
               <div style="font-size: 15px; line-height: 1.7; white-space: pre-wrap;">${escapeHtml(replyBody)}</div>
               <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0 16px;" />
               <p style="font-size: 12px; color: #6b7280; line-height: 1.5;">
