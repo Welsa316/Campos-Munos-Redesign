@@ -55,19 +55,24 @@
               <i class="fa-solid fa-envelope text-sm" aria-hidden="true"></i>
             </button>
             <button
+              ref="archiveBtn"
               @click="toggleArchive"
               :disabled="archiving"
               class="p-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface transition-colors"
               :title="submission.is_archived ? 'Move to Inbox' : 'Archive'"
+              :aria-label="submission.is_archived ? 'Move to inbox' : 'Archive'"
             >
-              <i :class="submission.is_archived ? 'fa-solid fa-inbox' : 'fa-solid fa-archive'" class="text-sm"></i>
+              <i :class="submission.is_archived ? 'fa-solid fa-inbox' : 'fa-solid fa-archive'" class="text-sm" aria-hidden="true"></i>
             </button>
             <!-- Back button for mobile -->
-            <button v-if="showBack" @click="$emit('back')" class="p-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface transition-colors lg:hidden">
-              <i class="fa-solid fa-arrow-left"></i>
+            <button v-if="showBack" @click="$emit('back')" aria-label="Back to messages" class="p-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface transition-colors lg:hidden">
+              <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
             </button>
           </div>
         </div>
+        <p v-if="actionError" role="alert" class="mt-3 text-xs font-ui text-amber-700">
+          <i class="fa-solid fa-triangle-exclamation mr-1" aria-hidden="true"></i>{{ actionError }}
+        </p>
       </div>
 
       <!-- Conversation thread -->
@@ -97,8 +102,10 @@
         </template>
       </div>
 
-      <!-- Reply box -->
+      <!-- Reply box — keyed by submission so a half-typed draft never carries
+           over to a different client when the admin switches messages. -->
       <ReplyBox
+        :key="submission.id"
         :submissionId="submission.id"
         @replied="$emit('replied')"
       />
@@ -107,7 +114,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useApi } from '../../composables/useApi.js'
 import { consultationLabel as consultationLabelShared } from '../../data/consultationTypes.js'
@@ -129,17 +136,31 @@ const emit = defineEmits(['replied', 'back', 'archived', 'unread'])
 const { patch } = useApi()
 const archiving = ref(false)
 const markingUnread = ref(false)
+const actionError = ref('')
+const archiveBtn = ref(null)
+
+let errorTimer = null
+function showActionError(msg) {
+  actionError.value = msg
+  if (errorTimer) clearTimeout(errorTimer)
+  errorTimer = setTimeout(() => { actionError.value = '' }, 5000)
+}
+onBeforeUnmount(() => { if (errorTimer) clearTimeout(errorTimer) })
 
 // Re-flag a message the admin already opened (opening auto-marks it read) so it
 // resurfaces as unread for whoever reads the inbox next.
 async function markUnread() {
   if (!props.submission || markingUnread.value) return
   markingUnread.value = true
+  actionError.value = ''
   try {
     await patch(`/api/submissions/${props.submission.id}/read`, { read: false })
     emit('unread', props.submission.id)
+    // The button removes itself once the message is unread — move focus to a
+    // stable control so keyboard/AT users don't get dropped to <body>.
+    nextTick(() => archiveBtn.value?.focus())
   } catch {
-    // silently fail
+    showActionError('Could not mark as unread — please try again.')
   } finally {
     markingUnread.value = false
   }
@@ -173,12 +194,16 @@ const threadItems = computed(() => {
 
 async function toggleArchive() {
   if (!props.submission || archiving.value) return
+  const wasArchived = props.submission.is_archived
   archiving.value = true
+  actionError.value = ''
   try {
-    await patch(`/api/submissions/${props.submission.id}/archive`)
+    // Send the explicit target state so concurrent/stale tabs converge on the
+    // same result instead of flip-flopping through the server's NOT-toggle.
+    await patch(`/api/submissions/${props.submission.id}/archive`, { archived: !wasArchived })
     emit('archived')
   } catch {
-    // silently fail
+    showActionError(wasArchived ? 'Could not move to inbox — please try again.' : 'Could not archive — please try again.')
   } finally {
     archiving.value = false
   }

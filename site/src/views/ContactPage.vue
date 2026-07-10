@@ -73,7 +73,7 @@
 
               <div class="form-group">
                 <label for="contact-phone" class="form-label">{{ $t('contact.phone') }} <span class="text-brand-red">*</span></label>
-                <input id="contact-phone" :value="form.phone" @input="form.phone = maskPhone($event.target.value)" type="tel" inputmode="tel" required maxlength="20" class="form-input" />
+                <input id="contact-phone" :value="form.phone" @input="onPhoneInput" type="tel" inputmode="tel" required maxlength="20" class="form-input" />
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -210,16 +210,23 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useScrollReveal } from '../composables/useScrollReveal.js'
 import { rawFetch } from '../composables/useApi.js'
 import { CONSULTATION_KEYS, consultationLabel } from '../data/consultationTypes.js'
 import { MAPS_PROFILE_URL } from '../data/contact.js'
 import { COUNTRIES } from '../data/countries.js'
-import { maskPhone } from '../utils/phone.js'
+import { maskPhoneWithCaret } from '../utils/phone.js'
 
 useScrollReveal()
+
+function onPhoneInput(e) {
+  const el = e.target
+  const { masked, caret } = maskPhoneWithCaret(el.value, el.selectionStart ?? el.value.length)
+  form.value.phone = masked
+  nextTick(() => { if (el.setSelectionRange) el.setSelectionRange(caret, caret) })
+}
 const { t, te, locale } = useI18n()
 
 const form = ref({ firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '' })

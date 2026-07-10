@@ -9,8 +9,8 @@
             {{ unreadCount }}
           </span>
         </h2>
-        <button @click="$emit('refresh')" class="p-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface transition-colors" title="Refresh">
-          <i class="fa-solid fa-rotate-right text-sm"></i>
+        <button ref="refreshBtn" @click="$emit('refresh')" :disabled="refreshing" class="p-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface transition-colors disabled:opacity-50" title="Refresh" aria-label="Refresh messages">
+          <i class="fa-solid fa-rotate-right text-sm" :class="{ 'fa-spin': refreshing }" aria-hidden="true"></i>
         </button>
       </div>
 
@@ -45,6 +45,7 @@
       <!-- Consultation type filter -->
       <div class="mt-3">
         <select v-model="consultationFilter"
+          aria-label="Filter by consultation type"
           class="w-full text-xs font-ui font-medium px-3 py-2 rounded-lg bg-brand-surface border border-transparent focus:border-brand-navy/30 focus:bg-white focus:outline-none text-gray-700 transition-colors">
           <option value="">All consultation types</option>
           <option v-for="key in CONSULTATION_KEYS" :key="key" :value="key">
@@ -75,7 +76,7 @@
         <div class="flex items-start gap-3">
           <!-- Unread dot -->
           <div class="pt-1.5 w-2 flex-shrink-0">
-            <div v-if="!sub.is_read" class="w-2 h-2 rounded-full bg-brand-red"></div>
+            <div v-if="!sub.is_read" class="w-2 h-2 rounded-full bg-brand-red"><span class="sr-only">Unread. </span></div>
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-baseline justify-between gap-2 mb-1">
@@ -116,9 +117,14 @@ const props = defineProps({
   submissions: { type: Array, default: () => [] },
   selectedId: { type: Number, default: null },
   viewMode: { type: String, default: 'inbox' },
+  refreshing: { type: Boolean, default: false },
 })
 
 defineEmits(['select', 'refresh', 'changeView'])
+
+const refreshBtn = ref(null)
+// Let the dashboard restore focus here after the detail pane unmounts (e.g. archive).
+defineExpose({ focusTop: () => refreshBtn.value?.focus() })
 
 const { t, te, locale } = useI18n()
 const filter = ref('all')
@@ -132,7 +138,9 @@ const unreadCount = computed(() => props.submissions.filter(s => !s.is_read).len
 const filteredSubmissions = computed(() => {
   let list = props.submissions
   if (filter.value === 'unread' && props.viewMode !== 'archived') {
-    list = list.filter(s => !s.is_read)
+    // Keep the currently-open row visible even after opening auto-marks it read,
+    // so the selected item doesn't vanish out from under the admin mid-read.
+    list = list.filter(s => !s.is_read || s.id === props.selectedId)
   }
   if (consultationFilter.value) {
     list = list.filter(s => s.consultation_type === consultationFilter.value)

@@ -32,3 +32,18 @@ export function formatPhone(raw) {
 export function telHref(raw) {
   return 'tel:' + String(raw || '').replace(/[^\d+]/g, '')
 }
+
+// Mask a value while preserving the caret's logical position — placing it after
+// the same number of digits it followed before reformatting — so mid-string edits
+// don't jump the cursor to the end. Returns { masked, caret } to apply post-render.
+export function maskPhoneWithCaret(rawValue, rawCaret) {
+  const digitsBeforeCaret = String(rawValue).slice(0, rawCaret).replace(/\D/g, '').length
+  const masked = maskPhone(rawValue)
+  let pos = 0
+  let seen = 0
+  while (pos < masked.length && seen < digitsBeforeCaret) {
+    if (/\d/.test(masked[pos])) seen++
+    pos++
+  }
+  return { masked, caret: pos }
+}

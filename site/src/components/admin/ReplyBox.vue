@@ -26,7 +26,7 @@
               :aria-live="toast.type === 'success' ? 'polite' : 'assertive'"
               :class="[
                 'text-xs font-ui',
-                toast.type === 'success' ? 'text-green-600' : 'text-amber-600'
+                toast.type === 'success' ? 'text-green-700' : 'text-amber-700'
               ]">
               <i :class="toast.type === 'success' ? 'fa-solid fa-check-circle' : 'fa-solid fa-exclamation-triangle'" class="mr-1" aria-hidden="true"></i>
               {{ toast.message }}
