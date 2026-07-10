@@ -83,7 +83,9 @@ router.post(
         if (adminEmail && process.env.RESEND_API_KEY) {
           const resend = new Resend(process.env.RESEND_API_KEY)
           const subjectPrefix = source === 'chat' ? 'New chat from' : 'New inquiry from'
-          await resend.emails.send({
+          // Resend does NOT throw on API errors (unverified domain, bad key, etc.) —
+          // it returns { error }. Check it, or the failure is silently swallowed.
+          const { error: sendError } = await resend.emails.send({
             from: process.env.RESEND_FROM_EMAIL || 'contact@camulaw.com',
             to: adminEmail,
             // Reply-To = the person who submitted, so hitting "Reply" in the
@@ -108,6 +110,7 @@ router.post(
               </div>
             `,
           })
+          if (sendError) req.log.error({ err: sendError }, 'Admin notification email rejected by Resend')
         }
       } catch (notifyErr) {
         req.log.error({ err: notifyErr }, 'Admin notification email failed')
@@ -243,7 +246,7 @@ router.post(
         const adminEmail = process.env.ADMIN_EMAIL
         if (adminEmail && process.env.RESEND_API_KEY) {
           const resend = new Resend(process.env.RESEND_API_KEY)
-          await resend.emails.send({
+          const { error: sendError } = await resend.emails.send({
             from: process.env.RESEND_FROM_EMAIL || 'contact@camulaw.com',
             to: adminEmail,
             // Reply-To = the client, so the office can reply from its inbox directly.
@@ -261,6 +264,7 @@ router.post(
               </div>
             `,
           })
+          if (sendError) req.log.error({ err: sendError }, 'Admin chat notification email rejected by Resend')
         }
       } catch (notifyErr) {
         req.log.error({ err: notifyErr }, 'Admin chat notification email failed')
@@ -420,7 +424,9 @@ router.post(
           day: 'numeric',
         })
 
-        await resend.emails.send({
+        // Resend returns { error } on API-level failure (e.g. unverified domain);
+        // it does not throw. Check the returned error, not just the catch block.
+        const { error: sendError } = await resend.emails.send({
           from: process.env.RESEND_FROM_EMAIL || 'contact@camulaw.com',
           to: submission.email,
           // Reply-To = the office inbox so a client's reply lands with the firm,
@@ -442,6 +448,10 @@ router.post(
             </div>
           `,
         })
+        if (sendError) {
+          req.log.error({ err: sendError }, 'Resend reply email rejected')
+          emailFailed = true
+        }
       } catch (emailErr) {
         req.log.error({ err: emailErr }, 'Resend email failed')
         emailFailed = true
