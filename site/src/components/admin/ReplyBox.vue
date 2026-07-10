@@ -11,11 +11,12 @@
         placeholder="Type your reply..."
         aria-label="Reply body"
         class="form-input resize-none text-sm mb-3"
+        @keydown.enter.exact.prevent="sendReply"
       ></textarea>
 
       <div class="flex items-center justify-between">
         <span class="text-xs text-gray-500 font-ui">
-          {{ body.length.toLocaleString() }} / 10,000
+          <span class="hidden sm:inline">Enter to send · Shift+Enter for a new line · </span>{{ body.length.toLocaleString() }} / 10,000
         </span>
 
         <div class="flex items-center gap-3">

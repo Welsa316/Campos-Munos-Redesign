@@ -10,6 +10,12 @@ import { stripHtml, escapeHtml, escapeCsvField } from '../utils/sanitize.js'
 
 const router = Router()
 
+// Sender identity for all outbound mail. The display name is what the client's
+// inbox shows — without it, mail clients fall back to the address's local part
+// ("office"), so replies looked like they came from "office" instead of the firm.
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'contact@camulaw.com'
+const FROM = `${process.env.RESEND_FROM_NAME || 'Campos Muños Law'} <${FROM_EMAIL}>`
+
 const CONSULTATION_TYPES = [
   'greenCard', 'ciudadania', 'asilo', 'vawa', 'visaU', 'visaT', 'daca', 'tps',
   'tramiteConsular', 'visasPrometido', 'visasJovenes', 'peticionesFamiliares',
@@ -86,7 +92,7 @@ router.post(
           // Resend does NOT throw on API errors (unverified domain, bad key, etc.) —
           // it returns { error }. Check it, or the failure is silently swallowed.
           const { error: sendError } = await resend.emails.send({
-            from: process.env.RESEND_FROM_EMAIL || 'contact@camulaw.com',
+            from: FROM,
             to: adminEmail,
             // Reply-To = the person who submitted, so hitting "Reply" in the
             // office inbox goes straight to the client, not back to our system.
@@ -247,7 +253,7 @@ router.post(
         if (adminEmail && process.env.RESEND_API_KEY) {
           const resend = new Resend(process.env.RESEND_API_KEY)
           const { error: sendError } = await resend.emails.send({
-            from: process.env.RESEND_FROM_EMAIL || 'contact@camulaw.com',
+            from: FROM,
             to: adminEmail,
             // Reply-To = the client, so the office can reply from its inbox directly.
             replyTo: submission.email,
@@ -433,7 +439,7 @@ router.post(
         // Resend returns { error } on API-level failure (e.g. unverified domain);
         // it does not throw. Check the returned error, not just the catch block.
         const { error: sendError } = await resend.emails.send({
-          from: process.env.RESEND_FROM_EMAIL || 'contact@camulaw.com',
+          from: FROM,
           to: submission.email,
           // Reply-To = the office inbox so a client's reply lands with the firm,
           // even when we send from a noreply-style RESEND_FROM_EMAIL.
