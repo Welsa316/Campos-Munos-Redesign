@@ -160,3 +160,27 @@ untracked), committed secrets (none; gitignored), missing i18n keys (parity is
 160/160), ContactPage `v-html` XSS (static content), unprotected admin routes
 (`requireAuth` present), `seed.js` default admin (already guarded), the
 `icons.js` console.log (DEV-gated).
+
+## Admin-dashboard DRY refactors (from the 2026-07-09 admin review)
+
+Deferred by choice — these are pure simplify/DRY cleanups with no active defect
+(all P2, "simplify" dimension). Verified real; scoped for a dedicated pass.
+
+- **Shared email util** — `new Resend(...)` + `RESEND_FROM_EMAIL` fallback + the
+  branded HTML wrapper are copy-pasted across 3 send sites in
+  `server/routes/submissions.js`. Extract `server/utils/email.js` with a lazy
+  singleton client + `sendBrandedEmail({ to, replyTo, subject, heading, bodyHtml })`.
+- **`resolveAdmin(token)`** — `/verify` in `server/routes/auth.js` re-implements
+  the token-validation logic in `server/middleware/auth.js` step for step.
+  Extract one helper both call, so a future auth change can't drift between them.
+- **`unwrap(res, fallback)` helper** — the "parse JSON then throw on !ok" block is
+  duplicated in `useApi.js`, `useAuth.js` login, and `ChangePasswordModal.vue`
+  (the two auth paths bypass apiFetch to avoid its 401 redirect). Export one
+  helper from `useApi.js` they all call.
+- **`useAdminLabels` composable** — `consultationLabel`/`formatCountry` wrappers +
+  the `useI18n()` destructure are duplicated in `SubmissionDetail.vue` and
+  `SubmissionList.vue`.
+- **Shared `CONSULTATION_TYPES`** — the 15-element whitelist is triplicated
+  (`server/routes/submissions.js`, `site/src/data/consultationTypes.js`, the DB
+  CHECK in `server/db/migrate.js`), held together only by a comment. Genuine
+  cross-package refactor (site/ ↔ server/ import boundary) — scope on its own.
