@@ -1,7 +1,7 @@
 import dotenv from 'dotenv'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { dirname, join, sep } from 'path'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: join(__dirname, '.env') })
@@ -169,6 +169,10 @@ const distDir = join(__dirname, '..', 'site', 'dist')
 if (fs.existsSync(distDir)) {
   app.use(express.static(distDir, {
     index: false,
+    // Don't auto-redirect /route → /route/ for prerendered directories; our
+    // canonicals have no trailing slash. Let those fall through to the handler
+    // below, which serves the prerendered index.html directly.
+    redirect: false,
     maxAge: '1y',
     setHeaders: (res, path) => {
       // index.html must always be revalidated so a redeploy is picked up
@@ -179,7 +183,20 @@ if (fs.existsSync(distDir)) {
     },
   }))
 
-  app.get('*', (req, res, next) => res.sendFile(join(distDir, 'index.html'), (err) => { if (err) next(err) }))
+  // Serve the prerendered per-route index.html when the build produced one (so
+  // non-JS crawlers get that route's real SEO <head>); otherwise fall back to the
+  // SPA shell. The path is sanitized and confined to distDir to prevent traversal.
+  app.get('*', (req, res, next) => {
+    const rel = decodeURIComponent(req.path).replace(/\/+$/, '')
+    if (rel && !rel.includes('..') && !rel.includes('\0')) {
+      const candidate = join(distDir, rel, 'index.html')
+      if (candidate.startsWith(distDir + sep) && fs.existsSync(candidate)) {
+        res.setHeader('Cache-Control', 'no-cache')
+        return res.sendFile(candidate, (err) => { if (err) next(err) })
+      }
+    }
+    res.sendFile(join(distDir, 'index.html'), (err) => { if (err) next(err) })
+  })
 } else {
   app.use((req, res) => res.status(404).json({ error: 'Not found' }))
 }
