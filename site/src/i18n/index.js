@@ -30,8 +30,12 @@ const i18n = createI18n({
 // Persist locale changes so the next visit honours their choice. Skipped
 // during SSG since there's no localStorage at build time.
 if (typeof window !== 'undefined') {
+  // Keep <html lang> in sync with the active locale (index.html ships lang="es").
+  const applyLang = (v) => { try { document.documentElement.lang = v } catch { /* ignore */ } }
+  applyLang(i18n.global.locale.value)
   watch(i18n.global.locale, (v) => {
     try { localStorage.setItem(STORAGE_KEY, v) } catch { /* ignore */ }
+    applyLang(v)
   })
 }
 

@@ -8,7 +8,7 @@
       <div class="grid grid-cols-1 md:grid-cols-12 gap-12 mb-16">
         <!-- Brand column -->
         <div class="md:col-span-4">
-          <router-link to="/home" class="inline-block mb-6">
+          <router-link to="/" class="inline-block mb-6">
             <img src="/logo.png" alt="Campos Muños Law" class="h-20 brightness-0 invert" />
           </router-link>
           <!-- Social icons -->

@@ -6,10 +6,11 @@ const CANONICAL_BASE = 'https://camulaw.com'
 const DEFAULT_DESCRIPTION = 'Campos Muños Law — abogados de inmigración con más de veinte años de experiencia en Nueva Orleans, Louisiana. Atendemos casos en los 50 estados.'
 
 const routes = [
-  { path: '/', redirect: '/home' },
-  { path: '/home', name: 'Home', component: () => import('../views/HomePage.vue'),
+  { path: '/', name: 'Home', component: () => import('../views/HomePage.vue'),
     meta: { title: 'Abogados de Inmigración en Nueva Orleans',
       description: 'Abogados de inmigración con más de veinte años de experiencia en Nueva Orleans, Louisiana. Atendemos casos en los 50 estados.' } },
+  // Home now lives at the root; keep /home working (old links, bookmarks) via redirect.
+  { path: '/home', redirect: '/' },
   { path: '/servicios', name: 'Services', component: () => import('../views/ServicesPage.vue'),
     meta: { title: 'Servicios de Inmigración',
       description: 'Servicios de inmigración: visas, residencia permanente, ciudadanía, asilo y defensa contra deportación en Nueva Orleans, Louisiana.' } },
@@ -96,7 +97,12 @@ router.afterEach((to) => {
 
   const title = to.meta?.title ? `${to.meta.title} | ${BRAND}` : document.title
   const description = to.meta?.description || DEFAULT_DESCRIPTION
-  const canonicalUrl = `${CANONICAL_BASE}${to.path}`
+  // Location pages (/servicios/:service/:location) are near-duplicate variants of
+  // the base service page — canonicalize them to the base so they don't compete
+  // as doorway pages.
+  const canonicalUrl = to.name === 'ServiceDetailLocation' && to.params.service
+    ? `${CANONICAL_BASE}/servicios/${to.params.service}`
+    : `${CANONICAL_BASE}${to.path}`
 
   if (to.meta?.title && !isServiceDetail) {
     document.title = title
@@ -104,11 +110,13 @@ router.afterEach((to) => {
   if (!isServiceDetail) {
     setMetaByName('description', description)
     setMetaByProperty('og:description', description)
+    setMetaByName('twitter:description', description)
   }
 
   setCanonical(canonicalUrl)
   setMetaByProperty('og:url', canonicalUrl)
   setMetaByProperty('og:title', title)
+  setMetaByName('twitter:title', title)
 })
 
 router.beforeEach(async (to) => {

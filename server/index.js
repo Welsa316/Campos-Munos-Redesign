@@ -158,6 +158,10 @@ app.use('/api/submissions', submissionRoutes)
 // unknown /api/* path returns JSON instead of the SPA's index.html.
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }))
 
+// The homepage moved from /home to the root; 301 the old path so search engines
+// and old links consolidate on the canonical root URL.
+app.get('/home', (_req, res) => res.redirect(301, '/'))
+
 // Serve the built Vue frontend from one Railway service. In dev this
 // directory doesn't exist (Vite handles the frontend on :5174) — the
 // existsSync guard keeps `npm run dev` working without a prior build.

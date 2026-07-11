@@ -9,7 +9,7 @@
       <!-- Logo - visible on scroll or non-home pages. h-12 on xl gives the
            500×100 logo enough room to coexist with the 6 English nav items
            + call CTA; expands to h-16 on 2xl when there's space to spare. -->
-      <router-link to="/home" class="flex-shrink-0 relative group transition-all duration-500"
+      <router-link to="/" class="flex-shrink-0 relative group transition-all duration-500"
         :class="navSolid ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'">
         <img src="/logo.png" alt="Campos Muños Law"
           class="h-12 2xl:h-16 transition-all duration-500" />
@@ -142,7 +142,7 @@
 
         <!-- Nav links -->
         <nav class="flex flex-col px-4 py-4 gap-0.5">
-          <router-link to="/home" class="drawer-link" @click="mobileOpen = false">
+          <router-link to="/" class="drawer-link" @click="mobileOpen = false">
             {{ $t('nav.home') }}
           </router-link>
 

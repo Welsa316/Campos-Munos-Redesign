@@ -9,7 +9,7 @@
         {{ $t('notFound.body') }}
       </p>
       <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-        <router-link to="/home"
+        <router-link to="/"
           class="inline-flex items-center gap-3 bg-brand-navy text-white font-ui font-bold tracking-wider text-base px-10 py-5 rounded-xl btn-magnetic">
           {{ $t('notFound.homeBtn') }} <i class="fa-solid fa-arrow-right text-sm" aria-hidden="true"></i>
         </router-link>
