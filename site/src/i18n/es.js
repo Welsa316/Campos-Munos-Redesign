@@ -48,7 +48,6 @@ export default {
     reviewsTitle: 'Somos una firma con reseñas de cinco estrellas',
     pressHeading: 'Destacado en:',
     pressAria: 'Apariciones de Juan Campos en televisión',
-    pressWatch: 'Ver la entrevista en {station}',
     pressAltTelemundo: 'Juan Campos entrevistado en Telemundo — segmento "Hoy en Inmigración"',
     pressAltUnivision: 'Juan Campos entrevistado en Univision sobre trámites de ciudadanía',
     pressAltTvv: 'Juan Campos entrevistado en TVV en el programa "La Última"',

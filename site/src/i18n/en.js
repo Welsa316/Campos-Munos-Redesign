@@ -48,7 +48,6 @@ export default {
     reviewsTitle: 'We Are a Five-Star Review Firm',
     pressHeading: 'Featured on:',
     pressAria: 'Juan Campos TV appearances',
-    pressWatch: 'Watch the {station} interview',
     pressAltTelemundo: 'Juan Campos interviewed on Telemundo — "Hoy en Inmigración" segment',
     pressAltUnivision: 'Juan Campos interviewed on Univision about citizenship procedures',
     pressAltTvv: 'Juan Campos interviewed on TVV on the show "La Última"',
