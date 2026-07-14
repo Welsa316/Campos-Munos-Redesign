@@ -108,6 +108,9 @@
       </div>
     </section>
 
+    <!-- ===================== FEATURED ON TV ===================== -->
+    <PressFeature />
+
     <!-- ===================== BENTO SERVICES GRID ===================== -->
     <section class="py-24 bg-brand-light relative">
       <div class="relative z-10 max-w-7xl mx-auto px-6">
@@ -264,6 +267,7 @@ import { useLocaleToggle } from '../composables/useLocaleToggle.js'
 import { HERO_SLIDE_DURATION_MS } from '../data/timing.js'
 import FlagIcon from '../components/FlagIcon.vue'
 import VideoCarousel from '../components/VideoCarousel.vue'
+import PressFeature from '../components/PressFeature.vue'
 
 useScrollReveal()
 const { currentLang, toggleLang } = useLocaleToggle()
