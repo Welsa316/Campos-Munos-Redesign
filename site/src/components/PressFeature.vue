@@ -30,9 +30,9 @@
             </div>
             <!-- Frosted station tag straddling the frame's top edge — half on the
                  still, half above it, so it reads as our label, not broadcast UI. -->
-            <div class="ribbon absolute top-0 left-3 sm:left-4 -translate-y-1/2 flex items-center gap-2.5 pl-4 pr-8 py-2.5 sm:py-3">
-              <img :src="st.logo" :alt="''" aria-hidden="true" class="h-6 sm:h-7 w-auto" width="28" height="28" />
-              <span class="text-brand-navy-dark font-ui font-bold text-xs sm:text-sm tracking-[0.18em] uppercase">{{ st.name }}</span>
+            <div class="ribbon absolute top-0 left-3 sm:left-4 -translate-y-1/2 flex items-center gap-3 pl-5 pr-9 sm:pr-10 py-3 sm:py-3.5">
+              <img :src="st.logo" :alt="''" aria-hidden="true" class="h-7 sm:h-8 w-auto" width="32" height="32" />
+              <span class="text-brand-navy-dark font-ui font-bold text-sm sm:text-base tracking-[0.18em] uppercase">{{ st.name }}</span>
             </div>
           </div>
         </div>
@@ -74,12 +74,14 @@ const stations = [
    top edge, so its backdrop-filter blurs the still below the midline and the
    navy band above it — clearly a label we laid on top, not broadcast UI. */
 .ribbon {
-  background: rgba(255, 255, 255, 0.78);
+  /* Light-blue glass (brand-adjacent, ~primary-100 range) — keeps the navy
+     text well above AA contrast while tinting the tag into the site palette. */
+  background: linear-gradient(165deg, rgba(205, 223, 255, 0.88), rgba(184, 209, 250, 0.76));
   -webkit-backdrop-filter: blur(10px) saturate(140%);
   backdrop-filter: blur(10px) saturate(140%);
   clip-path: polygon(0 0, 100% 0, calc(100% - 16px) 100%, 0 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 1px 0 rgba(235, 244, 255, 0.95),
     0 8px 24px -8px rgba(0, 0, 0, 0.45);
 }
 </style>
