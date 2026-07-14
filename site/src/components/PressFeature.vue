@@ -15,21 +15,24 @@
         </h2>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 stagger">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-6 lg:gap-8 stagger">
         <div v-for="st in stations" :key="st.id" class="glass-card reveal">
-          <div class="relative rounded-xl overflow-hidden">
-            <img
-              :src="st.still"
-              :alt="$t(st.altKey)"
-              loading="lazy"
-              decoding="async"
-              width="1280" height="720"
-              class="w-full aspect-video object-cover"
-            />
-            <!-- frosted station ribbon -->
-            <div class="ribbon absolute bottom-0 left-0 flex items-center gap-2 pl-3 pr-6 py-2">
-              <img :src="st.logo" :alt="''" aria-hidden="true" class="h-4 sm:h-5 w-auto" width="20" height="20" />
-              <span class="text-brand-navy-dark font-ui font-bold text-[10px] sm:text-xs tracking-[0.18em] uppercase">{{ st.name }}</span>
+          <div class="relative">
+            <div class="rounded-xl overflow-hidden">
+              <img
+                :src="st.still"
+                :alt="$t(st.altKey)"
+                loading="lazy"
+                decoding="async"
+                width="1280" height="720"
+                class="w-full aspect-video object-cover"
+              />
+            </div>
+            <!-- Frosted station tag straddling the frame's top edge — half on the
+                 still, half above it, so it reads as our label, not broadcast UI. -->
+            <div class="ribbon absolute top-0 left-3 sm:left-4 -translate-y-1/2 flex items-center gap-2.5 pl-4 pr-8 py-2.5 sm:py-3">
+              <img :src="st.logo" :alt="''" aria-hidden="true" class="h-6 sm:h-7 w-auto" width="28" height="28" />
+              <span class="text-brand-navy-dark font-ui font-bold text-xs sm:text-sm tracking-[0.18em] uppercase">{{ st.name }}</span>
             </div>
           </div>
         </div>
@@ -67,13 +70,16 @@ const stations = [
     0 20px 50px -16px rgba(0, 0, 0, 0.5);
 }
 
-/* Frosted ribbon with the Stitch-style angled right edge. backdrop-filter blurs
-   the still beneath it, so it reads as glass laid over the broadcast frame. */
+/* Frosted tag with the Stitch-style angled right edge. It straddles the frame's
+   top edge, so its backdrop-filter blurs the still below the midline and the
+   navy band above it — clearly a label we laid on top, not broadcast UI. */
 .ribbon {
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.78);
   -webkit-backdrop-filter: blur(10px) saturate(140%);
   backdrop-filter: blur(10px) saturate(140%);
-  clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
-  border-top: 1px solid rgba(255, 255, 255, 0.85);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 16px) 100%, 0 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 8px 24px -8px rgba(0, 0, 0, 0.45);
 }
 </style>
