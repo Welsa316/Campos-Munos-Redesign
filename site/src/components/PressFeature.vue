@@ -8,14 +8,16 @@
     <div class="pointer-events-none absolute -top-24 left-1/4 w-[420px] h-[420px] rounded-full bg-brand-navy-light/25 blur-3xl" aria-hidden="true"></div>
     <div class="pointer-events-none absolute -bottom-32 right-1/5 w-[380px] h-[380px] rounded-full bg-brand-red/10 blur-3xl" aria-hidden="true"></div>
 
-    <div class="relative max-w-7xl mx-auto px-6">
+    <div class="relative max-w-[1720px] mx-auto px-5 sm:px-8">
       <div class="text-center mb-10 sm:mb-14 reveal">
         <h2 class="font-heading text-4xl md:text-5xl text-white">
           {{ $t('home.pressHeading') }}
         </h2>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-6 lg:gap-8 stagger">
+      <!-- One row of three on md+ — the row tracks the viewport width so the
+           stills render as large as possible without breaking the 3-up structure. -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-5 xl:gap-7 stagger">
         <div v-for="st in stations" :key="st.id" class="glass-card reveal">
           <div class="relative">
             <div class="rounded-xl overflow-hidden">
