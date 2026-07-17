@@ -14,6 +14,7 @@ import { pinoHttp } from 'pino-http'
 import crypto from 'crypto'
 import authRoutes from './routes/auth.js'
 import submissionRoutes from './routes/submissions.js'
+import { legacyTarget } from './legacyRedirects.js'
 import getPool from './db/pool.js'
 import logger from './logger.js'
 
@@ -161,6 +162,20 @@ app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }))
 // The homepage moved from /home to the root; 301 the old path so search engines
 // and old links consolidate on the canonical root URL.
 app.get('/home', (_req, res) => res.redirect(301, '/'))
+
+// Wix → new-site migration: 301 the old indexed URLs (Spanish tree + /en/* mirror)
+// to their new equivalents, and fold in a www → apex redirect, so old search
+// results don't 404 and their ranking transfers. See legacyRedirects.js.
+app.use((req, res, next) => {
+  const host = req.hostname || ''
+  const legacy = legacyTarget(req.path)
+  if (host.startsWith('www.')) {
+    const dest = legacy || req.originalUrl
+    return res.redirect(301, `https://${host.slice(4)}${dest}`)
+  }
+  if (legacy) return res.redirect(301, legacy)
+  next()
+})
 
 // Serve the built Vue frontend from one Railway service. In dev this
 // directory doesn't exist (Vite handles the frontend on :5174) — the
