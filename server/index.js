@@ -198,11 +198,33 @@ if (fs.existsSync(distDir)) {
     next()
   })
 
+  // The set of URLs that are real pages, emitted by the frontend build from the
+  // same data the app routes on. Used to send a true 404 for anything else — an
+  // SPA otherwise answers every unknown URL with HTTP 200 and a "page not found"
+  // body, which Google logs as a soft 404. If the manifest is missing we keep the
+  // old behaviour (200 for everything) rather than risk hiding real pages.
+  let validRoutes = null
+  try {
+    const manifest = JSON.parse(fs.readFileSync(join(distDir, 'route-manifest.json'), 'utf8'))
+    if (Array.isArray(manifest.routes) && manifest.routes.length) {
+      validRoutes = new Set(manifest.routes)
+      logger.info({ count: validRoutes.size }, 'Loaded route manifest')
+    }
+  } catch {
+    logger.warn('No route-manifest.json — unknown URLs will answer 200 (no soft-404 protection)')
+  }
+
   // Serve the prerendered per-route index.html when the build produced one (so
   // non-JS crawlers get that route's real SEO <head>); otherwise fall back to the
   // SPA shell. The path is sanitized and confined to distDir to prevent traversal.
   app.get('*', (req, res, next) => {
-    const rel = decodeURIComponent(req.path).replace(/\/+$/, '')
+    let rel = ''
+    try {
+      rel = decodeURIComponent(req.path).replace(/\/+$/, '')
+    } catch {
+      rel = '' // malformed percent-encoding — treat as unknown
+    }
+
     if (rel && !rel.includes('..') && !rel.includes('\0')) {
       const candidate = join(distDir, rel, 'index.html')
       if (candidate.startsWith(distDir + sep) && fs.existsSync(candidate)) {
@@ -210,6 +232,12 @@ if (fs.existsSync(distDir)) {
         return res.sendFile(candidate, (err) => { if (err) next(err) })
       }
     }
+
+    // Unknown URL: still serve the SPA (so the app renders its 404 page) but say
+    // so in the status line, which is what search engines actually act on.
+    const isKnown = validRoutes === null || validRoutes.has(rel === '' ? '/' : rel)
+    res.setHeader('Cache-Control', 'no-cache')
+    res.status(isKnown ? 200 : 404)
     res.sendFile(join(distDir, 'index.html'), (err) => { if (err) next(err) })
   })
 } else {

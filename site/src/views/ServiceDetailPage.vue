@@ -1,5 +1,9 @@
 <template>
-  <div>
+  <!-- An unrecognised service or location slug is a dead URL, not a silent
+       fall-back to Green Card — that produced duplicate pages under bogus
+       canonicals and read as a soft 404 to search engines. -->
+  <NotFoundPage v-if="notFound" />
+  <div v-else>
     <!-- Hero: service title only. Kept compact (tight padding, capped heading) so
          the video — which lives in the body content below — stays high on the
          page and is visible with little or no scrolling. -->
@@ -201,6 +205,7 @@ import {
   baseServices,
 } from '../data/seoServices.js'
 import { getServiceContent } from '../data/serviceContent.js'
+import NotFoundPage from './NotFoundPage.vue'
 
 const props = defineProps({ slug: String, service: String, location: String })
 const { t, locale } = useI18n()
@@ -232,16 +237,24 @@ onMounted(() => { nextTick(observeRevealElements) })
 onUnmounted(() => { if (revealObserver) revealObserver.disconnect() })
 
 // --- Route resolution ---
+// A slug that doesn't resolve means the URL is dead. Report it instead of
+// falling back to Green Card, which used to serve real content under a bogus
+// canonical (duplicate content + soft 404). A location page whose service is
+// valid but whose location isn't also counts as dead.
 const resolved = computed(() => {
   if (props.service && props.location) {
-    return resolveServiceSlug(props.service, props.location) || { service: { key: 'greenCard', icon: 'fa-solid fa-id-card', video: false }, location: null, baseSlug: 'green-card' }
+    const match = resolveServiceSlug(props.service, props.location)
+    return match && match.location ? match : null
   }
-  return resolveServiceSlug(props.slug) || { service: { key: 'greenCard', icon: 'fa-solid fa-id-card', video: false }, location: null, baseSlug: 'green-card' }
+  return resolveServiceSlug(props.slug) || null
 })
 
-const serviceData = computed(() => resolved.value.service)
-const locationData = computed(() => resolved.value.location)
-const baseSlug = computed(() => resolved.value.baseSlug)
+const notFound = computed(() => resolved.value === null)
+
+const FALLBACK = { service: { key: 'greenCard', icon: 'fa-solid fa-id-card', video: false }, location: null, baseSlug: 'green-card' }
+const serviceData = computed(() => (resolved.value || FALLBACK).service)
+const locationData = computed(() => (resolved.value || FALLBACK).location)
+const baseSlug = computed(() => (resolved.value || FALLBACK).baseSlug)
 
 // Core service properties
 const serviceName = computed(() => t(`services.${serviceData.value.key}`))
@@ -258,6 +271,8 @@ const seoMeta = computed(() => generateSeoMeta(serviceData.value.key, locationDa
 const pageH1 = computed(() => seoMeta.value.h1)
 
 watchEffect(() => {
+  // Leave the head alone on a dead slug — NotFoundPage owns it there.
+  if (notFound.value) return
   document.title = seoMeta.value.title
   const meta = document.querySelector('meta[name="description"]')
   if (meta) meta.setAttribute('content', seoMeta.value.metaDescription)

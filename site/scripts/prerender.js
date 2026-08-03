@@ -23,7 +23,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
-import { baseServices, generateSeoMeta } from '../src/data/seoServices.js'
+import { baseServices, generateSeoMeta, locations } from '../src/data/seoServices.js'
 import es from '../src/i18n/es.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -100,3 +100,26 @@ for (const route of ROUTES) {
 }
 
 console.log(`Prerendered ${written} route heads (${CORE.length} core + ${SERVICES.length} services + ${TEAM.length} team).`)
+
+// Emit the set of URLs that are real pages, so the server can return a true 404
+// for anything else instead of a soft-404 (HTTP 200 + "page not found" body).
+//
+// Generated from the same data the app routes on, so it CANNOT drift: add a
+// service, location, or team member and it lands here on the next build. The
+// server treats a missing manifest as "don't 404 anything", so a stale or absent
+// file degrades to the old behaviour rather than hiding real pages.
+const serviceSlugs = Object.keys(baseServices)
+const validRoutes = [
+  ...ROUTES.map(r => r.path),
+  '/el-equipo', // redirects to /acerca-de#equipo
+  '/admin',
+  '/admin/login',
+  // /servicios/:service/:location — indexable combos (they canonical to the base page)
+  ...serviceSlugs.flatMap(s => locations.map(loc => `/servicios/${s}/${loc.slug}`)),
+]
+
+writeFileSync(
+  join(DIST, 'route-manifest.json'),
+  JSON.stringify({ generatedBy: 'scripts/prerender.js', routes: [...new Set(validRoutes)].sort() }, null, 2)
+)
+console.log(`Wrote route-manifest.json (${new Set(validRoutes).size} valid routes).`)

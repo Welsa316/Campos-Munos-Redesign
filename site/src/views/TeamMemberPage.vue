@@ -1,5 +1,8 @@
 <template>
-  <div>
+  <!-- An unknown member slug is a dead URL, not Juan's bio under someone else's
+       address — that was duplicate content and a soft 404. -->
+  <NotFoundPage v-if="notFound" />
+  <div v-else>
     <!-- Hero split -->
     <section class="min-h-[80vh] bg-brand-surface">
       <div class="max-w-7xl mx-auto px-6 pt-32 pb-20">
@@ -64,6 +67,7 @@
 <script setup>
 import { computed, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
+import NotFoundPage from './NotFoundPage.vue'
 
 const props = defineProps({ member: String })
 const { t, locale } = useI18n()
@@ -83,6 +87,7 @@ const members = {
   },
 }
 
+const notFound = computed(() => !members[props.member])
 const memberData = computed(() => members[props.member] || members.juan)
 
 // Attorney bios are what people search after a referral ("Juan Campos immigration
@@ -105,7 +110,7 @@ function setMeta(selector, attr, value) {
 }
 
 watchEffect(() => {
-  if (typeof document === 'undefined') return
+  if (typeof document === 'undefined' || notFound.value) return
   document.title = seo.value.title
   setMeta('meta[name="description"]', 'content', seo.value.description)
   setMeta('meta[property="og:title"]', 'content', seo.value.title)
