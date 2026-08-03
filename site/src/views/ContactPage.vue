@@ -218,6 +218,7 @@ import { CONSULTATION_KEYS, consultationLabel } from '../data/consultationTypes.
 import { MAPS_PROFILE_URL } from '../data/contact.js'
 import { COUNTRIES } from '../data/countries.js'
 import { maskPhoneWithCaret } from '../utils/phone.js'
+import { trackLead } from '../utils/analytics.js'
 
 useScrollReveal()
 
@@ -273,6 +274,10 @@ async function submitForm() {
         : t('contact.errorMessage')
       throw new Error(data.error || 'Submission failed')
     }
+
+    // Count the lead only once the server has accepted it, so failed and
+    // rate-limited attempts don't inflate the number.
+    trackLead('form', { consultation_type: form.value.consultationType || 'other' })
 
     submitted.value = true
     form.value = { firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '' }

@@ -215,6 +215,7 @@ const { t, te, locale } = useI18n()
 
 import { CHAT_GREETING_DELAY_MS, CHAT_GREETING_DISMISS_TTL_MS } from '../data/timing.js'
 import { maskPhoneWithCaret } from '../utils/phone.js'
+import { trackLead } from '../utils/analytics.js'
 
 function onPhoneInput(e) {
   const el = e.target
@@ -383,6 +384,10 @@ async function startChat() {
       const data = await res.json().catch(() => ({}))
       throw new Error(data.error || 'Submission failed')
     }
+
+    // A chat session lands in the same inbox as the contact form, so it counts
+    // as a lead — tracked separately so the firm can compare the two channels.
+    trackLead('chat', { consultation_type: f.consultationType || 'other' })
 
     const data = await res.json()
     const firstMessageBody = f.message.trim()

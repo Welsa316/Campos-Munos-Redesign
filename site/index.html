@@ -76,12 +76,15 @@
     </script>
 
     <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-FSZZVP7R0F"></script>
+    <!-- send_page_view is off because this is a single-page app: gtag would only
+         ever report the first page a visitor landed on. src/utils/analytics.js
+         sends a page_view on every route change instead. -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-WDQ82EHMJ4"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-      gtag('config', 'G-FSZZVP7R0F');
+      gtag('config', 'G-WDQ82EHMJ4', { send_page_view: false });
     </script>
   </head>
   <body>
