@@ -159,10 +159,6 @@ app.use('/api/submissions', submissionRoutes)
 // unknown /api/* path returns JSON instead of the SPA's index.html.
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }))
 
-// The homepage moved from /home to the root; 301 the old path so search engines
-// and old links consolidate on the canonical root URL.
-app.get('/home', (_req, res) => res.redirect(301, '/'))
-
 // Wix → new-site migration: 301 the old indexed URLs (Spanish tree + /en/* mirror)
 // to their new equivalents, and fold in a www → apex redirect, so old search
 // results don't 404 and their ranking transfers. See legacyRedirects.js.

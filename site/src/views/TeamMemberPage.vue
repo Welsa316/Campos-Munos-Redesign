@@ -62,9 +62,11 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, watchEffect } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps({ member: String })
+const { t, locale } = useI18n()
 
 const members = {
   juan: {
@@ -82,4 +84,33 @@ const members = {
 }
 
 const memberData = computed(() => members[props.member] || members.juan)
+
+// Attorney bios are what people search after a referral ("Juan Campos immigration
+// lawyer"), but this route carries no route-level meta — without this the pages
+// inherit the previous page's title/description, so Google saw four bios all
+// presenting the homepage's metadata. Set real per-person head tags.
+const seo = computed(() => {
+  const key = memberData.value.key
+  const name = t(`team.members.${key}.name`)
+  const role = t(`team.members.${key}.title`)
+  const description = locale.value === 'en'
+    ? `${name}, ${role} at Campos Muños Law — immigration attorneys in New Orleans, Louisiana.`
+    : `${name}, ${role} en Campos Muños Law — abogados de inmigración en Nueva Orleans, Louisiana.`
+  return { title: `${name} — ${role} | Campos Muños Law`, description }
+})
+
+function setMeta(selector, attr, value) {
+  const el = document.querySelector(selector)
+  if (el) el.setAttribute(attr, value)
+}
+
+watchEffect(() => {
+  if (typeof document === 'undefined') return
+  document.title = seo.value.title
+  setMeta('meta[name="description"]', 'content', seo.value.description)
+  setMeta('meta[property="og:title"]', 'content', seo.value.title)
+  setMeta('meta[property="og:description"]', 'content', seo.value.description)
+  setMeta('meta[name="twitter:title"]', 'content', seo.value.title)
+  setMeta('meta[name="twitter:description"]', 'content', seo.value.description)
+})
 </script>

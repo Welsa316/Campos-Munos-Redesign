@@ -47,7 +47,21 @@ const SERVICES = Object.entries(baseServices).map(([slug, service]) => {
   return { path: `/servicios/${slug}`, title: meta.title, description: meta.metaDescription, canonical: `${BASE}/servicios/${slug}` }
 })
 
-const ROUTES = [...CORE, ...SERVICES]
+// Attorney/staff bio pages. These carry no route-level meta in the router, so
+// without prerendering they ship the homepage's head — the reason name searches
+// ("Juan Campos immigration attorney") surface directory profiles instead of us.
+const TEAM = ['juan', 'angenette', 'diana', 'rio'].map(key => {
+  const name = t(`team.members.${key}.name`)
+  const role = t(`team.members.${key}.title`)
+  return {
+    path: `/el-equipo/${key}`,
+    title: `${name} — ${role} | ${BRAND}`,
+    description: `${name}, ${role} en Campos Muños Law — abogados de inmigración en Nueva Orleans, Louisiana.`,
+    canonical: `${BASE}/el-equipo/${key}`,
+  }
+})
+
+const ROUTES = [...CORE, ...SERVICES, ...TEAM]
 
 function replaceMeta(html, selector, value) {
   return html.replace(new RegExp(`(<meta ${selector} content=")[^"]*(")`), `$1${escapeAttr(value)}$2`)
@@ -78,4 +92,4 @@ for (const route of ROUTES) {
   written++
 }
 
-console.log(`Prerendered ${written} route heads (${CORE.length} core + ${SERVICES.length} services).`)
+console.log(`Prerendered ${written} route heads (${CORE.length} core + ${SERVICES.length} services + ${TEAM.length} team).`)

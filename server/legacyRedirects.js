@@ -11,19 +11,25 @@
 // Old Wix bare slug → new path. Keys are lowercased, no leading/trailing slash.
 export const LEGACY_MAP = {
   // Core pages
+  'home': '/',
   'about': '/acerca-de',
+  'about-1': '/acerca-de',
   'attorneys': '/acerca-de',
+  'attorney-profiles': '/acerca-de',
+  // /theteam + /attorney-profiles point at /acerca-de deliberately — the firm does
+  // not want a team index page, so these must NOT go to /el-equipo.
   'theteam': '/acerca-de',
+  'general-4': '/acerca-de',
   'acerca-de': '/acerca-de', // bare no-ops (already a real route); /en/acerca-de redirects
   'contact': '/consulta',
   'contact-10': '/consulta',
+  // The consulta page already carries the client testimonials.
+  'reviews': '/consulta',
   'consulta': '/consulta', // for /en/consulta
   'make-a-payment': '/pago',
   'services': '/servicios',
   'services-9': '/servicios',
   'immigration-law-videos': '/servicios',
-  'reviews': '/',
-  'general-4': '/',
 
   // Service pages
   'asylum': '/servicios/asilo',
@@ -47,6 +53,8 @@ export const LEGACY_MAP = {
   // Team member pages
   'juan': '/el-equipo/juan',
   'angenette': '/el-equipo/angenette',
+  // A Wix duplicate that actually held Angenette's bio — maps to her, not Juan.
+  'copy-of-juan': '/el-equipo/angenette',
   'diana': '/el-equipo/diana',
   'rio': '/el-equipo/rio',
 }
