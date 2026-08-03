@@ -59,11 +59,20 @@ export const LEGACY_MAP = {
   'rio': '/el-equipo/rio',
 }
 
+// Top-level segments of routes that exist on the NEW site. Used so an /en/ URL
+// pointing at a current route (e.g. /en/servicios/asilo) lands on that page
+// instead of being dumped on the homepage.
+const CURRENT_ROUTE_ROOTS = new Set(['servicios', 'consulta', 'pago', 'acerca-de', 'el-equipo'])
+
 // Resolve a request path to its new location, or null if it should be served as-is.
 // Handles the /en/* English tree and avoids redirecting a bare path that is already
 // a valid new route.
 export function legacyTarget(pathname) {
-  let slug = String(pathname || '').replace(/^\/+/, '').replace(/\/+$/, '').toLowerCase()
+  let slug = String(pathname || '')
+    .replace(/\/{2,}/g, '/') // collapse doubled slashes (//en//asylum)
+    .replace(/^\/+/, '')
+    .replace(/\/+$/, '')
+    .toLowerCase()
 
   if (slug === 'en') return '/' // old English home
 
@@ -75,8 +84,11 @@ export function legacyTarget(pathname) {
 
   const target = LEGACY_MAP[slug]
   if (!target) {
-    // The whole /en/* subtree is defunct — send any leftover to home rather than 404.
-    return isEn ? '/' : null
+    if (!isEn) return null
+    // The /en/ tree is gone. If it points at a route that still exists, send them
+    // to that page; otherwise fall back to home rather than 404.
+    const root = slug.split('/')[0]
+    return CURRENT_ROUTE_ROOTS.has(root) ? '/' + slug : '/'
   }
 
   // A bare path that already equals a real route (e.g. /acerca-de) is served, not

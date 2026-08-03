@@ -159,20 +159,6 @@ app.use('/api/submissions', submissionRoutes)
 // unknown /api/* path returns JSON instead of the SPA's index.html.
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }))
 
-// Wix → new-site migration: 301 the old indexed URLs (Spanish tree + /en/* mirror)
-// to their new equivalents, and fold in a www → apex redirect, so old search
-// results don't 404 and their ranking transfers. See legacyRedirects.js.
-app.use((req, res, next) => {
-  const host = req.hostname || ''
-  const legacy = legacyTarget(req.path)
-  if (host.startsWith('www.')) {
-    const dest = legacy || req.originalUrl
-    return res.redirect(301, `https://${host.slice(4)}${dest}`)
-  }
-  if (legacy) return res.redirect(301, legacy)
-  next()
-})
-
 // Serve the built Vue frontend from one Railway service. In dev this
 // directory doesn't exist (Vite handles the frontend on :5174) — the
 // existsSync guard keeps `npm run dev` working without a prior build.
@@ -193,6 +179,24 @@ if (fs.existsSync(distDir)) {
       }
     },
   }))
+
+  // Wix → new-site migration: 301 the old indexed URLs (Spanish tree + /en/* mirror)
+  // to their new equivalents, and fold in a www → apex redirect, so old search
+  // results don't 404 and their ranking transfers. See legacyRedirects.js.
+  //
+  // Mounted after the API routes and express.static (so real assets are served
+  // without passing through the map) but before the SPA catch-all below, which
+  // would otherwise swallow every legacy path.
+  app.use((req, res, next) => {
+    const host = req.hostname || ''
+    const legacy = legacyTarget(req.path)
+    if (host.startsWith('www.')) {
+      const dest = legacy || req.originalUrl
+      return res.redirect(301, `https://${host.slice(4)}${dest}`)
+    }
+    if (legacy) return res.redirect(301, legacy)
+    next()
+  })
 
   // Serve the prerendered per-route index.html when the build produced one (so
   // non-JS crawlers get that route's real SEO <head>); otherwise fall back to the

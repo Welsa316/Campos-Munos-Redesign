@@ -21,6 +21,20 @@ test('ignores a trailing slash', () => {
   assert.equal(legacyTarget('/en/asylum/'), '/servicios/asilo')
 })
 
+test('collapses doubled slashes before matching', () => {
+  assert.equal(legacyTarget('/en//asylum'), '/servicios/asilo')
+  assert.equal(legacyTarget('//greencards'), '/servicios/green-card')
+})
+
+test('sends /en URLs for current routes to that route, not the homepage', () => {
+  assert.equal(legacyTarget('/en/servicios'), '/servicios')
+  assert.equal(legacyTarget('/en/servicios/asilo'), '/servicios/asilo')
+  assert.equal(legacyTarget('/en/el-equipo/juan'), '/el-equipo/juan')
+  assert.equal(legacyTarget('/en/pago'), '/pago')
+  // Genuinely dead /en paths still fall back to home.
+  assert.equal(legacyTarget('/en/some-dead-wix-page'), '/')
+})
+
 test('passes unmapped paths through (null = no redirect)', () => {
   assert.equal(legacyTarget('/servicios/asilo'), null)
   assert.equal(legacyTarget('/some-page-that-never-existed'), null)

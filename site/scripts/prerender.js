@@ -11,8 +11,15 @@
 // to that route's real values. The <body> is untouched — the SPA still boots and
 // renders normally. Per-route metadata is now in the static HTML for every bot.
 //
-// Meta comes from the SAME source the app uses (generateSeoMeta + the ES
-// messages), so it can never drift from what the running app sets.
+// Service meta comes from the SAME source the app uses (generateSeoMeta + the ES
+// messages), so those can't drift. The CORE and TEAM entries below are hand-kept
+// copies of the router's meta — the router imports vue-router and can't be loaded
+// from plain Node, so if you change a route's title/description in
+// src/router/index.js, update the matching entry here too.
+//
+// Prerendered output is always Spanish (the firm's primary audience and the i18n
+// default). A visitor whose locale resolves to English gets English head tags once
+// the app boots; crawlers see the Spanish version.
 import { readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
