@@ -15,6 +15,8 @@ import { library, dom } from '@fortawesome/fontawesome-svg-core'
 import {
   faArchive,
   faArrowLeft,
+  faBell,
+  faBellSlash,
   faArrowRight,
   faArrowRightFromBracket,
   faAt,
@@ -76,7 +78,7 @@ import {
 
 library.add(
   // solid
-  faArchive, faArrowLeft, faArrowRight, faArrowRightFromBracket, faAt,
+  faArchive, faArrowLeft, faArrowRight, faArrowRightFromBracket, faAt, faBell, faBellSlash,
   faBriefcase, faCheckCircle, faChevronDown, faChevronLeft, faChevronRight, faChildren,
   faChurch, faCircleExclamation, faCirclePlay, faClock, faCommentDots,
   faCreditCard, faDownload, faEarthAmericas, faEnvelope, faEnvelopeOpen,

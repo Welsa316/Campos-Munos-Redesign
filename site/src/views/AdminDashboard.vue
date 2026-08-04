@@ -12,6 +12,24 @@
       </div>
       <div class="ml-auto flex items-center gap-4">
         <button
+          v-if="notifyPermission === 'default'"
+          @click="enableNotifications"
+          class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors"
+          title="Get a desktop alert when a new inquiry arrives"
+          aria-label="Turn on desktop notifications"
+        >
+          <i class="fa-solid fa-bell text-xs" aria-hidden="true"></i>
+          <span class="hidden sm:inline">Alerts</span>
+        </button>
+        <span
+          v-else-if="notifyPermission === 'denied'"
+          class="hidden sm:flex items-center gap-2 px-3 py-2 text-xs text-gray-400 font-ui"
+          title="Notifications are blocked for this site. Re-enable them in your browser's site settings."
+        >
+          <i class="fa-solid fa-bell-slash text-xs" aria-hidden="true"></i>
+          Alerts blocked
+        </span>
+        <button
           @click="exportCsv"
           :disabled="exporting"
           class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -102,7 +120,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watchEffect } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 import { useApi, rawFetch } from '../composables/useApi.js'
@@ -127,21 +145,139 @@ const listRef = ref(null)
 
 const unreadCount = computed(() => submissions.value.filter(s => !s.is_read).length)
 
-onMounted(() => {
-  fetchSubmissions()
+// --- Live inbox -------------------------------------------------------------
+// The inbox refreshes itself so a new inquiry appears without anyone pressing
+// refresh. Polling rather than a socket: this is a low-volume inbox on a single
+// Railway service, and polling survives restarts, redeploys and multiple
+// instances with no reconnect logic to get wrong.
+const POLL_INTERVAL_MS = 15000
+let pollTimer = null
+let inFlight = false
+
+async function pollNow() {
+  if (inFlight) return // never stack requests
+  inFlight = true
+  try {
+    await fetchSubmissions({ silent: true })
+    await refreshSelected({ silent: true })
+  } finally {
+    inFlight = false
+  }
+}
+
+function startPolling() {
+  stopPolling()
+  pollTimer = setInterval(pollNow, POLL_INTERVAL_MS)
+}
+function stopPolling() {
+  if (pollTimer) clearInterval(pollTimer)
+  pollTimer = null
+}
+
+// Polling deliberately continues while the tab is in the background — that is
+// exactly when a desktop notification is worth sending. Returning to the tab
+// just triggers an immediate check so it feels instant.
+function onVisibilityChange() {
+  if (!document.hidden) pollNow()
+}
+
+// --- Desktop notifications --------------------------------------------------
+// Browsers only allow requesting permission from a real user gesture, so this is
+// opt-in via the bell in the header rather than a prompt on load.
+const NOTIFY_SUPPORTED = typeof window !== 'undefined' && 'Notification' in window
+const notifyPermission = ref(NOTIFY_SUPPORTED ? Notification.permission : 'unsupported')
+
+// Ids already accounted for. Seeded on the first load so opening the dashboard
+// doesn't fire a notification for every inquiry already sitting in the inbox.
+const knownIds = new Set()
+let seeded = false
+
+async function enableNotifications() {
+  if (!NOTIFY_SUPPORTED) return
+  try {
+    notifyPermission.value = await Notification.requestPermission()
+  } catch { /* older browsers use the callback form; ignore */ }
+}
+
+function notifyOnNewArrivals(list) {
+  if (!seeded) {
+    list.forEach(s => knownIds.add(s.id))
+    seeded = true
+    return
+  }
+
+  const arrivals = list.filter(s => !knownIds.has(s.id))
+  list.forEach(s => knownIds.add(s.id))
+
+  if (!arrivals.length) return
+  if (!NOTIFY_SUPPORTED || notifyPermission.value !== 'granted') return
+  // Nothing to alert about while they're already looking at the inbox.
+  if (!document.hidden) return
+
+  const open = (id) => {
+    window.focus()
+    selectSubmission(id)
+  }
+
+  if (arrivals.length === 1) {
+    const s = arrivals[0]
+    const body = (s.message || '').trim() || 'No message provided'
+    const note = new Notification(`New inquiry — ${s.first_name} ${s.last_name}`, {
+      body: body.length > 140 ? `${body.slice(0, 140)}…` : body,
+      icon: '/favicon-512.png',
+      // Same tag replaces rather than stacks if this fires twice for one message.
+      tag: `cm-submission-${s.id}`,
+    })
+    note.onclick = () => { open(s.id); note.close() }
+  } else {
+    const note = new Notification(`${arrivals.length} new inquiries`, {
+      body: arrivals.map(s => `${s.first_name} ${s.last_name}`).join(', ').slice(0, 160),
+      icon: '/favicon-512.png',
+      tag: 'cm-submissions-batch',
+    })
+    note.onclick = () => { open(arrivals[0].id); note.close() }
+  }
+}
+
+// Mirror the unread count into the tab title, so a parked tab still shows that
+// something came in.
+watchEffect(() => {
+  const n = viewMode.value === 'inbox' ? unreadCount.value : 0
+  document.title = `${n > 0 ? `(${n}) ` : ''}Client Messages | Campos Muños Law`
 })
 
-async function fetchSubmissions() {
-  loadingList.value = true
-  listError.value = false
+onMounted(() => {
+  fetchSubmissions()
+  startPolling()
+  document.addEventListener('visibilitychange', onVisibilityChange)
+  window.addEventListener('focus', pollNow)
+})
+
+onUnmounted(() => {
+  stopPolling()
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+  window.removeEventListener('focus', pollNow)
+})
+
+// `silent` is the background refresh: it must not flash the loading state, show
+// an error banner on a transient blip, or spin the refresh button.
+async function fetchSubmissions({ silent = false } = {}) {
+  if (!silent) {
+    loadingList.value = true
+    listError.value = false
+  }
 
   try {
     const archived = viewMode.value === 'archived' ? 'true' : 'false'
-    submissions.value = await get(`/api/submissions?archived=${archived}`)
+    const fresh = await get(`/api/submissions?archived=${archived}`)
+    // Replacing the array is safe for the open conversation: the detail pane
+    // renders from selectedSubmission, not from this list.
+    submissions.value = fresh
+    notifyOnNewArrivals(fresh)
   } catch {
-    listError.value = true
+    if (!silent) listError.value = true
   } finally {
-    loadingList.value = false
+    if (!silent) loadingList.value = false
   }
 }
 
@@ -177,13 +313,18 @@ async function selectSubmission(id) {
   }
 }
 
-async function refreshSelected() {
-  if (selectedId.value) {
-    try {
-      selectedSubmission.value = await get(`/api/submissions/${selectedId.value}`)
-    } catch {
-      // Keep existing data on error
-    }
+// Also re-read the open conversation, so a client's chat follow-up shows up
+// while it's on screen. The id is unchanged, so ReplyBox (keyed by it) is not
+// remounted and a half-typed reply survives.
+async function refreshSelected({ silent = false } = {}) {
+  if (!selectedId.value) return
+  try {
+    const fresh = await get(`/api/submissions/${selectedId.value}`)
+    // Guard against a slow response landing after the admin moved on.
+    if (fresh && fresh.id === selectedId.value) selectedSubmission.value = fresh
+  } catch {
+    // Keep existing data on error — a background blip must not clear the pane.
+    if (!silent) { /* manual refresh: still keep what's on screen */ }
   }
 }
 
