@@ -72,6 +72,13 @@ app.use(helmet({
         'https://www.google-analytics.com',
         'https://region1.google-analytics.com',
         'https://*.google-analytics.com',
+        // analytics.google.com is a DIFFERENT domain from *.google-analytics.com
+        // and gtag posts hits there in some configurations — without it those
+        // requests are silently dropped by CSP.
+        'https://analytics.google.com',
+        'https://*.analytics.google.com',
+        // gtag also beacons measurement data back to the tag server itself.
+        'https://www.googletagmanager.com',
         // Elfsight loads widget code + review data from many subdomains
         // (service-reviews-ultimate.elfsight.com, phosphor.utils.elfsightcdn.com,
         // etc.) — wildcard both so the Google Reviews fetch isn't blocked in prod.
