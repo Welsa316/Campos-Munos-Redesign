@@ -13,8 +13,32 @@ const router = Router()
 // Sender identity for all outbound mail. The display name is what the client's
 // inbox shows — without it, mail clients fall back to the address's local part
 // ("office"), so replies looked like they came from "office" instead of the firm.
+const FROM_NAME = process.env.RESEND_FROM_NAME || 'Campos Muños Law'
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'contact@camulaw.com'
-const FROM = `${process.env.RESEND_FROM_NAME || 'Campos Muños Law'} <${FROM_EMAIL}>`
+const FROM = `${FROM_NAME} <${FROM_EMAIL}>`
+
+// Staff alerts must NOT be sent from the same mailbox they are delivered to.
+// Gmail reads a message whose From matches the recipient as likely spoofing and
+// files it under Spam, so with RESEND_FROM_EMAIL === ADMIN_EMAIL the office was
+// getting "delivered" in Resend while the inbox stayed empty.
+//
+// Any address on the verified domain can send, so when the two collide we fall
+// back to website@<domain>. Nothing ever replies to it — staff alerts carry the
+// client's address in Reply-To. Override with RESEND_NOTIFY_FROM_EMAIL.
+export function resolveNotifyFrom(fromEmail, adminEmail, explicit) {
+  if (explicit) return explicit
+  if (adminEmail && fromEmail && adminEmail.trim().toLowerCase() === fromEmail.trim().toLowerCase()) {
+    const domain = fromEmail.trim().split('@')[1]
+    return domain ? `website@${domain.toLowerCase()}` : fromEmail
+  }
+  return fromEmail
+}
+const NOTIFY_FROM_EMAIL = resolveNotifyFrom(
+  FROM_EMAIL,
+  process.env.ADMIN_EMAIL,
+  process.env.RESEND_NOTIFY_FROM_EMAIL
+)
+const NOTIFY_FROM = `${FROM_NAME} <${NOTIFY_FROM_EMAIL}>`
 
 const CONSULTATION_TYPES = [
   'greenCard', 'ciudadania', 'asilo', 'vawa', 'visaU', 'visaT', 'daca', 'tps',
@@ -92,7 +116,7 @@ router.post(
           // Resend does NOT throw on API errors (unverified domain, bad key, etc.) —
           // it returns { error }. Check it, or the failure is silently swallowed.
           const { error: sendError } = await resend.emails.send({
-            from: FROM,
+            from: NOTIFY_FROM,
             to: adminEmail,
             // Reply-To = the person who submitted, so hitting "Reply" in the
             // office inbox goes straight to the client, not back to our system.
@@ -253,7 +277,7 @@ router.post(
         if (adminEmail && process.env.RESEND_API_KEY) {
           const resend = new Resend(process.env.RESEND_API_KEY)
           const { error: sendError } = await resend.emails.send({
-            from: FROM,
+            from: NOTIFY_FROM,
             to: adminEmail,
             // Reply-To = the client, so the office can reply from its inbox directly.
             replyTo: submission.email,
