@@ -25,29 +25,57 @@ function readLocaleParam() {
   return null
 }
 
-// Resolution order: explicit URL parameter, then the visitor's saved choice,
-// then their browser. This runs while this module is first imported — before
-// the app mounts — so the very first paint is already in the right language
-// and a crawler never sees an English flash on a Spanish URL.
+function readStored(store) {
+  try {
+    const value = store.getItem(STORAGE_KEY)
+    return SUPPORTED.includes(value) ? value : null
+  } catch { return null } // storage can be disabled or blocked in private mode
+}
+
+// Resolution order: explicit URL parameter, then a language pinned earlier in
+// this visit, then the visitor's own saved choice, then their browser.
+//
+// The ?lang= pin is deliberately SESSION-scoped. Writing it to localStorage
+// meant a single Spanish ad click permanently overrode browser detection: the
+// visitor came back weeks later on an English phone and still got Spanish, with
+// no obvious cause. Session storage still carries the language across the whole
+// visit (including the click through to /consulta), which is what the ads need.
+// An explicit toggle is different — that is a deliberate choice, so it is saved
+// to localStorage and outlives the session.
+//
+// This runs while the module is first imported — before the app mounts — so the
+// first paint is already in the right language and a crawler never sees a flash
+// of the wrong one.
 function detectInitialLocale() {
-  // During prerender there's no window/navigator/localStorage — fall back to
-  // the firm's primary audience (ES) so prerendered HTML is consistent.
+  // During prerender there's no window/navigator/storage — fall back to the
+  // firm's primary audience (ES) so prerendered HTML is consistent.
   if (typeof window === 'undefined') return 'es'
 
   const fromParam = readLocaleParam()
   if (fromParam) {
-    // Persist it so the language survives the click through to /consulta.
-    try { localStorage.setItem(STORAGE_KEY, fromParam) } catch { /* ignore */ }
+    // Pin for the rest of this visit so the language survives navigation.
+    try { sessionStorage.setItem(STORAGE_KEY, fromParam) } catch { /* ignore */ }
     return fromParam
   }
 
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored && SUPPORTED.includes(stored)) return stored
-  } catch { /* localStorage may be disabled */ }
+  const pinned = readStored(sessionStorage)
+  if (pinned) return pinned
 
-  const browser = (navigator.language || 'es').toLowerCase().split('-')[0]
-  return SUPPORTED.includes(browser) ? browser : 'es'
+  const chosen = readStored(localStorage)
+  if (chosen) return chosen
+
+  // navigator.languages is ordered by preference; fall back to the single
+  // navigator.language. Match on the primary subtag so en-US/en-GB -> en.
+  const candidates = [
+    ...(Array.isArray(navigator.languages) ? navigator.languages : []),
+    navigator.language,
+  ]
+  for (const tag of candidates) {
+    const primary = String(tag || '').toLowerCase().split('-')[0]
+    if (SUPPORTED.includes(primary)) return primary
+  }
+
+  return 'es'
 }
 
 const i18n = createI18n({
@@ -63,8 +91,12 @@ if (typeof window !== 'undefined') {
   // Keep <html lang> in sync with the active locale (index.html ships lang="es").
   const applyLang = (v) => { try { document.documentElement.lang = v } catch { /* ignore */ } }
   applyLang(i18n.global.locale.value)
+  // A locale change after startup is the visitor using the ES/EN toggle. Save it
+  // to localStorage so it outlives the session, and mirror it into sessionStorage
+  // so it also outranks any ?lang= pin for the rest of this visit.
   watch(i18n.global.locale, (v) => {
     try { localStorage.setItem(STORAGE_KEY, v) } catch { /* ignore */ }
+    try { sessionStorage.setItem(STORAGE_KEY, v) } catch { /* ignore */ }
     applyLang(v)
   })
 }
