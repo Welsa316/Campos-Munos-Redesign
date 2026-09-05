@@ -5,7 +5,19 @@
       <div class="flex items-center gap-4">
         <img src="/logo.png" alt="Campos Muños Law" class="h-9" />
         <div class="w-px h-8 bg-gray-200"></div>
-        <h1 class="font-heading text-lg text-brand-navy tracking-tight">Client Messages</h1>
+        <h1 class="font-heading text-lg text-brand-navy tracking-tight hidden sm:block">Client Messages</h1>
+        <div class="flex bg-brand-surface rounded-lg p-0.5 ml-1">
+          <button
+            @click="changeView('inbox')"
+            :class="viewMode === 'inbox' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
+            class="text-xs font-ui font-medium px-3 py-1.5 rounded-md transition-all"
+          >Inbox</button>
+          <button
+            @click="changeView('contacts')"
+            :class="viewMode === 'contacts' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
+            class="text-xs font-ui font-medium px-3 py-1.5 rounded-md transition-all"
+          >Contacts</button>
+        </div>
         <span v-if="viewMode === 'inbox' && unreadCount > 0" class="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-brand-red text-white text-xs font-ui font-bold">
           {{ unreadCount }}
         </span>
@@ -82,6 +94,33 @@
       </div>
     </div>
 
+    <!-- Contacts — the whole book of leads as a table -->
+    <div v-else-if="viewMode === 'contacts'" class="flex-1 flex overflow-hidden relative">
+      <ContactsTable
+        :contacts="submissions"
+        @select="selectSubmission"
+        @setStatus="updateStatus"
+      />
+
+      <!-- Detail opens over the table so the table keeps its full width -->
+      <div v-if="selectedId !== null" class="absolute inset-0 z-20 flex">
+        <button class="flex-1 bg-black/20" aria-label="Close contact details" @click="closeDetail"></button>
+        <div class="w-full max-w-2xl bg-white shadow-2xl flex flex-col">
+          <SubmissionDetail
+            :submission="selectedSubmission"
+            :showBack="true"
+            :startWithNotesOpen="notesRequestedFor === selectedId"
+            @replied="handleReplied"
+            @back="closeDetail"
+            @archived="handleArchived"
+            @unread="handleUnread"
+            @setStatus="updateStatus"
+            @noteAdded="refreshSelected"
+          />
+        </div>
+      </div>
+    </div>
+
     <!-- Main content — two panel layout -->
     <div v-else class="flex-1 flex overflow-hidden">
       <!-- Left panel -->
@@ -132,6 +171,7 @@ import { useApi, rawFetch } from '../composables/useApi.js'
 import SubmissionList from '../components/admin/SubmissionList.vue'
 import SubmissionDetail from '../components/admin/SubmissionDetail.vue'
 import ChangePasswordModal from '../components/admin/ChangePasswordModal.vue'
+import ContactsTable from '../components/admin/ContactsTable.vue'
 
 const router = useRouter()
 const { adminEmail, logout } = useAuth()
@@ -274,8 +314,11 @@ async function fetchSubmissions({ silent = false } = {}) {
   }
 
   try {
-    const archived = viewMode.value === 'archived' ? 'true' : 'false'
-    const fresh = await get(`/api/submissions?archived=${archived}`)
+    // Contacts works the whole book of leads; inbox/archived stay split.
+    const query = viewMode.value === 'contacts'
+      ? 'scope=all'
+      : `archived=${viewMode.value === 'archived' ? 'true' : 'false'}`
+    const fresh = await get(`/api/submissions?${query}`)
     // Replacing the array is safe for the open conversation: the detail pane
     // renders from selectedSubmission, not from this list.
     submissions.value = fresh
@@ -336,6 +379,12 @@ async function updateStatus({ id, status }) {
     if (row) row.status = previous
     if (selectedSubmission.value?.id === id) selectedSubmission.value.status = previous
   }
+}
+
+function closeDetail() {
+  selectedId.value = null
+  selectedSubmission.value = null
+  notesRequestedFor.value = null
 }
 
 // The notes button in the list opens the lead with its log already expanded.

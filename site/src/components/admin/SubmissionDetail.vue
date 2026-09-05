@@ -174,9 +174,19 @@
             No notes yet. Anything logged here stays internal.
           </p>
           <ul v-else class="space-y-2 max-h-48 overflow-y-auto">
-            <li v-for="note in notes" :key="note.id" class="bg-brand-surface rounded-lg px-3 py-2">
-              <p class="text-xs text-gray-800 font-ui leading-relaxed whitespace-pre-wrap">{{ note.body }}</p>
-              <p class="text-[10px] text-gray-500 font-ui mt-1">{{ formatDate(note.created_at) }}</p>
+            <li v-for="note in notes" :key="note.id" class="group bg-brand-surface rounded-lg px-3 py-2 flex items-start gap-2">
+              <div class="flex-1 min-w-0">
+                <p class="text-xs text-gray-800 font-ui leading-relaxed whitespace-pre-wrap">{{ note.body }}</p>
+                <p class="text-[10px] text-gray-500 font-ui mt-1">{{ formatDate(note.created_at) }}</p>
+              </div>
+              <button
+                @click="removeNote(note)"
+                :disabled="deletingNoteId === note.id"
+                :aria-label="`Delete note from ${formatDate(note.created_at)}`"
+                class="flex-shrink-0 p-1.5 rounded-md text-gray-400 hover:text-brand-red hover:bg-brand-red/10 focus-visible:opacity-100 opacity-0 group-hover:opacity-100 transition-all disabled:opacity-40"
+              >
+                <i :class="deletingNoteId === note.id ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-trash'" class="text-[10px]" aria-hidden="true"></i>
+              </button>
             </li>
           </ul>
         </div>
@@ -216,7 +226,7 @@ const props = defineProps({
 
 const emit = defineEmits(['replied', 'back', 'archived', 'unread', 'setStatus', 'noteAdded'])
 
-const { patch, post } = useApi()
+const { patch, post, del } = useApi()
 
 // --- Pipeline status ---
 const statusOpen = ref(false)
@@ -253,6 +263,23 @@ watch(() => props.submission?.id, () => {
   notesOpen.value = props.startWithNotesOpen
 })
 watch(() => props.startWithNotesOpen, (open) => { if (open) notesOpen.value = true })
+
+const deletingNoteId = ref(null)
+
+async function removeNote(note) {
+  if (deletingNoteId.value || !props.submission) return
+  // A note is a deliberate record, so confirm before it disappears.
+  if (!window.confirm('Delete this note? This cannot be undone.')) return
+  deletingNoteId.value = note.id
+  try {
+    await del(`/api/submissions/${props.submission.id}/notes/${note.id}`)
+    emit('noteAdded') // reuse the refresh path so the log and count update
+  } catch {
+    showActionError('Could not delete the note — please try again.')
+  } finally {
+    deletingNoteId.value = null
+  }
+}
 
 async function addNote() {
   const body = noteDraft.value.trim()

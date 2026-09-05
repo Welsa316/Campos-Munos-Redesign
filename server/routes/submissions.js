@@ -164,8 +164,12 @@ router.get('/', requireAuth, async (req, res) => {
     const conditions = []
     const params = []
 
-    params.push(archived)
-    conditions.push(`s.is_archived = $${params.length}`)
+    // The Contacts view works the whole book of leads, so it opts out of the
+    // inbox/archived split entirely.
+    if (req.query.scope !== 'all') {
+      params.push(archived)
+      conditions.push(`s.is_archived = $${params.length}`)
+    }
 
     if (unreadOnly) {
       conditions.push('s.is_read = false')
@@ -188,10 +192,11 @@ router.get('/', requireAuth, async (req, res) => {
     params.push(limit, offset)
     const limitClause = ` LIMIT $${params.length - 1} OFFSET $${params.length}`
 
-    const where = ` WHERE ${conditions.join(' AND ')}`
+    const where = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : ''
     const query = `SELECT s.id, s.first_name, s.last_name, s.email, s.phone, s.message, s.is_read,
         s.is_archived, s.source, s.consultation_type, s.location, s.status, s.created_at,
-        (SELECT COUNT(*) FROM lead_notes n WHERE n.submission_id = s.id)::int AS note_count
+        (SELECT COUNT(*) FROM lead_notes n WHERE n.submission_id = s.id)::int AS note_count,
+        (SELECT n.body FROM lead_notes n WHERE n.submission_id = s.id ORDER BY n.created_at DESC LIMIT 1) AS latest_note
       FROM submissions s${where} ORDER BY s.created_at DESC${limitClause}`
 
     const result = await getPool().query(query, params)
@@ -428,6 +433,32 @@ router.post(
       res.status(201).json(result.rows[0])
     } catch (err) {
       req.log.error({ err }, 'Add note error')
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  }
+)
+
+// Admin — remove a note from the lead's log
+router.delete(
+  '/:id/notes/:noteId',
+  requireAuth,
+  param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid submission ID'),
+  param('noteId').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid note ID'),
+  validate,
+  async (req, res) => {
+    try {
+      // Scope the delete to the submission so a note can't be removed via a
+      // mismatched lead id.
+      const result = await getPool().query(
+        'DELETE FROM lead_notes WHERE id = $1 AND submission_id = $2 RETURNING id',
+        [req.params.noteId, req.params.id]
+      )
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Note not found' })
+      }
+      res.json({ ok: true, id: result.rows[0].id })
+    } catch (err) {
+      req.log.error({ err }, 'Delete note error')
       res.status(500).json({ error: 'Internal server error' })
     }
   }
