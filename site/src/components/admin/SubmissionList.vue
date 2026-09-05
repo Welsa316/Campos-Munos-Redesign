@@ -42,6 +42,22 @@
         >Unread</button>
       </div>
 
+      <!-- Search — the front desk is often on the phone with the person -->
+      <div class="mt-3 relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" aria-hidden="true"></i>
+        <input
+          v-model="search"
+          type="search"
+          placeholder="Search name, email or phone"
+          aria-label="Search leads by name, email or phone"
+          class="w-full text-xs font-ui pl-8 pr-8 py-2 rounded-lg bg-brand-surface border border-transparent focus:border-brand-navy/30 focus:bg-white focus:outline-none text-gray-700 transition-colors"
+        />
+        <button v-if="search" @click="search = ''" aria-label="Clear search"
+          class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-700">
+          <i class="fa-solid fa-xmark text-xs" aria-hidden="true"></i>
+        </button>
+      </div>
+
       <!-- Consultation type filter -->
       <div class="mt-3">
         <select v-model="consultationFilter"
@@ -52,6 +68,25 @@
             {{ consultationLabel(key) }}
           </option>
         </select>
+      </div>
+
+      <!-- Pipeline at a glance: counts come from what's loaded, and clicking
+           one narrows the list to that stage. -->
+      <div class="mt-3 flex flex-wrap gap-1.5">
+        <button
+          @click="statusFilter = ''"
+          :class="statusFilter === '' ? 'bg-brand-navy text-white ring-brand-navy' : 'bg-brand-surface text-gray-600 ring-transparent hover:text-gray-900'"
+          class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 transition-colors"
+        >All {{ props.submissions.length }}</button>
+        <button
+          v-for="st in LEAD_STATUSES"
+          :key="st.key"
+          @click="statusFilter = statusFilter === st.key ? '' : st.key"
+          :title="st.hint"
+          :aria-pressed="statusFilter === st.key"
+          :class="statusFilter === st.key ? 'bg-brand-navy text-white ring-brand-navy' : `${st.pill} hover:brightness-95`"
+          class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 transition-colors"
+        >{{ st.label }} {{ statusCounts[st.key] || 0 }}</button>
       </div>
     </div>
 
@@ -64,14 +99,17 @@
         </p>
       </div>
 
-      <button
+      <div
         v-for="sub in filteredSubmissions"
         :key="sub.id"
-        @click="$emit('select', sub.id)"
         :class="[
-          'w-full text-left px-5 py-4 border-b border-gray-50 transition-colors',
+          'border-b border-gray-50 transition-colors',
           sub.id === selectedId ? 'bg-brand-navy/[0.06]' : 'hover:bg-gray-50',
         ]"
+      >
+      <button
+        @click="$emit('select', sub.id)"
+        class="w-full text-left px-5 pt-4 pb-2"
       >
         <div class="flex items-start gap-3">
           <!-- Unread dot -->
@@ -103,15 +141,63 @@
           </div>
         </div>
       </button>
+
+      <!-- Status + notes live OUTSIDE the select button: nesting buttons is
+           invalid markup and would swallow these clicks. -->
+      <div class="flex items-center gap-2 px-5 pb-3 pl-10">
+        <div class="relative">
+          <button
+            @click.stop="openStatusFor = openStatusFor === sub.id ? null : sub.id"
+            :aria-expanded="openStatusFor === sub.id"
+            :aria-label="`Change status for ${sub.first_name} ${sub.last_name}, currently ${statusMeta(sub.status).label}`"
+            :class="statusMeta(sub.status).pill"
+            class="inline-flex items-center gap-1.5 text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 transition-transform active:scale-95"
+          >
+            <span :class="statusMeta(sub.status).dot" class="w-1.5 h-1.5 rounded-full" aria-hidden="true"></span>
+            {{ statusMeta(sub.status).label }}
+            <i class="fa-solid fa-chevron-down text-[8px] opacity-60" aria-hidden="true"></i>
+          </button>
+
+          <div v-if="openStatusFor === sub.id"
+            class="absolute left-0 top-full mt-1 z-30 w-44 bg-white rounded-xl shadow-lg ring-1 ring-gray-200 py-1">
+            <button
+              v-for="st in LEAD_STATUSES"
+              :key="st.key"
+              @click.stop="chooseStatus(sub, st.key)"
+              class="w-full text-left px-3 py-2 hover:bg-brand-surface transition-colors flex items-center gap-2"
+            >
+              <span :class="st.dot" class="w-2 h-2 rounded-full flex-shrink-0" aria-hidden="true"></span>
+              <span class="flex-1 min-w-0">
+                <span class="block text-xs font-ui font-semibold text-gray-800">{{ st.label }}</span>
+                <span class="block text-[10px] text-gray-500 font-ui leading-tight">{{ st.hint }}</span>
+              </span>
+              <i v-if="sub.status === st.key" class="fa-solid fa-check text-[10px] text-brand-navy" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+
+        <button
+          @click="$emit('openNotes', sub.id)"
+          :aria-label="`Notes for ${sub.first_name} ${sub.last_name}`"
+          :title="sub.note_count ? `${sub.note_count} note(s)` : 'Add a note'"
+          :class="sub.note_count ? 'text-brand-navy' : 'text-gray-400 hover:text-gray-600'"
+          class="inline-flex items-center gap-1 text-[11px] font-ui font-semibold px-2 py-1 rounded-full hover:bg-brand-surface transition-colors"
+        >
+          <i class="fa-solid fa-note-sticky text-[11px]" aria-hidden="true"></i>
+          <span v-if="sub.note_count">{{ sub.note_count }}</span>
+        </button>
+      </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CONSULTATION_KEYS, consultationLabel as consultationLabelShared } from '../../data/consultationTypes.js'
 import { countryLabel } from '../../data/countries.js'
+import { LEAD_STATUSES, statusMeta } from '../../data/leadStatuses.js'
 
 const props = defineProps({
   submissions: { type: Array, default: () => [] },
@@ -120,7 +206,7 @@ const props = defineProps({
   refreshing: { type: Boolean, default: false },
 })
 
-defineEmits(['select', 'refresh', 'changeView'])
+const emit = defineEmits(['select', 'refresh', 'changeView', 'setStatus', 'openNotes'])
 
 const refreshBtn = ref(null)
 // Let the dashboard restore focus here after the detail pane unmounts (e.g. archive).
@@ -129,6 +215,40 @@ defineExpose({ focusTop: () => refreshBtn.value?.focus() })
 const { t, te, locale } = useI18n()
 const filter = ref('all')
 const consultationFilter = ref('')
+const statusFilter = ref('')
+const search = ref('')
+const openStatusFor = ref(null)
+
+// Counts are over everything loaded for the current view, not the filtered
+// list, so the chips keep showing the whole pipeline while one is selected.
+const statusCounts = computed(() => {
+  const counts = {}
+  for (const sub of props.submissions) {
+    const key = statusMeta(sub.status).key
+    counts[key] = (counts[key] || 0) + 1
+  }
+  return counts
+})
+
+function chooseStatus(sub, status) {
+  openStatusFor.value = null
+  if (sub.status === status) return
+  emit('setStatus', { id: sub.id, status })
+}
+
+// Close the dropdown on an outside click or Escape.
+function closeStatusMenu(event) {
+  if (event.type === 'keydown' && event.key !== 'Escape') return
+  openStatusFor.value = null
+}
+onMounted(() => {
+  document.addEventListener('click', closeStatusMenu)
+  document.addEventListener('keydown', closeStatusMenu)
+})
+onUnmounted(() => {
+  document.removeEventListener('click', closeStatusMenu)
+  document.removeEventListener('keydown', closeStatusMenu)
+})
 
 const consultationLabel = (key) => consultationLabelShared(key, t, te)
 const formatCountry = (code) => countryLabel(code, locale.value)
@@ -144,6 +264,21 @@ const filteredSubmissions = computed(() => {
   }
   if (consultationFilter.value) {
     list = list.filter(s => s.consultation_type === consultationFilter.value)
+  }
+  if (statusFilter.value) {
+    list = list.filter(s => statusMeta(s.status).key === statusFilter.value)
+  }
+  const term = search.value.trim().toLowerCase()
+  if (term) {
+    // Digits-only comparison for phone so "(504) 910-6508" matches "5049106508".
+    const digits = term.replace(/\D/g, '')
+    list = list.filter(s => {
+      const name = `${s.first_name} ${s.last_name}`.toLowerCase()
+      const phoneDigits = String(s.phone || '').replace(/\D/g, '')
+      return name.includes(term)
+        || String(s.email || '').toLowerCase().includes(term)
+        || (digits.length >= 3 && phoneDigits.includes(digits))
+    })
   }
 
   return [...list].sort((a, b) => {

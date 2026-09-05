@@ -80,6 +80,31 @@ async function migrate() {
         END IF;
       END $$;
 
+      -- Lead pipeline status, so the front desk can see at a glance whether a
+      -- lead booked a consultation without keeping a separate spreadsheet.
+      ALTER TABLE submissions ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'new';
+
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'submissions_status_chk') THEN
+          ALTER TABLE submissions ADD CONSTRAINT submissions_status_chk
+            CHECK (status IN ('new', 'contacted', 'scheduled', 'retained', 'closed'));
+        END IF;
+      END $$;
+
+      CREATE INDEX IF NOT EXISTS idx_submissions_status ON submissions(status);
+
+      -- Internal running log per lead. A table rather than a single text column
+      -- so entries are timestamped and append-only — staff can see the history
+      -- of a lead instead of overwriting each other's note.
+      CREATE TABLE IF NOT EXISTS lead_notes (
+        id SERIAL PRIMARY KEY,
+        submission_id INTEGER REFERENCES submissions(id) ON DELETE CASCADE,
+        body TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_lead_notes_submission_id ON lead_notes(submission_id);
+
       CREATE TABLE IF NOT EXISTS replies (
         id SERIAL PRIMARY KEY,
         submission_id INTEGER REFERENCES submissions(id) ON DELETE CASCADE,

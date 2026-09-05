@@ -40,6 +40,10 @@ const NOTIFY_FROM_EMAIL = resolveNotifyFrom(
 )
 const NOTIFY_FROM = `${FROM_NAME} <${NOTIFY_FROM_EMAIL}>`
 
+// Lead pipeline. 'new' is the default on insert; a reply sent from the inbox
+// advances it to 'contacted' automatically (see the reply route).
+const LEAD_STATUSES = ['new', 'contacted', 'scheduled', 'retained', 'closed']
+
 const CONSULTATION_TYPES = [
   'greenCard', 'ciudadania', 'asilo', 'vawa', 'visaU', 'visaT', 'daca', 'tps',
   'tramiteConsular', 'visasPrometido', 'visasJovenes', 'peticionesFamiliares',
@@ -161,16 +165,22 @@ router.get('/', requireAuth, async (req, res) => {
     const params = []
 
     params.push(archived)
-    conditions.push(`is_archived = $${params.length}`)
+    conditions.push(`s.is_archived = $${params.length}`)
 
     if (unreadOnly) {
-      conditions.push('is_read = false')
+      conditions.push('s.is_read = false')
     }
 
     const consultationType = req.query.consultationType
     if (consultationType && CONSULTATION_TYPES.includes(consultationType)) {
       params.push(consultationType)
-      conditions.push(`consultation_type = $${params.length}`)
+      conditions.push(`s.consultation_type = $${params.length}`)
+    }
+
+    const status = req.query.status
+    if (status && LEAD_STATUSES.includes(status)) {
+      params.push(status)
+      conditions.push(`s.status = $${params.length}`)
     }
 
     const limit = Math.min(parseInt(req.query.limit, 10) || 100, 200)
@@ -179,7 +189,10 @@ router.get('/', requireAuth, async (req, res) => {
     const limitClause = ` LIMIT $${params.length - 1} OFFSET $${params.length}`
 
     const where = ` WHERE ${conditions.join(' AND ')}`
-    const query = `SELECT id, first_name, last_name, email, phone, message, is_read, is_archived, source, consultation_type, location, created_at FROM submissions${where} ORDER BY created_at DESC${limitClause}`
+    const query = `SELECT s.id, s.first_name, s.last_name, s.email, s.phone, s.message, s.is_read,
+        s.is_archived, s.source, s.consultation_type, s.location, s.status, s.created_at,
+        (SELECT COUNT(*) FROM lead_notes n WHERE n.submission_id = s.id)::int AS note_count
+      FROM submissions s${where} ORDER BY s.created_at DESC${limitClause}`
 
     const result = await getPool().query(query, params)
     res.json(result.rows)
@@ -197,9 +210,9 @@ router.get(
   validate,
   async (req, res) => {
     try {
-      const [submissionResult, repliesResult, chatMessagesResult] = await Promise.all([
+      const [submissionResult, repliesResult, chatMessagesResult, notesResult] = await Promise.all([
         getPool().query(
-          'SELECT id, first_name, last_name, email, phone, message, is_read, is_archived, source, consultation_type, location, created_at FROM submissions WHERE id = $1',
+          'SELECT id, first_name, last_name, email, phone, message, is_read, is_archived, source, consultation_type, location, status, created_at FROM submissions WHERE id = $1',
           [req.params.id]
         ),
         getPool().query(
@@ -208,6 +221,10 @@ router.get(
         ),
         getPool().query(
           'SELECT id, body, sent_at FROM chat_messages WHERE submission_id = $1 ORDER BY sent_at ASC',
+          [req.params.id]
+        ),
+        getPool().query(
+          'SELECT id, body, created_at FROM lead_notes WHERE submission_id = $1 ORDER BY created_at DESC',
           [req.params.id]
         ),
       ])
@@ -220,6 +237,7 @@ router.get(
         ...submissionResult.rows[0],
         replies: repliesResult.rows,
         chat_messages: chatMessagesResult.rows,
+        notes: notesResult.rows,
       })
     } catch (err) {
       req.log.error({ err: err }, 'Get submission error')
@@ -366,6 +384,55 @@ router.patch(
   }
 )
 
+// Admin — set the lead's pipeline status
+router.patch(
+  '/:id/status',
+  requireAuth,
+  param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid submission ID'),
+  body('status').isIn(LEAD_STATUSES).withMessage('Invalid status'),
+  validate,
+  async (req, res) => {
+    try {
+      const result = await getPool().query(
+        'UPDATE submissions SET status = $2 WHERE id = $1 RETURNING id, status',
+        [req.params.id, req.body.status]
+      )
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Submission not found' })
+      }
+      res.json(result.rows[0])
+    } catch (err) {
+      req.log.error({ err }, 'Update status error')
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  }
+)
+
+// Admin — append an internal note to the lead's log
+router.post(
+  '/:id/notes',
+  requireAuth,
+  param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid submission ID'),
+  body('body').trim().notEmpty().isLength({ max: 5000 }).withMessage('Note is required (max 5000 chars)'),
+  validate,
+  async (req, res) => {
+    try {
+      const exists = await getPool().query('SELECT id FROM submissions WHERE id = $1', [req.params.id])
+      if (exists.rows.length === 0) {
+        return res.status(404).json({ error: 'Submission not found' })
+      }
+      const result = await getPool().query(
+        'INSERT INTO lead_notes (submission_id, body) VALUES ($1, $2) RETURNING id, body, created_at',
+        [req.params.id, stripHtml(req.body.body)]
+      )
+      res.status(201).json(result.rows[0])
+    } catch (err) {
+      req.log.error({ err }, 'Add note error')
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  }
+)
+
 // Admin — export submissions as CSV. Streams rows directly from the DB cursor
 // to the response, so a 50k-row inbox doesn't materialise the whole result set
 // in memory before writing.
@@ -382,8 +449,16 @@ router.get('/export/csv', requireAuth, async (req, res) => {
     await client.query('BEGIN')
     await client.query(
       `DECLARE submissions_csv_cursor CURSOR FOR
-       SELECT first_name, last_name, email, phone, message, consultation_type, location, is_read, is_archived, created_at
-       FROM submissions ORDER BY created_at DESC`
+       SELECT s.first_name, s.last_name, s.email, s.phone, s.message, s.consultation_type, s.location,
+              s.status, s.is_read, s.is_archived, s.created_at,
+              COALESCE((
+                SELECT string_agg(
+                  to_char(n.created_at, 'YYYY-MM-DD') || ': ' || n.body,
+                  E'\n' ORDER BY n.created_at
+                )
+                FROM lead_notes n WHERE n.submission_id = s.id
+              ), '') AS notes
+       FROM submissions s ORDER BY s.created_at DESC`
     )
 
     const BATCH = 500
@@ -392,12 +467,12 @@ router.get('/export/csv', requireAuth, async (req, res) => {
     // First fetch succeeded — now commit to the response and stream.
     res.setHeader('Content-Type', 'text/csv')
     res.setHeader('Content-Disposition', `attachment; filename="submissions-${new Date().toISOString().slice(0, 10)}.csv"`)
-    res.write('First Name,Last Name,Email,Phone,Message,Service,Location,Read,Archived,Submitted\n')
+    res.write('First Name,Last Name,Email,Phone,Message,Service,Location,Status,Notes,Read,Archived,Submitted\n')
 
     while (batch.rows.length > 0) {
       const chunk = batch.rows.map(r => {
         const date = new Date(r.created_at).toISOString()
-        return `${escapeCsvField(r.first_name)},${escapeCsvField(r.last_name)},${escapeCsvField(r.email)},${escapeCsvField(r.phone)},${escapeCsvField(r.message)},${escapeCsvField(r.consultation_type)},${escapeCsvField(r.location)},${r.is_read},${r.is_archived},"${date}"`
+        return `${escapeCsvField(r.first_name)},${escapeCsvField(r.last_name)},${escapeCsvField(r.email)},${escapeCsvField(r.phone)},${escapeCsvField(r.message)},${escapeCsvField(r.consultation_type)},${escapeCsvField(r.location)},${escapeCsvField(r.status)},${escapeCsvField(r.notes)},${r.is_read},${r.is_archived},"${date}"`
       }).join('\n')
       res.write(chunk + '\n')
       if (batch.rows.length < BATCH) break
@@ -451,6 +526,21 @@ router.post(
       const reply = replyResult.rows[0]
       let emailFailed = false
 
+      // Replying from the inbox IS making contact, so move the lead out of
+      // 'new' automatically. Only from 'new' — a lead already further along
+      // (scheduled, retained, closed) must not be dragged backwards.
+      let status = null
+      try {
+        const advanced = await getPool().query(
+          "UPDATE submissions SET status = 'contacted' WHERE id = $1 AND status = 'new' RETURNING status",
+          [submission.id]
+        )
+        if (advanced.rows.length) status = advanced.rows[0].status
+      } catch (statusErr) {
+        // A status bump must never fail the reply itself.
+        req.log.error({ err: statusErr }, 'Auto-advance status failed')
+      }
+
       // Send email via Resend
       try {
         const resend = new Resend(process.env.RESEND_API_KEY)
@@ -492,7 +582,7 @@ router.post(
         emailFailed = true
       }
 
-      res.status(201).json({ ...reply, emailFailed })
+      res.status(201).json({ ...reply, emailFailed, status })
     } catch (err) {
       req.log.error({ err: err }, 'Reply error')
       res.status(500).json({ error: 'Internal server error' })

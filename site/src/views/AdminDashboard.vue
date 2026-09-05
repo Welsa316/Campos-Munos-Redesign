@@ -98,6 +98,8 @@
           @select="selectSubmission"
           @refresh="fetchSubmissions"
           @changeView="changeView"
+          @setStatus="updateStatus"
+          @openNotes="openNotes"
         />
       </div>
 
@@ -109,10 +111,13 @@
         <SubmissionDetail
           :submission="selectedSubmission"
           :showBack="true"
-          @replied="refreshSelected"
+          :startWithNotesOpen="notesRequestedFor === selectedId"
+          @replied="handleReplied"
           @back="selectedId = null"
           @archived="handleArchived"
           @unread="handleUnread"
+          @setStatus="updateStatus"
+          @noteAdded="refreshSelected"
         />
       </div>
     </div>
@@ -142,6 +147,7 @@ const showChangePassword = ref(false)
 const exporting = ref(false)
 const exportFailed = ref(false)
 const listRef = ref(null)
+const notesRequestedFor = ref(null)
 
 const unreadCount = computed(() => submissions.value.filter(s => !s.is_read).length)
 
@@ -316,6 +322,39 @@ async function selectSubmission(id) {
 // Also re-read the open conversation, so a client's chat follow-up shows up
 // while it's on screen. The id is unchanged, so ReplyBox (keyed by it) is not
 // remounted and a half-typed reply survives.
+// Status is owned by the server; update both panes optimistically and roll back
+// if the write fails, so the pill never shows a value that didn't stick.
+async function updateStatus({ id, status }) {
+  const row = submissions.value.find(s => s.id === id)
+  const previous = row?.status ?? selectedSubmission.value?.status
+  if (row) row.status = status
+  if (selectedSubmission.value?.id === id) selectedSubmission.value.status = status
+
+  try {
+    await patch(`/api/submissions/${id}/status`, { status })
+  } catch {
+    if (row) row.status = previous
+    if (selectedSubmission.value?.id === id) selectedSubmission.value.status = previous
+  }
+}
+
+// The notes button in the list opens the lead with its log already expanded.
+function openNotes(id) {
+  notesRequestedFor.value = id
+  selectSubmission(id)
+}
+
+// Sending a reply advances a 'new' lead to 'contacted' server-side — reflect
+// that in the list without waiting for the next poll.
+async function handleReplied(result) {
+  if (result?.status) {
+    const row = submissions.value.find(s => s.id === selectedId.value)
+    if (row) row.status = result.status
+    if (selectedSubmission.value) selectedSubmission.value.status = result.status
+  }
+  await refreshSelected()
+}
+
 async function refreshSelected({ silent = false } = {}) {
   if (!selectedId.value) return
   try {

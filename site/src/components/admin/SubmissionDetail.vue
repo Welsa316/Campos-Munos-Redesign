@@ -38,6 +38,37 @@
                 {{ formatCountry(submission.location) }}
               </span>
             </div>
+
+            <!-- Pipeline status -->
+            <div class="relative mt-3 inline-block">
+              <button
+                @click.stop="statusOpen = !statusOpen"
+                :aria-expanded="statusOpen"
+                aria-label="Change lead status"
+                :class="statusMeta(submission.status).pill"
+                class="inline-flex items-center gap-2 text-xs font-ui font-semibold px-3 py-1.5 rounded-full ring-1 transition-transform active:scale-95"
+              >
+                <span :class="statusMeta(submission.status).dot" class="w-2 h-2 rounded-full" aria-hidden="true"></span>
+                {{ statusMeta(submission.status).label }}
+                <i class="fa-solid fa-chevron-down text-[9px] opacity-60" aria-hidden="true"></i>
+              </button>
+              <div v-if="statusOpen"
+                class="absolute left-0 top-full mt-1 z-30 w-52 bg-white rounded-xl shadow-lg ring-1 ring-gray-200 py-1">
+                <button
+                  v-for="st in LEAD_STATUSES"
+                  :key="st.key"
+                  @click.stop="pickStatus(st.key)"
+                  class="w-full text-left px-3 py-2 hover:bg-brand-surface transition-colors flex items-center gap-2"
+                >
+                  <span :class="st.dot" class="w-2 h-2 rounded-full flex-shrink-0" aria-hidden="true"></span>
+                  <span class="flex-1 min-w-0">
+                    <span class="block text-xs font-ui font-semibold text-gray-800">{{ st.label }}</span>
+                    <span class="block text-[10px] text-gray-500 font-ui leading-tight">{{ st.hint }}</span>
+                  </span>
+                  <i v-if="submission.status === st.key" class="fa-solid fa-check text-[10px] text-brand-navy" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
           </div>
           <div class="flex items-center gap-2">
             <span v-if="!submission.is_read" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-red/10 text-brand-red text-xs font-ui font-medium">
@@ -102,25 +133,75 @@
         </template>
       </div>
 
+      <!-- Internal notes: staff-only running log, never sent to the client. -->
+      <div class="border-t border-gray-100 flex-shrink-0">
+        <button
+          @click="notesOpen = !notesOpen"
+          :aria-expanded="notesOpen"
+          class="w-full flex items-center justify-between px-5 py-2.5 hover:bg-brand-surface transition-colors"
+        >
+          <span class="flex items-center gap-2 text-xs font-ui font-semibold text-gray-700">
+            <i class="fa-solid fa-note-sticky text-brand-navy/70 text-[11px]" aria-hidden="true"></i>
+            Internal notes
+            <span v-if="notes.length" class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-brand-navy/10 text-brand-navy text-[10px] font-bold">
+              {{ notes.length }}
+            </span>
+          </span>
+          <i :class="notesOpen ? 'fa-chevron-up' : 'fa-chevron-down'" class="fa-solid text-[10px] text-gray-400" aria-hidden="true"></i>
+        </button>
+
+        <div v-if="notesOpen" class="px-5 pb-4">
+          <form @submit.prevent="addNote" class="flex items-start gap-2 mb-3">
+            <label for="lead-note" class="sr-only">Add an internal note</label>
+            <textarea
+              id="lead-note"
+              v-model="noteDraft"
+              rows="2"
+              maxlength="5000"
+              :disabled="savingNote"
+              placeholder="Log a call, a voicemail, what they need…"
+              class="form-input resize-none text-sm flex-1"
+              @keydown.enter.exact.prevent="addNote"
+            ></textarea>
+            <button
+              type="submit"
+              :disabled="savingNote || !noteDraft.trim()"
+              class="bg-brand-navy text-white font-ui font-medium text-xs px-4 py-2.5 rounded-xl btn-magnetic disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none flex-shrink-0"
+            >{{ savingNote ? 'Saving…' : 'Add' }}</button>
+          </form>
+
+          <p v-if="notes.length === 0" class="text-xs text-gray-400 font-ui italic">
+            No notes yet. Anything logged here stays internal.
+          </p>
+          <ul v-else class="space-y-2 max-h-48 overflow-y-auto">
+            <li v-for="note in notes" :key="note.id" class="bg-brand-surface rounded-lg px-3 py-2">
+              <p class="text-xs text-gray-800 font-ui leading-relaxed whitespace-pre-wrap">{{ note.body }}</p>
+              <p class="text-[10px] text-gray-500 font-ui mt-1">{{ formatDate(note.created_at) }}</p>
+            </li>
+          </ul>
+        </div>
+      </div>
+
       <!-- Reply box — keyed by submission so a half-typed draft never carries
            over to a different client when the admin switches messages. -->
       <ReplyBox
         :key="submission.id"
         :submissionId="submission.id"
-        @replied="$emit('replied')"
+        @replied="$emit('replied', $event)"
       />
     </template>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useApi } from '../../composables/useApi.js'
 import { consultationLabel as consultationLabelShared } from '../../data/consultationTypes.js'
 import { countryLabel } from '../../data/countries.js'
 import { formatPhone, telHref } from '../../utils/phone.js'
 import ReplyBox from './ReplyBox.vue'
+import { LEAD_STATUSES, statusMeta } from '../../data/leadStatuses.js'
 
 const { t, te, locale } = useI18n()
 const consultationLabel = (key) => consultationLabelShared(key, t, te)
@@ -129,11 +210,64 @@ const formatCountry = (code) => countryLabel(code, locale.value)
 const props = defineProps({
   submission: { type: Object, default: null },
   showBack: { type: Boolean, default: false },
+  // Set when the front desk opened this lead via the notes button in the list.
+  startWithNotesOpen: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['replied', 'back', 'archived', 'unread'])
+const emit = defineEmits(['replied', 'back', 'archived', 'unread', 'setStatus', 'noteAdded'])
 
-const { patch } = useApi()
+const { patch, post } = useApi()
+
+// --- Pipeline status ---
+const statusOpen = ref(false)
+function pickStatus(status) {
+  statusOpen.value = false
+  if (!props.submission || props.submission.status === status) return
+  emit('setStatus', { id: props.submission.id, status })
+}
+function closeStatusMenu(event) {
+  if (event.type === 'keydown' && event.key !== 'Escape') return
+  statusOpen.value = false
+}
+onMounted(() => {
+  document.addEventListener('click', closeStatusMenu)
+  document.addEventListener('keydown', closeStatusMenu)
+})
+onUnmounted(() => {
+  document.removeEventListener('click', closeStatusMenu)
+  document.removeEventListener('keydown', closeStatusMenu)
+})
+
+// --- Internal notes ---
+const notesOpen = ref(props.startWithNotesOpen)
+const noteDraft = ref('')
+const savingNote = ref(false)
+// Read from the loaded submission so the background poll keeps the log current.
+const notes = computed(() => props.submission?.notes || [])
+
+watch(() => props.submission?.id, () => {
+  // A different lead is on screen — never carry a half-typed note across.
+  noteDraft.value = ''
+  savingNote.value = false
+  statusOpen.value = false
+  notesOpen.value = props.startWithNotesOpen
+})
+watch(() => props.startWithNotesOpen, (open) => { if (open) notesOpen.value = true })
+
+async function addNote() {
+  const body = noteDraft.value.trim()
+  if (!body || savingNote.value || !props.submission) return
+  savingNote.value = true
+  try {
+    await post(`/api/submissions/${props.submission.id}/notes`, { body })
+    noteDraft.value = ''
+    emit('noteAdded')
+  } catch {
+    showActionError('Could not save the note — please try again.')
+  } finally {
+    savingNote.value = false
+  }
+}
 const archiving = ref(false)
 const markingUnread = ref(false)
 const actionError = ref('')

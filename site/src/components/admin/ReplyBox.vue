@@ -79,7 +79,8 @@ async function sendReply() {
     })
 
     body.value = ''
-    emit('replied')
+    // Pass the result up: it carries the auto-advanced lead status.
+    emit('replied', result)
 
     if (result.emailFailed) {
       showToast('Reply saved but email delivery failed — follow up manually', 'warning')
