@@ -46,7 +46,7 @@
                 :aria-expanded="statusOpen"
                 aria-label="Change lead status"
                 :class="statusMeta(submission.status).pill"
-                class="inline-flex items-center gap-2 text-xs font-ui font-semibold px-3 py-1.5 rounded-full ring-1 transition-transform active:scale-95"
+                class="inline-flex items-center gap-2 text-xs font-ui font-semibold px-3 py-1.5 rounded-full ring-1 whitespace-nowrap transition-transform active:scale-95"
               >
                 <span :class="statusMeta(submission.status).dot" class="w-2 h-2 rounded-full" aria-hidden="true"></span>
                 {{ statusMeta(submission.status).label }}

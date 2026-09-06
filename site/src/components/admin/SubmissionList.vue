@@ -76,7 +76,7 @@
         <button
           @click="statusFilter = ''"
           :class="statusFilter === '' ? 'bg-brand-navy text-white ring-brand-navy' : 'bg-brand-surface text-gray-600 ring-transparent hover:text-gray-900'"
-          class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 transition-colors"
+          class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap transition-colors"
         >All {{ props.submissions.length }}</button>
         <button
           v-for="st in LEAD_STATUSES"
@@ -85,7 +85,7 @@
           :title="st.hint"
           :aria-pressed="statusFilter === st.key"
           :class="statusFilter === st.key ? 'bg-brand-navy text-white ring-brand-navy' : `${st.pill} hover:brightness-95`"
-          class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 transition-colors"
+          class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap transition-colors"
         >{{ st.label }} {{ statusCounts[st.key] || 0 }}</button>
       </div>
     </div>
@@ -151,7 +151,7 @@
             :aria-expanded="openStatusFor === sub.id"
             :aria-label="`Change status for ${sub.first_name} ${sub.last_name}, currently ${statusMeta(sub.status).label}`"
             :class="statusMeta(sub.status).pill"
-            class="inline-flex items-center gap-1.5 text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 transition-transform active:scale-95"
+            class="inline-flex items-center gap-1.5 text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap transition-transform active:scale-95"
           >
             <span :class="statusMeta(sub.status).dot" class="w-1.5 h-1.5 rounded-full" aria-hidden="true"></span>
             {{ statusMeta(sub.status).label }}

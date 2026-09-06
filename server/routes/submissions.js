@@ -42,7 +42,12 @@ const NOTIFY_FROM = `${FROM_NAME} <${NOTIFY_FROM_EMAIL}>`
 
 // Lead pipeline. 'new' is the default on insert; a reply sent from the inbox
 // advances it to 'contacted' automatically (see the reply route).
-const LEAD_STATUSES = ['new', 'contacted', 'scheduled', 'retained', 'closed']
+export const LEAD_STATUSES = ['new', 'contacted', 'no_response', 'scheduled', 'retained', 'closed']
+
+// CSV gets the human label, not the raw key: 'no_response' would otherwise
+// land in the spreadsheet with an underscore. Matches the labels in
+// site/src/data/leadStatuses.js for every key above.
+const humanStatus = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ') : s)
 
 const CONSULTATION_TYPES = [
   'greenCard', 'ciudadania', 'asilo', 'vawa', 'visaU', 'visaT', 'daca', 'tps',
@@ -503,7 +508,7 @@ router.get('/export/csv', requireAuth, async (req, res) => {
     while (batch.rows.length > 0) {
       const chunk = batch.rows.map(r => {
         const date = new Date(r.created_at).toISOString()
-        return `${escapeCsvField(r.first_name)},${escapeCsvField(r.last_name)},${escapeCsvField(r.email)},${escapeCsvField(r.phone)},${escapeCsvField(r.message)},${escapeCsvField(r.consultation_type)},${escapeCsvField(r.location)},${escapeCsvField(r.status)},${escapeCsvField(r.notes)},${r.is_read},${r.is_archived},"${date}"`
+        return `${escapeCsvField(r.first_name)},${escapeCsvField(r.last_name)},${escapeCsvField(r.email)},${escapeCsvField(r.phone)},${escapeCsvField(r.message)},${escapeCsvField(r.consultation_type)},${escapeCsvField(r.location)},${escapeCsvField(humanStatus(r.status))},${escapeCsvField(r.notes)},${r.is_read},${r.is_archived},"${date}"`
       }).join('\n')
       res.write(chunk + '\n')
       if (batch.rows.length < BATCH) break
@@ -557,13 +562,14 @@ router.post(
       const reply = replyResult.rows[0]
       let emailFailed = false
 
-      // Replying from the inbox IS making contact, so move the lead out of
-      // 'new' automatically. Only from 'new' — a lead already further along
-      // (scheduled, retained, closed) must not be dragged backwards.
+      // Replying from the inbox IS making contact, so move the lead to
+      // 'contacted' automatically. Only from the two states that mean "not
+      // reached yet" — a lead already further along (scheduled, retained,
+      // closed) must not be dragged backwards.
       let status = null
       try {
         const advanced = await getPool().query(
-          "UPDATE submissions SET status = 'contacted' WHERE id = $1 AND status = 'new' RETURNING status",
+          "UPDATE submissions SET status = 'contacted' WHERE id = $1 AND status IN ('new', 'no_response') RETURNING status",
           [submission.id]
         )
         if (advanced.rows.length) status = advanced.rows[0].status

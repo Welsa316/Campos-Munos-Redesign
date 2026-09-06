@@ -27,7 +27,7 @@
         <button
           @click="statusFilter = ''"
           :class="statusFilter === '' ? 'bg-brand-navy text-white ring-brand-navy' : 'bg-brand-surface text-gray-600 ring-transparent hover:text-gray-900'"
-          class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 transition-colors"
+          class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap transition-colors"
         >All {{ contacts.length }}</button>
         <button
           v-for="st in LEAD_STATUSES"
@@ -36,7 +36,7 @@
           :title="st.hint"
           :aria-pressed="statusFilter === st.key"
           :class="statusFilter === st.key ? 'bg-brand-navy text-white ring-brand-navy' : `${st.pill} hover:brightness-95`"
-          class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 transition-colors"
+          class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap transition-colors"
         >{{ st.label }} {{ counts[st.key] || 0 }}</button>
       </div>
     </div>

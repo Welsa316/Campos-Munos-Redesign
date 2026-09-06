@@ -6,6 +6,8 @@ export const LEAD_STATUSES = [
     pill: 'bg-brand-red/10 text-brand-red ring-brand-red/20', dot: 'bg-brand-red' },
   { key: 'contacted', label: 'Contacted', hint: 'Reached out — waiting to hear back',
     pill: 'bg-amber-100 text-amber-800 ring-amber-200', dot: 'bg-amber-500' },
+  { key: 'no_response', label: 'No response', hint: 'Chased them and heard nothing back',
+    pill: 'bg-violet-100 text-violet-800 ring-violet-200', dot: 'bg-violet-500' },
   { key: 'scheduled', label: 'Scheduled', hint: 'Consultation is booked',
     pill: 'bg-green-100 text-green-800 ring-green-200', dot: 'bg-green-600' },
   { key: 'retained', label: 'Retained', hint: 'Signed on as a client',

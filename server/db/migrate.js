@@ -84,12 +84,14 @@ async function migrate() {
       -- lead booked a consultation without keeping a separate spreadsheet.
       ALTER TABLE submissions ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'new';
 
-      DO $$ BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'submissions_status_chk') THEN
-          ALTER TABLE submissions ADD CONSTRAINT submissions_status_chk
-            CHECK (status IN ('new', 'contacted', 'scheduled', 'retained', 'closed'));
-        END IF;
-      END $$;
+      -- Dropped and recreated rather than guarded by IF NOT EXISTS: a guard
+      -- keyed on the constraint name can never widen the list on a database
+      -- that already has it, so a newly added status would be rejected in
+      -- production while passing locally. Keep in sync with LEAD_STATUSES in
+      -- server/routes/submissions.js and site/src/data/leadStatuses.js.
+      ALTER TABLE submissions DROP CONSTRAINT IF EXISTS submissions_status_chk;
+      ALTER TABLE submissions ADD CONSTRAINT submissions_status_chk
+        CHECK (status IN ('new', 'contacted', 'no_response', 'scheduled', 'retained', 'closed'));
 
       CREATE INDEX IF NOT EXISTS idx_submissions_status ON submissions(status);
 
