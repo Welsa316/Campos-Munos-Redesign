@@ -98,8 +98,10 @@
     <div v-else-if="viewMode === 'contacts'" class="flex-1 flex overflow-hidden relative">
       <ContactsTable
         :contacts="submissions"
+        :archivedView="contactsArchived"
         @select="selectSubmission"
         @setStatus="updateStatus"
+        @changeArchived="changeContactsArchived"
       />
 
       <!-- Detail opens over the table so the table keeps its full width -->
@@ -183,6 +185,10 @@ const selectedSubmission = ref(null)
 const loadingList = ref(true)
 const listError = ref(false)
 const viewMode = ref('inbox')
+// Which book of leads the Contacts table is showing. Archived leads used to
+// be listed alongside live ones, which both read as active work and — since
+// the list route caps at 100 rows — pushed real leads off the bottom.
+const contactsArchived = ref(false)
 const showChangePassword = ref(false)
 const exporting = ref(false)
 const exportFailed = ref(false)
@@ -314,11 +320,12 @@ async function fetchSubmissions({ silent = false } = {}) {
   }
 
   try {
-    // Contacts works the whole book of leads; inbox/archived stay split.
-    const query = viewMode.value === 'contacts'
-      ? 'scope=all'
-      : `archived=${viewMode.value === 'archived' ? 'true' : 'false'}`
-    const fresh = await get(`/api/submissions?${query}`)
+    // Every view asks for one side of the archive divide, so archived rows
+    // never consume the row budget of the list she's actually working.
+    const archived = viewMode.value === 'contacts'
+      ? contactsArchived.value
+      : viewMode.value === 'archived'
+    const fresh = await get(`/api/submissions?archived=${archived}`)
     // Replacing the array is safe for the open conversation: the detail pane
     // renders from selectedSubmission, not from this list.
     submissions.value = fresh
@@ -332,6 +339,22 @@ async function fetchSubmissions({ silent = false } = {}) {
 
 function changeView(mode) {
   viewMode.value = mode
+  // Arriving at Contacts always lands on the live leads — coming back to a
+  // stale Archived toggle reads as "my contacts are gone".
+  if (mode === 'contacts') contactsArchived.value = false
+  switchList()
+}
+
+function changeContactsArchived(archived) {
+  contactsArchived.value = archived
+  switchList()
+}
+
+// Each view returns a different set of rows, so the incoming list is a new
+// baseline rather than a delta. Without re-seeding, opening Archived and
+// tabbing away fires a desktop notification for every archived lead.
+function switchList() {
+  seeded = false
   selectedId.value = null
   selectedSubmission.value = null
   fetchSubmissions()

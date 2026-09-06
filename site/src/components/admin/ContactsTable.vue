@@ -7,9 +7,26 @@
     <div class="px-6 py-4 border-b border-gray-100 flex-shrink-0">
       <div class="flex flex-wrap items-center gap-3 mb-3">
         <h2 class="font-ui font-semibold text-gray-900 text-sm tracking-wide">
-          Contacts
+          {{ archivedView ? 'Archived' : 'Contacts' }}
           <span class="ml-1 text-gray-400 font-normal">{{ filtered.length }} of {{ contacts.length }}</span>
         </h2>
+
+        <!-- Archived leads are a separate book, not a sub-set of the live one:
+             mixing them in made a closed lead look like work still to do. -->
+        <div class="flex bg-brand-surface rounded-lg p-0.5">
+          <button
+            @click="$emit('changeArchived', false)"
+            :aria-pressed="!archivedView"
+            :class="!archivedView ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
+            class="text-xs font-ui font-medium px-3 py-1.5 rounded-md whitespace-nowrap transition-all"
+          >Active</button>
+          <button
+            @click="$emit('changeArchived', true)"
+            :aria-pressed="archivedView"
+            :class="archivedView ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
+            class="text-xs font-ui font-medium px-3 py-1.5 rounded-md whitespace-nowrap transition-all"
+          >Archived</button>
+        </div>
 
         <div class="relative ml-auto w-full sm:w-64">
           <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" aria-hidden="true"></i>
@@ -44,7 +61,7 @@
     <!-- Table -->
     <div class="flex-1 overflow-auto">
       <p v-if="filtered.length === 0" class="p-8 text-center text-sm text-gray-500 font-ui">
-        No contacts match this filter.
+        {{ emptyMessage }}
       </p>
 
       <table v-else class="w-full text-left border-collapse">
@@ -70,7 +87,6 @@
             <td class="px-4 py-3 align-top">
               <span class="font-ui text-sm text-gray-900 font-medium whitespace-nowrap">{{ c.first_name }} {{ c.last_name }}</span>
               <span v-if="!c.is_read" class="ml-2 inline-block w-1.5 h-1.5 rounded-full bg-brand-red align-middle" title="Unread"></span>
-              <span v-if="c.is_archived" class="ml-2 text-[10px] text-gray-400 font-ui">archived</span>
             </td>
             <td class="px-4 py-3 align-top whitespace-nowrap">
               <a :href="telHref(c.phone)" @click.stop class="block text-xs text-brand-navy hover:underline">{{ formatPhone(c.phone) }}</a>
@@ -133,8 +149,9 @@ import { formatPhone, telHref } from '../../utils/phone.js'
 
 const props = defineProps({
   contacts: { type: Array, default: () => [] },
+  archivedView: { type: Boolean, default: false },
 })
-const emit = defineEmits(['select', 'setStatus'])
+const emit = defineEmits(['select', 'setStatus', 'changeArchived'])
 
 const { t, te } = useI18n()
 const consultationLabel = (key) => consultationLabelShared(key, t, te)
@@ -153,6 +170,13 @@ const statusFilter = ref('')
 const openStatusFor = ref(null)
 const sortKey = ref('created_at')
 const sortAsc = ref(false)
+
+const emptyMessage = computed(() => {
+  if (props.contacts.length === 0) {
+    return props.archivedView ? 'Nothing archived yet.' : 'No contacts yet.'
+  }
+  return 'No contacts match this filter.'
+})
 
 const counts = computed(() => {
   const out = {}
