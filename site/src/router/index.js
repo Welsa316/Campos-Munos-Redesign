@@ -31,6 +31,11 @@ const routes = [
     meta: { title: 'Admin Login' } },
   { path: '/admin', name: 'AdminDashboard', component: () => import('../views/AdminDashboard.vue'),
     meta: { requiresAuth: true, title: 'Admin Dashboard' } },
+  // Sales demo of the operations layer. Fabricated data only, no API calls
+  // (see src/demo/operations). Lives under /admin so it inherits noindex, the
+  // robots.txt Disallow, no public chrome and no GA4 page views. Not linked anywhere.
+  { path: '/admin/demo/operations', name: 'OperationsDemo', component: () => import('../views/OperationsDemo.vue'),
+    meta: { title: 'Operations Demo' } },
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('../views/NotFoundPage.vue'),
     meta: { description: 'Página no encontrada. Regrese al inicio de Campos Muños Law, abogados de inmigración en Nueva Orleans, Louisiana.' } },
 ]
