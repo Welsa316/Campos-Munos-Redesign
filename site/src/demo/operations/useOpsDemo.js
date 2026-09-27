@@ -34,8 +34,11 @@ function save(leads) {
 // Module-level so the dashboard and lead views share one source of truth.
 const state = reactive({
   leads: load(),
-  view: 'dashboard',
+  // The strategy deck is the opening of the presentation; the working views follow.
+  view: 'strategy',
   selectedId: null,
+  // True while the scripted recovery replays itself (strategy page, section 04).
+  playing: false,
   // Set by dashboard shortcuts ("4 missed calls unresolved") to pre-filter the list.
   listPreset: null,
   toast: null,
@@ -91,13 +94,76 @@ export function callbackMinutes(lead) {
 const ACK_SMS_ES = 'Lamentamos no haber contestado su llamada. Un miembro de nuestro equipo se comunicará con usted en breve.'
 const ACK_SMS_EN = 'Sorry we missed your call. A member of our team will contact you shortly.'
 
+/** The next `count` weekdays after today, as Date objects at midnight. */
+export function upcomingBusinessDays(count = 5) {
+  const out = []
+  const d = demoDay()
+  while (out.length < count) {
+    d.setDate(d.getDate() + 1)
+    if (d.getDay() !== 0 && d.getDay() !== 6) out.push(new Date(d))
+  }
+  return out
+}
+
+/** The slot the scripted story books: the first Friday on offer, 11:00 AM. */
+export function storySlot() {
+  const days = upcomingBusinessDays()
+  const day = days.find(d => d.getDay() === 5) || days[0]
+  day.setHours(11, 0, 0, 0)
+  return day.toISOString()
+}
+
+const PLAY_STEP_MS = 1600
+let playTimers = []
+function stopPlaying() {
+  playTimers.forEach(clearTimeout)
+  playTimers = []
+  state.playing = false
+}
+
 export const actions = {
-  open(id) {
-    state.view = 'leads'
+  /** Select a lead in place, without leaving the current view. */
+  select(id) {
     state.selectedId = id
     const lead = leadById(id)
     if (lead) lead.unread = false
   },
+
+  open(id) {
+    state.view = 'leads'
+    actions.select(id)
+  },
+
+  /** Put one lead back to its seeded state, leaving the others as they are. */
+  resetLead(id) {
+    const fresh = buildLeads(demoDay()).find(l => l.id === id)
+    const i = state.leads.findIndex(l => l.id === id)
+    if (fresh && i >= 0) state.leads.splice(i, 1, fresh)
+  },
+
+  /**
+   * Replay the missed-call story end to end through the same actions the
+   * buttons use, so the replay and a hand-driven run can never disagree.
+   */
+  playRecovery(id = 'maria-rodriguez') {
+    stopPlaying()
+    actions.resetLead(id)
+    actions.select(id)
+    state.playing = true
+    const steps = [
+      () => actions.simulateRecovery(id),
+      () => actions.markContacted(id),
+      () => actions.scheduleConsultation(id, { at: storySlot(), mode: 'In person' }),
+    ]
+    steps.forEach((step, i) => {
+      playTimers.push(setTimeout(() => {
+        step()
+        if (i === steps.length - 1) state.playing = false
+      }, PLAY_STEP_MS * (i + 1)))
+    })
+  },
+
+  stopPlaying,
 
   close() {
     state.selectedId = null
@@ -162,7 +228,7 @@ export const actions = {
     })
     push(lead, t, 'auto', 'Confirmation sent', {
       channel: lead.method === 'whatsapp' ? 'WhatsApp' : 'SMS',
-      quote: `Su consulta con Campos Muños Law está confirmada para el ${new Date(at).toLocaleDateString('es-US', { weekday: 'long', day: 'numeric', month: 'long' })} a las ${new Date(at).toLocaleTimeString('es-US', { hour: 'numeric', minute: '2-digit' })}.`,
+      quote: `Su consulta con Campos Muños Law está confirmada para el ${new Date(at).toLocaleDateString('es-US', { weekday: 'long', day: 'numeric', month: 'long' })} a las ${new Date(at).toLocaleTimeString('es-US', { hour: 'numeric', minute: '2-digit' }).replace(/\.$/, '')}.`,
       quoteNote: `Your consultation with Campos Muños Law is confirmed for ${formatConsultation(at).replace(' — ', ' at ')}.`,
     })
     push(lead, t, 'auto', 'Reminder queued', { detail: 'Sent the day before at 9:00 AM' })
@@ -207,10 +273,11 @@ export const actions = {
   },
 
   reset() {
+    stopPlaying()
     state.leads = buildLeads(demoDay())
     state.selectedId = null
     state.listPreset = null
-    state.view = 'dashboard'
+    state.view = 'strategy'
     try { localStorage.removeItem(STORAGE_KEY) } catch { /* ignore */ }
     toast('Demo reset', 'Every lead is back to its starting state.')
   },
@@ -265,6 +332,8 @@ export const missedCallLog = computed(() => {
       return { lead: l, outcome, tone }
     })
 })
+
+export { state }
 
 export function useOpsDemo() {
   return { state, actions, selectedLead, attention, missedCallLog }

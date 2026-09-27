@@ -148,8 +148,14 @@ function clearFilters() {
 const scroller = ref(null)
 function revealSelected() {
   nextTick(() => {
-    const row = scroller.value?.querySelector(`[data-lead="${props.selectedId}"]`)
-    row?.scrollIntoView({ block: 'nearest' })
+    const box = scroller.value
+    const row = box?.querySelector(`[data-lead="${props.selectedId}"]`)
+    if (!row) return
+    // Scroll only the list. scrollIntoView would also scroll every ancestor,
+    // yanking the strategy page down to wherever this list is embedded.
+    const top = row.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop
+    if (top < box.scrollTop) box.scrollTop = top
+    else if (top + row.offsetHeight > box.scrollTop + box.clientHeight) box.scrollTop = top + row.offsetHeight - box.clientHeight
   })
 }
 watch(() => props.selectedId, revealSelected)

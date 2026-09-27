@@ -48,12 +48,12 @@
             <span class="font-semibold text-gray-900">Next step:</span> {{ nextStep }}
           </p>
           <div class="flex items-center gap-2 flex-wrap">
-            <button v-for="a in secondaryActions" :key="a.key" @click="a.run"
-              class="px-3 py-2 rounded-lg text-xs font-ui font-semibold text-gray-600 hover:text-gray-900 bg-white ring-1 ring-gray-200 hover:ring-gray-300 transition-colors">
+            <button v-for="a in secondaryActions" :key="a.key" @click="a.run" :disabled="state.playing"
+              class="disabled:opacity-50 disabled:cursor-not-allowed px-3 py-2 rounded-lg text-xs font-ui font-semibold text-gray-600 hover:text-gray-900 bg-white ring-1 ring-gray-200 hover:ring-gray-300 transition-colors">
               {{ a.label }}
             </button>
-            <button v-if="primaryAction" @click="primaryAction.run"
-              class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-ui font-semibold text-white bg-brand-navy hover:bg-brand-navy-dark shadow-sm transition-colors active:scale-[0.98]">
+            <button v-if="primaryAction" @click="primaryAction.run" :disabled="state.playing"
+              class="disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-ui font-semibold text-white bg-brand-navy hover:bg-brand-navy-dark shadow-sm transition-colors active:scale-[0.98]">
               <DemoIcon :icon="primaryAction.icon" class="text-[11px]" />
               {{ primaryAction.label }}
             </button>
@@ -69,7 +69,7 @@
       </div>
 
       <!-- Body -->
-      <div class="flex-1 overflow-y-auto min-h-0">
+      <div ref="body" class="flex-1 overflow-y-auto min-h-0">
         <div class="grid grid-cols-[minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_300px]">
           <section class="p-6 min-w-0" aria-labelledby="timeline-heading">
             <h3 id="timeline-heading" class="text-xs font-ui font-semibold uppercase tracking-[0.12em] text-gray-500 mb-3">Timeline</h3>
@@ -133,7 +133,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import {
   faPhone, faEnvelope, faBriefcase, faLocationDot, faArrowLeft, faRoute,
   faBolt, faPhoneVolume, faCalendarCheck, faHandshake,
@@ -144,7 +144,7 @@ import SourceBadge from './SourceBadge.vue'
 import LeadTimeline from './LeadTimeline.vue'
 import ScheduleModal from './ScheduleModal.vue'
 import { LEAD_METHODS, CHANNELS } from '../data/model.js'
-import { actions, displayName, formatConsultation, clockTime, relativeTime } from '../useOpsDemo.js'
+import { state, actions, displayName, formatConsultation, clockTime, relativeTime } from '../useOpsDemo.js'
 
 const props = defineProps({
   lead: { type: Object, default: null },
@@ -152,6 +152,19 @@ const props = defineProps({
 defineEmits(['back'])
 
 const scheduling = ref(false)
+
+// When an action adds events to the open lead, bring the newest into view —
+// they land at the bottom of the timeline, often below the fold.
+const body = ref(null)
+watch(() => [props.lead?.id, props.lead?.events.length], ([id, n], [prevId, prevN]) => {
+  if (id !== prevId || !(n > prevN)) return
+  nextTick(() => {
+    const el = body.value
+    if (!el) return
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    el.scrollTo({ top: el.scrollHeight, behavior: reduce ? 'auto' : 'smooth' })
+  })
+})
 watch(() => props.lead?.id, () => { scheduling.value = false })
 
 function saveSchedule(payload) {

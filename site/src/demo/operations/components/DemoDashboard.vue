@@ -1,8 +1,8 @@
 <template>
-  <div class="flex-1 overflow-y-auto">
-    <div class="max-w-[1320px] mx-auto px-4 sm:px-6 py-6 space-y-5">
-      <!-- Heading -->
-      <div class="flex items-end justify-between gap-4 flex-wrap">
+  <div :class="embedded ? '' : 'flex-1 overflow-y-auto'">
+    <div :class="embedded ? 'space-y-5' : 'max-w-[1320px] mx-auto px-4 sm:px-6 py-6 space-y-5'">
+      <!-- Heading (the strategy page supplies its own) -->
+      <div v-if="!embedded" class="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <h2 class="font-heading text-2xl text-brand-navy tracking-tight">Operations</h2>
           <p class="text-xs font-ui text-gray-500 mt-1">{{ MONTH_LABEL }} · every figure is demo data except the one marked <span class="font-semibold text-gray-700">Firm data</span></p>
@@ -186,6 +186,10 @@ import {
 } from '../data/dashboard.js'
 import { attention, missedCallLog, displayName, clockTime } from '../useOpsDemo.js'
 
+defineProps({
+  // Rendered inside the strategy page: no own scroll container or heading.
+  embedded: { type: Boolean, default: false },
+})
 defineEmits(['openList', 'openLead'])
 
 const BAR_STAGES = [

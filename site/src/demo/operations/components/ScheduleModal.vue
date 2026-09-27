@@ -88,8 +88,7 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { faXmark } from '@fortawesome/free-solid-svg-icons'
 import DemoIcon from './DemoIcon.vue'
-import { demoDay } from '../data/leads.js'
-import { formatConsultation } from '../useOpsDemo.js'
+import { formatConsultation, upcomingBusinessDays } from '../useOpsDemo.js'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -108,21 +107,12 @@ const SLOTS = [
 const MODES = ['In person', 'Phone', 'Video']
 
 // The next five business days, starting tomorrow.
-const days = computed(() => {
-  const out = []
-  const d = demoDay()
-  while (out.length < 5) {
-    d.setDate(d.getDate() + 1)
-    if (d.getDay() === 0 || d.getDay() === 6) continue
-    out.push({
-      key: d.toDateString(),
-      value: new Date(d),
-      weekday: d.toLocaleDateString('en-US', { weekday: 'short' }),
-      date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    })
-  }
-  return out
-})
+const days = computed(() => upcomingBusinessDays(5).map(d => ({
+  key: d.toDateString(),
+  value: d,
+  weekday: d.toLocaleDateString('en-US', { weekday: 'short' }),
+  date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+})))
 
 // Default to the first Friday on offer at 11:00 — the slot the scripted story uses.
 function defaults() {

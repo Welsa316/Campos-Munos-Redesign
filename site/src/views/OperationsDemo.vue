@@ -3,8 +3,8 @@
     <!-- Top bar: same shell as the production Client Messages dashboard -->
     <header class="h-16 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 z-10 gap-3">
       <div class="flex items-center gap-3 sm:gap-4 min-w-0">
-        <img src="/logo.png" alt="Campos Muños Law" class="h-7 sm:h-9 flex-shrink-0" />
-        <div class="w-px h-8 bg-gray-200 hidden sm:block"></div>
+        <img src="/logo.png" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
+        <div class="w-px h-8 bg-gray-200 hidden sm:block" aria-hidden="true"></div>
         <h1 class="font-heading text-lg text-brand-navy tracking-tight hidden md:block whitespace-nowrap">Client Messages</h1>
         <div class="flex bg-brand-surface rounded-lg p-0.5" role="tablist" aria-label="Demo views">
           <button v-for="tab in TABS" :key="tab.key"
@@ -61,7 +61,9 @@
       <span class="truncate"><span class="font-semibold text-white">Demonstration.</span> All people, numbers and figures are fabricated. No calls, texts or emails are sent, and nothing is written to the firm's records.</span>
     </div>
 
-    <DemoDashboard v-if="state.view === 'dashboard'" @openList="openList" @openLead="openLead" />
+    <StrategyPage v-if="state.view === 'strategy'" @openList="openList" />
+
+    <DemoDashboard v-else-if="state.view === 'dashboard'" @openList="openList" @openLead="openLead" />
 
     <div v-else class="flex-1 flex overflow-hidden min-h-0">
       <div :class="['w-full lg:w-[380px] lg:flex-shrink-0 flex flex-col min-h-0', state.selectedId ? 'hidden lg:flex' : 'flex']">
@@ -81,6 +83,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { faFlask, faListCheck, faRotateLeft, faCircleInfo, faArrowRight } from '@fortawesome/free-solid-svg-icons'
 import DemoIcon from '../demo/operations/components/DemoIcon.vue'
 import DemoDashboard from '../demo/operations/components/DemoDashboard.vue'
+import StrategyPage from '../demo/operations/components/StrategyPage.vue'
 import LeadList from '../demo/operations/components/LeadList.vue'
 import LeadDetail from '../demo/operations/components/LeadDetail.vue'
 import DemoToast from '../demo/operations/components/DemoToast.vue'
@@ -89,6 +92,7 @@ import { useOpsDemo } from '../demo/operations/useOpsDemo.js'
 const { state, actions, selectedLead } = useOpsDemo()
 
 const TABS = [
+  { key: 'strategy', label: 'Strategy', short: 'Strategy' },
   { key: 'dashboard', label: 'Dashboard', short: 'Dashboard' },
   { key: 'leads', label: 'Lead Operations', short: 'Leads' },
 ]
