@@ -39,9 +39,9 @@ export function trackEvent(name, params = {}) {
  */
 export function trackLead(method, params = {}) {
   trackEvent('generate_lead', { method, ...params })
-  // The conversion ChatGPT ads optimise against. The SDK flushes by beacon on
-  // pagehide, so same-tab phone/WhatsApp navigations still deliver it.
-  oaiq('measure', 'lead_created', { type: 'customer_action' })
+  // The conversion ChatGPT ads optimise against. Only contact-form submissions
+  // count for now; phone, WhatsApp and chat leads go to GA4 only.
+  if (method === 'form') oaiq('measure', 'lead_created', { type: 'customer_action' })
 }
 
 export function initAnalytics(router) {
