@@ -19,6 +19,14 @@ function gtag(...args) {
   } catch { /* analytics must never break the page */ }
 }
 
+// OpenAI ads pixel (loaded in index.html) — same never-throw guard as gtag.
+function oaiq(...args) {
+  if (typeof window === 'undefined' || typeof window.oaiq !== 'function') return
+  try {
+    window.oaiq(...args)
+  } catch { /* analytics must never break the page */ }
+}
+
 /** Send a custom GA4 event. */
 export function trackEvent(name, params = {}) {
   gtag('event', name, params)
@@ -31,6 +39,9 @@ export function trackEvent(name, params = {}) {
  */
 export function trackLead(method, params = {}) {
   trackEvent('generate_lead', { method, ...params })
+  // The conversion ChatGPT ads optimise against. The SDK flushes by beacon on
+  // pagehide, so same-tab phone/WhatsApp navigations still deliver it.
+  oaiq('measure', 'lead_created', { type: 'customer_action' })
 }
 
 export function initAnalytics(router) {

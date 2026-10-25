@@ -53,6 +53,7 @@ app.use(helmet({
         "'self'",
         "'unsafe-inline'",
         'https://www.googletagmanager.com',
+        'https://bzrcdn.openai.com',
         'https://static.elfsight.com',
         'https://*.elfsight.com',
         'https://*.elfsightcdn.com',
@@ -62,6 +63,7 @@ app.use(helmet({
         "'self'",
         "'unsafe-inline'",
         'https://www.googletagmanager.com',
+        'https://bzrcdn.openai.com',
         'https://static.elfsight.com',
         'https://*.elfsight.com',
         'https://*.elfsightcdn.com',
@@ -79,6 +81,8 @@ app.use(helmet({
         'https://*.analytics.google.com',
         // gtag also beacons measurement data back to the tag server itself.
         'https://www.googletagmanager.com',
+        // OpenAI ads pixel posts conversion events here.
+        'https://bzr.openai.com',
         // Elfsight loads widget code + review data from many subdomains
         // (service-reviews-ultimate.elfsight.com, phosphor.utils.elfsightcdn.com,
         // etc.) — wildcard both so the Google Reviews fetch isn't blocked in prod.
