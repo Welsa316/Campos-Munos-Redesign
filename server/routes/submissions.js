@@ -7,6 +7,7 @@ import getPool from '../db/pool.js'
 import requireAuth from '../middleware/auth.js'
 import validate from '../middleware/validate.js'
 import { stripHtml, escapeHtml, escapeCsvField } from '../utils/sanitize.js'
+import { sendLeadConversion } from '../utils/openaiConversions.js'
 
 const router = Router()
 
@@ -91,6 +92,8 @@ router.post(
   body('source').optional().isIn(['contact', 'chat']).withMessage('Invalid source'),
   body('consultationType').optional({ values: 'falsy' }).trim().isIn(CONSULTATION_TYPES).withMessage('Invalid consultation type'),
   body('location').optional({ values: 'falsy' }).trim().matches(COUNTRY_CODE_REGEX).withMessage('Invalid country'),
+  // Shared with the browser pixel so OpenAI deduplicates the two lead_created events.
+  body('conversionEventId').optional({ values: 'falsy' }).isUUID().withMessage('Invalid conversion event id'),
   validate,
   async (req, res) => {
     try {
@@ -115,6 +118,16 @@ router.post(
       const responseBody = { id: result.rows[0].id, created_at: result.rows[0].created_at }
       if (chatToken) responseBody.chat_token = chatToken
       res.status(201).json(responseBody)
+
+      // Server-side copy of the pixel's lead_created (fire and forget). Contact
+      // form only, matching the pixel.
+      if (source === 'contact') {
+        sendLeadConversion({
+          eventId: req.body.conversionEventId,
+          sourceUrl: req.get('referer') || 'https://camulaw.com/',
+          log: req.log,
+        })
+      }
 
       // Notify admin via email (fire and forget)
       try {

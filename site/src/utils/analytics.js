@@ -37,11 +37,15 @@ export function trackEvent(name, params = {}) {
  * whatsapp, chat) so the firm can see which one actually produces clients.
  * Mark generate_lead as a Key event in GA4 → Admin → Events.
  */
-export function trackLead(method, params = {}) {
+export function trackLead(method, params = {}, { conversionEventId } = {}) {
   trackEvent('generate_lead', { method, ...params })
   // The conversion ChatGPT ads optimise against. Only contact-form submissions
-  // count for now; phone, WhatsApp and chat leads go to GA4 only.
-  if (method === 'form') oaiq('measure', 'lead_created', { type: 'customer_action' })
+  // count for now; phone, WhatsApp and chat leads go to GA4 only. The server
+  // sends the same event with the same id, and OpenAI keeps one of the two.
+  if (method === 'form') {
+    oaiq('measure', 'lead_created', { type: 'customer_action' },
+      conversionEventId ? { event_id: conversionEventId } : undefined)
+  }
 }
 
 export function initAnalytics(router) {

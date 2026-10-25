@@ -260,10 +260,13 @@ async function submitForm() {
   loading.value = true
   error.value = false
 
+  // One id for both the browser pixel and the server's copy of this lead.
+  const conversionEventId = crypto.randomUUID?.()
+
   try {
     const res = await rawFetch('/api/submissions', {
       method: 'POST',
-      body: JSON.stringify(form.value),
+      body: JSON.stringify({ ...form.value, conversionEventId }),
     })
 
     if (!res.ok) {
@@ -277,7 +280,7 @@ async function submitForm() {
 
     // Count the lead only once the server has accepted it, so failed and
     // rate-limited attempts don't inflate the number.
-    trackLead('form', { consultation_type: form.value.consultationType || 'other' })
+    trackLead('form', { consultation_type: form.value.consultationType || 'other' }, { conversionEventId })
 
     submitted.value = true
     form.value = { firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '' }
