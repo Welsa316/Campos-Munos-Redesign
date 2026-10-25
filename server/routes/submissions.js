@@ -126,7 +126,7 @@ router.post(
           eventId: req.body.conversionEventId,
           sourceUrl: req.get('referer') || 'https://camulaw.com/',
           log: req.log,
-        })
+        }).then((outcome) => req.log.info({ outcome, submissionId: responseBody.id }, 'OpenAI conversion'))
       }
 
       // Notify admin via email (fire and forget)
