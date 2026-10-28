@@ -14,6 +14,8 @@ import { pinoHttp } from 'pino-http'
 import crypto from 'crypto'
 import authRoutes from './routes/auth.js'
 import submissionRoutes from './routes/submissions.js'
+import whatsappRoutes from './routes/whatsapp.js'
+import { redactVerifyToken } from './utils/whatsapp.js'
 import { legacyTarget } from './legacyRedirects.js'
 import getPool from './db/pool.js'
 import logger from './logger.js'
@@ -31,6 +33,13 @@ if (isProduction) {
     logger.fatal('JWT_SECRET is too short or contains a placeholder value. Generate at least 32 random chars.')
     process.exit(1)
   }
+}
+
+// The WhatsApp webhook fails closed without these (GET → 403, POST → 503), so a
+// missing value is a warning at boot rather than a crash: the rest of the site
+// must keep serving while Meta is being configured.
+for (const key of ['WHATSAPP_VERIFY_TOKEN', 'META_APP_SECRET']) {
+  if (!process.env[key]) logger.warn({ key }, 'WhatsApp webhook env var not set; the webhook will refuse requests')
 }
 
 const app = express()
@@ -134,11 +143,11 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || (isProduction ? false : true),
   credentials: true,
 }))
-app.use(cookieParser())
-app.use(express.json({ limit: '100kb' }))
 
 // Structured request logging with a per-request id so traces can be
-// correlated across log lines and surfaced to clients on 500s.
+// correlated across log lines and surfaced to clients on 500s. Registered
+// before the body parsers so every request (including the WhatsApp webhook
+// below and JSON-parse 400s) carries req.log.
 app.use(pinoHttp({
   logger,
   genReqId: (req) => req.headers['x-request-id'] || crypto.randomUUID(),
@@ -148,10 +157,19 @@ app.use(pinoHttp({
     return 'info'
   },
   serializers: {
-    req: (req) => ({ id: req.id, method: req.method, url: req.url, ip: req.remoteAddress }),
+    // Meta's verification handshake carries the verify token in the query string.
+    req: (req) => ({ id: req.id, method: req.method, url: redactVerifyToken(req.url), ip: req.remoteAddress }),
     res: (res) => ({ statusCode: res.statusCode }),
   },
 }))
+
+// Meta WhatsApp Cloud API webhook. Mounted BEFORE express.json(): the
+// X-Hub-Signature-256 check is an HMAC over the raw bytes, so the router
+// parses its own body with express.raw(). See routes/whatsapp.js.
+app.use('/webhooks/whatsapp', whatsappRoutes)
+
+app.use(cookieParser())
+app.use(express.json({ limit: '100kb' }))
 
 app.get('/healthz', (_req, res) => res.json({ ok: true }))
 app.get('/readyz', async (_req, res) => {

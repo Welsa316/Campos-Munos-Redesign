@@ -18,6 +18,9 @@ const logger = pino({
       '*.confirmPassword',
       '*.chatToken',
       '*.chat_token',
+      // body-parser attaches the raw request body to the 400 it raises for
+      // malformed JSON; logging that error would print e.g. a login password.
+      'err.body',
     ],
     censor: '[REDACTED]',
   },

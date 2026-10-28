@@ -124,6 +124,36 @@ async function migrate() {
       );
 
       CREATE INDEX IF NOT EXISTS idx_chat_messages_submission_id ON chat_messages(submission_id);
+
+      -- Every event delivered to the WhatsApp Cloud API webhook, one row per
+      -- inbound message or per status change of an outbound one. event_key is
+      -- the dedupe key (message:<wamid> or status:<wamid>:<status>): Meta
+      -- redelivers anything it did not see a 200 for, and the UNIQUE index
+      -- makes a redelivery a no-op across restarts and instances.
+      CREATE TABLE IF NOT EXISTS whatsapp_events (
+        id SERIAL PRIMARY KEY,
+        -- TEXT throughout: Meta documents no maximum for wamids, names or
+        -- types, and an oversize value would make the insert throw after the
+        -- 200 has already gone back, losing the event.
+        event_key TEXT UNIQUE NOT NULL,
+        kind VARCHAR(10) NOT NULL CHECK (kind IN ('message', 'status')),
+        wa_message_id TEXT NOT NULL,
+        status TEXT,
+        from_wa_id TEXT,
+        contact_name TEXT,
+        recipient_wa_id TEXT,
+        message_type TEXT,
+        phone_number_id TEXT,
+        display_phone_number TEXT,
+        waba_id TEXT,
+        event_timestamp TIMESTAMPTZ,
+        payload JSONB NOT NULL,
+        received_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_whatsapp_events_received_at ON whatsapp_events(received_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_whatsapp_events_from ON whatsapp_events(from_wa_id, received_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_whatsapp_events_message_id ON whatsapp_events(wa_message_id);
     `)
     logger.info('Migration complete — tables created.')
   } finally {
