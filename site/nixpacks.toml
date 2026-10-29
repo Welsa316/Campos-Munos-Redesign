@@ -1,6 +1,6 @@
 # Legacy: a Nixpacks service with Root Directory = site/ that builds the
 # transitional single service (API + site + portal under /admin). The
-# standalone website service uses site/railway.json instead.
+# standalone website service uses site/railway.service.json (set as its config path).
 providers = ["node"]
 
 [phases.install]
