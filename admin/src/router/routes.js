@@ -18,6 +18,19 @@ export const routes = [
   { path: '/', name: 'Inbox', component: () => import('../views/InboxView.vue'),
     meta: { requiresAuth: true, module: 'messages' } },
 
+  // Billing module: eImmigration imports, invoices, matching, monday.com sync.
+  { path: '/billing', component: () => import('../modules/billing/BillingLayout.vue'),
+    meta: { requiresAuth: true, module: 'billing' },
+    children: [
+      { path: '', name: 'BillingOverview', component: () => import('../modules/billing/views/OverviewView.vue') },
+      { path: 'invoices', name: 'BillingInvoices', component: () => import('../modules/billing/views/InvoicesView.vue') },
+      { path: 'imports', name: 'BillingImports', component: () => import('../modules/billing/views/ImportsView.vue') },
+      { path: 'imports/:id(\\d+)', name: 'BillingImportDetail', component: () => import('../modules/billing/views/ImportDetailView.vue') },
+      { path: 'matching', name: 'BillingMatching', component: () => import('../modules/billing/views/MatchingView.vue') },
+      { path: 'monday', name: 'BillingMonday', component: () => import('../modules/billing/views/MondayView.vue') },
+      { path: 'integrations', name: 'BillingSettings', component: () => import('../modules/billing/views/IntegrationsView.vue') },
+    ] },
+
   // Sales demo of the operations layer. Fabricated data only, no API calls.
   // Deliberately public within the portal (as it was under /admin) and not
   // linked from anywhere.

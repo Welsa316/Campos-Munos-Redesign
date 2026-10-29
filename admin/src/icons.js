@@ -15,6 +15,7 @@ import {
   faCheck,
   faCheckCircle,
   faChevronDown,
+  faChevronRight,
   faChevronUp,
   faCircleExclamation,
   faCommentDots,
@@ -23,6 +24,9 @@ import {
   faEnvelopeOpen,
   faExclamationCircle,
   faExclamationTriangle,
+  faFileArrowUp,
+  faFileInvoiceDollar,
+  faLink,
   faInbox,
   faKey,
   faLocationDot,
@@ -39,13 +43,14 @@ import {
 
 export const ICONS = [
   faArchive, faArrowLeft, faArrowRightFromBracket, faBell, faBellSlash, faBriefcase,
-  faCheck, faCheckCircle, faChevronDown, faChevronUp, faCircleExclamation, faCommentDots,
-  faDownload, faEnvelope, faEnvelopeOpen, faExclamationCircle, faExclamationTriangle,
+  faCheck, faCheckCircle, faChevronDown, faChevronRight, faChevronUp, faCircleExclamation, faCommentDots,
+  faDownload, faEnvelope, faEnvelopeOpen, faExclamationCircle, faExclamationTriangle, faFileArrowUp, faFileInvoiceDollar, faLink,
   faInbox, faKey, faLocationDot, faMagnifyingGlass, faNoteSticky, faPaperPlane, faPhone,
   faRotateRight, faSpinner, faTrash, faTriangleExclamation, faXmark,
 ]
 
 library.add(...ICONS)
+
 
 export function startFontAwesome() {
   dom.i2svg()

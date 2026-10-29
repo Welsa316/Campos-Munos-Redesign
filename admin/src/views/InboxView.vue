@@ -26,6 +26,12 @@
         </span>
       </div>
       <div class="ml-auto flex items-center gap-1 sm:gap-4">
+        <router-link :to="{ name: 'BillingOverview' }"
+          class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors"
+          aria-label="Billing">
+          <i class="fa-solid fa-file-invoice-dollar text-xs" aria-hidden="true"></i>
+          <span class="hidden sm:inline">Billing</span>
+        </router-link>
         <button
           v-if="notifyPermission === 'default'"
           @click="enableNotifications"
