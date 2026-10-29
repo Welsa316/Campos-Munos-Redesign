@@ -7,14 +7,14 @@ what is done and what is pending.
 
 | Area | Finding |
 |---|---|
-| Repo shape | Monorepo. `site/` is a Vue 3 + Vite 7 + Tailwind 4 + vue-i18n SPA. `server/` is Express 4 + `pg` (raw SQL), ESM, `node --test`. One Railway service serves both (`server/index.js` serves `site/dist`). |
-| Is this the management platform? | Yes and no. The repo is the public marketing site **and** the firm's only operational portal: `/admin` (lead inbox, Contacts pipeline, notes, replies). There is no separate management-platform repo. The billing section therefore lives under the authenticated `/admin/billing/*` routes and `/api/billing/*`, which inherit the existing JWT cookie auth, `noindex`, `robots.txt` disallow and the no-public-chrome admin shell. Nothing billing-related renders on a public route. |
+| Repo shape | Monorepo of three apps since the split (`docs/architecture-split.md`): `site/` public Vue SPA, `admin/` staff portal (Vue 3 + Vite + Tailwind 4), `server/` Express 4 + `pg` (raw SQL), ESM, `node --test`. |
+| Is this the management platform? | Yes: the staff portal is `admin/` (admin.camulaw.com), a separate app from the public website, which never bundles portal code (enforced at build). Billing lives in `admin/src/modules/billing/` (routes `/billing/*`) and `/api/billing/*` on the API, inheriting cookie auth, the cross-origin write check and the portal's noindex/no-third-party CSP. |
 | Auth | `admin_users` table, bcrypt + JWT in an httpOnly `token` cookie, `requireAuth` middleware. One account today, no roles. We add a `role` column (`admin` default, `staff`) and `requireRole()`; approve/sync/send are `admin`-only, enforced server-side. |
 | DB | `server/db/migrate.js` is a single idempotent SQL script run by `prestart` on every deploy. We append a `billing` block the same way (additive only, `IF NOT EXISTS`). |
 | Existing integrations | Resend email (leads), OpenAI conversions pixel, and the **receive-only WhatsApp Cloud API webhook from PR 36** (`server/routes/whatsapp.js`, `server/utils/whatsapp.js`, `whatsapp_events` table, 19 tests). We reuse it unchanged for verification and inbound storage, and extend `processEvents` to forward status events and inbound replies to the billing module. |
 | monday.com | No existing integration. |
 | Tests | `node --test` in `server/`; 46 passing at the start of this work. No DB-backed tests existed; we add them behind `TEST_DATABASE_URL` (skipped when unset) because the local `.env` `DATABASE_URL` points at production and must never be used by tests. |
-| UI patterns | Admin shell: white 64px header on `bg-brand-surface`, `font-ui` (Inter), navy/red brand tokens, cards `bg-white rounded-xl ring-1 ring-gray-200`, pill statuses from `site/src/data/leadStatuses.js`, FontAwesome via `<i class="fa-solid …">` + a tree-shaken registry in `site/src/icons.js`. The `/admin/demo/operations` dashboard shows the metric-card and "needs attention" patterns we mirror. Admin UI is English-only today; the billing UI follows that. |
+| UI patterns | Portal shell (`admin/src/views/InboxView.vue`): white 64px header on `bg-brand-surface`, `font-ui` (Inter), navy/red brand tokens, cards `bg-white rounded-xl ring-1 ring-gray-200`, pill statuses from `site/src/data/leadStatuses.js`, FontAwesome via `<i class="fa-solid …">` + a tree-shaken registry in `site/src/icons.js`. The `/admin/demo/operations` dashboard shows the metric-card and "needs attention" patterns we mirror. Admin UI is English-only today; the billing UI follows that. |
 | Deployment | Railway, Nixpacks. Secrets are env vars on the backend service. Filesystem is ephemeral, so uploaded reports are stored in Postgres (`bytea`), not on disk. |
 
 ## 1. Goals and non-goals
@@ -31,8 +31,8 @@ messages in the initial release.
 ## 2. Architecture
 
 ```
-site/src/views/billing/*            Vue views under /admin/billing (overview, invoices,
-site/src/components/billing/*       imports, matching, monday, reminders, settings)
+admin/src/modules/billing/*         Vue views under /billing in the portal (overview,
+                                    invoices, imports, matching, monday, settings)
         │  fetch /api/billing/*  (cookie auth, role-gated)
 server/routes/billing/*.js          Express routers: imports, invoices, matching,
                                     monday, reminders, integrations, overview
@@ -252,7 +252,7 @@ Legend: [x] done, [ ] pending, [~] partial (note says what is missing).
 - [ ] Unit tests for all of the above
 
 ### Milestone B: admin billing interface
-- [ ] `/admin/billing` shell + navigation from the existing dashboard
+- [ ] `/billing` section in the portal + navigation from the inbox header
 - [ ] Overview
 - [ ] Invoice list + detail
 - [ ] Import centre: upload, mapping, preview, approve, history, exception download
