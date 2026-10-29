@@ -50,6 +50,7 @@ test('the portal origin gets credentialed CORS', async () => {
   const res = await preflight(ADMIN, '/api/auth/login')
   assert.equal(res.headers.get('access-control-allow-origin'), ADMIN)
   assert.equal(res.headers.get('access-control-allow-credentials'), 'true')
+  assert.equal(res.headers.get('access-control-max-age'), '600', 'browsers may reuse the preflight instead of repeating it')
 })
 
 test('the public site gets CORS for the contact form but never credentials', async () => {

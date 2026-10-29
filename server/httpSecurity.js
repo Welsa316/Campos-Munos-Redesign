@@ -52,13 +52,19 @@ export function resolveOrigins(env = process.env) {
   return { admin, public: pub, openDev, conflicts }
 }
 
+// How long a browser may reuse a preflight answer. Without it the portal
+// pays an extra round trip (OPTIONS) before nearly every request, because
+// its JSON requests are never "simple" ones.
+export const PREFLIGHT_MAX_AGE_SECONDS = 600
+
 /** Options delegate for the `cors` package. */
 export function corsOptionsDelegate(origins) {
+  const maxAge = PREFLIGHT_MAX_AGE_SECONDS
   return (req, callback) => {
     const origin = (req.header('Origin') || '').replace(/\/+$/, '')
-    if (origins.openDev) return callback(null, { origin: true, credentials: true })
-    if (origin && origins.admin.includes(origin)) return callback(null, { origin: true, credentials: true })
-    if (origin && origins.public.includes(origin)) return callback(null, { origin: true, credentials: false })
+    if (origins.openDev) return callback(null, { origin: true, credentials: true, maxAge })
+    if (origin && origins.admin.includes(origin)) return callback(null, { origin: true, credentials: true, maxAge })
+    if (origin && origins.public.includes(origin)) return callback(null, { origin: true, credentials: false, maxAge })
     return callback(null, { origin: false })
   }
 }
