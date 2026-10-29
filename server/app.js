@@ -2,7 +2,8 @@
 // it on an ephemeral port. index.js is the process entry point.
 //
 // Since the split (docs/architecture-split.md) this app serves only the API
-// (/api/*), the WhatsApp webhook (/webhooks/*) and health checks. The public
+// (/api/*, including the staff WhatsApp inbox at /api/whatsapp), the
+// WhatsApp webhook (/webhooks/*) and health checks. The public
 // site and the staff portal are separate deployments. In the transitional
 // single-service deployment index.js additionally mounts both frontends via
 // frontends.js; nothing in this file knows about them.
@@ -16,6 +17,7 @@ import authRoutes from './routes/auth.js'
 import submissionRoutes from './routes/submissions.js'
 import { createBillingRouter } from './routes/billing.js'
 import whatsappRoutes from './routes/whatsapp.js'
+import { createWhatsappInboxRouter } from './routes/whatsappInbox.js'
 import { redactVerifyToken } from './utils/whatsapp.js'
 import {
   resolveOrigins, corsOptionsDelegate, requireTrustedOrigin, resolveClientIp,
@@ -88,6 +90,7 @@ export function createApp({ env = process.env, log = logger, beforeFallback } = 
   app.use('/api/auth', authRoutes)
   app.use('/api/submissions', submissionRoutes)
   app.use('/api/billing', createBillingRouter({ env }))
+  app.use('/api/whatsapp', createWhatsappInboxRouter({ env }))
 
   // API 404s — registered before any frontend fallback so an unknown /api/*
   // path returns JSON instead of a page.
