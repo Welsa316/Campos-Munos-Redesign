@@ -266,13 +266,18 @@ Legend: [x] done, [ ] pending, [~] partial (note says what is missing).
 - [x] Controlled apply (admin only, once per preview, 1 h expiry, dry run unless `MONDAY_WRITES_ENABLED=true`)
 - [x] Sync history, connection check, tests (47 + end-to-end)
 
-### Milestone D: WhatsApp (not started)
-- [ ] Forward webhook status/inbound events to billing; STOP/BAJA opt-out
-- [ ] Messaging provider abstraction, `MockWhatsAppProvider`, `MetaWhatsAppCloudProvider`
-- [ ] EN/ES templates
-- [ ] Reminder rules, engine, approval queue, dispatcher, business hours
-- [ ] Reminder cancellation when a newer report settles the obligation
-- [ ] Tables: reminder rules, reminders, messages (not created yet)
+### Milestone D: WhatsApp payment reminders
+- [x] Webhook reuse: delivery/read/failed receipts advance messages and reminders (forward only); early receipts parked and applied
+- [x] Client replies queued for staff; whole-message STOP/BAJA opt-out cancels pending reminders
+- [x] Messaging providers: `MockWhatsAppProvider` (simulated outcomes and receipts), `MetaWhatsAppCloudProvider` (template sends, error classes, unknown outcomes), Graph API v26.0 configurable
+- [x] EN/ES example utility templates, editable, with a "Meta approved" flag
+- [x] Rules (off by default), engine (exact-day + 2-day catch-up, payment-plan aware), drafts, approval queue, dispatcher with sending hours, scheduler
+- [x] Contacts and consent per client; new number clears consent
+- [x] Cancellation when settled, re-dated, voided, under review, unlinked, opted out, stale, or a "due soon" draft passes its date
+- [x] Retry only definite failures; "unconfirmed" sends are never resent automatically
+- [x] Tests: engine 39, providers 60, webhook hook 2, end-to-end 16
+- [ ] Activation against the real Cloud API (needs Meta access; see `docs/billing-automation.md` 3b)
+- [ ] Holidays in the sending window (not handled)
 
 ### Milestone E: production readiness
 - [x] End-to-end simulated flow test (imports, matching, sync, corrections, staleness, drift, retention, audit)

@@ -18,9 +18,9 @@ builds on the site/portal/API split (`docs/architecture-split.md`).
 | Roles | `admin_users.role` | `admin` (existing accounts) can upload, approve, link, configure and sync; `staff` can view. Set with SQL: `UPDATE admin_users SET role = 'staff' WHERE email = '…'`. |
 | Retention | server/index.js | Raw uploaded files are deleted after `BILLING_UPLOAD_RETENTION_DAYS` (30). |
 
-Not built yet (Milestone D): WhatsApp sending, reminder rules, the approval
-queue and reminder cancellation. The receive-only webhook from PR 36 is
-unchanged.
+| Payment reminders (simulated) | Billing → Reminders | Rules (switched off by default) create **drafts** only; staff approve each one; approved reminders go out inside sending hours; delivery and read receipts are tracked; pending reminders are cancelled automatically when a newer report shows payment, the due date moves, the invoice needs review or the client opts out. Sending goes to a simulator until Meta is set up. |
+| WhatsApp contacts and consent | Billing → WhatsApp contacts | Number, language and first name per client; opt-in recorded with how the client agreed; a new number clears consent; a reply of only STOP/BAJA (and similar) opts the client out and cancels their pending reminders. |
+| Client replies | Billing → Reminders → Client replies | Replies from known clients wait for a person. |
 
 ## 2. Daily workflow for staff
 
@@ -67,6 +67,56 @@ Needs: a monday.com account with access to the client board.
 
 Rollback: unset `MONDAY_WRITES_ENABLED` (every apply becomes a dry run), or
 set `MONDAY_PROVIDER=mock`.
+
+## 3b. Activating WhatsApp sending
+
+Needs: admin access to the firm's Meta Business account (Business Manager)
+and the WhatsApp Business Account that holds the firm's number.
+
+**Do not register the firm's existing number through the Cloud API
+directly.** The firm already uses that number in the WhatsApp Business app;
+registering it on the Cloud API the standard way moves it off the app.
+Meta offers onboarding that keeps the Business app working alongside the
+Cloud API ("coexistence"). Confirm in Meta Business Suite that the number is
+eligible and follow that flow, or use a separate number for reminders. This
+decision is the firm's, and it must be made before anything below.
+
+1. In the Meta App Dashboard (the same app as the webhook): add the
+   WhatsApp product, connect the WhatsApp Business Account, note the
+   **Phone number ID** and **WhatsApp Business Account ID**.
+2. Create a **system user** in Business Manager with access to the app and
+   the WhatsApp account, and generate a permanent token with the
+   `whatsapp_business_messaging` permission. Never use a personal or
+   temporary token.
+3. In WhatsApp Manager → Message templates, submit the templates from
+   Billing → Reminders → Rules & templates, **word for word**, category
+   **Utility**, in Spanish (`es`) and English (`en_US`), with the same
+   placeholders in the same order. When Meta approves them, tick
+   "Approved by Meta" in the portal. Edit the wording there first if the
+   firm wants changes; Meta must approve the final text.
+4. On the API service (Railway → Variables):
+   - `WHATSAPP_PROVIDER=meta`
+   - `WHATSAPP_ACCESS_TOKEN=<system user token>`
+   - `WHATSAPP_PHONE_NUMBER_ID=<id>`
+   - `WHATSAPP_BUSINESS_ACCOUNT_ID=<id>`
+   - `WHATSAPP_GRAPH_API_VERSION` only if the pinned default (`v26.0`) is retired
+   - leave `WHATSAPP_SENDING_ENABLED` unset for now
+5. The webhook (already deployed, `docs/whatsapp-webhook.md`) must be
+   subscribed to the `messages` field; that is how delivery receipts, replies
+   and STOP opt-outs arrive.
+6. Record a staff member's phone as a test "client" with consent, create a
+   reminder for a synthetic invoice, approve it, set
+   `WHATSAPP_SENDING_ENABLED=true`, send, and confirm it arrives and shows
+   "Read". Then switch on the rules the firm wants.
+
+Rollback: unset `WHATSAPP_SENDING_ENABLED` (approved reminders wait), or
+`WHATSAPP_PROVIDER=mock`.
+
+What happens on failure: a definite failure (wrong number, template not
+approved) shows under Delivery problems and can be retried. If Meta does not
+confirm whether a message went out (a timeout), the reminder is marked
+"Unconfirmed" and is **never resent automatically**; staff check the WhatsApp
+app and mark it "It arrived" or "It did not".
 
 ## 4. Activating the real eImmigration export
 
@@ -123,10 +173,22 @@ monday.com
 10. Who should be able to approve imports and syncs (admin) and who should only
     view (staff)? Which email addresses?
 
+WhatsApp
+11. Who has admin access to the firm's Meta Business account and the WhatsApp
+    Business Account behind the office number?
+12. Should reminders come from the existing office number (which needs Meta's
+    coexistence onboarding so the WhatsApp Business app keeps working) or
+    from a separate number?
+13. How do clients currently agree to WhatsApp contact (intake form,
+    verbally)? Is it written down anywhere we can point to?
+14. Which reminders does the firm want (days before / after the due date),
+    and in which hours may they go out?
+15. Any changes to the example message wording (Spanish and English)?
+
 Policy
-11. Should an invoice count as overdue the day after its due date, or after a
+16. Should an invoice count as overdue the day after its due date, or after a
     grace period?
-12. How long should uploaded reports be kept? (Default: 30 days, then the file
+17. How long should uploaded reports be kept? (Default: 30 days, then the file
     is deleted and only the record stays.)
 
 ## 7. Security notes
@@ -148,6 +210,12 @@ Policy
   synthetic.
 
 ## 8. Tests
+
+Reminder tests (engine, providers, webhook hook, and a 16-step end-to-end
+flow: consent, drafts, approval gate, send, receipts, cancellation when a
+newer report shows payment, STOP opt-out, definite vs unconfirmed failures,
+the live-sending switch) run with the same command.
+
 
 ```bash
 cd server && npm test
