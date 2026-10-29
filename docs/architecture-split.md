@@ -293,7 +293,7 @@ Automated (`npm test` at the repo root builds, then runs all three; the site's r
 | Suite | Count | Covers |
 |---|---|---|
 | `server/` | 59 | Existing API and webhook tests, plus `splitDeployment.test.js` (CORS per origin, cross-origin write refusal including case-variant paths and the proxy branch, public origins never credentialed, proxied client IP in rate limiting, forged IP ignored, cookie options, API serves no pages, transitional mount under production rules: portal CSP on `/admin`, www→apex for `/admin`, real site router with legacy 301, www→apex, prerendered head, 404) and `consultationTypes.test.js` (API, DB, site and portal lists agree). |
-| `site/` | 22 | Moved Wix redirect tests; site host: portal redirect, proxy forwards the webhook body byte-for-byte with its signature, IP forwarding only with the secret, 502 on a dead API, CSP `connect-src`; against the real build: every prerendered route serves its own canonical, unknown and `/admin` URLs 404, every Wix redirect lands on a real page; the bundle guard flags a portal chunk. |
+| `site/` | 25 | Moved Wix redirect tests; site host: portal redirect, proxy forwards the webhook body byte-for-byte with its signature, IP forwarding only with the secret, 502 on a dead API, CSP `connect-src`; against the real build: every prerendered route serves its own canonical, unknown and `/admin` URLs 404, every Wix redirect lands on a real page; the bundle guard flags a portal chunk. |
 | `admin/` | 5 | Open-redirect guard on login return path, portal host headers and SPA fallback, missing build, robots.txt, every template icon registered. |
 
 An independent review of the branch found a case-variant path (`/api/AUTH/login`) that skipped the login origin check, `FRONTEND_URL` able to make the public site a credentialed origin, a runbook step that would fail, `www.camulaw.com/admin` no longer folding into the apex in transitional mode, the proxy not releasing upstream sockets on visitor disconnect, and portal labels ignoring the site's saved language. Each was fixed with a test that failed first.
@@ -310,14 +310,14 @@ Manual, in a browser, against a scratch local Postgres:
 
 ## 10. Known issues found during the work (not changed here)
 
-- **The production CSP blocks Google Ads and the OpenAI pixel config.** The
-  console shows `googleads.g.doubleclick.net`, `www.google.com/ccm` and
-  `/rmkt`, `ad.doubleclick.net`, and `bzrcdn.openai.com/pixel-config` refused
-  by `connect-src` / `img-src` / `script-src-elem`. The CSP was moved
-  verbatim, so this is the live behaviour today: Google Ads conversions and
-  remarketing (AW-16893588137) are likely not being recorded. Fix by adding
-  those hosts to `SITE_CSP` in `site/server/app.js`; kept out of this change
-  so the migration does not alter behaviour.
+- **Fixed on this branch: the live CSP blocked Google Ads and the OpenAI
+  pixel config.** The browser refused `googleads.g.doubleclick.net`,
+  `www.google.com/ccm`, `/rmkt`, `/measurement/conversion`,
+  `ad.doubleclick.net` and `bzrcdn.openai.com/pixel-config`, so Google Ads
+  conversions and remarketing (AW-16893588137) were not being recorded.
+  `SITE_CSP` now allows them, pinned by `site/server/csp.test.js`. The fix
+  reaches production when this branch merges, because transitional mode
+  serves the site through the same router.
 - Pre-existing, unchanged: `req.hostname` honours the first value of a
   client-supplied `X-Forwarded-Host`, so a hand-made request can get the www→apex
   301 pointed at another host. Only exploitable through a shared cache; worth
