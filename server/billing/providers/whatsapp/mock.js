@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 // Mock WhatsApp provider for development and tests. It never touches the
 // network. It implements the same interface as meta.js (see
 // ../../reminderModel.js) and reports delivery receipts through onStatus, the
@@ -23,6 +24,10 @@ export function createMockWhatsAppProvider({
   now = () => new Date(),
   delayMs = 0,
   random,
+  // Distinguishes this simulator's ids from every other instance's and from
+  // earlier runs: provider_message_id is UNIQUE in billing_messages, and a
+  // bare counter restarts at 1 on every boot.
+  instanceId = crypto.randomUUID().slice(0, 8),
 } = {}) {
   let counter = 0
   const sentLog = []
@@ -74,7 +79,7 @@ export function createMockWhatsAppProvider({
       return failure('unknown', 'timeout', 'Simulated: no response after sending; the message may have been sent', false)
     }
 
-    const providerMessageId = `${MOCK_ID_PREFIX}${++counter}`
+    const providerMessageId = `${MOCK_ID_PREFIX}${instanceId}.${++counter}`
     sentLog.push({ ...entry, outcome: 'sent', providerMessageId })
     if (suffix === '3333') {
       scheduleReceipts(providerMessageId, [{ status: 'failed', errors: [{ code: 131026, title: 'Message undeliverable' }] }])

@@ -73,37 +73,94 @@ async function handleStatus(db, evt) {
   return { message: Number(msg.id), status }
 }
 
+/**
+ * The same number as Meta reports it and as staff typed it. Meta's sender
+ * id can carry a mobile prefix the stored number lacks, or the reverse:
+ * Mexico 521… vs 52…, Argentina 549… vs 54….
+ */
+export function phoneVariants(digits) {
+  const d = String(digits || '').replace(/\D/g, '')
+  if (!d) return []
+  const out = new Set([d])
+  if (/^521\d{10}$/.test(d)) out.add(`52${d.slice(3)}`)
+  if (/^52\d{10}$/.test(d)) out.add(`521${d.slice(2)}`)
+  if (/^549\d{10}$/.test(d)) out.add(`54${d.slice(3)}`)
+  if (/^54\d{10}$/.test(d)) out.add(`549${d.slice(2)}`)
+  return [...out]
+}
+
 async function handleInbound(db, evt, { log }) {
   const phone = String(evt.from || '').replace(/\D/g, '')
   if (!phone) return null
-  const contact = (await db.query('SELECT client_id, opted_out_at FROM billing_client_contacts WHERE phone_e164 = $1', [phone])).rows[0]
-  if (!contact) return null
+  // A number can belong to several clients (a parent's phone on file for
+  // the children's cases). Consent belongs to the number: a STOP from it
+  // stops messages to every client using it.
+  const contacts = (await db.query('SELECT client_id FROM billing_client_contacts WHERE phone_e164 = ANY($1)', [phoneVariants(phone)])).rows
+  const text = inboundText(evt.raw)
+  const kind = classifyInbound(text)
+  // Replies from numbers we do not know are not billing's business, except
+  // an opt-out word, which a person should see in case a number on file is
+  // wrong.
+  if (!contacts.length && kind !== 'opt_out') return null
 
-  const kind = classifyInbound(inboundText(evt.raw))
+  const clientIds = contacts.map((c) => Number(c.client_id))
   const inserted = await db.query(
     `INSERT INTO billing_inbound_reviews (event_key, client_id, from_phone, kind, body, received_at, handled_at)
-     VALUES ($1, $2, $3, $4, $5, COALESCE($6, NOW()), CASE WHEN $4::varchar = 'opt_out' THEN NOW() ELSE NULL END)
+     VALUES ($1, $2, $3, $4, $5, COALESCE($6, NOW()), CASE WHEN $4::varchar = 'opt_out' AND $7::boolean THEN NOW() ELSE NULL END)
      ON CONFLICT (event_key) DO NOTHING RETURNING id`,
-    [evt.key, contact.client_id, phone, kind, inboundText(evt.raw).slice(0, 2000) || null, evt.timestamp]
+    [evt.key, clientIds.length === 1 ? clientIds[0] : null, phone, kind, text.slice(0, 2000) || null, evt.timestamp, clientIds.length > 0]
   )
   if (!inserted.rowCount) return null
 
-  if (kind === 'opt_out') {
+  if (kind === 'opt_out' && clientIds.length) {
     await db.query(
-      `UPDATE billing_client_contacts SET opted_out_at = NOW(), opt_out_source = 'whatsapp_reply', updated_at = NOW() WHERE client_id = $1`,
-      [contact.client_id]
+      `UPDATE billing_client_contacts SET opted_out_at = NOW(), opt_out_source = 'whatsapp_reply', updated_at = NOW() WHERE client_id = ANY($1)`,
+      [clientIds]
     )
+    // Including 'queued': the dispatcher re-checks consent right before
+    // sending, and its own UPDATEs are guarded, so this cannot be undone.
     const cancelled = await db.query(
       `UPDATE billing_reminders SET state = 'cancelled', cancel_reason = 'opted_out', cancelled_at = NOW(), updated_at = NOW()
-        WHERE client_id = $1 AND state IN ('draft', 'approved', 'queued')`,
-      [contact.client_id]
+        WHERE client_id = ANY($1) AND action = 'whatsapp' AND state IN ('draft', 'approved')`,
+      [clientIds]
     )
-    await audit(db, { action: 'contact.opted_out', entityType: 'client', entityId: contact.client_id, details: { source: 'whatsapp_reply', cancelled: cancelled.rowCount } })
-    log?.info?.({ clientId: Number(contact.client_id), cancelled: cancelled.rowCount }, 'Client opted out by WhatsApp reply')
+    await audit(db, { action: 'contact.opted_out', entityType: 'client', entityId: clientIds.join(','), details: { source: 'whatsapp_reply', clients: clientIds.length, cancelled: cancelled.rowCount } })
+    log?.info?.({ clients: clientIds.length, cancelled: cancelled.rowCount }, 'Opt-out by WhatsApp reply')
   }
   // An opt-in word is recorded for staff to confirm, never applied
   // automatically: consent is recorded by a person (see contacts screen).
-  return { kind, clientId: Number(contact.client_id) }
+  return { kind, clientIds }
+}
+
+/**
+ * Retry webhook events billing failed to handle (handled = stored and then
+ * acted on). Safe to repeat: every handler is idempotent. Old receipts that
+ * never matched a message are dropped after a week.
+ */
+export async function sweepUnhandled(db, { log, maxAgeDays = 7, batch = 100 } = {}) {
+  const rows = (await db.query(
+    `SELECT event_key, kind, wa_message_id, status, from_wa_id, payload, event_timestamp FROM whatsapp_events
+      WHERE billing_processed_at IS NULL AND billing_attempts < 5
+        AND received_at < NOW() - INTERVAL '1 minute' AND received_at > NOW() - ($1 || ' days')::interval
+      ORDER BY received_at LIMIT $2`,
+    [String(maxAgeDays), batch]
+  )).rows
+  let handled = 0
+  for (const r of rows) {
+    try {
+      await handleWhatsAppEvent(db, {
+        kind: r.kind, key: r.event_key, messageId: r.wa_message_id, status: r.status, from: r.from_wa_id,
+        raw: r.payload, timestamp: r.event_timestamp,
+      }, { log })
+      await db.query('UPDATE whatsapp_events SET billing_processed_at = NOW() WHERE event_key = $1', [r.event_key])
+      handled++
+    } catch (err) {
+      await db.query('UPDATE whatsapp_events SET billing_attempts = billing_attempts + 1 WHERE event_key = $1', [r.event_key])
+      log?.warn?.({ err: err.message, key: r.event_key }, 'Billing could not handle a webhook event (will retry)')
+    }
+  }
+  await db.query("DELETE FROM billing_early_receipts WHERE received_at < NOW() - ($1 || ' days')::interval", [String(maxAgeDays)])
+  return { handled, pending: rows.length - handled }
 }
 
 /** Apply receipts that arrived before the message id was stored. */
@@ -120,4 +177,4 @@ export async function applyEarlyReceipts(db, providerMessageId) {
   return rows.length
 }
 
-export default { handleWhatsAppEvent, classifyInbound, inboundText, applyEarlyReceipts }
+export default { handleWhatsAppEvent, classifyInbound, inboundText, applyEarlyReceipts, sweepUnhandled, phoneVariants }

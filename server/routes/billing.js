@@ -499,7 +499,8 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
   }))
 
   router.post('/reminders/approve', need('billing.reminders'), wrap(async (req, res) => {
-    const ids = (req.body?.ids || []).map(Number).filter((n) => Number.isInteger(n) && n > 0)
+    if (!Array.isArray(req.body?.ids)) return res.status(400).json({ error: 'Send the reminder ids as a list' })
+    const ids = req.body.ids.map(Number).filter((n) => Number.isInteger(n) && n > 0)
     res.json(await approveReminders(pool(), ids, { actorId: actor(req), now: now() }))
   }))
 
@@ -548,7 +549,8 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
   router.get('/contacts', need('whatsapp.contacts'), wrap(async (req, res) => {
     const rows = (await pool().query(
       `SELECT c.id AS client_id, c.display_name, c.eimmigration_client_id,
-              k.phone_e164, k.first_name, k.language, k.opted_in_at, k.opt_in_source, k.opted_out_at, k.opt_out_source,
+              k.phone_e164, k.first_name, k.language, k.timezone, k.opted_in_at, k.opt_in_source, k.opted_out_at, k.opt_out_source,
+              (SELECT COUNT(*)::int FROM billing_client_contacts k2 WHERE k2.phone_e164 = k.phone_e164 AND k2.client_id <> c.id) AS shared_with,
               EXISTS (SELECT 1 FROM billing_client_links l WHERE l.client_id = c.id) AS linked,
               COALESCE((SELECT SUM(balance_cents) FROM billing_invoices i WHERE i.client_id = c.id AND i.balance_cents > 0 AND i.status IN ('unpaid','partial','overdue')), 0)::bigint AS owed
          FROM billing_clients c LEFT JOIN billing_client_contacts k ON k.client_id = c.id
@@ -561,8 +563,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
   }))
 
   router.put('/contacts/:clientId', need('whatsapp.contacts'), idParam('clientId'), validate, wrap(async (req, res) => {
-    await upsertContact(pool(), Number(req.params.clientId), req.body || {}, { actorId: actor(req) })
-    res.json({ ok: true })
+    res.json({ ok: true, ...(await upsertContact(pool(), Number(req.params.clientId), req.body || {}, { actorId: actor(req) })) })
   }))
 
   router.post('/contacts/:clientId/opt-in', need('whatsapp.contacts'), idParam('clientId'), validate, wrap(async (req, res) => {

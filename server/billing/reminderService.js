@@ -15,7 +15,7 @@
 import {
   evaluateReminders, renderMessage, cancellationReason, sendingWindow, normalizePhone, relevantDueDate,
 } from './reminders.js'
-import { DEFAULT_RULES, DEFAULT_TEMPLATES, PENDING_STATES } from './reminderModel.js'
+import { DEFAULT_RULES, DEFAULT_TEMPLATES } from './reminderModel.js'
 import { whatsappSendingEnabled } from './providers/whatsapp/index.js'
 import { fromInvoiceRow, todayInFirmTz } from './importService.js'
 import { audit } from './audit.js'
@@ -24,6 +24,15 @@ import { applyEarlyReceipts } from './whatsappInbound.js'
 export const MAX_ATTEMPTS = 3
 export const PENDING_SEND_TIMEOUT_MINUTES = 10
 const DISPATCH_BATCH = 20
+// Automatic cancellation only touches reminders nobody is sending. Once the
+// dispatcher has claimed one ('queued'), only the dispatcher moves it, after
+// its own last-moment check; otherwise a cancel could land mid-send and the
+// record would say "cancelled" for a message that went out.
+const CANCELLABLE = ['draft', 'approved']
+
+export function validTimeZone(tz) {
+  try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); return true } catch { return false }
+}
 
 export class ReminderError extends Error {
   constructor(message, status = 400, code = 'reminder_error') {
@@ -49,6 +58,7 @@ export async function saveReminderSettings(db, value, { actorId }) {
   const ok = Number.isInteger(v.startHour) && Number.isInteger(v.endHour) && v.startHour >= 0 && v.endHour <= 24 && v.startHour < v.endHour
     && Array.isArray(v.days) && v.days.every((d) => Number.isInteger(d) && d >= 0 && d <= 6)
     && Number.isInteger(v.staleAfterDays) && v.staleAfterDays >= 1 && v.staleAfterDays <= 60
+    && validTimeZone(v.timeZone)
   if (!ok) throw new ReminderError('Check the sending hours, days and freshness limit')
   await db.query(
     `INSERT INTO billing_settings (key, value, updated_by) VALUES ('reminders', $1, $2)
@@ -124,24 +134,41 @@ export async function saveTemplate(db, key, patch, { actorId }) {
 
 // --- contacts ------------------------------------------------------------------------
 
-export async function upsertContact(db, clientId, { phone, firstName, language }, { actorId }) {
-  const e164 = phone == null || phone === '' ? null : normalizePhone(phone)
-  if (phone && !e164) throw new ReminderError('That does not look like a valid phone number')
+/** '+52 33 3456 7890', or national digits plus a calling code. Never guesses a country. */
+export function toE164(phone, country) {
+  const raw = String(phone ?? '').trim()
+  if (!raw) return null
+  if (raw.startsWith('+')) return normalizePhone(raw)
+  const cc = String(country ?? '').replace(/\D/g, '')
+  if (!cc) return null
+  let national = raw.replace(/[\s\-().]/g, '')
+  if (!/^\d+$/.test(national)) return null
+  if (cc === '1' && national.length === 11 && national.startsWith('1')) national = national.slice(1)
+  return normalizePhone(`+${cc}${national}`)
+}
+
+export async function upsertContact(db, clientId, { phone, country, firstName, language, timezone }, { actorId }) {
+  const e164 = phone == null || phone === '' ? null : toE164(phone, country)
+  if (phone && !e164) throw new ReminderError('Enter the number with its country (choose the country, or type it with +, e.g. +52 33 1234 5678)')
   if (language && !['es', 'en'].includes(language)) throw new ReminderError('Language must be es or en')
+  if (timezone && !validTimeZone(timezone)) throw new ReminderError('Unknown time zone')
+  const name = firstName == null ? null : String(firstName).trim()
+  if (name && (name.length > 40 || /[\r\n\t]/.test(name))) throw new ReminderError('First name: one line, up to 40 characters')
   const prev = (await db.query('SELECT phone_e164 FROM billing_client_contacts WHERE client_id = $1', [clientId])).rows[0]
   const phoneChanged = prev && prev.phone_e164 !== e164
   await db.query(
-    `INSERT INTO billing_client_contacts (client_id, phone_e164, first_name, language)
-     VALUES ($1, $2, $3, COALESCE($4, 'es'))
+    `INSERT INTO billing_client_contacts (client_id, phone_e164, first_name, language, timezone)
+     VALUES ($1, $2, $3, COALESCE($4, 'es'), $5)
      ON CONFLICT (client_id) DO UPDATE SET phone_e164 = EXCLUDED.phone_e164, first_name = EXCLUDED.first_name,
-       language = EXCLUDED.language, updated_at = NOW(),
+       language = EXCLUDED.language, timezone = EXCLUDED.timezone, updated_at = NOW(),
        -- Consent belongs to a number. A new number needs a new opt-in.
        opted_in_at = CASE WHEN billing_client_contacts.phone_e164 IS DISTINCT FROM EXCLUDED.phone_e164 THEN NULL ELSE billing_client_contacts.opted_in_at END,
        opt_in_source = CASE WHEN billing_client_contacts.phone_e164 IS DISTINCT FROM EXCLUDED.phone_e164 THEN NULL ELSE billing_client_contacts.opt_in_source END`,
-    [clientId, e164, firstName || null, language || null]
+    [clientId, e164, name || null, language || null, timezone || null]
   )
-  if (phoneChanged) await cancelPendingForClient(db, clientId, 'staff', actorId)
+  if (phoneChanged) await cancelPendingForClient(db, clientId, 'number_changed', actorId)
   await audit(db, { actorId, action: 'contact.saved', entityType: 'client', entityId: clientId, details: { phoneChanged: Boolean(phoneChanged) } })
+  return { phone: e164 }
 }
 
 export async function recordOptIn(db, clientId, { source }, { actorId }) {
@@ -168,8 +195,8 @@ export async function recordOptOut(db, clientId, { source = 'staff' } = {}, { ac
 async function cancelPendingForClient(db, clientId, reason, actorId) {
   const { rowCount } = await db.query(
     `UPDATE billing_reminders SET state = 'cancelled', cancel_reason = $2, cancelled_by = $3, cancelled_at = NOW(), updated_at = NOW()
-      WHERE client_id = $1 AND state = ANY($4)`,
-    [clientId, reason, actorId ?? null, PENDING_STATES]
+      WHERE client_id = $1 AND state = ANY($4) AND (action = 'whatsapp' OR $2::varchar NOT IN ('opted_out', 'number_changed'))`,
+    [clientId, reason, actorId ?? null, CANCELLABLE]
   )
   return rowCount
 }
@@ -189,7 +216,7 @@ async function loadWorld(db, { today, settings }) {
   const contacts = new Map((await db.query(
     'SELECT k.*, c.display_name FROM billing_client_contacts k JOIN billing_clients c ON c.id = k.client_id'
   )).rows.map((c) => [Number(c.client_id), {
-    phone: c.phone_e164, language: c.language, optedInAt: c.opted_in_at, optedOutAt: c.opted_out_at,
+    phone: c.phone_e164, language: c.language, optedInAt: c.opted_in_at, optedOutAt: c.opted_out_at, timezone: c.timezone,
     // Staff can set a preferred first name; otherwise the first word of the
     // name in eImmigration ("María" from "María García Pérez").
     firstName: c.first_name || String(c.display_name || '').trim().split(/\s+/)[0] || null,
@@ -208,25 +235,28 @@ export async function cancelIneligible(db, { now = new Date(), actorId = null } 
   const today = todayInFirmTz(now)
   const world = await loadWorld(db, { today, settings })
   const byInvoice = new Map(world.invoices.map((i) => [i.id, i]))
-  const pending = (await db.query('SELECT * FROM billing_reminders WHERE state = ANY($1)', [PENDING_STATES])).rows
+  const pending = (await db.query('SELECT * FROM billing_reminders WHERE state = ANY($1)', [CANCELLABLE])).rows
   const triggers = new Map((await db.query('SELECT key, trigger FROM billing_reminder_rules')).rows.map((r) => [r.key, r.trigger]))
   let cancelled = 0
   for (const r of pending) {
     const inv = byInvoice.get(Number(r.invoice_id))
     // "Due on Oct 30" must not go out on Oct 31.
     const expired = triggers.get(r.rule_key) === 'before_due' && r.due_date && r.due_date < today
-    const reason = expired ? 'expired' : inv
+    let reason = expired ? 'expired' : inv
       ? cancellationReason(
         { obligationKey: r.obligation_key, ruleKey: r.rule_key, state: r.state, dueDate: r.due_date },
         inv, world.contacts.get(Number(r.client_id)) || null, world.linkedClientIds.has(Number(r.client_id)),
         { today, staleAfterDays: settings.staleAfterDays },
       )
       : 'void'
+    // A staff follow-up is a phone call, not a WhatsApp message: missing
+    // consent or a monday link is no reason to drop it.
+    if (r.action === 'staff_followup' && ['opted_out', 'unlinked'].includes(reason)) reason = null
     if (!reason) continue
     const res = await db.query(
       `UPDATE billing_reminders SET state = 'cancelled', cancel_reason = $2, cancelled_at = NOW(), updated_at = NOW()
         WHERE id = $1 AND state = ANY($3)`,
-      [r.id, reason, PENDING_STATES]
+      [r.id, reason, CANCELLABLE]
     )
     cancelled += res.rowCount
   }
@@ -306,9 +336,9 @@ export async function cancelReminder(db, id, { actorId }) {
   const { rowCount } = await db.query(
     `UPDATE billing_reminders SET state = 'cancelled', cancel_reason = 'staff', cancelled_by = $2, cancelled_at = NOW(), updated_at = NOW()
       WHERE id = $1 AND state = ANY($3)`,
-    [id, actorId, [...PENDING_STATES, 'unknown']]
+    [id, actorId, [...CANCELLABLE, 'unknown']]
   )
-  if (!rowCount) throw new ReminderError('Only a reminder that has not been sent can be cancelled', 409, 'bad_state')
+  if (!rowCount) throw new ReminderError('Only a reminder that has not been sent can be cancelled (one being sent right now cannot)', 409, 'bad_state')
   await audit(db, { actorId, action: 'reminders.cancelled', entityType: 'reminder', entityId: id })
 }
 
@@ -317,6 +347,7 @@ export async function retryReminder(db, id, { actorId }) {
   const r = (await db.query('SELECT state, attempts, last_error_retryable FROM billing_reminders WHERE id = $1', [id])).rows[0]
   if (!r) throw new ReminderError('Reminder not found', 404, 'not_found')
   if (r.state !== 'failed') throw new ReminderError('Only a failed reminder can be retried. A reminder whose delivery is unknown must be checked in WhatsApp first.', 409, 'bad_state')
+  if (!r.last_error_retryable) throw new ReminderError('This failure will not go away by retrying (wrong number, template, or a rejected message). Fix the cause first.', 409, 'not_retryable')
   if (r.attempts >= MAX_ATTEMPTS) throw new ReminderError(`Already tried ${r.attempts} times`, 409, 'too_many_attempts')
   await db.query("UPDATE billing_reminders SET state = 'approved', approved_by = $2, approved_at = NOW(), updated_at = NOW() WHERE id = $1 AND state = 'failed'", [id, actorId])
   await audit(db, { actorId, action: 'reminders.retried', entityType: 'reminder', entityId: id })
@@ -342,13 +373,18 @@ export async function resolveUnknown(db, id, { delivered, actorId }) {
  * Returns what happened; never throws for one bad reminder.
  */
 export async function dispatch(db, provider, { now = new Date(), env = process.env, log } = {}) {
-  if (provider.mode === 'meta' && !whatsappSendingEnabled(env)) return { skipped: 'sending_disabled' }
+  // One switch for every sender. A simulated "send" still consumes the one
+  // reminder allowed per payment and stage, so simulation must be as
+  // deliberate as the real thing (it is how a demo is run on purpose).
+  if (!whatsappSendingEnabled(env)) return { skipped: 'sending_disabled' }
   const settings = await getReminderSettings(db)
-  const window = sendingWindow(now.toISOString(), settings)
   await markStalePendingUnknown(db)
-  if (!window.open) return { skipped: 'outside_hours', nextOpenAt: window.nextOpenAt }
-
   await cancelIneligible(db, { now })
+
+  const today = todayInFirmTz(now)
+  const triggers = new Map((await db.query('SELECT key, trigger FROM billing_reminder_rules')).rows.map((r) => [r.key, r.trigger]))
+  const approvedTemplates = new Set((await db.query('SELECT key FROM billing_message_templates WHERE meta_approved')).rows.map((r) => r.key))
+
   const claimed = (await db.query(
     `UPDATE billing_reminders SET state = 'queued', queued_at = NOW(), updated_at = NOW()
       WHERE id IN (SELECT id FROM billing_reminders WHERE state = 'approved' AND action = 'whatsapp'
@@ -356,17 +392,54 @@ export async function dispatch(db, provider, { now = new Date(), env = process.e
       RETURNING *`,
     [DISPATCH_BATCH]
   )).rows
+  // RETURNING has no order: send oldest approval first, as promised.
+  claimed.sort((x, y) => new Date(x.approved_at) - new Date(y.approved_at) || Number(x.id) - Number(y.id))
 
-  const result = { sent: 0, failed: 0, unknown: 0, cancelled: 0 }
+  const result = { sent: 0, failed: 0, unknown: 0, cancelled: 0, waiting: 0, templateNotApproved: 0, nextOpenAt: null }
+  const release = (id) => db.query("UPDATE billing_reminders SET state = 'approved', updated_at = NOW() WHERE id = $1 AND state = 'queued'", [id])
+  const guarded = (sql, params) => db.query(sql, params) // every reminder UPDATE below carries AND state = 'queued'
+
   for (const r of claimed) {
-    // Last look at the client's consent and number right before sending.
-    const contact = (await db.query('SELECT phone_e164, opted_in_at, opted_out_at FROM billing_client_contacts WHERE client_id = $1', [r.client_id])).rows[0]
-    const optedOut = !contact?.opted_in_at || (contact.opted_out_at && contact.opted_out_at > contact.opted_in_at)
-    if (optedOut || !contact.phone_e164 || contact.phone_e164 !== r.to_phone) {
-      await db.query("UPDATE billing_reminders SET state = 'cancelled', cancel_reason = $2, cancelled_at = NOW(), updated_at = NOW() WHERE id = $1", [r.id, optedOut ? 'opted_out' : 'staff'])
-      result.cancelled++
+    // Last look, with fresh data, right before this one message.
+    const inv = (await db.query(
+      `SELECT i.*, c.eimmigration_client_id FROM billing_invoices i LEFT JOIN billing_clients c ON c.id = i.client_id WHERE i.id = $1`,
+      [r.invoice_id]
+    )).rows[0]
+    const k = (await db.query('SELECT * FROM billing_client_contacts WHERE client_id = $1', [r.client_id])).rows[0]
+    const contact = k ? { phone: k.phone_e164, optedInAt: k.opted_in_at, optedOutAt: k.opted_out_at } : null
+    const linked = (await db.query("SELECT 1 FROM billing_client_links WHERE client_id = $1 AND system = 'monday' LIMIT 1", [r.client_id])).rowCount > 0
+
+    const window = sendingWindow(now.toISOString(), { ...settings, timeZone: k?.timezone && validTimeZone(k.timezone) ? k.timezone : settings.timeZone })
+    if (!window.open) {
+      await release(r.id)
+      result.waiting++
+      if (!result.nextOpenAt || window.nextOpenAt < result.nextOpenAt) result.nextOpenAt = window.nextOpenAt
       continue
     }
+
+    let reason = null
+    if (triggers.get(r.rule_key) === 'before_due' && r.due_date && r.due_date < today) reason = 'expired'
+    else if (!inv) reason = 'void'
+    else {
+      reason = cancellationReason(
+        { obligationKey: r.obligation_key, ruleKey: r.rule_key, state: 'approved', dueDate: r.due_date },
+        { ...fromInvoiceRow(inv), id: Number(inv.id), notInLatestReport: inv.not_in_latest_report },
+        contact, linked, { today, staleAfterDays: settings.staleAfterDays },
+      )
+    }
+    if (!reason && (!k?.phone_e164 || k.phone_e164 !== r.to_phone)) reason = 'number_changed'
+    if (reason) {
+      const c = await guarded("UPDATE billing_reminders SET state = 'cancelled', cancel_reason = $2, cancelled_at = NOW(), updated_at = NOW() WHERE id = $1 AND state = 'queued'", [r.id, reason])
+      result.cancelled += c.rowCount
+      continue
+    }
+    if (provider.mode === 'meta' && !approvedTemplates.has(r.template_key)) {
+      // Meta only delivers templates it approved; the portal must say so first.
+      await release(r.id)
+      result.templateNotApproved++
+      continue
+    }
+
     const attempt = r.attempts + 1
     const idempotencyKey = `reminder-${r.id}-attempt-${attempt}`
     const p = r.params || {}
@@ -377,11 +450,11 @@ export async function dispatch(db, provider, { now = new Date(), env = process.e
     )).rows[0]
     if (!msg) {
       // This attempt was already started by someone: its outcome is unknown.
-      await db.query("UPDATE billing_reminders SET state = 'unknown', updated_at = NOW() WHERE id = $1", [r.id])
+      await guarded("UPDATE billing_reminders SET state = 'unknown', updated_at = NOW() WHERE id = $1 AND state = 'queued'", [r.id])
       result.unknown++
       continue
     }
-    await db.query('UPDATE billing_reminders SET attempts = $2, simulated = $3 WHERE id = $1', [r.id, attempt, provider.mode === 'mock'])
+    await guarded('UPDATE billing_reminders SET attempts = $2, simulated = $3 WHERE id = $1 AND state = \'queued\'', [r.id, attempt, provider.mode === 'mock'])
 
     let res
     try {
@@ -392,28 +465,37 @@ export async function dispatch(db, provider, { now = new Date(), env = process.e
       res = { ok: false, outcome: 'unknown', error: { code: err.code || 'exception', message: 'Send threw', retryable: false } }
     }
 
-    if (res.ok) {
-      await db.query("UPDATE billing_messages SET status = 'sent', provider_message_id = $2, updated_at = NOW() WHERE id = $1", [msg.id, res.providerMessageId])
-      await db.query("UPDATE billing_reminders SET state = 'sent', sent_at = NOW(), last_error = NULL, updated_at = NOW() WHERE id = $1 AND state = 'queued'", [r.id])
-      result.sent++
-      await applyEarlyReceipts(db, res.providerMessageId)
-    } else if (res.outcome === 'failed') {
-      await db.query("UPDATE billing_messages SET status = 'failed', error_code = $2, error_message = $3, updated_at = NOW() WHERE id = $1", [msg.id, String(res.error?.code ?? ''), String(res.error?.message ?? '').slice(0, 300)])
-      await db.query(
-        "UPDATE billing_reminders SET state = 'failed', last_error = $2, last_error_retryable = $3, updated_at = NOW() WHERE id = $1",
-        [r.id, `${res.error?.code ?? 'failed'}: ${String(res.error?.message ?? '').slice(0, 200)}`, Boolean(res.error?.retryable)]
-      )
-      result.failed++
-    } else {
-      await db.query("UPDATE billing_messages SET status = 'unknown', error_code = $2, updated_at = NOW() WHERE id = $1", [msg.id, String(res.error?.code ?? 'unknown')])
-      await db.query("UPDATE billing_reminders SET state = 'unknown', last_error = 'Delivery could not be confirmed. Check WhatsApp before resending.', updated_at = NOW() WHERE id = $1", [r.id])
+    try {
+      if (res.ok) {
+        await db.query("UPDATE billing_messages SET status = 'sent', provider_message_id = $2, updated_at = NOW() WHERE id = $1", [msg.id, res.providerMessageId])
+        await guarded("UPDATE billing_reminders SET state = 'sent', sent_at = NOW(), last_error = NULL, updated_at = NOW() WHERE id = $1 AND state = 'queued'", [r.id])
+        result.sent++
+        await applyEarlyReceipts(db, res.providerMessageId)
+      } else if (res.outcome === 'failed') {
+        await db.query("UPDATE billing_messages SET status = 'failed', error_code = $2, error_message = $3, updated_at = NOW() WHERE id = $1", [msg.id, String(res.error?.code ?? ''), String(res.error?.message ?? '').slice(0, 300)])
+        await guarded(
+          "UPDATE billing_reminders SET state = 'failed', last_error = $2, last_error_retryable = $3, updated_at = NOW() WHERE id = $1 AND state = 'queued'",
+          [r.id, `${res.error?.code ?? 'failed'}: ${String(res.error?.message ?? '').slice(0, 200)}`, Boolean(res.error?.retryable)]
+        )
+        result.failed++
+      } else {
+        await db.query("UPDATE billing_messages SET status = 'unknown', error_code = $2, updated_at = NOW() WHERE id = $1", [msg.id, String(res.error?.code ?? 'unknown')])
+        await guarded("UPDATE billing_reminders SET state = 'unknown', last_error = 'Delivery could not be confirmed. Check WhatsApp before resending.', updated_at = NOW() WHERE id = $1 AND state = 'queued'", [r.id])
+        result.unknown++
+      }
+    } catch (err) {
+      // Recording failed after the provider answered. The message row stays
+      // 'pending' and is turned into 'unknown' by the next run; the batch goes on.
+      log?.error?.({ err: err.message, reminderId: Number(r.id) }, 'Could not record a send result')
       result.unknown++
     }
   }
   if (claimed.length) {
     log?.info?.({ ...result, mode: provider.mode }, 'Reminder dispatch')
-    await audit(db, { action: 'reminders.dispatched', entityType: 'reminders', details: { ...result, mode: provider.mode } })
+    await audit(db, { action: 'reminders.dispatched', entityType: 'reminders', details: { sent: result.sent, failed: result.failed, unknown: result.unknown, cancelled: result.cancelled, waiting: result.waiting, mode: provider.mode } })
   }
+  const nothingElse = !result.sent && !result.failed && !result.unknown && !result.cancelled && !result.templateNotApproved
+  if (result.waiting && nothingElse) return { ...result, skipped: 'outside_hours' }
   return result
 }
 

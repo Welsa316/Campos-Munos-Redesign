@@ -32,18 +32,32 @@
             <p class="text-gray-500">{{ c.eimmigration_client_id }}<template v-if="c.owed != null"> · {{ money(c.owed) }} owed</template></p>
             <p class="mt-1 font-semibold" :class="consent(c).tone">{{ consent(c).label }}</p>
             <p v-if="!c.linked" class="text-amber-700">Not linked to monday.com yet</p>
+            <p v-if="c.shared_with" class="text-amber-700">Number shared with {{ c.shared_with }} other client(s): a STOP from it stops messages to all of them</p>
+            <p v-if="c.phone_e164" class="text-gray-500">Saved as +{{ c.phone_e164 }}</p>
           </div>
           <div class="space-y-2">
             <div class="flex flex-wrap items-end gap-2">
               <label class="flex flex-col gap-1">
+                <span class="text-[11px] font-semibold text-gray-700">Country</span>
+                <select v-model="edit(c).country" :aria-label="`Country of the number for ${c.display_name}`" class="px-2 py-1.5 rounded-lg border border-gray-300 bg-white">
+                  <option v-for="k in COUNTRIES" :key="k.code" :value="k.code">{{ k.label }} +{{ k.code }}</option>
+                </select>
+              </label>
+              <label class="flex flex-col gap-1">
                 <span class="text-[11px] font-semibold text-gray-700">WhatsApp number</span>
-                <input v-model="edit(c).phone" type="tel" inputmode="tel" placeholder="(504) 555-0100" :aria-label="`WhatsApp number for ${c.display_name}`"
+                <input v-model="edit(c).phone" type="tel" inputmode="tel" placeholder="504 555 0100" :aria-label="`WhatsApp number for ${c.display_name}`"
                   class="w-44 px-3 py-1.5 rounded-lg border border-gray-300 focus:border-brand-navy focus:outline-none" />
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-[11px] font-semibold text-gray-700">First name in messages</span>
                 <input v-model="edit(c).firstName" :placeholder="firstWord(c.display_name)" :aria-label="`First name for ${c.display_name}`"
                   class="w-36 px-3 py-1.5 rounded-lg border border-gray-300 focus:border-brand-navy focus:outline-none" />
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-[11px] font-semibold text-gray-700">Time zone</span>
+                <select v-model="edit(c).timezone" :aria-label="`Time zone for ${c.display_name}`" class="px-2 py-1.5 rounded-lg border border-gray-300 bg-white">
+                  <option v-for="z in ZONES" :key="z.id" :value="z.id">{{ z.label }}</option>
+                </select>
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-[11px] font-semibold text-gray-700">Language</span>
@@ -98,6 +112,19 @@ const search = ref('')
 const canSeeOwed = can('billing.status')
 const owingOnly = ref(canSeeOwed)
 
+// The firm's clients by origin. Any other country: type the number with +.
+const COUNTRIES = [
+  { code: '1', label: 'US' }, { code: '52', label: 'México' }, { code: '502', label: 'Guatemala' },
+  { code: '504', label: 'Honduras' }, { code: '503', label: 'El Salvador' }, { code: '505', label: 'Nicaragua' },
+  { code: '506', label: 'Costa Rica' }, { code: '507', label: 'Panamá' }, { code: '57', label: 'Colombia' },
+  { code: '58', label: 'Venezuela' }, { code: '53', label: 'Cuba' }, { code: '51', label: 'Perú' }, { code: '593', label: 'Ecuador' },
+]
+const ZONES = [
+  { id: 'America/Chicago', label: 'Central (New Orleans)' }, { id: 'America/New_York', label: 'Eastern' },
+  { id: 'America/Denver', label: 'Mountain' }, { id: 'America/Phoenix', label: 'Arizona' }, { id: 'America/Los_Angeles', label: 'Pacific' },
+  { id: 'America/Mexico_City', label: 'Ciudad de México' }, { id: 'America/Guatemala', label: 'Centroamérica' },
+  { id: 'America/Bogota', label: 'Colombia / Perú' }, { id: 'America/Caracas', label: 'Venezuela' },
+]
 const firstWord = (n) => String(n || '').trim().split(/\s+/)[0] || ''
 const isOptedIn = (c) => Boolean(c.opted_in_at) && !(c.opted_out_at && c.opted_out_at > c.opted_in_at)
 function consent(c) {
@@ -107,7 +134,14 @@ function consent(c) {
   return { label: 'No consent recorded', tone: 'text-amber-700' }
 }
 function edit(c) {
-  if (!edits[c.client_id]) edits[c.client_id] = { phone: c.phone_e164 ? `+${c.phone_e164}` : '', firstName: c.first_name || '', language: c.language || 'es', source: '' }
+  if (!edits[c.client_id]) {
+    edits[c.client_id] = {
+      // A saved number is shown in full international form, so the country
+      // field does not apply to it until it is edited.
+      phone: c.phone_e164 ? `+${c.phone_e164}` : '', country: '1', firstName: c.first_name || '',
+      language: c.language || 'es', timezone: c.timezone || 'America/Chicago', source: '',
+    }
+  }
   return edits[c.client_id]
 }
 const shown = computed(() => {
@@ -127,7 +161,10 @@ async function act(name, fn) {
 }
 const save = (c) => act('save', async () => {
   const e = edit(c)
-  await put(`/api/billing/contacts/${c.client_id}`, { phone: e.phone, firstName: e.firstName, language: e.language })
+  await put(`/api/billing/contacts/${c.client_id}`, { phone: e.phone, country: e.country, firstName: e.firstName, language: e.language, timezone: e.timezone })
+  // Reload first, then drop the edit buffer, so it is rebuilt from the saved
+  // row rather than from the stale one still on screen.
+  await load()
   delete edits[c.client_id]
 })
 const optIn = (c) => act('optin', () => post(`/api/billing/contacts/${c.client_id}/opt-in`, { source: edit(c).source }))

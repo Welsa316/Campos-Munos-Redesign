@@ -7,13 +7,16 @@
 // get it simply skips this tick.
 import { evaluate, dispatch } from './reminderService.js'
 import { createWhatsAppProvider } from './providers/whatsapp/index.js'
-import { handleWhatsAppEvent } from './whatsappInbound.js'
+import { handleWhatsAppEvent, sweepUnhandled } from './whatsappInbound.js'
 
 const LOCK_KEY = 'billing_reminder_scheduler'
 
 export function startReminderScheduler({ pool, env = process.env, log, intervalMinutes = 15 }) {
-  if (String(env.BILLING_SCHEDULER_ENABLED ?? 'true').trim().toLowerCase() === 'false') {
-    log?.info?.('Billing reminder scheduler disabled')
+  // Off unless switched on. server/.env on a developer machine points at
+  // production; a scheduler that starts by default would act on real data
+  // from a laptop.
+  if (String(env.BILLING_SCHEDULER_ENABLED ?? '').trim().toLowerCase() !== 'true') {
+    log?.info?.('Billing reminder scheduler off (BILLING_SCHEDULER_ENABLED is not true)')
     return { stop() {} }
   }
   let provider
@@ -40,6 +43,7 @@ export function startReminderScheduler({ pool, env = process.env, log, intervalM
       if (!got) return
       try {
         const now = new Date()
+        await sweepUnhandled(pool, { log })
         const ev = await evaluate(pool, { now })
         const sent = await dispatch(pool, provider, { now, env, log })
         if (ev.created || sent.sent || sent.failed || sent.unknown) log?.info?.({ drafts: ev.created, ...sent }, 'Reminder scheduler tick')
