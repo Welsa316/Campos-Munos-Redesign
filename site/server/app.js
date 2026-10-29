@@ -33,6 +33,10 @@ export const SITE_CSP = {
       'https://*.elfsight.com',
       'https://*.elfsightcdn.com',
       'https://elfsightcdn.com',
+      // Google Ads (AW-16893588137): gtag loads the conversion and
+      // remarketing scripts from these two hosts.
+      'https://googleads.g.doubleclick.net',
+      'https://www.googleadservices.com',
     ],
     'script-src-elem': [
       "'self'",
@@ -43,6 +47,10 @@ export const SITE_CSP = {
       'https://*.elfsight.com',
       'https://*.elfsightcdn.com',
       'https://elfsightcdn.com',
+      // Google Ads (AW-16893588137): gtag loads the conversion and
+      // remarketing scripts from these two hosts.
+      'https://googleads.g.doubleclick.net',
+      'https://www.googleadservices.com',
     ],
     'connect-src': [
       "'self'",
@@ -54,8 +62,16 @@ export const SITE_CSP = {
       'https://analytics.google.com',
       'https://*.analytics.google.com',
       'https://www.googletagmanager.com',
-      // OpenAI ads pixel posts conversion events here.
+      // OpenAI ads pixel: posts conversion events to bzr, and fetches its
+      // configuration from the same CDN that serves the script.
       'https://bzr.openai.com',
+      'https://bzrcdn.openai.com',
+      // Google Ads conversions and remarketing (gtag sends these, not GA4).
+      'https://www.google.com',
+      'https://google.com',
+      'https://googleads.g.doubleclick.net',
+      'https://ad.doubleclick.net',
+      'https://www.googleadservices.com',
       // Elfsight loads widget code + review data from many subdomains.
       'https://*.elfsight.com',
       'https://*.elfsightcdn.com',
@@ -74,6 +90,10 @@ export const SITE_CSP = {
       'data:',
       'https://pub-bc3780d3394f41c6801ba2012e17903c.r2.dev',
       'https://www.google-analytics.com',
+      // Google Ads pixel fallbacks when fetch/beacon is unavailable.
+      'https://www.google.com',
+      'https://googleads.g.doubleclick.net',
+      'https://ad.doubleclick.net',
       'https://static.elfsight.com',
       'https://*.elfsight.com',
       'https://elfsightcdn.com',
@@ -96,7 +116,8 @@ export const SITE_CSP = {
       'https://*.elfsightcdn.com',
     ],
     // Path-scoped so only the Maps embed can be framed, not arbitrary google.com pages.
-    'frame-src': ["'self'", 'https://static.elfsight.com', 'https://elfsightcdn.com', 'https://www.google.com/maps/'],
+    // td.doubleclick.net hosts the Google Ads conversion iframe.
+    'frame-src': ["'self'", 'https://static.elfsight.com', 'https://elfsightcdn.com', 'https://www.google.com/maps/', 'https://td.doubleclick.net'],
     'upgrade-insecure-requests': null,
   },
 }
