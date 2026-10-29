@@ -15,11 +15,11 @@
           <template v-else>Writes are switched on: applying a sync updates the mapped columns on monday.com.</template>
           <span v-if="state.lastCheck" class="block text-gray-500 mt-0.5">Last check {{ shortDate(state.lastCheck.checked_at) }}: {{ state.lastCheck.ok ? 'OK' : 'failed' }}</span>
         </p>
-        <button @click="check" :disabled="Boolean(busy)" class="px-3 py-2 rounded-lg text-xs font-ui font-semibold text-brand-navy ring-1 ring-brand-navy/30 hover:bg-brand-surface">Check connection</button>
+        <button v-if="canConfigure" @click="check" :disabled="Boolean(busy)" class="px-3 py-2 rounded-lg text-xs font-ui font-semibold text-brand-navy ring-1 ring-brand-navy/30 hover:bg-brand-surface">Check connection</button>
       </section>
 
-      <!-- Board + column mapping -->
-      <section class="bg-white rounded-xl ring-1 ring-gray-200" aria-labelledby="cfg-h">
+      <!-- Board + column mapping (billing.configure) -->
+      <section v-if="canConfigure" class="bg-white rounded-xl ring-1 ring-gray-200" aria-labelledby="cfg-h">
         <header class="px-5 py-4 border-b border-gray-100">
           <h2 id="cfg-h" class="text-sm font-ui font-semibold text-gray-900">Board and columns</h2>
           <p class="text-[11px] font-ui text-gray-500 mt-0.5">Only the columns chosen here are ever written. Boards are never created or restructured, and status labels must already exist on the column.</p>
@@ -85,7 +85,7 @@
             <h2 id="sync-h" class="text-sm font-ui font-semibold text-gray-900">Sync payment status</h2>
             <p class="text-[11px] font-ui text-gray-500 mt-0.5">Preview first. Only linked clients with a real difference are listed.</p>
           </div>
-          <button @click="preview" :disabled="busy || !state.config?.boardId" class="ml-auto px-4 py-2 rounded-lg bg-brand-navy text-white text-sm font-ui font-semibold hover:bg-brand-navy-dark disabled:opacity-50">
+          <button v-if="canSync" @click="preview" :disabled="busy || !state.config?.boardId" class="ml-auto px-4 py-2 rounded-lg bg-brand-navy text-white text-sm font-ui font-semibold hover:bg-brand-navy-dark disabled:opacity-50">
             <FaIcon v-if="busy === 'preview'" name="spinner" spin class="text-xs mr-1" />Preview changes
           </button>
         </header>
@@ -145,6 +145,11 @@
 import FaIcon from '../../../components/FaIcon.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useBillingApi, shortDate } from '../api.js'
+import { can } from '../../../composables/useAuth.js'
+
+// The board mapping is setup; running the sync is day-to-day work.
+const canConfigure = can('billing.configure')
+const canSync = can('billing.sync')
 
 const FIELDS = [
   { key: 'status', label: 'Overall payment status', types: ['status'], help: 'A status column; map its labels below.' },
@@ -207,9 +212,12 @@ async function load() {
       eimIdColumnId.value = cfg.eimIdColumnId || ''
       for (const f of FIELDS) map[f.key] = cfg.columnMap?.[f.key]?.columnId || ''
       Object.assign(labels, cfg.columnMap?.status?.labels || {})
-      await loadBoards()
-      await loadColumns(false)
-    } else if (!state.value.configError) {
+      // The board lists feed only the setup section (billing.configure).
+      if (canConfigure) {
+        await loadBoards()
+        await loadColumns(false)
+      }
+    } else if (!state.value.configError && canConfigure) {
       await loadBoards()
     }
   } catch (err) {

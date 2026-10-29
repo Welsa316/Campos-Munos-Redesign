@@ -40,8 +40,9 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="inv in invoices" :key="inv.id" @click="open(inv.id)" @keydown.enter="open(inv.id)" tabindex="0"
-                class="border-b border-gray-50 hover:bg-brand-surface/60 cursor-pointer focus-visible:bg-brand-surface">
+              <tr v-for="inv in invoices" :key="inv.id" @click="open(inv.id)" @keydown.enter="open(inv.id)" :tabindex="canOpen ? 0 : undefined"
+                :class="canOpen ? 'hover:bg-brand-surface/60 cursor-pointer focus-visible:bg-brand-surface' : ''"
+                class="border-b border-gray-50">
                 <td class="px-5 py-3">
                   <span class="block text-gray-900 font-medium">{{ inv.clientName || '—' }}</span>
                   <span class="block text-[10px] text-gray-500">{{ inv.eimmigrationClientId || 'No client ID in report' }}</span>
@@ -70,7 +71,7 @@
         <!-- Phone: one card per invoice -->
         <ul class="md:hidden divide-y divide-gray-100">
           <li v-for="inv in invoices" :key="inv.id">
-            <button @click="open(inv.id)" class="w-full text-left px-4 py-3.5 hover:bg-brand-surface/60">
+            <button @click="open(inv.id)" :disabled="!canOpen" class="w-full text-left px-4 py-3.5 enabled:hover:bg-brand-surface/60">
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                   <p class="text-sm font-ui font-medium text-gray-900 truncate">{{ inv.clientName || '—' }}</p>
@@ -151,6 +152,11 @@
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBillingApi, money, shortDate } from '../api.js'
+import { can } from '../../../composables/useAuth.js'
+
+// The list is basic payment status (billing.status); an invoice's payments,
+// revisions and monday.com links are billing records (billing.view).
+const canOpen = can('billing.view')
 import StatusPill from '../components/StatusPill.vue'
 
 const FILTERS = [
@@ -209,6 +215,7 @@ async function load() {
 }
 
 async function open(id) {
+  if (!canOpen) return
   selectedId.value = id
   detail.value = null
   await nextTick()

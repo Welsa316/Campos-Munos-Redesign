@@ -1,7 +1,7 @@
 <template>
   <div class="max-w-[1320px] mx-auto px-4 sm:px-6 py-6 space-y-5">
-    <!-- Upload -->
-    <section class="bg-white rounded-xl ring-1 ring-gray-200 p-5" aria-labelledby="upload-h">
+    <!-- Upload (billing.import) -->
+    <section v-if="canImport" class="bg-white rounded-xl ring-1 ring-gray-200 p-5" aria-labelledby="upload-h">
       <h2 id="upload-h" class="text-sm font-ui font-semibold text-gray-900">Import an eImmigration report</h2>
       <p class="text-[11px] font-ui text-gray-500 mt-0.5">CSV or Excel (.xlsx), up to 15 MB. Nothing changes until you review the preview and approve it.</p>
 
@@ -48,6 +48,9 @@ import FaIcon from '../../../components/FaIcon.vue'
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useBillingApi, uploadReport, shortDate, REPORT_TYPE_LABELS } from '../api.js'
+import { can } from '../../../composables/useAuth.js'
+
+const canImport = can('billing.import')
 
 const JOB_STATUS = {
   uploaded: { label: 'Needs mapping', tone: 'bg-amber-100 text-amber-800' },

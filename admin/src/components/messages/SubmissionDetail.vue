@@ -43,14 +43,15 @@
             <div class="relative mt-3 inline-block">
               <button
                 @click.stop="statusOpen = !statusOpen"
+                :disabled="!canManage"
                 :aria-expanded="statusOpen"
-                aria-label="Change lead status"
+                :aria-label="canManage ? 'Change lead status' : `Lead status: ${statusMeta(submission.status).label}`"
                 :class="statusMeta(submission.status).pill"
                 class="inline-flex items-center gap-2 text-xs font-ui font-semibold px-3 py-1.5 rounded-full ring-1 whitespace-nowrap transition-transform active:scale-95"
               >
                 <span :class="statusMeta(submission.status).dot" class="w-2 h-2 rounded-full" aria-hidden="true"></span>
                 {{ statusMeta(submission.status).label }}
-                <i class="fa-solid fa-chevron-down text-[9px] opacity-60" aria-hidden="true"></i>
+                <i v-if="canManage" class="fa-solid fa-chevron-down text-[9px] opacity-60" aria-hidden="true"></i>
               </button>
               <div v-if="statusOpen"
                 class="absolute left-0 top-full mt-1 z-30 w-52 bg-white rounded-xl shadow-lg ring-1 ring-gray-200 py-1">
@@ -76,7 +77,7 @@
               Unread
             </span>
             <button
-              v-if="submission.is_read"
+              v-if="submission.is_read && canManage"
               @click="markUnread"
               :disabled="markingUnread"
               class="p-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface transition-colors"
@@ -86,6 +87,7 @@
               <i class="fa-solid fa-envelope text-sm" aria-hidden="true"></i>
             </button>
             <button
+              v-if="canManage"
               ref="archiveBtn"
               @click="toggleArchive"
               :disabled="archiving"
@@ -126,7 +128,7 @@
                 <p class="text-gray-800 text-sm font-ui leading-relaxed whitespace-pre-wrap">{{ item.body }}</p>
               </div>
               <p class="text-xs text-gray-500 font-ui mt-1.5 mr-1 text-right">
-                {{ formatDate(item.timestamp) }}
+                <span v-if="item.by">{{ item.by }} · </span>{{ formatDate(item.timestamp) }}
               </p>
             </div>
           </div>
@@ -151,7 +153,7 @@
         </button>
 
         <div v-if="notesOpen" class="px-5 pb-4">
-          <form @submit.prevent="addNote" class="flex items-start gap-2 mb-3">
+          <form v-if="canManage" @submit.prevent="addNote" class="flex items-start gap-2 mb-3">
             <label for="lead-note" class="sr-only">Add an internal note</label>
             <textarea
               id="lead-note"
@@ -177,9 +179,10 @@
             <li v-for="note in notes" :key="note.id" class="group bg-brand-surface rounded-lg px-3 py-2 flex items-start gap-2">
               <div class="flex-1 min-w-0">
                 <p class="text-xs text-gray-800 font-ui leading-relaxed whitespace-pre-wrap">{{ note.body }}</p>
-                <p class="text-[10px] text-gray-500 font-ui mt-1">{{ formatDate(note.created_at) }}</p>
+                <p class="text-[10px] text-gray-500 font-ui mt-1"><span v-if="note.author_name">{{ note.author_name }} · </span>{{ formatDate(note.created_at) }}</p>
               </div>
               <button
+                v-if="canManage"
                 @click="removeNote(note)"
                 :disabled="deletingNoteId === note.id"
                 :aria-label="`Delete note from ${formatDate(note.created_at)}`"
@@ -195,6 +198,7 @@
       <!-- Reply box — keyed by submission so a half-typed draft never carries
            over to a different client when the admin switches messages. -->
       <ReplyBox
+        v-if="canManage"
         :key="submission.id"
         :submissionId="submission.id"
         @replied="$emit('replied', $event)"
@@ -212,6 +216,7 @@ import { adminLocale } from '../../utils/locale.js'
 import { formatPhone, telHref } from '../../utils/phone.js'
 import ReplyBox from './ReplyBox.vue'
 import { LEAD_STATUSES, statusMeta } from '../../data/leadStatuses.js'
+import { can } from '../../composables/useAuth.js'
 
 const formatCountry = (code) => countryLabel(code, adminLocale())
 
@@ -225,6 +230,8 @@ const props = defineProps({
 const emit = defineEmits(['replied', 'back', 'archived', 'unread', 'setStatus', 'noteAdded'])
 
 const { patch, post, del } = useApi()
+// Read-only accounts (crm.view alone) see the lead but cannot change it.
+const canManage = computed(() => can('crm.manage'))
 
 // --- Pipeline status ---
 const statusOpen = ref(false)
@@ -345,6 +352,7 @@ const threadItems = computed(() => {
       type: 'reply',
       id: `reply-${r.id}`,
       body: r.body,
+      by: r.sent_by_name,
       timestamp: r.sent_at,
     })),
   ]

@@ -1,14 +1,15 @@
 <template>
   <div class="h-dvh flex flex-col bg-brand-surface overflow-hidden">
     <!-- Top bar -->
-    <!-- Same responsive shell as the operations demo: on a phone the logo and
-         every button label drop away so the view toggle and the actions fit
-         in 375px without overlapping. -->
+    <!-- Same responsive shell as the operations demo: on a phone the logo
+         drops away, and below 1280px the title and every button label
+         (icons keep their aria-labels) so the view toggle and the actions fit
+         without overlapping. -->
     <header class="h-16 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 gap-3 z-10">
       <div class="flex items-center gap-3 sm:gap-4 min-w-0">
         <img src="/logo.png" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
         <div class="w-px h-8 bg-gray-200 hidden sm:block" aria-hidden="true"></div>
-        <h1 class="font-heading text-lg text-brand-navy tracking-tight hidden sm:block">Client Messages</h1>
+        <h1 class="font-heading text-lg text-brand-navy tracking-tight hidden xl:block whitespace-nowrap">Client Messages</h1>
         <div class="flex bg-brand-surface rounded-lg p-0.5 sm:ml-1">
           <button
             @click="changeView('inbox')"
@@ -26,12 +27,8 @@
         </span>
       </div>
       <div class="ml-auto flex items-center gap-1 sm:gap-4">
-        <router-link :to="{ name: 'BillingOverview' }"
-          class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors"
-          aria-label="Billing">
-          <i class="fa-solid fa-file-invoice-dollar text-xs" aria-hidden="true"></i>
-          <span class="hidden sm:inline">Billing</span>
-        </router-link>
+        <!-- The busiest header: labels only on wide screens. -->
+        <SectionLinks current="messages" label-at="2xl" />
         <button
           v-if="notifyPermission === 'default'"
           @click="enableNotifications"
@@ -40,17 +37,18 @@
           aria-label="Turn on desktop notifications"
         >
           <i class="fa-solid fa-bell text-xs" aria-hidden="true"></i>
-          <span class="hidden sm:inline">Alerts</span>
+          <span class="hidden xl:inline">Alerts</span>
         </button>
         <span
           v-else-if="notifyPermission === 'denied'"
-          class="hidden sm:flex items-center gap-2 px-3 py-2 text-xs text-gray-400 font-ui"
+          class="hidden xl:flex items-center gap-2 px-3 py-2 text-xs text-gray-400 font-ui"
           title="Notifications are blocked for this site. Re-enable them in your browser's site settings."
         >
           <i class="fa-solid fa-bell-slash text-xs" aria-hidden="true"></i>
           Alerts blocked
         </span>
         <button
+          v-if="can('crm.export')"
           @click="exportCsv"
           :disabled="exporting"
           class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -58,9 +56,9 @@
           aria-label="Export messages as CSV"
         >
           <i :class="exporting ? 'fa-solid fa-spinner fa-spin' : (exportFailed ? 'fa-solid fa-triangle-exclamation text-brand-red' : 'fa-solid fa-download')" class="text-xs" aria-hidden="true"></i>
-          <span class="hidden sm:inline">{{ exporting ? 'Exporting…' : (exportFailed ? 'Failed' : 'Export') }}</span>
+          <span class="hidden xl:inline">{{ exporting ? 'Exporting…' : (exportFailed ? 'Failed' : 'Export') }}</span>
         </button>
-        <span class="text-xs text-gray-500 font-ui hidden sm:inline">{{ adminEmail }}</span>
+        <span class="text-xs text-gray-500 font-ui hidden 2xl:inline">{{ adminEmail }}</span>
         <button
           @click="showChangePassword = true"
           class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors"
@@ -68,7 +66,7 @@
           aria-label="Change password"
         >
           <i class="fa-solid fa-key text-xs" aria-hidden="true"></i>
-          <span class="hidden sm:inline">Password</span>
+          <span class="hidden xl:inline">Password</span>
         </button>
         <button
           @click="handleLogout"
@@ -76,7 +74,7 @@
           class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-gray-500 hover:text-brand-red hover:bg-red-50 text-sm font-ui font-medium transition-colors"
         >
           <i class="fa-solid fa-arrow-right-from-bracket text-xs" aria-hidden="true"></i>
-          <span class="hidden sm:inline">Sign Out</span>
+          <span class="hidden xl:inline">Sign Out</span>
         </button>
       </div>
     </header>
@@ -184,9 +182,10 @@ import SubmissionList from '../components/messages/SubmissionList.vue'
 import SubmissionDetail from '../components/messages/SubmissionDetail.vue'
 import ChangePasswordModal from '../components/messages/ChangePasswordModal.vue'
 import ContactsTable from '../components/messages/ContactsTable.vue'
+import SectionLinks from '../components/portal/SectionLinks.vue'
 
 const router = useRouter()
-const { adminEmail, logout } = useAuth()
+const { adminEmail, logout, can } = useAuth()
 const { get, patch } = useApi()
 
 const submissions = ref([])
@@ -378,7 +377,8 @@ async function selectSubmission(id) {
     selectedSubmission.value = await get(`/api/submissions/${id}`)
 
     const sub = submissions.value.find(s => s.id === id)
-    if (sub && !sub.is_read) {
+    // Read-only accounts look without changing what colleagues see as unread.
+    if (sub && !sub.is_read && can('crm.manage')) {
       await patch(`/api/submissions/${id}/read`)
       sub.is_read = true
       // Keep the open detail in step with the list so it doesn't keep showing the

@@ -17,7 +17,7 @@
             <input v-model="search" type="search" placeholder="Client name or ID" aria-label="Search clients"
               class="w-full text-xs font-ui pl-8 pr-3 py-2 rounded-lg bg-brand-surface border border-transparent focus:border-brand-navy/30 focus:bg-white focus:outline-none" />
           </div>
-          <label class="inline-flex items-center gap-2 text-xs font-ui text-gray-700 ml-auto">
+          <label v-if="canSeeOwed" class="inline-flex items-center gap-2 text-xs font-ui text-gray-700 ml-auto">
             <input type="checkbox" v-model="owingOnly" class="rounded border-gray-300" /> Only clients who owe money
           </label>
         </div>
@@ -29,7 +29,7 @@
         <li v-for="c in shown" :key="c.client_id" class="px-4 sm:px-5 py-4 grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,16rem)_minmax(0,1fr)] gap-3 lg:gap-6 text-xs font-ui">
           <div>
             <p class="text-sm font-medium text-gray-900">{{ c.display_name || 'Unnamed client' }}</p>
-            <p class="text-gray-500">{{ c.eimmigration_client_id }} · {{ money(c.owed) }} owed</p>
+            <p class="text-gray-500">{{ c.eimmigration_client_id }}<template v-if="c.owed != null"> · {{ money(c.owed) }} owed</template></p>
             <p class="mt-1 font-semibold" :class="consent(c).tone">{{ consent(c).label }}</p>
             <p v-if="!c.linked" class="text-amber-700">Not linked to monday.com yet</p>
           </div>
@@ -76,6 +76,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useApi, rawFetch, goToLogin } from '../../../composables/useApi.js'
 import { money, shortDate } from '../api.js'
+import { can } from '../../../composables/useAuth.js'
 
 const { get, post } = useApi()
 const put = async (path, body) => {
@@ -92,7 +93,10 @@ const loading = ref(true)
 const busy = ref('')
 const error = ref('')
 const search = ref('')
-const owingOnly = ref(true)
+// Amounts owed come back only with billing.status; without them the
+// "owes money" filter would hide everyone.
+const canSeeOwed = can('billing.status')
+const owingOnly = ref(canSeeOwed)
 
 const firstWord = (n) => String(n || '').trim().split(/\s+/)[0] || ''
 const isOptedIn = (c) => Boolean(c.opted_in_at) && !(c.opted_out_at && c.opted_out_at > c.opted_in_at)

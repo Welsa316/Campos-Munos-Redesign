@@ -9,12 +9,7 @@
           <h1 class="font-heading text-lg text-brand-navy tracking-tight whitespace-nowrap">Billing</h1>
         </div>
         <div class="ml-auto flex items-center gap-1 sm:gap-3">
-          <router-link :to="{ name: 'Inbox' }"
-            class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors"
-            aria-label="Back to client messages">
-            <i class="fa-solid fa-inbox text-xs" aria-hidden="true"></i>
-            <span class="hidden sm:inline">Messages</span>
-          </router-link>
+          <SectionLinks current="billing" />
           <span class="text-xs text-gray-500 font-ui hidden lg:inline">{{ adminEmail }}</span>
           <button @click="handleLogout" aria-label="Sign out"
             class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-gray-500 hover:text-brand-red hover:bg-red-50 text-sm font-ui font-medium transition-colors">
@@ -24,7 +19,7 @@
         </div>
       </div>
       <nav class="px-2 sm:px-4 flex gap-1 overflow-x-auto" aria-label="Billing sections">
-        <router-link v-for="tab in TABS" :key="tab.name" :to="{ name: tab.name }"
+        <router-link v-for="tab in tabs" :key="tab.name" :to="{ name: tab.name }"
           :aria-current="isActive(tab) ? 'page' : undefined"
           :class="isActive(tab) ? 'text-brand-navy border-brand-navy' : 'text-gray-500 border-transparent hover:text-gray-800'"
           class="flex-shrink-0 px-3 py-2.5 text-xs font-ui font-semibold border-b-2 transition-colors whitespace-nowrap">
@@ -41,9 +36,10 @@
 </template>
 
 <script setup>
-import { reactive, watchEffect } from 'vue'
+import { reactive, computed, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../../composables/useAuth.js'
+import SectionLinks from '../../components/portal/SectionLinks.vue'
 
 const TABS = [
   { name: 'BillingOverview', label: 'Overview' },
@@ -58,14 +54,19 @@ const TABS = [
 
 const route = useRoute()
 const router = useRouter()
-const { adminEmail, logout } = useAuth()
+const { adminEmail, logout, canAny } = useAuth()
+// Only the tabs this account may open; each route names its capability.
+const tabs = computed(() => TABS.filter((t) => {
+  const cap = router.getRoutes().find((r) => r.name === t.name)?.meta?.capability
+  return !cap || canAny(...[].concat(cap))
+}))
 const badges = reactive({ unmatched: 0 })
 
 const isActive = (tab) => route.name === tab.name || (tab.match || []).includes(route.name)
 function updateBadges(counts) { Object.assign(badges, counts) }
 
 watchEffect(() => {
-  const tab = TABS.find(isActive)
+  const tab = tabs.value.find(isActive)
   document.title = `${tab ? tab.label + ' · ' : ''}Billing | Campos Muños Law`
 })
 

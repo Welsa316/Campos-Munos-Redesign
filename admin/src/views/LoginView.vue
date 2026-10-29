@@ -69,7 +69,7 @@ import { safeNextPath } from '../utils/safeNext.js'
 
 const router = useRouter()
 const route = useRoute()
-const { login } = useAuth()
+const { login, homeRoute } = useAuth()
 
 const email = ref('')
 const password = ref('')
@@ -82,7 +82,8 @@ async function handleLogin() {
 
   try {
     await login(email.value, password.value)
-    router.push(safeNextPath(route.query.next) || { name: 'Inbox' })
+    // The guard redirects again if `next` is a screen this account cannot use.
+    router.push(safeNextPath(route.query.next) || homeRoute())
   } catch (err) {
     errorMsg.value = err.message || 'Invalid email or password'
   } finally {

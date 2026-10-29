@@ -16,21 +16,26 @@ export const routes = [
 
   // Messages module: lead inbox + contacts pipeline.
   { path: '/', name: 'Inbox', component: () => import('../views/InboxView.vue'),
-    meta: { requiresAuth: true, module: 'messages' } },
+    meta: { requiresAuth: true, module: 'messages', capability: 'crm.view' } },
+
+  // WhatsApp module: the shared conversation inbox.
+  { path: '/whatsapp/:id(\\d+)?', name: 'WhatsApp', component: () => import('../modules/whatsapp/WhatsAppView.vue'),
+    meta: { requiresAuth: true, module: 'whatsapp', capability: 'whatsapp.view', title: 'WhatsApp' } },
 
   // Billing module: eImmigration imports, invoices, matching, monday.com sync.
   { path: '/billing', component: () => import('../modules/billing/BillingLayout.vue'),
     meta: { requiresAuth: true, module: 'billing' },
+    // Each tab names the capability it needs (server/auth/capabilities.js).
     children: [
-      { path: '', name: 'BillingOverview', component: () => import('../modules/billing/views/OverviewView.vue') },
-      { path: 'invoices', name: 'BillingInvoices', component: () => import('../modules/billing/views/InvoicesView.vue') },
-      { path: 'imports', name: 'BillingImports', component: () => import('../modules/billing/views/ImportsView.vue') },
-      { path: 'imports/:id(\\d+)', name: 'BillingImportDetail', component: () => import('../modules/billing/views/ImportDetailView.vue') },
-      { path: 'matching', name: 'BillingMatching', component: () => import('../modules/billing/views/MatchingView.vue') },
-      { path: 'reminders', name: 'BillingReminders', component: () => import('../modules/billing/views/RemindersView.vue') },
-      { path: 'contacts', name: 'BillingContacts', component: () => import('../modules/billing/views/ContactsView.vue') },
-      { path: 'monday', name: 'BillingMonday', component: () => import('../modules/billing/views/MondayView.vue') },
-      { path: 'integrations', name: 'BillingSettings', component: () => import('../modules/billing/views/IntegrationsView.vue') },
+      { path: '', name: 'BillingOverview', meta: { capability: 'billing.view' }, component: () => import('../modules/billing/views/OverviewView.vue') },
+      { path: 'invoices', name: 'BillingInvoices', meta: { capability: 'billing.status' }, component: () => import('../modules/billing/views/InvoicesView.vue') },
+      { path: 'imports', name: 'BillingImports', meta: { capability: 'billing.view' }, component: () => import('../modules/billing/views/ImportsView.vue') },
+      { path: 'imports/:id(\\d+)', name: 'BillingImportDetail', meta: { capability: 'billing.view' }, component: () => import('../modules/billing/views/ImportDetailView.vue') },
+      { path: 'matching', name: 'BillingMatching', meta: { capability: 'billing.reconcile' }, component: () => import('../modules/billing/views/MatchingView.vue') },
+      { path: 'reminders', name: 'BillingReminders', meta: { capability: 'billing.view' }, component: () => import('../modules/billing/views/RemindersView.vue') },
+      { path: 'contacts', name: 'BillingContacts', meta: { capability: 'whatsapp.contacts' }, component: () => import('../modules/billing/views/ContactsView.vue') },
+      { path: 'monday', name: 'BillingMonday', meta: { capability: 'billing.view' }, component: () => import('../modules/billing/views/MondayView.vue') },
+      { path: 'integrations', name: 'BillingSettings', meta: { capability: 'billing.view' }, component: () => import('../modules/billing/views/IntegrationsView.vue') },
     ] },
 
   // Sales demo of the operations layer. Fabricated data only, no API calls.
@@ -43,6 +48,10 @@ export const routes = [
   // same intent is /login.
   { path: '/admin', redirect: '/' },
   { path: '/admin/:rest(.*)', redirect: (to) => `/${to.params.rest}` },
+
+  // Signed in, but the account has no section it may open.
+  { path: '/no-access', name: 'NoAccess', component: () => import('../views/NoAccessView.vue'),
+    meta: { requiresAuth: true, title: 'No access' } },
 
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('../views/NotFoundView.vue'),
     meta: { title: 'Not found' } },
