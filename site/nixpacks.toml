@@ -1,13 +1,20 @@
+# Legacy: a Nixpacks service with Root Directory = site/ that builds the
+# transitional single service (API + site + portal under /admin). The
+# standalone website service uses site/railway.json instead.
 providers = ["node"]
 
 [phases.install]
 cmds = [
   "cd .. && cd site && npm ci",
+  "cd .. && cd admin && npm ci",
   "cd .. && cd server && npm ci",
 ]
 
 [phases.build]
-cmds = ["cd .. && cd site && npm run build"]
+cmds = [
+  "cd .. && cd site && VITE_API_BASE_URL= npm run build",
+  "cd .. && cd admin && VITE_API_BASE_URL= ADMIN_BASE=/admin/ npm run build",
+]
 
 [start]
 cmd = "cd .. && cd server && npm start"

@@ -1,10 +1,11 @@
 {
   "name": "campos-munos-redesign",
   "private": true,
-  "description": "Monorepo root. Frontend lives in site/, backend in server/. The root scripts exist so Railway's Railpack builder detects this as a Node project. The postinstall hook fires automatically from Railpack's default `npm install` and installs both subdirs.",
+  "description": "Monorepo: site/ (public website, camulaw.com), admin/ (staff portal, admin.camulaw.com), server/ (API, api.camulaw.com). Each deploys on its own from its directory (see docs/architecture-split.md). These ROOT scripts build the transitional single service that the current Railway deployment runs: one process serving the API, the site and the portal under /admin. Railpack's default `npm install` fires postinstall, which installs all three apps.",
   "scripts": {
-    "postinstall": "cd site && npm ci && cd ../server && npm ci --omit=dev",
-    "build": "cd site && npm run build",
-    "start": "cd server && npm start"
+    "postinstall": "cd site && npm ci && cd ../admin && npm ci && cd ../server && npm ci --omit=dev",
+    "build": "cd site && VITE_API_BASE_URL= npm run build && cd ../admin && VITE_API_BASE_URL= ADMIN_BASE=/admin/ npm run build",
+    "start": "cd server && npm start",
+    "test": "npm run build && cd server && npm test && cd ../site && npm test && cd ../admin && npm test"
   }
 }

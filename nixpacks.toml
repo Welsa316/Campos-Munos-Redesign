@@ -1,7 +1,10 @@
+# Transitional single-service build (API + site + portal under /admin), for a
+# Nixpacks-built service rooted at the repository. The live service uses
+# Railpack with the root package.json scripts, which do the same thing.
 providers = ["node"]
 
 [phases.install]
-cmds = ["npm run install:all"]
+cmds = ["npm install"]
 
 [phases.build]
 cmds = ["npm run build"]
