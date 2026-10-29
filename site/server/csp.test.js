@@ -23,6 +23,10 @@ test('Google Ads conversion + remarketing endpoints are allowed', () => {
   assert.ok(allows('frame-src', 'https://td.doubleclick.net'), 'frame-src td.doubleclick.net (Google Ads conversion iframe)')
 })
 
+test('GA4 Google-signals hits are allowed', () => {
+  assert.ok(allows('connect-src', 'https://stats.g.doubleclick.net'))
+})
+
 test('the OpenAI pixel can fetch its configuration', () => {
   assert.ok(allows('connect-src', 'https://bzrcdn.openai.com'))
   assert.ok(allows('connect-src', 'https://bzr.openai.com'))
