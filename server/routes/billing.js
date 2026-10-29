@@ -1,16 +1,18 @@
 // /api/billing — staff portal billing section (docs/billing-automation-plan.md).
 //
-// Every route needs a signed-in staff session. Anything that changes
-// financial records or an external system (approving an import, linking a
-// client, saving the monday mapping, syncing) additionally needs the 'admin'
-// role. The cross-origin write check in httpSecurity.js applies to all of it.
+// Every route needs a signed-in staff session and names the capability it
+// requires (server/auth/capabilities.js): reading the invoice list needs
+// billing.status, the rest of billing's records billing.view, and each kind
+// of change its own capability (billing.import, .reconcile, .sync,
+// .reminders, .configure). The cross-origin write check in httpSecurity.js
+// applies to all of it.
 //
 // Logs carry ids and counts only.
 import { Router, raw } from 'express'
 import { param } from 'express-validator'
 import getPool from '../db/pool.js'
 import requireAuth from '../middleware/auth.js'
-import requireRole from '../middleware/requireRole.js'
+import requireCapability, { can } from '../middleware/requireCapability.js'
 import validate from '../middleware/validate.js'
 import { escapeCsvField } from '../utils/sanitize.js'
 import {
@@ -75,7 +77,9 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
   }
 
   router.use(requireAuth)
-  const admin = requireRole('admin')
+  // Every route names its capability (server/auth/capabilities.js); an
+  // account without it gets 403, whatever its role is called.
+  const need = requireCapability
   const actor = (req) => req.admin?.id ?? null
 
   const wrap = (fn) => async (req, res) => {
@@ -96,7 +100,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
 
   // --- overview --------------------------------------------------------------
 
-  router.get('/overview', wrap(async (_req, res) => {
+  router.get('/overview', need('billing.view'), wrap(async (_req, res) => {
     const db = pool()
     const [totals, upcoming, attention, lastImport, lastSync, unmatched, mondayCfg] = await Promise.all([
       db.query(`SELECT status, COUNT(*)::int AS n, COALESCE(SUM(CASE WHEN balance_cents > 0 THEN balance_cents END), 0)::bigint AS owed
@@ -133,7 +137,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
 
   // --- invoices ----------------------------------------------------------------
 
-  router.get('/invoices', wrap(async (req, res) => {
+  router.get('/invoices', need('billing.status'), wrap(async (req, res) => {
     const where = []
     const params = []
     const status = String(req.query.status || '')
@@ -163,7 +167,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     res.json(rows.map(invoiceJson))
   }))
 
-  router.get('/invoices/:id', idParam('id'), validate, wrap(async (req, res) => {
+  router.get('/invoices/:id', need('billing.view'), idParam('id'), validate, wrap(async (req, res) => {
     const db = pool()
     const inv = (await db.query(
       `SELECT i.*, c.eimmigration_client_id FROM billing_invoices i LEFT JOIN billing_clients c ON c.id = i.client_id WHERE i.id = $1`,
@@ -190,7 +194,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
 
   // --- imports -------------------------------------------------------------------
 
-  router.get('/imports', wrap(async (_req, res) => {
+  router.get('/imports', need('billing.view'), wrap(async (_req, res) => {
     const { rows } = await pool().query(
       `SELECT j.id, j.filename, j.status, j.report_type, j.report_date, j.file_size, j.stats, j.created_at, j.applied_at,
               j.raw_purged_at, u.email AS uploaded_by
@@ -200,9 +204,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     res.json(rows)
   }))
 
-  router.post(
-    '/imports',
-    admin,
+  router.post('/imports', need('billing.import'), 
     raw({ type: () => true, limit: MAX_UPLOAD_BYTES }),
     wrap(async (req, res) => {
       let filename = 'report'
@@ -213,7 +215,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     })
   )
 
-  router.get('/imports/:id', idParam('id'), validate, wrap(async (req, res) => {
+  router.get('/imports/:id', need('billing.view'), idParam('id'), validate, wrap(async (req, res) => {
     const db = pool()
     const job = (await db.query(
       `SELECT id, filename, status, report_type, report_date, headers, mapping, stats, errors, created_at, previewed_at, applied_at,
@@ -245,7 +247,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     res.json({ ...job, rows })
   }))
 
-  router.post('/imports/:id/preview', admin, idParam('id'), validate, wrap(async (req, res) => {
+  router.post('/imports/:id/preview', need('billing.import'), idParam('id'), validate, wrap(async (req, res) => {
     const db = pool()
     const matchContext = await loadMatchContext(db, safeMonday(), req.log)
     const result = await previewImport(db, Number(req.params.id), {
@@ -259,7 +261,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     res.json({ ...result, mondayMatching: { available: matchContext.available, reason: matchContext.reason || null } })
   }))
 
-  router.post('/imports/:id/approve', admin, idParam('id'), validate, wrap(async (req, res) => {
+  router.post('/imports/:id/approve', need('billing.import'), idParam('id'), validate, wrap(async (req, res) => {
     const db = pool()
     const matchContext = await loadMatchContext(db, safeMonday(), req.log)
     const result = await approveImport(db, Number(req.params.id), { actorId: actor(req), matchContext })
@@ -270,11 +272,11 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     res.json(result)
   }))
 
-  router.post('/imports/:id/cancel', admin, idParam('id'), validate, wrap(async (req, res) => {
+  router.post('/imports/:id/cancel', need('billing.import'), idParam('id'), validate, wrap(async (req, res) => {
     res.json(await cancelImport(pool(), Number(req.params.id), { actorId: actor(req) }))
   }))
 
-  router.get('/imports/:id/exceptions.csv', idParam('id'), validate, wrap(async (req, res) => {
+  router.get('/imports/:id/exceptions.csv', need('billing.view'), idParam('id'), validate, wrap(async (req, res) => {
     const rows = (await pool().query(
       `SELECT row_number, kind, record, issues, action, match_status FROM billing_import_rows
         WHERE job_id = $1 AND (action IN ('skip', 'stale') OR jsonb_array_length(issues) > 0 OR match_status IN ('ambiguous', 'unmatched', 'no_client_id'))
@@ -296,9 +298,9 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
 
   // --- matching ------------------------------------------------------------------
 
-  // Admin only: it reads the whole monday board (every item name, not just
-  // billing clients) and spends API budget on each load.
-  router.get('/matching', admin, wrap(async (req, res) => {
+  // billing.reconcile only: it reads the whole monday board (every item
+  // name, not just billing clients) and spends API budget on each load.
+  router.get('/matching', need('billing.reconcile'), wrap(async (req, res) => {
     const db = pool()
     const matchContext = await loadMatchContext(db, safeMonday(), req.log)
     const { links, linkedItemIds } = await loadLinks(db)
@@ -330,7 +332,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     })
   }))
 
-  router.post('/matching/:clientId', admin, idParam('clientId'), validate, wrap(async (req, res) => {
+  router.post('/matching/:clientId', need('billing.reconcile'), idParam('clientId'), validate, wrap(async (req, res) => {
     const db = pool()
     const itemId = String(req.body?.mondayItemId || '').trim()
     if (!itemId) return res.status(400).json({ error: 'Choose a monday.com item' })
@@ -365,7 +367,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     res.status(201).json({ ok: true })
   }))
 
-  router.delete('/matching/:clientId/:itemId', admin, idParam('clientId'), validate, wrap(async (req, res) => {
+  router.delete('/matching/:clientId/:itemId', need('billing.reconcile'), idParam('clientId'), validate, wrap(async (req, res) => {
     const db = pool()
     const { rowCount } = await db.query(
       "DELETE FROM billing_client_links WHERE client_id = $1 AND system = 'monday' AND external_id = $2",
@@ -383,7 +385,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
 
   // --- monday.com ------------------------------------------------------------------
 
-  router.get('/monday', wrap(async (_req, res) => {
+  router.get('/monday', need('billing.view'), wrap(async (_req, res) => {
     const db = pool()
     const cfg = await getMondayConfig(db)
     const check = (await db.query("SELECT * FROM billing_integration_checks WHERE provider = 'monday'")).rows[0] || null
@@ -402,7 +404,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     })
   }))
 
-  router.post('/monday/check', admin, wrap(async (req, res) => {
+  router.post('/monday/check', need('billing.configure'), wrap(async (req, res) => {
     const provider = getMonday()
     let result
     try {
@@ -418,11 +420,11 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     res.json({ mode: provider.mode, ...result })
   }))
 
-  router.get('/monday/boards', admin, wrap(async (_req, res) => {
+  router.get('/monday/boards', need('billing.configure'), wrap(async (_req, res) => {
     res.json(await getMonday().listBoards())
   }))
 
-  router.get('/monday/boards/:boardId/columns', admin, wrap(async (req, res) => {
+  router.get('/monday/boards/:boardId/columns', need('billing.configure'), wrap(async (req, res) => {
     const provider = getMonday()
     const [columns, items] = await Promise.all([
       provider.getBoardColumns(String(req.params.boardId)),
@@ -431,22 +433,22 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     res.json({ columns, sampleItems: items.map((it) => ({ id: it.id, name: it.name })) })
   }))
 
-  router.put('/monday/config', admin, wrap(async (req, res) => {
+  router.put('/monday/config', need('billing.configure'), wrap(async (req, res) => {
     const saved = await saveMondayConfig(pool(), getMonday(), req.body || {}, { actorId: actor(req) })
     res.json(saved)
   }))
 
-  router.post('/monday/sync/preview', admin, wrap(async (req, res) => {
+  router.post('/monday/sync/preview', need('billing.sync'), wrap(async (req, res) => {
     res.json(await previewSync(pool(), getMonday(), { actorId: actor(req), env, now: now() }))
   }))
 
-  router.post('/monday/sync/:jobId/apply', admin, idParam('jobId'), validate, wrap(async (req, res) => {
+  router.post('/monday/sync/:jobId/apply', need('billing.sync'), idParam('jobId'), validate, wrap(async (req, res) => {
     const result = await applySync(pool(), getMonday(), Number(req.params.jobId), { actorId: actor(req), env, now: now() })
     req.log?.info({ jobId: result.jobId, written: result.written, failed: result.failed, dryRun: result.dryRun }, 'monday.com sync applied')
     res.json(result)
   }))
 
-  router.get('/monday/sync/:jobId', idParam('jobId'), validate, wrap(async (req, res) => {
+  router.get('/monday/sync/:jobId', need('billing.view'), idParam('jobId'), validate, wrap(async (req, res) => {
     const db = pool()
     const job = (await db.query('SELECT * FROM billing_sync_jobs WHERE id = $1', [req.params.jobId])).rows[0]
     if (!job) return res.status(404).json({ error: 'Sync not found' })
@@ -456,7 +458,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
 
   // --- reminders (WhatsApp) -------------------------------------------------------
 
-  router.get('/reminders', wrap(async (req, res) => {
+  router.get('/reminders', need('billing.view'), wrap(async (req, res) => {
     const db = pool()
     await ensureDefaults(db)
     const state = String(req.query.state || '')
@@ -489,62 +491,62 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     })
   }))
 
-  router.post('/reminders/evaluate', admin, wrap(async (req, res) => {
+  router.post('/reminders/evaluate', need('billing.reminders'), wrap(async (req, res) => {
     const r = await evaluateReminders(pool(), { now: now(), actorId: actor(req) })
     const reasons = {}
     for (const s of r.suppressed) reasons[s.reason] = (reasons[s.reason] || 0) + 1
     res.json({ created: r.created, suppressed: Object.entries(reasons).map(([reason, count]) => ({ reason, label: SUPPRESSION_REASONS[reason] || reason, count })) })
   }))
 
-  router.post('/reminders/approve', admin, wrap(async (req, res) => {
+  router.post('/reminders/approve', need('billing.reminders'), wrap(async (req, res) => {
     if (!Array.isArray(req.body?.ids)) return res.status(400).json({ error: 'Send the reminder ids as a list' })
     const ids = req.body.ids.map(Number).filter((n) => Number.isInteger(n) && n > 0)
     res.json(await approveReminders(pool(), ids, { actorId: actor(req), now: now() }))
   }))
 
-  router.post('/reminders/:id/cancel', admin, idParam('id'), validate, wrap(async (req, res) => {
+  router.post('/reminders/:id/cancel', need('billing.reminders'), idParam('id'), validate, wrap(async (req, res) => {
     await cancelReminder(pool(), Number(req.params.id), { actorId: actor(req) })
     res.json({ ok: true })
   }))
 
-  router.post('/reminders/:id/retry', admin, idParam('id'), validate, wrap(async (req, res) => {
+  router.post('/reminders/:id/retry', need('billing.reminders'), idParam('id'), validate, wrap(async (req, res) => {
     await retryReminder(pool(), Number(req.params.id), { actorId: actor(req) })
     res.json({ ok: true })
   }))
 
-  router.post('/reminders/:id/resolve', admin, idParam('id'), validate, wrap(async (req, res) => {
+  router.post('/reminders/:id/resolve', need('billing.reminders'), idParam('id'), validate, wrap(async (req, res) => {
     await resolveUnknown(pool(), Number(req.params.id), { delivered: req.body?.delivered === true, actorId: actor(req) })
     res.json({ ok: true })
   }))
 
   // Sends approved reminders now (still inside the hours, still gated).
-  router.post('/reminders/dispatch', admin, wrap(async (req, res) => {
+  router.post('/reminders/dispatch', need('billing.reminders'), wrap(async (req, res) => {
     res.json(await dispatch(pool(), getWhatsApp(), { now: now(), env, log: req.log }))
   }))
 
-  router.get('/reminders/config', admin, wrap(async (_req, res) => {
+  router.get('/reminders/config', need('billing.view'), wrap(async (_req, res) => {
     const db = pool()
     await ensureDefaults(db)
     res.json({ rules: await loadRules(db), templates: await loadTemplates(db), settings: await getReminderSettings(db) })
   }))
 
-  router.put('/reminders/rules/:key', admin, wrap(async (req, res) => {
+  router.put('/reminders/rules/:key', need('billing.configure'), wrap(async (req, res) => {
     await saveRule(pool(), String(req.params.key), req.body || {}, { actorId: actor(req) })
     res.json({ ok: true })
   }))
 
-  router.put('/reminders/templates/:key', admin, wrap(async (req, res) => {
+  router.put('/reminders/templates/:key', need('billing.configure'), wrap(async (req, res) => {
     await saveTemplate(pool(), String(req.params.key), req.body || {}, { actorId: actor(req) })
     res.json({ ok: true })
   }))
 
-  router.put('/reminders/settings', admin, wrap(async (req, res) => {
+  router.put('/reminders/settings', need('billing.configure'), wrap(async (req, res) => {
     res.json(await saveReminderSettings(pool(), req.body || {}, { actorId: actor(req) }))
   }))
 
   // --- contacts & consent ----------------------------------------------------------
 
-  router.get('/contacts', admin, wrap(async (_req, res) => {
+  router.get('/contacts', need('whatsapp.contacts'), wrap(async (req, res) => {
     const rows = (await pool().query(
       `SELECT c.id AS client_id, c.display_name, c.eimmigration_client_id,
               k.phone_e164, k.first_name, k.language, k.timezone, k.opted_in_at, k.opt_in_source, k.opted_out_at, k.opt_out_source,
@@ -554,24 +556,27 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
          FROM billing_clients c LEFT JOIN billing_client_contacts k ON k.client_id = c.id
         ORDER BY c.display_name NULLS LAST, c.id`
     )).rows
-    res.json(rows.map((r) => ({ ...r, owed: Number(r.owed) })))
+    // The amount owed is billing information: shown only to accounts that may
+    // read payment status.
+    const showOwed = can(req, 'billing.status')
+    res.json(rows.map((r) => ({ ...r, owed: showOwed ? Number(r.owed) : null })))
   }))
 
-  router.put('/contacts/:clientId', admin, idParam('clientId'), validate, wrap(async (req, res) => {
+  router.put('/contacts/:clientId', need('whatsapp.contacts'), idParam('clientId'), validate, wrap(async (req, res) => {
     res.json({ ok: true, ...(await upsertContact(pool(), Number(req.params.clientId), req.body || {}, { actorId: actor(req) })) })
   }))
 
-  router.post('/contacts/:clientId/opt-in', admin, idParam('clientId'), validate, wrap(async (req, res) => {
+  router.post('/contacts/:clientId/opt-in', need('whatsapp.contacts'), idParam('clientId'), validate, wrap(async (req, res) => {
     await recordOptIn(pool(), Number(req.params.clientId), { source: req.body?.source }, { actorId: actor(req) })
     res.json({ ok: true })
   }))
 
-  router.post('/contacts/:clientId/opt-out', admin, idParam('clientId'), validate, wrap(async (req, res) => {
+  router.post('/contacts/:clientId/opt-out', need('whatsapp.contacts'), idParam('clientId'), validate, wrap(async (req, res) => {
     await recordOptOut(pool(), Number(req.params.clientId), { source: 'staff' }, { actorId: actor(req) })
     res.json({ ok: true })
   }))
 
-  router.get('/responses', admin, wrap(async (req, res) => {
+  router.get('/responses', need('billing.reminders'), wrap(async (req, res) => {
     const db = pool()
     const handled = req.query.handled === 'true'
     const rows = (await db.query(
@@ -588,7 +593,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     })))
   }))
 
-  router.post('/responses/:id/handled', admin, idParam('id'), validate, wrap(async (req, res) => {
+  router.post('/responses/:id/handled', need('billing.reminders'), idParam('id'), validate, wrap(async (req, res) => {
     const { rowCount } = await pool().query('UPDATE billing_inbound_reviews SET handled_at = NOW(), handled_by = $2 WHERE id = $1 AND handled_at IS NULL', [req.params.id, actor(req)])
     if (!rowCount) return res.status(404).json({ error: 'Already handled or not found' })
     res.json({ ok: true })
@@ -596,7 +601,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
 
   // --- integrations ------------------------------------------------------------------
 
-  router.get('/integrations', wrap(async (_req, res) => {
+  router.get('/integrations', need('billing.view'), wrap(async (_req, res) => {
     const db = pool()
     const check = (await db.query("SELECT * FROM billing_integration_checks WHERE provider = 'monday'")).rows[0]
     const lastImport = (await db.query("SELECT applied_at FROM billing_import_jobs WHERE status = 'applied' ORDER BY applied_at DESC LIMIT 1")).rows[0]

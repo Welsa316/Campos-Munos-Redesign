@@ -148,6 +148,7 @@
         <div class="relative">
           <button
             @click.stop="openStatusFor = openStatusFor === sub.id ? null : sub.id"
+            :disabled="!canManage"
             :aria-expanded="openStatusFor === sub.id"
             :aria-label="`Change status for ${sub.first_name} ${sub.last_name}, currently ${statusMeta(sub.status).label}`"
             :class="statusMeta(sub.status).pill"
@@ -155,7 +156,7 @@
           >
             <span :class="statusMeta(sub.status).dot" class="w-1.5 h-1.5 rounded-full" aria-hidden="true"></span>
             {{ statusMeta(sub.status).label }}
-            <i class="fa-solid fa-chevron-down text-[8px] opacity-60" aria-hidden="true"></i>
+            <i v-if="canManage" class="fa-solid fa-chevron-down text-[8px] opacity-60" aria-hidden="true"></i>
           </button>
 
           <div v-if="openStatusFor === sub.id"
@@ -198,6 +199,10 @@ import { CONSULTATION_KEYS, consultationLabel } from '../../data/consultationTyp
 import { countryLabel } from '../../data/countries.js'
 import { adminLocale } from '../../utils/locale.js'
 import { LEAD_STATUSES, statusMeta } from '../../data/leadStatuses.js'
+import { can } from '../../composables/useAuth.js'
+
+// Status is shown to everyone who can read leads, changed only with crm.manage.
+const canManage = computed(() => can('crm.manage'))
 
 const props = defineProps({
   submissions: { type: Array, default: () => [] },

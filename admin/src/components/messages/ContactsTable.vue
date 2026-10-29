@@ -100,13 +100,14 @@
               <div class="relative inline-block">
                 <button
                   @click.stop="openStatusFor = openStatusFor === c.id ? null : c.id"
+                :disabled="!canManage"
                   :aria-label="`Change status for ${c.first_name} ${c.last_name}, currently ${statusMeta(c.status).label}`"
                   :class="statusMeta(c.status).pill"
                   class="inline-flex items-center gap-1.5 text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap transition-transform active:scale-95"
                 >
                   <span :class="statusMeta(c.status).dot" class="w-1.5 h-1.5 rounded-full" aria-hidden="true"></span>
                   {{ statusMeta(c.status).label }}
-                  <i class="fa-solid fa-chevron-down text-[8px] opacity-60" aria-hidden="true"></i>
+                  <i v-if="canManage" class="fa-solid fa-chevron-down text-[8px] opacity-60" aria-hidden="true"></i>
                 </button>
                 <div v-if="openStatusFor === c.id"
                   class="absolute left-0 top-full mt-1 z-30 w-52 bg-white rounded-xl shadow-lg ring-1 ring-gray-200 py-1 text-left">
@@ -144,6 +145,10 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { consultationLabel } from '../../data/consultationTypes.js'
 import { LEAD_STATUSES, statusMeta } from '../../data/leadStatuses.js'
+import { can } from '../../composables/useAuth.js'
+
+// Status is shown to everyone who can read leads, changed only with crm.manage.
+const canManage = computed(() => can('crm.manage'))
 import { formatPhone, telHref } from '../../utils/phone.js'
 
 const props = defineProps({

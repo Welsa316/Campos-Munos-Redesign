@@ -8,6 +8,7 @@ dotenv.config({ path: join(__dirname, '..', '.env') })
 import getPool from './pool.js'
 import logger from '../logger.js'
 import { applyBillingSchema } from './billingSchema.js'
+import { applyStaffSchema } from './staffSchema.js'
 
 async function migrate() {
   const pool = getPool()
@@ -158,6 +159,9 @@ async function migrate() {
     `)
     // Billing tables (additive; see db/billingSchema.js).
     await applyBillingSchema(client)
+    // Roles, capabilities and the WhatsApp inbox (needs admin_users.role,
+    // which the billing schema adds).
+    await applyStaffSchema(client)
     logger.info('Migration complete — tables created.')
   } finally {
     client.release()

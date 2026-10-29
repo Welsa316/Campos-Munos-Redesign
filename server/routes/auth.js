@@ -7,6 +7,7 @@ import getPool from '../db/pool.js'
 import validate from '../middleware/validate.js'
 import requireAuth from '../middleware/auth.js'
 import { clientKey, sessionCookieOptions } from '../httpSecurity.js'
+import { loadAccount, tokenMatches, profileJson } from '../auth/account.js'
 
 const router = Router()
 
@@ -62,6 +63,11 @@ router.post(
       if (!admin || !valid) {
         return res.status(401).json({ error: 'Invalid email or password' })
       }
+      // Only someone who knows the password learns the account is disabled.
+      const account = await loadAccount(getPool(), admin.id)
+      if (!account || account.disabled) {
+        return res.status(403).json({ error: 'This account is disabled. Ask the office administrator.' })
+      }
 
       const token = jwt.sign(
         { id: admin.id, email: admin.email, tv: admin.token_version },
@@ -70,7 +76,7 @@ router.post(
       )
 
       res.cookie('token', token, cookieOptions())
-      res.json({ authenticated: true, email: admin.email })
+      res.json(profileJson(account))
     } catch (err) {
       req.log.error({ err: err }, 'Login error')
       res.status(500).json({ error: 'Internal server error' })
@@ -145,23 +151,17 @@ router.get('/verify', async (req, res) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    // Mirror requireAuth: confirm the admin still exists and the token version
-    // matches, so a password change (which bumps token_version) invalidates
-    // older sessions here too instead of passing on signature alone.
-    const result = await getPool().query(
-      'SELECT id, email, token_version FROM admin_users WHERE id = $1',
-      [decoded.id]
-    )
-    if (result.rows.length === 0) {
+    // Mirror requireAuth: the account must still exist, be enabled, and the
+    // token version must match, so a password change (which bumps
+    // token_version) invalidates older sessions here too instead of passing
+    // on signature alone.
+    const account = await loadAccount(getPool(), decoded.id)
+    if (!account || account.disabled || !tokenMatches(decoded, account)) {
       return res.status(401).json({ authenticated: false })
     }
-    // Tokens issued before token_version existed carry no `tv` claim — treat
-    // them as version 1, the schema default.
-    const tokenVersion = typeof decoded.tv === 'number' ? decoded.tv : 1
-    if (tokenVersion !== result.rows[0].token_version) {
-      return res.status(401).json({ authenticated: false })
-    }
-    res.json({ authenticated: true, email: result.rows[0].email })
+    // The portal draws its navigation from these capabilities; the API
+    // enforces them on every route regardless.
+    res.json(profileJson(account))
   } catch {
     return res.status(401).json({ authenticated: false })
   }

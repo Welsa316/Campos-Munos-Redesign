@@ -184,3 +184,22 @@ Deferred by choice — these are pure simplify/DRY cleanups with no active defec
   (`server/routes/submissions.js`, `site/src/data/consultationTypes.js`, the DB
   CHECK in `server/db/migrate.js`), held together only by a comment. Genuine
   cross-package refactor (site/ ↔ server/ import boundary) — scope on its own.
+
+## Staff roles and WhatsApp inbox (2026-10-29)
+
+Open items from adding capabilities, the front desk / billing paralegal
+roles and the shared WhatsApp inbox (docs/staff-accounts.md):
+
+- **First sign-in password change is not enforced.** `staff.js` prints a
+  temporary password and the docs ask the person to change it; the portal
+  does not force it. Small: a `must_change_password` flag checked at login.
+- **Simulated delivery receipts for inbox replies.** The mock sends inbox
+  replies without later "delivered"/"read" receipts (reminders get them), so
+  in simulation a reply stays at "sent". Real receipts from Meta are read
+  from `whatsapp_events` and do show.
+- **Conversation list preview ignores number variants for reminders.** The
+  thread shows reminders sent to either form of a Mexican/Argentine number;
+  the list's last-message preview only counts reminders sent to the exact
+  number the client writes from. Cosmetic.
+- **No staff-management screen** by design for now; accounts change through
+  `server/scripts/staff.js` only.

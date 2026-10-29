@@ -59,7 +59,7 @@
             <p class="mt-1 text-[10px] font-ui text-gray-500 leading-snug">Required. Overdue is judged as of this date, and an older report never overwrites a newer one. Leave it empty only if the file has a report-date column.</p>
           </div>
         </div>
-        <div class="px-5 pb-5 flex flex-wrap items-center gap-3">
+        <div v-if="canImport" class="px-5 pb-5 flex flex-wrap items-center gap-3">
           <button @click="runPreview" :disabled="busy || Boolean(job.raw_purged_at)"
             class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-navy text-white text-sm font-ui font-semibold hover:bg-brand-navy-dark disabled:opacity-50 transition-colors">
             <FaIcon v-if="busy === 'preview'" name="spinner" spin class="text-xs" />
@@ -150,7 +150,7 @@
         <p v-if="job.rows.length >= 500" class="px-5 py-3 text-[11px] font-ui text-gray-500">Showing the first 500 rows. The exceptions CSV lists every problem.</p>
 
         <!-- Step 3: approve -->
-        <div v-if="job.status === 'previewed'" class="px-5 py-4 border-t border-gray-100 flex flex-wrap items-center gap-3 bg-brand-light rounded-b-xl">
+        <div v-if="canImport && job.status === 'previewed'" class="px-5 py-4 border-t border-gray-100 flex flex-wrap items-center gap-3 bg-brand-light rounded-b-xl">
           <p class="text-xs font-ui text-gray-700 flex-1 min-w-[16rem]">
             Approving writes {{ job.stats.counts.invoice_insert }} new and {{ job.stats.counts.invoice_update }} changed invoices and
             {{ job.stats.counts.payment_insert + job.stats.counts.payment_update }} payments. Skipped rows are not imported. monday.com is not touched.
@@ -174,6 +174,10 @@ import FaIcon from '../../../components/FaIcon.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBillingApi, money, shortDate, REPORT_TYPE_LABELS, FIELD_LABELS } from '../api.js'
+import { can } from '../../../composables/useAuth.js'
+
+// Previewing, approving and cancelling an import need billing.import.
+const canImport = can('billing.import')
 import { API_BASE } from '../../../composables/useApi.js'
 import StatusPill from '../components/StatusPill.vue'
 

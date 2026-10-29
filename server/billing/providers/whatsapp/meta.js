@@ -174,8 +174,8 @@ export function createMetaWhatsAppProvider({
     return s.length > MAX_MESSAGE_LENGTH ? `${s.slice(0, MAX_MESSAGE_LENGTH)}…` : s
   }
 
-  const fail = (outcome, error, logFields) => {
-    log?.warn?.({ outcome, code: error.code, category: error.category, retryable: error.retryable, ...logFields }, 'WhatsApp template not confirmed')
+  const fail = (outcome, error, logFields, what = 'template') => {
+    log?.warn?.({ outcome, code: error.code, category: error.category, retryable: error.retryable, ...logFields }, `WhatsApp ${what} not confirmed`)
     return { ok: false, outcome, error, simulated: false }
   }
 
@@ -195,7 +195,31 @@ export function createMetaWhatsAppProvider({
       template.components = [{ type: 'body', parameters: bodyParams.map((text) => ({ type: 'text', text })) }]
     }
     const body = JSON.stringify({ messaging_product: 'whatsapp', recipient_type: 'individual', to, type: 'template', template })
+    return deliver(body, ids, 'template')
+  }
 
+  /**
+   * Free text. Meta delivers it only inside the 24-hour customer-service
+   * window that opens when the client writes; outside it the answer is error
+   * 131047 and a template is the only way. The caller checks the window
+   * first (server/whatsapp/inbox.js); this is the transport.
+   */
+  async function sendText({ to, body: text, idempotencyKey } = {}) {
+    const ids = { idempotencyKey: typeof idempotencyKey === 'string' ? idempotencyKey : null }
+    if (!configured) {
+      return fail('failed', { code: 'not_configured', category: 'config', message: 'WhatsApp Cloud API credentials are not configured', retryable: false }, ids, 'text')
+    }
+    if (!validateRecipient(to)) {
+      return fail('failed', { code: 'invalid_recipient', category: 'recipient', message: 'Recipient must be E.164 digits without +, 8 to 15 digits', retryable: false }, ids, 'text')
+    }
+    const problem = validateTextRequest({ body: text, idempotencyKey })
+    if (problem) return fail('failed', { code: 'invalid_request', category: 'invalid_request', message: problem, retryable: false }, ids, 'text')
+    const body = JSON.stringify({ messaging_product: 'whatsapp', recipient_type: 'individual', to, type: 'text', text: { preview_url: false, body: text } })
+    return deliver(body, ids, 'text')
+  }
+
+  async function deliver(body, ids, what) {
+    const fail_ = (outcome, error, logFields) => fail(outcome, error, logFields, what)
     const controller = new AbortController()
     let timedOut = false
     const timer = setTimeout(() => { timedOut = true; controller.abort() }, timeoutMs)
@@ -215,7 +239,7 @@ export function createMetaWhatsAppProvider({
       clearTimeout(timer)
       const netCode = timedOut ? null : networkErrorCode(err)
       if (!res && netCode && PRE_SEND_NETWORK_CODES.has(netCode)) {
-        return fail('failed', { code: 'network_error', category: 'network', message: `Could not reach the WhatsApp Cloud API (${netCode})`, retryable: true }, { ...ids, netCode })
+        return fail_('failed', { code: 'network_error', category: 'network', message: `Could not reach the WhatsApp Cloud API (${netCode})`, retryable: true }, { ...ids, netCode })
       }
       // Timeout, reset, or failure while reading the response: the request
       // may have been processed. Never retry automatically.
@@ -223,7 +247,7 @@ export function createMetaWhatsAppProvider({
       const message = timedOut
         ? `No response from the WhatsApp Cloud API within ${timeoutMs} ms; the message may have been sent`
         : `Connection to the WhatsApp Cloud API failed after sending (${netCode ?? 'unknown'}); the message may have been sent`
-      return fail('unknown', { code, category: 'network', message, retryable: false, httpStatus: res?.status ?? null }, { ...ids, netCode, httpStatus: res?.status ?? null })
+      return fail_('unknown', { code, category: 'network', message, retryable: false, httpStatus: res?.status ?? null }, { ...ids, netCode, httpStatus: res?.status ?? null })
     }
     clearTimeout(timer)
 
@@ -235,12 +259,12 @@ export function createMetaWhatsAppProvider({
     if (res.ok) {
       const providerMessageId = json?.messages?.[0]?.id
       if (typeof providerMessageId === 'string' && providerMessageId) {
-        log?.info?.({ providerMessageId, ...ids }, 'WhatsApp template accepted')
+        log?.info?.({ providerMessageId, ...ids }, `WhatsApp ${what} accepted`)
         return { ok: true, providerMessageId, simulated: false }
       }
       // 2xx without a message id: Meta probably accepted it, but we have
       // nothing to match receipts against. Treat as unknown.
-      return fail('unknown', { code: 'unreadable_response', category: 'unreadable_response', message: `WhatsApp Cloud API returned ${httpStatus} without a message id; the message may have been sent`, retryable: false, httpStatus }, { ...ids, httpStatus })
+      return fail_('unknown', { code: 'unreadable_response', category: 'unreadable_response', message: `WhatsApp Cloud API returned ${httpStatus} without a message id; the message may have been sent`, retryable: false, httpStatus }, { ...ids, httpStatus })
     }
 
     const graphError = json && typeof json.error === 'object' ? json.error : null
@@ -262,13 +286,14 @@ export function createMetaWhatsAppProvider({
       metaType: typeof graphError?.type === 'string' ? graphError.type : null,
       fbtraceId,
     }
-    return fail(outcome, error, { ...ids, httpStatus, metaCode, metaSubcode, fbtraceId })
+    return fail_(outcome, error, { ...ids, httpStatus, metaCode, metaSubcode, fbtraceId })
   }
 
   return {
     mode: 'meta',
     describe: () => ({ mode: 'meta', configured, graphVersion, phoneNumberId: numberId || null }),
     sendTemplate,
+    sendText,
   }
 }
 
@@ -279,6 +304,16 @@ export function validateTemplateRequest({ templateName, languageCode, bodyParams
   // Meta rejects template parameters containing new lines, tabs or more than
   // four consecutive spaces (error 132012/131009); refuse them locally.
   if (bodyParams.some((p) => /[\n\t]| {5,}/.test(p))) return 'bodyParams may not contain new lines, tabs or more than four spaces in a row'
+  if (typeof idempotencyKey !== 'string' || !idempotencyKey) return 'idempotencyKey is required'
+  return null
+}
+
+// Meta's limit for a text message body.
+export const MAX_TEXT_LENGTH = 4096
+
+export function validateTextRequest({ body, idempotencyKey }) {
+  if (typeof body !== 'string' || !body.trim()) return 'body must be non-empty text'
+  if (body.length > MAX_TEXT_LENGTH) return `body may be at most ${MAX_TEXT_LENGTH} characters`
   if (typeof idempotencyKey !== 'string' || !idempotencyKey) return 'idempotencyKey is required'
   return null
 }

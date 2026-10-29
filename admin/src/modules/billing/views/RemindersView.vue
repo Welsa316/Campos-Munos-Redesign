@@ -13,17 +13,17 @@
         <template v-else>Approved reminders wait until sending is switched on (WHATSAPP_SENDING_ENABLED).</template>
         Nothing is ever sent without a staff approval.
       </p>
-      <button @click="runEvaluate" :disabled="Boolean(busy)" class="px-3 py-2 rounded-lg text-xs font-ui font-semibold text-brand-navy ring-1 ring-brand-navy/30 hover:bg-brand-surface">
+      <button v-if="canAct" @click="runEvaluate" :disabled="Boolean(busy)" class="px-3 py-2 rounded-lg text-xs font-ui font-semibold text-brand-navy ring-1 ring-brand-navy/30 hover:bg-brand-surface">
         <FaIcon v-if="busy === 'evaluate'" name="spinner" spin class="mr-1" />Check for due reminders
       </button>
-      <button @click="runDispatch" :disabled="Boolean(busy) || !(data.counts.approved > 0)" class="px-3 py-2 rounded-lg text-xs font-ui font-semibold text-white bg-brand-navy hover:bg-brand-navy-dark disabled:opacity-50">
+      <button v-if="canAct" @click="runDispatch" :disabled="Boolean(busy) || !(data.counts.approved > 0)" class="px-3 py-2 rounded-lg text-xs font-ui font-semibold text-white bg-brand-navy hover:bg-brand-navy-dark disabled:opacity-50">
         <FaIcon v-if="busy === 'dispatch'" name="spinner" spin class="mr-1" />Send approved now
       </button>
     </section>
     <p v-if="notice" role="status" class="text-sm font-ui bg-brand-surface text-gray-800 rounded-lg px-4 py-3">{{ notice }}</p>
 
     <nav class="flex flex-wrap gap-1.5" aria-label="Reminder views">
-      <button v-for="t in VIEWS" :key="t.key" @click="setView(t.key)" :aria-pressed="view === t.key"
+      <button v-for="t in views" :key="t.key" @click="setView(t.key)" :aria-pressed="view === t.key"
         :class="view === t.key ? 'bg-brand-navy text-white ring-brand-navy' : 'bg-white text-gray-700 ring-gray-200 hover:text-gray-900'"
         class="text-xs font-ui font-semibold px-3 py-1.5 rounded-full ring-1 whitespace-nowrap">
         {{ t.label }}<span v-if="badge(t.key)" class="ml-1.5 tabular-nums opacity-80">{{ badge(t.key) }}</span>
@@ -32,7 +32,7 @@
 
     <!-- Queue -->
     <section v-if="isQueue" class="bg-white rounded-xl ring-1 ring-gray-200">
-      <header v-if="view === 'drafts' && list.length" class="px-5 py-3 border-b border-gray-100 flex flex-wrap items-center gap-3">
+      <header v-if="canAct && view === 'drafts' && list.length" class="px-5 py-3 border-b border-gray-100 flex flex-wrap items-center gap-3">
         <label class="inline-flex items-center gap-2 text-xs font-ui text-gray-700">
           <input type="checkbox" :checked="allSelected" @change="toggleAll" class="rounded border-gray-300" /> Select all
         </label>
@@ -45,7 +45,7 @@
       <ul v-else class="divide-y divide-gray-100">
         <li v-for="r in list" :key="r.id" class="px-5 py-4 grid grid-cols-[auto_minmax(0,1fr)] lg:grid-cols-[auto_minmax(0,16rem)_minmax(0,1fr)_auto] gap-x-4 gap-y-2 text-xs font-ui">
           <div class="pt-0.5">
-            <input v-if="view === 'drafts'" type="checkbox" :checked="selected.has(r.id)" @change="toggle(r.id)" :aria-label="`Select reminder for ${r.client_name}`" class="rounded border-gray-300" />
+            <input v-if="canAct && view === 'drafts'" type="checkbox" :checked="selected.has(r.id)" @change="toggle(r.id)" :aria-label="`Select reminder for ${r.client_name}`" class="rounded border-gray-300" />
           </div>
           <div>
             <p class="text-sm font-medium text-gray-900">{{ r.client_name || '—' }}</p>
@@ -63,10 +63,10 @@
             <span :class="STATE[r.state].tone" class="text-[10px] font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded">{{ STATE[r.state].label }}</span>
             <span v-if="r.simulated" class="text-[10px] font-semibold text-violet-700">simulated</span>
             <span v-if="r.sent_at" class="text-gray-500">sent {{ shortDate(r.sent_at) }}</span>
-            <button v-if="r.state === 'draft'" @click="approve([r.id])" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg bg-brand-navy text-white font-semibold hover:bg-brand-navy-dark">{{ r.action === 'staff_followup' ? 'Mark done' : 'Approve' }}</button>
-            <button v-if="['draft', 'approved', 'unknown'].includes(r.state)" @click="cancel(r)" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg text-gray-600 hover:text-brand-red hover:bg-red-50">Cancel</button>
-            <button v-if="r.state === 'failed' && r.last_error_retryable" @click="retry(r)" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg ring-1 ring-brand-navy/30 text-brand-navy font-semibold hover:bg-brand-surface">Retry</button>
-            <template v-if="r.state === 'unknown'">
+            <button v-if="canAct && r.state === 'draft'" @click="approve([r.id])" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg bg-brand-navy text-white font-semibold hover:bg-brand-navy-dark">{{ r.action === 'staff_followup' ? 'Mark done' : 'Approve' }}</button>
+            <button v-if="canAct && ['draft', 'approved', 'unknown'].includes(r.state)" @click="cancel(r)" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg text-gray-600 hover:text-brand-red hover:bg-red-50">Cancel</button>
+            <button v-if="canAct && r.state === 'failed' && r.last_error_retryable" @click="retry(r)" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg ring-1 ring-brand-navy/30 text-brand-navy font-semibold hover:bg-brand-surface">Retry</button>
+            <template v-if="canAct && r.state === 'unknown'">
               <button @click="resolve(r, true)" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg ring-1 ring-green-600/40 text-green-800 font-semibold hover:bg-green-50">It arrived</button>
               <button @click="resolve(r, false)" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg ring-1 ring-gray-300 text-gray-700 hover:bg-gray-50">It did not</button>
             </template>
@@ -90,8 +90,10 @@
       </ul>
     </section>
 
-    <!-- Rules, templates, hours -->
-    <template v-if="view === 'setup' && config">
+    <!-- Rules, templates, hours. Read-only without billing.configure: the
+         fieldset disables every control inside it. -->
+    <fieldset v-if="view === 'setup' && config" :disabled="!canConfigure" class="space-y-5 min-w-0 border-0 p-0 m-0">
+      <p v-if="!canConfigure" class="text-xs font-ui text-gray-600 bg-brand-surface rounded-lg px-4 py-3">Shown for reference. Rules, templates and sending hours are changed by an administrator.</p>
       <section class="bg-white rounded-xl ring-1 ring-gray-200" aria-labelledby="rules-h">
         <header class="px-5 py-4 border-b border-gray-100">
           <h2 id="rules-h" class="text-sm font-ui font-semibold text-gray-900">Rules</h2>
@@ -151,13 +153,18 @@
           <button @click="saveHours" :disabled="Boolean(busy)" class="ml-auto px-3 py-1.5 rounded-lg bg-brand-navy text-white font-semibold hover:bg-brand-navy-dark">Save</button>
         </div>
       </section>
-    </template>
+    </fieldset>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useApi, rawFetch, goToLogin } from '../../../composables/useApi.js'
+import { can } from '../../../composables/useAuth.js'
+
+// Acting on reminders and changing their setup are separate capabilities.
+const canAct = can('billing.reminders')
+const canConfigure = can('billing.configure')
 import { money, shortDate } from '../api.js'
 import FaIcon from '../../../components/FaIcon.vue'
 
@@ -170,6 +177,8 @@ const VIEWS = [
   { key: 'responses', label: 'Client replies' },
   { key: 'setup', label: 'Rules & templates' },
 ]
+// Client replies are part of working the reminders.
+const views = VIEWS.filter((t) => t.key !== 'responses' || canAct)
 const STATE = {
   draft: { label: 'Draft', tone: 'bg-gray-100 text-gray-700' },
   approved: { label: 'Approved', tone: 'bg-brand-navy/10 text-brand-navy' },
