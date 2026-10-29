@@ -237,48 +237,53 @@ Legend: [x] done, [ ] pending, [~] partial (note says what is missing).
 ### Milestone A: architecture and billing data
 - [x] Repository audit
 - [x] Architecture plan (this document)
-- [ ] Additive migrations (`server/db/billingSchema.js`, wired into `migrate.js`)
-- [ ] Role column + `requireRole` middleware
-- [ ] Billing provider interface + `FileImportBillingProvider`
-- [ ] `EImmigrationApiProvider` boundary (config + not-configured status, no speculative calls)
-- [ ] CSV parser (RFC 4180, BOM, delimiter sniffing)
-- [ ] XLSX parser (zero dependency: zip + shared strings + styles for dates)
-- [ ] Money and date parsing
-- [ ] Column mapping with aliases and report-type detection
-- [ ] Normalisation with issues
-- [ ] Matching engine
-- [ ] Reconciliation engine
-- [ ] Import staging / preview / approve service
-- [ ] Unit tests for all of the above
+- [x] Additive migrations (`server/db/billingSchema.js`, run by `migrate.js`)
+- [x] Role column + `requireRole` middleware (role read from the DB per request)
+- [x] Billing source interface: `FileImportBillingProvider` live, `EImmigrationApiProvider` boundary only
+- [x] CSV parser (RFC 4180, BOM, UTF-16, delimiter sniffing, title rows)
+- [x] XLSX parser (zero dependency, shared strings, date styles, zip-bomb caps)
+- [x] Money (integer cents) and date parsing (US dates, Excel serials, ambiguity rejected)
+- [x] Column mapping with aliases (unverified, flagged), manual overrides, saved per layout
+- [x] Normalisation with row issues (duplicates, mismatches, unknown statuses)
+- [x] Matching engine (stored link → eImmigration ID column → name candidates only)
+- [x] Reconciliation engine (incl. carry-forward for reports missing columns)
+- [x] Import staging / preview / approve with drift detection; idempotent re-imports
+- [x] Unit tests (parsers 100, reconciliation 26, matching via flow test)
 
 ### Milestone B: admin billing interface
-- [ ] `/billing` section in the portal + navigation from the inbox header
-- [ ] Overview
-- [ ] Invoice list + detail
-- [ ] Import centre: upload, mapping, preview, approve, history, exception download
-- [ ] Matching review
-- [ ] Exception states (errors, empty, loading, role-denied)
+- [x] `/billing` section in the portal + navigation from the inbox header
+- [x] Overview
+- [x] Invoice list + detail (payments, history, monday link)
+- [x] Import centre: upload, mapping, preview, approve, cancel, history, exception CSV
+- [x] Matching review
+- [x] Empty, loading, error and role-denied states; 375px layouts
 
 ### Milestone C: monday.com
-- [ ] `MondayApiProvider` (GraphQL, pagination, retries)
-- [ ] `MockMondayProvider` with synthetic board
-- [ ] Board / column configuration UI + settings persistence
-- [ ] Sync preview
-- [ ] Controlled apply (dry-run by default)
-- [ ] Sync history + tests
+- [x] `MondayApiProvider` (GraphQL, pagination, bounded retries, token scrubbing)
+- [x] `MockMondayProvider` with synthetic board (incl. eImmigration ID column, same-name items)
+- [x] Board / column / label configuration UI + validation + persistence
+- [x] Sync preview (only real differences, only mapped columns)
+- [x] Controlled apply (admin only, once per preview, 1 h expiry, dry run unless `MONDAY_WRITES_ENABLED=true`)
+- [x] Sync history, connection check, tests (47 + end-to-end)
 
-### Milestone D: WhatsApp
-- [ ] Webhook reuse + status/inbound forwarding to billing
+### Milestone D: WhatsApp (not started)
+- [ ] Forward webhook status/inbound events to billing; STOP/BAJA opt-out
 - [ ] Messaging provider abstraction, `MockWhatsAppProvider`, `MetaWhatsAppCloudProvider`
 - [ ] EN/ES templates
-- [ ] Reminder rules + engine + approval queue + dispatcher
-- [ ] Delivery tracking + client responses view
-- [ ] Tests
+- [ ] Reminder rules, engine, approval queue, dispatcher, business hours
+- [ ] Reminder cancellation when a newer report settles the obligation
+- [ ] Tables: reminder rules, reminders, messages (not created yet)
 
 ### Milestone E: production readiness
-- [ ] End-to-end simulated flow test
-- [ ] Security review pass (see section 9 and `docs/billing-automation.md`)
-- [ ] Failure/retry tests
-- [ ] Operator documentation + credential/activation checklist (`docs/billing-automation.md`)
-- [ ] `.env.example` updated
-- [ ] Build / test verification
+- [x] End-to-end simulated flow test (imports, matching, sync, corrections, staleness, drift, retention, audit)
+- [x] Failure tests (monday throttling/auth/network, stale previews, double apply)
+- [x] Operator documentation + activation checklist (`docs/billing-automation.md`)
+- [x] `.env.example` updated
+- [x] Build / test verification
+- [ ] Independent security review of the billing branch
+- [ ] Verification against a real eImmigration export (needs a sample from the firm)
+
+### Deviations from the original plan
+- External links live in `billing_client_links` (monday only for now) rather than a generic external-ids table; eImmigration ids are a unique column on `billing_clients`.
+- No background scheduler yet: the only timed job is the upload purge in `server/index.js`. Reminder evaluation will need one (Milestone D).
+- Invoices whose report row has no client ID are stored without a client and cannot be linked or synced until a report includes the ID.
