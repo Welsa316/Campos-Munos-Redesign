@@ -50,6 +50,8 @@ const TABS = [
   { name: 'BillingInvoices', label: 'Invoices' },
   { name: 'BillingImports', label: 'Imports', match: ['BillingImportDetail'] },
   { name: 'BillingMatching', label: 'Client matching', badge: 'unmatched' },
+  { name: 'BillingReminders', label: 'Reminders' },
+  { name: 'BillingContacts', label: 'WhatsApp contacts' },
   { name: 'BillingMonday', label: 'monday.com' },
   { name: 'BillingSettings', label: 'Integrations' },
 ]

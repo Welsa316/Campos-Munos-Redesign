@@ -27,6 +27,8 @@ export const routes = [
       { path: 'imports', name: 'BillingImports', component: () => import('../modules/billing/views/ImportsView.vue') },
       { path: 'imports/:id(\\d+)', name: 'BillingImportDetail', component: () => import('../modules/billing/views/ImportDetailView.vue') },
       { path: 'matching', name: 'BillingMatching', component: () => import('../modules/billing/views/MatchingView.vue') },
+      { path: 'reminders', name: 'BillingReminders', component: () => import('../modules/billing/views/RemindersView.vue') },
+      { path: 'contacts', name: 'BillingContacts', component: () => import('../modules/billing/views/ContactsView.vue') },
       { path: 'monday', name: 'BillingMonday', component: () => import('../modules/billing/views/MondayView.vue') },
       { path: 'integrations', name: 'BillingSettings', component: () => import('../modules/billing/views/IntegrationsView.vue') },
     ] },
