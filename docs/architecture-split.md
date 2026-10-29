@@ -72,7 +72,7 @@ email template needed changing.
 ### Root
 - `package.json`: `postinstall` installs `admin/` too; `build` builds the site and the portal (with `ADMIN_BASE=/admin/`); `test` runs all three suites.
 - `nixpacks.toml` (root) fixed (it referenced a non-existent `install:all` script) and `site/nixpacks.toml` extended to build the portal, so every existing build path produces the same transitional service.
-- `server/railway.json`, `site/railway.json`, `admin/railway.json`: config-as-code for the three new services.
+- `server/railway.service.json`, `site/railway.service.json`, `admin/railway.service.json`: config-as-code for the three new services.
 
 ## 4. Security model
 
@@ -116,7 +116,7 @@ and its Postgres. Each one:
 |---|---|---|---|
 | Source | this GitHub repo | this GitHub repo | this GitHub repo |
 | Root Directory | `server` | `site` | `admin` |
-| Config-as-code path | `/server/railway.json` | `/site/railway.json` | `/admin/railway.json` |
+| Config-as-code path | `/server/railway.service.json` | `/site/railway.service.json` | `/admin/railway.service.json` |
 | Builder | Railpack | Railpack | Railpack |
 | Watch paths (from config) | `/server/**` | `/site/**` | `/admin/**` |
 | Build | (none; `npm ci`) | `npm run build` | `npm run build` |
@@ -127,9 +127,14 @@ and its Postgres. Each one:
 Watch paths are what keep an unrelated change from rebuilding a service: a
 commit touching only `site/` redeploys only the website.
 
-Railway reads config-as-code from the repo root unless told otherwise, even
-when a Root Directory is set, so set each service's config path explicitly
-(Service → Settings → Config-as-code).
+The files are deliberately **not** named `railway.json`. Railway picks up a
+`railway.json` in a service's Root Directory automatically, and the live
+single service uses Root Directory `site/`. When this branch first merged as
+`site/railway.json`, the live service adopted it, started only the website and
+dropped the API (contact form, chat, `/admin` and the webhook returned 404).
+With the `.service.json` names, nothing is picked up by accident: each new
+service must point at its file explicitly (Service → Settings →
+Config-as-code → path).
 
 ### Environment variables
 

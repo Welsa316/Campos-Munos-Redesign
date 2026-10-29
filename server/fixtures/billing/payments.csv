@@ -1,0 +1,12 @@
+Transaction ID,Payment Date,Client ID,Client Name,Invoice #,Payment Amount,Method,Reference,Type
+PAY-5001,1/20/2026,EIM-C-0001,Prueba Uno,INV-1001,"$1,500.00",Card,AUTH-0001,Payment
+PAY-5002,9/10/2026,EIM-C-0002,Prueba Dos,INV-1002,$500.00,Check,Check 1042,Payment
+PAY-5003,10/15/2026,EIM-C-0006,Prueba Seis,INV-1006,"$2,000.00",ACH,,Payment
+PAY-5004,2/1/2026,EIM-C-0007,Prueba Siete,INV-1007,$300.00,Cash,,Payment
+PAY-5004,2/1/2026,EIM-C-0007,Prueba Siete,INV-1007,$30.00,Cash,,Payment
+PAY-5005,8/20/2026,EIM-C-0007,Prueba Siete,INV-1009,$50.00,,Courtesy credit,Credit
+PAY-5006,8/22/2026,EIM-C-0007,Prueba Siete,INV-1009,($25.00),Card,AUTH-0099,Refund
+PAY-5007,9/25/2026,EIM-C-0010,"Prueba Ñandú Pérez",INV-1012,-40.00,Card,,Payment
+PAY-5008,5/1/2026,EIM-C-0009,Ana Ejemplo,INV-1011,$650.00,Zelle,,Pago
+PAY-5008,5/1/2026,EIM-C-0009,Ana Ejemplo,INV-1011,$650.00,Zelle,,Pago
+PAY-5009,7/15/2026,EIM-C-0011,Prueba Once,INV-1013,$300.00,Card,,Chargeback

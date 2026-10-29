@@ -43,8 +43,8 @@ async function seed() {
     const hash = await bcrypt.hash(password, 12)
 
     await client.query(
-      `INSERT INTO admin_users (email, password_hash)
-       VALUES ($1, $2)
+      `INSERT INTO admin_users (email, password_hash, role)
+       VALUES ($1, $2, 'admin')
        ON CONFLICT (email) DO NOTHING`,
       [email, hash]
     )

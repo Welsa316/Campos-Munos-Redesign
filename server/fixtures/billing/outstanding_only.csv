@@ -1,0 +1,5 @@
+Client ID,Client Name,Invoice Number,Due Date,Amount Due
+EIM-C-0002,Prueba Dos,INV-1002,12/15/2026,"1,500.00"
+EIM-C-0003,Prueba Tres,INV-1003,11/30/2026,750.00
+EIM-C-0004,Prueba Cuatro,INV-1004,8/1/2026,"1,000.00"
+EIM-C-0007,Prueba Siete,INV-1008,12/9/2026,450.50

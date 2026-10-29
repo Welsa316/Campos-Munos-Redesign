@@ -72,6 +72,8 @@ export const SITE_CSP = {
       'https://googleads.g.doubleclick.net',
       'https://ad.doubleclick.net',
       'https://www.googleadservices.com',
+      // GA4 with Google signals reports here.
+      'https://stats.g.doubleclick.net',
       // Elfsight loads widget code + review data from many subdomains.
       'https://*.elfsight.com',
       'https://*.elfsightcdn.com',

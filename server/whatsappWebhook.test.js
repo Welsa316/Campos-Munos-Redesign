@@ -148,10 +148,10 @@ function memoryStore() {
 
 const silentLog = { info() {}, warn() {}, error() {}, debug() {}, child() { return silentLog } }
 
-async function startApp({ store = memoryStore(), overrides = {} } = {}) {
+async function startApp({ store = memoryStore(), overrides = {}, onEvent = null } = {}) {
   const app = express()
   // Mirror index.js: the webhook mounts BEFORE express.json so it owns its raw body.
-  app.use('/webhooks/whatsapp', createWhatsappRouter({ env: { ...env, ...overrides }, store, log: silentLog }))
+  app.use('/webhooks/whatsapp', createWhatsappRouter({ env: { ...env, ...overrides }, store, log: silentLog, onEvent }))
   app.use(express.json())
   const server = await new Promise((resolve) => { const s = app.listen(0, () => resolve(s)) })
   const base = `http://127.0.0.1:${server.address().port}/webhooks/whatsapp`
@@ -357,4 +357,25 @@ test('the 200 is sent before the store finishes its work', async () => {
     ])
     assert.equal(res.status, 200)
   } finally { release(); await close() }
+})
+
+test('the billing hook runs once per new event and never for a redelivery', async () => {
+  const seen = []
+  const { post, close, settle } = await startApp({ onEvent: async (evt) => { seen.push(evt.key) } })
+  try {
+    await post(incomingMessage('wamid.HOOK'))
+    await post(incomingMessage('wamid.HOOK'))
+    await post(statusUpdate('delivered', 'wamid.OUT9'))
+    await settle()
+    assert.deepEqual(seen.sort(), ['message:wamid.HOOK', 'status:wamid.OUT9:delivered'])
+  } finally { await close() }
+})
+
+test('a failing billing hook never loses the stored event or the 200', async () => {
+  const { post, close, settle, store } = await startApp({ onEvent: async () => { throw new Error('db down') } })
+  try {
+    assert.equal((await post(incomingMessage('wamid.HOOKFAIL'))).status, 200)
+    await settle()
+    assert.equal(store.stored.length, 1)
+  } finally { await close() }
 })

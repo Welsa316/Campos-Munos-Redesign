@@ -43,6 +43,9 @@ export function createWhatsappRouter({
   store = whatsappEvents,
   log = logger,
   recentKeys = createRecentKeys(),
+  // Called once per newly stored event (billing: delivery receipts, client
+  // replies, opt-outs). Defaults to nothing so the router stays usable alone.
+  onEvent = null,
 } = {}) {
   const router = Router()
 
@@ -100,7 +103,7 @@ export function createWhatsappRouter({
     if (!fresh.length) return
 
     setImmediate(() => {
-      processEvents(fresh, { store, log: reqLog, recentKeys }).catch((err) => {
+      processEvents(fresh, { store, log: reqLog, recentKeys, onEvent }).catch((err) => {
         reqLog.error({ err }, 'WhatsApp webhook processing failed')
       })
     })
@@ -118,13 +121,22 @@ export function createWhatsappRouter({
  * POST). Releasing the key from the in-memory guard is what lets that replay
  * through instead of being dropped as a duplicate until the next restart.
  */
-export async function processEvents(events, { store, log, recentKeys }) {
+export async function processEvents(events, { store, log, recentKeys, onEvent = null }) {
   for (const evt of events) {
     try {
       const isNew = await store.recordEvent(evt)
       if (!isNew) {
         log.info({ key: evt.key }, 'WhatsApp event already recorded, skipped')
         continue
+      }
+      if (onEvent) {
+        // Stored first, handled second: a failure here never loses the event,
+        // and it is logged with ids only.
+        try {
+          await onEvent(evt, log)
+        } catch (err) {
+          log.error({ err: err.message, key: evt.key }, 'WhatsApp event handler failed')
+        }
       }
       if (evt.kind === 'message') {
         log.info({ messageId: evt.messageId, messageType: evt.messageType, phoneNumberId: evt.phoneNumberId }, 'WhatsApp message received')
@@ -141,4 +153,22 @@ export async function processEvents(events, { store, log, recentKeys }) {
   }
 }
 
-export default createWhatsappRouter()
+// Billing handles each stored event, marks it handled, and (at most once a
+// minute) retries any event an earlier failure left unhandled, so a STOP is
+// never lost to a database blip.
+let lastSweep = 0
+export default createWhatsappRouter({
+  onEvent: async (evt, log) => {
+    const [{ default: getPool }, { handleWhatsAppEvent, sweepUnhandled }] = await Promise.all([
+      import('../db/pool.js'),
+      import('../billing/whatsappInbound.js'),
+    ])
+    const db = getPool()
+    await handleWhatsAppEvent(db, evt, { log })
+    await db.query('UPDATE whatsapp_events SET billing_processed_at = NOW() WHERE event_key = $1', [evt.key])
+    if (Date.now() - lastSweep > 60 * 1000) {
+      lastSweep = Date.now()
+      sweepUnhandled(db, { log }).catch(() => {})
+    }
+  },
+})

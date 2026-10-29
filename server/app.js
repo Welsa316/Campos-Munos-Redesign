@@ -14,6 +14,7 @@ import { pinoHttp } from 'pino-http'
 import crypto from 'crypto'
 import authRoutes from './routes/auth.js'
 import submissionRoutes from './routes/submissions.js'
+import { createBillingRouter } from './routes/billing.js'
 import whatsappRoutes from './routes/whatsapp.js'
 import { redactVerifyToken } from './utils/whatsapp.js'
 import {
@@ -86,6 +87,7 @@ export function createApp({ env = process.env, log = logger, beforeFallback } = 
   app.use('/api', requireTrustedOrigin(origins))
   app.use('/api/auth', authRoutes)
   app.use('/api/submissions', submissionRoutes)
+  app.use('/api/billing', createBillingRouter({ env }))
 
   // API 404s — registered before any frontend fallback so an unknown /api/*
   // path returns JSON instead of a page.

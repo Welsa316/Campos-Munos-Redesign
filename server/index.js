@@ -8,6 +8,8 @@ dotenv.config({ path: join(__dirname, '.env') })
 import { createApp, addFallbackHandlers } from './app.js'
 import { mountFrontends } from './frontends.js'
 import getPool from './db/pool.js'
+import { purgeExpiredUploads } from './billing/importService.js'
+import { startReminderScheduler } from './billing/scheduler.js'
 import logger from './logger.js'
 
 const isProduction = process.env.NODE_ENV === 'production'
@@ -51,6 +53,24 @@ const frontends = await mountFrontends(app, {
 logger.info(frontends, 'Frontends mounted in this process')
 
 addFallbackHandlers(app)
+
+// Uploaded billing reports hold client financial data. Their raw bytes are
+// deleted after BILLING_UPLOAD_RETENTION_DAYS (default 30); the import's
+// metadata, staged rows and outcome stay for the audit trail.
+const retentionDays = Number(process.env.BILLING_UPLOAD_RETENTION_DAYS) || 30
+async function purgeUploads() {
+  try {
+    const n = await purgeExpiredUploads(getPool(), retentionDays)
+    if (n) logger.info({ purged: n, retentionDays }, 'Purged expired billing uploads')
+  } catch (err) {
+    logger.warn({ err: err.message }, 'Billing upload purge failed')
+  }
+}
+setTimeout(purgeUploads, 60 * 1000).unref()
+setInterval(purgeUploads, 24 * 60 * 60 * 1000).unref()
+
+// Payment reminders: drafts + sending of approved reminders (never unapproved).
+startReminderScheduler({ pool: getPool(), env: process.env, log: logger })
 
 const server = app.listen(PORT, () => {
   logger.info({ port: PORT }, 'Server listening')

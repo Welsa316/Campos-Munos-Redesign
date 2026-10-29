@@ -38,3 +38,16 @@ test('every <i class="fa-…"> icon in a template is registered', () => {
   assert.deepEqual(missing, [])
   assert.ok(used.size > 20, `found ${used.size} icons; the scan is not finding templates`)
 })
+
+test('billing views never toggle or restyle a FontAwesome <i> (use <FaIcon>)', () => {
+  // dom.watch() swaps <i> for <svg> behind Vue's back; a v-if or :class on
+  // that <i> later throws "reading 'insertBefore'" and freezes the component.
+  const offenders = []
+  for (const file of walk(join(SRC, 'modules')).filter((f) => f.endsWith('.vue'))) {
+    const text = fs.readFileSync(file, 'utf8')
+    for (const m of text.matchAll(/<i\s[^>]*>/g)) {
+      if (/\s(v-if|v-else-if|v-else|v-show|:class)\b/.test(m[0]) && /fa-/.test(m[0])) offenders.push(`${file.slice(SRC.length)}: ${m[0]}`)
+    }
+  }
+  assert.deepEqual(offenders, [])
+})
