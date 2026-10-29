@@ -43,10 +43,11 @@ export const ROLES = {
       'billing.status',
     ],
   },
+  // No website leads (Messages: inbox and contacts); the firm keeps those
+  // with the front desk.
   billing_paralegal: {
     label: 'Billing paralegal',
     capabilities: [
-      'crm.view',
       'whatsapp.view', 'whatsapp.send', 'whatsapp.manage', 'whatsapp.contacts',
       'billing.status', 'billing.view', 'billing.import', 'billing.reconcile', 'billing.sync', 'billing.reminders',
     ],

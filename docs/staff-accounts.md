@@ -30,7 +30,7 @@ need to sign out.
 
 | Capability | Lets the account | admin | front_desk | billing_paralegal | staff (legacy) |
 |---|---|:-:|:-:|:-:|:-:|
-| `crm.view` | Read website leads, their notes and email replies | ✓ | ✓ | ✓ | ✓ |
+| `crm.view` | Read website leads, their notes and email replies | ✓ | ✓ | | ✓ |
 | `crm.manage` | Reply to leads by email, change status, mark read/archived, add notes | ✓ | ✓ | | ✓ |
 | `crm.export` | Download every lead as CSV | ✓ | ✓ | | ✓ |
 | `whatsapp.view` | Read WhatsApp conversations, internal notes, assignments | ✓ | ✓ | ✓ | |

@@ -186,9 +186,11 @@ test('staff roles and capabilities', { skip: SKIP }, async (t) => {
     }
   })
 
-  await t.test('billing paralegal: imports, sync, reminders, WhatsApp; leads read-only', async () => {
+  await t.test('billing paralegal: imports, sync, reminders, WhatsApp; no website leads', async () => {
     const c = users.paraCookie
-    for (const p of ['/api/billing/overview', '/api/billing/imports', '/api/billing/reminders', '/api/billing/integrations', '/api/submissions', `/api/submissions/${users.leadId}`, '/api/whatsapp/conversations']) {
+    const me = await call('GET', '/api/auth/verify', { cookie: c })
+    assert.ok(!me.json.capabilities.some((x) => x.startsWith('crm.')), me.json.capabilities.join(','))
+    for (const p of ['/api/billing/overview', '/api/billing/imports', '/api/billing/reminders', '/api/billing/integrations', '/api/whatsapp/conversations']) {
       assert.equal((await call('GET', p, { cookie: c })).status, 200, p)
     }
     // Allowed actions reach the handler (which may then reject the body).
@@ -196,6 +198,7 @@ test('staff roles and capabilities', { skip: SKIP }, async (t) => {
       assert.notEqual((await call(m, p, { cookie: c, body: { ids: [] } })).status, 403, `${m} ${p}`)
     }
     for (const [m, p, body] of [
+      ['GET', '/api/submissions'], ['GET', '/api/submissions?scope=all'], ['GET', `/api/submissions/${users.leadId}`],
       ['PATCH', `/api/submissions/${users.leadId}/status`, { status: 'closed' }],
       ['POST', `/api/submissions/${users.leadId}/notes`, { body: 'x' }],
       ['POST', `/api/submissions/${users.leadId}/reply`, { body: 'x' }],
@@ -286,7 +289,10 @@ test('staff roles and capabilities', { skip: SKIP }, async (t) => {
     assert.throws(() => staffCli.parseArgs(['create', '--email', 'a@b.test', '--password', 'hunter2']), /not accepted on the command line/)
     const out = []
     await staffCli.run(db, 'reset-password', { email: 'paralegal@example.test' }, (l) => out.push(l))
-    const password = out.join('\n').match(/\n {2}(\S{20,})\n/)[1]
+    // The password is printed alone on its line: nothing to copy by mistake.
+    const lines = out.join('\n').split('\n')
+    const password = lines[lines.findIndex((l) => l.startsWith('Temporary password')) + 1]
+    assert.match(password, /^[A-Za-z0-9_-]{24}$/)
     assert.equal((await call('GET', '/api/auth/verify', { cookie: users.paraCookie })).status, 401, 'a reset signs out open sessions')
     const login = await call('POST', '/api/auth/login', { body: { email: 'paralegal@example.test', password } })
     assert.equal(login.status, 200)

@@ -41,7 +41,7 @@ export function canAny(...names) {
 
 // The first screen: where the account does its main work. Whoever works the
 // leads starts on Messages (as every account did before roles); a billing
-// account on Billing, even if it can also read leads.
+// account on Billing.
 const SECTIONS = [
   { name: 'Inbox', any: ['crm.manage'] },
   { name: 'BillingOverview', any: ['billing.view'] },
