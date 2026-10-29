@@ -1,0 +1,27 @@
+{
+  "name": "admin",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Authenticated staff portal (admin.camulaw.com). Independent of the public site in site/; talks to the Express API in server/.",
+  "scripts": {
+    "dev": "vite --port 5175",
+    "build": "vite build && node scripts/check-bundle.js",
+    "preview": "vite preview",
+    "start": "node server.js",
+    "test": "node --test \"test/**/*.test.js\""
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^7.2.0",
+    "@fortawesome/free-brands-svg-icons": "^7.2.0",
+    "@fortawesome/free-solid-svg-icons": "^7.2.0",
+    "@tailwindcss/vite": "^4.2.1",
+    "@vitejs/plugin-vue": "^6.0.2",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "tailwindcss": "^4.2.1",
+    "vite": "^7.3.1",
+    "vue": "^3.5.25",
+    "vue-router": "^4.6.4"
+  }
+}

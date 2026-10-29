@@ -1,12 +1,15 @@
 <template>
   <div class="h-dvh flex flex-col bg-brand-surface overflow-hidden">
     <!-- Top bar -->
-    <header class="h-16 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-6 z-10">
-      <div class="flex items-center gap-4">
-        <img src="/logo.png" alt="Campos Muños Law" class="h-9" />
-        <div class="w-px h-8 bg-gray-200"></div>
+    <!-- Same responsive shell as the operations demo: on a phone the logo and
+         every button label drop away so the view toggle and the actions fit
+         in 375px without overlapping. -->
+    <header class="h-16 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 gap-3 z-10">
+      <div class="flex items-center gap-3 sm:gap-4 min-w-0">
+        <img src="/logo.png" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
+        <div class="w-px h-8 bg-gray-200 hidden sm:block" aria-hidden="true"></div>
         <h1 class="font-heading text-lg text-brand-navy tracking-tight hidden sm:block">Client Messages</h1>
-        <div class="flex bg-brand-surface rounded-lg p-0.5 ml-1">
+        <div class="flex bg-brand-surface rounded-lg p-0.5 sm:ml-1">
           <button
             @click="changeView('inbox')"
             :class="viewMode === 'inbox' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
@@ -22,7 +25,7 @@
           {{ unreadCount }}
         </span>
       </div>
-      <div class="ml-auto flex items-center gap-4">
+      <div class="ml-auto flex items-center gap-1 sm:gap-4">
         <button
           v-if="notifyPermission === 'default'"
           @click="enableNotifications"
@@ -63,10 +66,11 @@
         </button>
         <button
           @click="handleLogout"
-          class="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-500 hover:text-brand-red hover:bg-red-50 text-sm font-ui font-medium transition-colors"
+          aria-label="Sign out"
+          class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-gray-500 hover:text-brand-red hover:bg-red-50 text-sm font-ui font-medium transition-colors"
         >
           <i class="fa-solid fa-arrow-right-from-bracket text-xs" aria-hidden="true"></i>
-          Sign Out
+          <span class="hidden sm:inline">Sign Out</span>
         </button>
       </div>
     </header>
@@ -169,11 +173,11 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watchEffect } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
-import { useApi, rawFetch } from '../composables/useApi.js'
-import SubmissionList from '../components/admin/SubmissionList.vue'
-import SubmissionDetail from '../components/admin/SubmissionDetail.vue'
-import ChangePasswordModal from '../components/admin/ChangePasswordModal.vue'
-import ContactsTable from '../components/admin/ContactsTable.vue'
+import { useApi, rawFetch, goToLogin } from '../composables/useApi.js'
+import SubmissionList from '../components/messages/SubmissionList.vue'
+import SubmissionDetail from '../components/messages/SubmissionDetail.vue'
+import ChangePasswordModal from '../components/messages/ChangePasswordModal.vue'
+import ContactsTable from '../components/messages/ContactsTable.vue'
 
 const router = useRouter()
 const { adminEmail, logout } = useAuth()
@@ -465,7 +469,7 @@ async function exportCsv() {
   exportFailed.value = false
   try {
     const res = await rawFetch('/api/submissions/export/csv')
-    if (res.status === 401) { window.location.href = '/admin/login'; return }
+    if (res.status === 401) { goToLogin(); return }
     if (!res.ok) throw new Error('Export failed')
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
@@ -486,6 +490,6 @@ async function exportCsv() {
 
 async function handleLogout() {
   await logout()
-  router.push({ name: 'AdminLogin' })
+  router.push({ name: 'Login' })
 }
 </script>

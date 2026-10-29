@@ -213,7 +213,7 @@
 import { ref, computed, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useScrollReveal } from '../composables/useScrollReveal.js'
-import { rawFetch } from '../composables/useApi.js'
+import { rawFetch } from '../utils/publicApi.js'
 import { CONSULTATION_KEYS, consultationLabel } from '../data/consultationTypes.js'
 import { MAPS_PROFILE_URL } from '../data/contact.js'
 import { COUNTRIES } from '../data/countries.js'

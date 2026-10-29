@@ -112,9 +112,6 @@ const serviceSlugs = Object.keys(baseServices)
 const validRoutes = [
   ...ROUTES.map(r => r.path),
   '/el-equipo', // redirects to /acerca-de#equipo
-  '/admin',
-  '/admin/login',
-  '/admin/demo/operations',
   // /servicios/:service/:location — indexable combos (they canonical to the base page)
   ...serviceSlugs.flatMap(s => locations.map(loc => `/servicios/${s}/${loc.slug}`)),
 ]
