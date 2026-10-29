@@ -14,6 +14,12 @@ the apex domain, so the webhook lives on the same host:
 https://camulaw.com/webhooks/whatsapp
 ```
 
+After the site/admin/API split (`docs/architecture-split.md`) the API lives at
+`https://api.camulaw.com`, so the callback URL becomes
+`https://api.camulaw.com/webhooks/whatsapp`. Until Meta's dashboard is
+updated, the website forwards `camulaw.com/webhooks/whatsapp` to the API
+byte-for-byte, so the signature still verifies.
+
 Paste that into **Meta App Dashboard → WhatsApp → Configuration → Webhook →
 Callback URL**, and the value of `WHATSAPP_VERIFY_TOKEN` into **Verify token**.
 Then subscribe the app to the **`messages`** webhook field. Use the apex, not
