@@ -286,7 +286,10 @@ test('staff roles and capabilities', { skip: SKIP }, async (t) => {
     assert.throws(() => staffCli.parseArgs(['create', '--email', 'a@b.test', '--password', 'hunter2']), /not accepted on the command line/)
     const out = []
     await staffCli.run(db, 'reset-password', { email: 'paralegal@example.test' }, (l) => out.push(l))
-    const password = out.join('\n').match(/\n {2}(\S{20,})\n/)[1]
+    // The password is printed alone on its line: nothing to copy by mistake.
+    const lines = out.join('\n').split('\n')
+    const password = lines[lines.findIndex((l) => l.startsWith('Temporary password')) + 1]
+    assert.match(password, /^[A-Za-z0-9_-]{24}$/)
     assert.equal((await call('GET', '/api/auth/verify', { cookie: users.paraCookie })).status, 401, 'a reset signs out open sessions')
     const login = await call('POST', '/api/auth/login', { body: { email: 'paralegal@example.test', password } })
     assert.equal(login.status, 200)

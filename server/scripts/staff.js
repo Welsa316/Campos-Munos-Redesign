@@ -117,7 +117,7 @@ export async function run(db, command, opts, out = console.log) {
       )).rows[0]
       await auditCli(db, row.id, 'staff.created', { role })
       out(`Created ${describe(row)}`)
-      if (generated) out(`\nTemporary password (shown once; give it to them in person and ask them to change it with the Password button):\n  ${password}\n`)
+      if (generated) out(`\nTemporary password on the next line, shown once. Copy only the password itself; give it to them in person and ask them to change it with the Password button:\n${password}\n`)
       return
     }
     case 'set-role': {
@@ -170,7 +170,7 @@ export async function run(db, command, opts, out = console.log) {
       await db.query('UPDATE admin_users SET password_hash = $2, password_updated_at = NOW(), token_version = token_version + 1 WHERE id = $1', [u.id, hash])
       await auditCli(db, u.id, 'staff.password_reset')
       out(`Password reset for ${u.email}; their open sessions are signed out.`)
-      if (generated) out(`\nTemporary password (shown once):\n  ${password}\n`)
+      if (generated) out(`\nTemporary password on the next line, shown once. Copy only the password itself:\n${password}\n`)
       return
     }
     case 'sign-out': {
