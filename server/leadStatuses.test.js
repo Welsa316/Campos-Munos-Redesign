@@ -11,7 +11,7 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 
 import { LEAD_STATUSES as API_STATUSES } from './routes/submissions.js'
-import { STATUS_KEYS as UI_STATUSES } from '../site/src/data/leadStatuses.js'
+import { STATUS_KEYS as UI_STATUSES } from '../admin/src/data/leadStatuses.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const migration = readFileSync(join(__dirname, 'db', 'migrate.js'), 'utf8')

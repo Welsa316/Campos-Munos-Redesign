@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/prerender.js",
+    "build": "vite build && node scripts/prerender.js && node scripts/check-bundle.js",
     "preview": "vite preview",
-    "start": "serve -s dist -l ${PORT:-4173}"
+    "start": "node server/index.js",
+    "test": "node --test \"server/**/*.test.js\" \"scripts/**/*.test.js\""
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.2.0",
@@ -15,11 +16,13 @@
     "@fortawesome/free-solid-svg-icons": "^7.2.0",
     "@tailwindcss/vite": "^4.2.1",
     "@vitejs/plugin-vue": "^6.0.2",
-    "serve": "^14.2.6",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
     "tailwindcss": "^4.2.1",
     "vite": "^7.3.1",
     "vue": "^3.5.25",
     "vue-i18n": "^11.2.8",
     "vue-router": "^4.6.4"
-  }
+  },
+  "description": "Public website (camulaw.com). Static Vue SPA with prerendered heads, served by server/index.js, which also owns the legacy Wix redirects and real 404s."
 }

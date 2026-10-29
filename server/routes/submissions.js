@@ -8,6 +8,7 @@ import requireAuth from '../middleware/auth.js'
 import validate from '../middleware/validate.js'
 import { stripHtml, escapeHtml, escapeCsvField } from '../utils/sanitize.js'
 import { sendLeadConversion } from '../utils/openaiConversions.js'
+import { clientKey } from '../httpSecurity.js'
 
 const router = Router()
 
@@ -68,6 +69,7 @@ const submitLimiter = rateLimit({
   message: { error: 'Too many submissions. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: clientKey,
 })
 
 const chatMessageLimiter = rateLimit({
@@ -76,6 +78,7 @@ const chatMessageLimiter = rateLimit({
   message: { error: 'Too many chat messages. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: clientKey,
 })
 
 // Public — contact form submission

@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuth } from '../composables/useAuth.js'
 
 const BRAND = 'Campos Muños Law'
 const CANONICAL_BASE = 'https://camulaw.com'
@@ -27,15 +26,9 @@ const routes = [
       description: 'Conozca a Campos Muños Law: abogados de inmigración con más de veinte años de experiencia sirviendo a la comunidad en Nueva Orleans, Louisiana.' } },
   { path: '/el-equipo', redirect: '/acerca-de#equipo' },
   { path: '/el-equipo/:member', name: 'TeamMember', component: () => import('../views/TeamMemberPage.vue'), props: true },
-  { path: '/admin/login', name: 'AdminLogin', component: () => import('../views/AdminLogin.vue'),
-    meta: { title: 'Admin Login' } },
-  { path: '/admin', name: 'AdminDashboard', component: () => import('../views/AdminDashboard.vue'),
-    meta: { requiresAuth: true, title: 'Admin Dashboard' } },
-  // Sales demo of the operations layer. Fabricated data only, no API calls
-  // (see src/demo/operations). Lives under /admin so it inherits noindex, the
-  // robots.txt Disallow, no public chrome and no GA4 page views. Not linked anywhere.
-  { path: '/admin/demo/operations', name: 'OperationsDemo', component: () => import('../views/OperationsDemo.vue'),
-    meta: { title: 'Operations Demo' } },
+  // The staff portal is a separate app (admin/, served at admin.camulaw.com).
+  // Nothing under /admin is part of this bundle: the static host redirects
+  // /admin* to the portal before the SPA is ever served (site/server/app.js).
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('../views/NotFoundPage.vue'),
     meta: { description: 'Página no encontrada. Regrese al inicio de Campos Muños Law, abogados de inmigración en Nueva Orleans, Louisiana.' } },
 ]
@@ -122,24 +115,6 @@ router.afterEach((to) => {
   setMetaByProperty('og:url', canonicalUrl)
   setMetaByProperty('og:title', title)
   setMetaByName('twitter:title', title)
-})
-
-router.beforeEach(async (to) => {
-  const { verify, isAuthenticated } = useAuth()
-
-  if (to.meta.requiresAuth) {
-    await verify()
-    if (!isAuthenticated.value) {
-      return { name: 'AdminLogin' }
-    }
-  }
-
-  if (to.name === 'AdminLogin') {
-    await verify()
-    if (isAuthenticated.value) {
-      return { name: 'AdminDashboard' }
-    }
-  }
 })
 
 export default router

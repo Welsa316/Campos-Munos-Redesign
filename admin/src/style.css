@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+/* Brand tokens, copied from site/src/style.css so the portal looks exactly as
+   it did inside the public site. The two apps are deployed separately, so they
+   cannot share a stylesheet at runtime; keep these values in step by hand
+   (they change rarely, and the portal never shows next to the public site). */
+@theme {
+  --color-brand-navy: #003F8D;
+  --color-brand-navy-light: #1a5ab8;
+  --color-brand-navy-dark: #002d66;
+  --color-brand-dark: #1a1a1a;
+  --color-brand-red: #CE1D1D;
+  --color-brand-red-light: #e53535;
+  --color-brand-whatsapp: #25D366;
+  --color-brand-light: #f8f9fc;
+  --color-brand-surface: #f0f2f7;
+  --font-heading: "Playfair Display", Georgia, serif;
+  --font-body: "Cormorant Garamond", Georgia, serif;
+  --font-ui: "Inter", system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    margin: 0;
+    font-family: var(--font-body);
+    background-color: white;
+    color: #1a1a1a;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  ::selection {
+    background-color: var(--color-brand-navy);
+    color: white;
+  }
+}
+
+.btn-magnetic {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.btn-magnetic:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px -8px rgba(0, 63, 141, 0.3);
+}
+.btn-magnetic:active {
+  transform: translateY(0);
+}
+
+.fade-enter-active { transition: all 0.4s ease; }
+.fade-leave-active { transition: all 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(8px); }
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+.form-label {
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(107, 114, 128, 1);
+  margin-bottom: 0.5rem;
+}
+.form-input {
+  width: 100%;
+  padding: 1rem 1.25rem;
+  background: white;
+  border: 1px solid rgba(209, 213, 219, 1);
+  border-radius: 0.75rem;
+  color: #1a1a1a;
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  transition: all 0.3s;
+}
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-brand-navy);
+  box-shadow: 0 0 0 3px rgba(0, 63, 141, 0.1);
+  background: white;
+}
+.form-input::placeholder {
+  color: rgba(156, 163, 175, 1);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand-navy);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

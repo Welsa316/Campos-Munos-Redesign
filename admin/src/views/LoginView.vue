@@ -63,10 +63,12 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
+import { safeNextPath } from '../utils/safeNext.js'
 
 const router = useRouter()
+const route = useRoute()
 const { login } = useAuth()
 
 const email = ref('')
@@ -80,7 +82,7 @@ async function handleLogin() {
 
   try {
     await login(email.value, password.value)
-    router.push({ name: 'AdminDashboard' })
+    router.push(safeNextPath(route.query.next) || { name: 'Inbox' })
   } catch (err) {
     errorMsg.value = err.message || 'Invalid email or password'
   } finally {

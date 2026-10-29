@@ -6,6 +6,7 @@ import { body } from 'express-validator'
 import getPool from '../db/pool.js'
 import validate from '../middleware/validate.js'
 import requireAuth from '../middleware/auth.js'
+import { clientKey, sessionCookieOptions } from '../httpSecurity.js'
 
 const router = Router()
 
@@ -21,6 +22,7 @@ const loginLimiter = rateLimit({
   message: { error: 'Too many login attempts. Please try again in 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: clientKey,
 })
 
 const passwordChangeLimiter = rateLimit({
@@ -29,18 +31,12 @@ const passwordChangeLimiter = rateLimit({
   message: { error: 'Too many password change attempts. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: clientKey,
 })
 
-const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  // Lax, not None: the SPA and API share an origin (one Railway service), so the
-  // cookie doesn't need to travel cross-site. None would leave the body-less
-  // POST /logout forgeable cross-site (logout-CSRF) for no benefit.
-  sameSite: 'lax',
-  maxAge: 8 * 60 * 60 * 1000,
-  path: '/',
-}
+// httpOnly, Lax (portal and API are same-site, so it travels; nothing
+// cross-site can carry it), host-only on the API. See sessionCookieOptions().
+const cookieOptions = () => sessionCookieOptions(process.env)
 
 router.post(
   '/login',
@@ -73,7 +69,7 @@ router.post(
         { expiresIn: '8h' }
       )
 
-      res.cookie('token', token, COOKIE_OPTIONS)
+      res.cookie('token', token, cookieOptions())
       res.json({ authenticated: true, email: admin.email })
     } catch (err) {
       req.log.error({ err: err }, 'Login error')
@@ -83,7 +79,7 @@ router.post(
 )
 
 router.post('/logout', (req, res) => {
-  const { maxAge, ...clearOptions } = COOKIE_OPTIONS
+  const { maxAge, ...clearOptions } = cookieOptions()
   res.clearCookie('token', clearOptions)
   res.json({ ok: true })
 })
@@ -131,7 +127,7 @@ router.post(
         process.env.JWT_SECRET,
         { expiresIn: '8h' }
       )
-      res.cookie('token', newToken, COOKIE_OPTIONS)
+      res.cookie('token', newToken, cookieOptions())
 
       res.json({ ok: true })
     } catch (err) {

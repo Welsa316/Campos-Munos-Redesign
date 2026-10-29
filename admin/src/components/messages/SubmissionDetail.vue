@@ -205,17 +205,15 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount, onMounted, onUnmounted } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { useApi } from '../../composables/useApi.js'
-import { consultationLabel as consultationLabelShared } from '../../data/consultationTypes.js'
+import { consultationLabel } from '../../data/consultationTypes.js'
 import { countryLabel } from '../../data/countries.js'
+import { adminLocale } from '../../utils/locale.js'
 import { formatPhone, telHref } from '../../utils/phone.js'
 import ReplyBox from './ReplyBox.vue'
 import { LEAD_STATUSES, statusMeta } from '../../data/leadStatuses.js'
 
-const { t, te, locale } = useI18n()
-const consultationLabel = (key) => consultationLabelShared(key, t, te)
-const formatCountry = (code) => countryLabel(code, locale.value)
+const formatCountry = (code) => countryLabel(code, adminLocale())
 
 const props = defineProps({
   submission: { type: Object, default: null },

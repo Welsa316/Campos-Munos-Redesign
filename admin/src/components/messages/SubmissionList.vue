@@ -194,9 +194,9 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { CONSULTATION_KEYS, consultationLabel as consultationLabelShared } from '../../data/consultationTypes.js'
+import { CONSULTATION_KEYS, consultationLabel } from '../../data/consultationTypes.js'
 import { countryLabel } from '../../data/countries.js'
+import { adminLocale } from '../../utils/locale.js'
 import { LEAD_STATUSES, statusMeta } from '../../data/leadStatuses.js'
 
 const props = defineProps({
@@ -212,7 +212,6 @@ const refreshBtn = ref(null)
 // Let the dashboard restore focus here after the detail pane unmounts (e.g. archive).
 defineExpose({ focusTop: () => refreshBtn.value?.focus() })
 
-const { t, te, locale } = useI18n()
 const filter = ref('all')
 const consultationFilter = ref('')
 const statusFilter = ref('')
@@ -250,8 +249,7 @@ onUnmounted(() => {
   document.removeEventListener('keydown', closeStatusMenu)
 })
 
-const consultationLabel = (key) => consultationLabelShared(key, t, te)
-const formatCountry = (code) => countryLabel(code, locale.value)
+const formatCountry = (code) => countryLabel(code, adminLocale())
 
 const unreadCount = computed(() => props.submissions.filter(s => !s.is_read).length)
 

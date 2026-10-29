@@ -142,8 +142,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { consultationLabel as consultationLabelShared } from '../../data/consultationTypes.js'
+import { consultationLabel } from '../../data/consultationTypes.js'
 import { LEAD_STATUSES, statusMeta } from '../../data/leadStatuses.js'
 import { formatPhone, telHref } from '../../utils/phone.js'
 
@@ -153,8 +152,6 @@ const props = defineProps({
 })
 const emit = defineEmits(['select', 'setStatus', 'changeArchived'])
 
-const { t, te } = useI18n()
-const consultationLabel = (key) => consultationLabelShared(key, t, te)
 
 const COLUMNS = [
   { key: 'name', label: 'Name', sortable: true },

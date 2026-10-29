@@ -207,7 +207,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { rawFetch } from '../composables/useApi.js'
+import { rawFetch } from '../utils/publicApi.js'
 import { CONSULTATION_KEYS, consultationLabel } from '../data/consultationTypes.js'
 import { COUNTRIES } from '../data/countries.js'
 
