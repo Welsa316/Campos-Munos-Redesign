@@ -10,6 +10,11 @@
       <div class="ml-auto flex items-center gap-1 sm:gap-3">
         <SectionLinks current="whatsapp" />
         <span class="text-xs text-gray-500 font-ui hidden lg:inline">{{ adminEmail }}</span>
+        <button @click="showChangePassword = true" aria-label="Change password" title="Change password"
+          class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors">
+          <i class="fa-solid fa-key text-xs" aria-hidden="true"></i>
+          <span class="hidden lg:inline">Password</span>
+        </button>
         <button @click="handleLogout" aria-label="Sign out"
           class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-gray-500 hover:text-brand-red hover:bg-red-50 text-sm font-ui font-medium transition-colors">
           <i class="fa-solid fa-arrow-right-from-bracket text-xs" aria-hidden="true"></i>
@@ -17,6 +22,8 @@
         </button>
       </div>
     </header>
+
+    <ChangePasswordModal :visible="showChangePassword" @close="showChangePassword = false" />
 
     <!-- What sending means right now, before anyone types. -->
     <p v-if="status && !status.sendingEnabled" class="flex-shrink-0 px-4 sm:px-6 py-2 text-xs font-ui text-amber-900 bg-amber-50 border-b border-amber-100">
@@ -224,6 +231,7 @@ import { useApi, rawFetch, goToLogin } from '../../composables/useApi.js'
 import { formatPhone } from '../../utils/phone.js'
 import SectionLinks from '../../components/portal/SectionLinks.vue'
 import FaIcon from '../../components/FaIcon.vue'
+import ChangePasswordModal from '../../components/messages/ChangePasswordModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -269,6 +277,7 @@ const noteDraft = ref('')
 const draft = ref('')
 const sendError = ref('')
 const threadEl = ref(null)
+const showChangePassword = ref(false)
 // One key per message being written: a retried or double-clicked send is
 // recognised by the server and goes out once.
 let clientKey = crypto.randomUUID()
