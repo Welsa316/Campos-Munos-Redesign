@@ -15,7 +15,7 @@ builds on the site/portal/API split (`docs/architecture-split.md`).
 | Client matching | Billing → Client matching | Automatic only on an exact eImmigration ID in the mapped monday column; names are suggestions; manual links persist; one monday item per client. |
 | monday.com sync against a simulated board | Billing → monday.com | Board/column/label mapping, preview with before/after, apply, history. The mock board is synthetic and resets on restart. |
 | Integrations status | Billing → Integrations | Cards never turn green on environment variables alone. |
-| Roles | `admin_users.role` | `admin` (existing accounts) can upload, approve, link, configure and sync; `staff` can view. Set with SQL: `UPDATE admin_users SET role = 'staff' WHERE email = '…'`. |
+| Roles | `server/auth/capabilities.js` | Every route needs a capability (`billing.import`, `.reconcile`, `.sync`, `.reminders`, `.configure`, …). `admin` (existing accounts, including office@camulaw.com) keeps everything; `billing_paralegal` does imports, matching, sync and reminders; `front_desk` reads payment status only. Change accounts with `server/scripts/staff.js`, never SQL: see docs/staff-accounts.md. |
 | Retention | server/index.js | Raw uploaded files are deleted after `BILLING_UPLOAD_RETENTION_DAYS` (30). |
 
 | Payment reminders (simulated) | Billing → Reminders | Rules (switched off by default) create **drafts** only; staff approve each one; approved reminders go out inside sending hours; delivery and read receipts are tracked; pending reminders are cancelled automatically when a newer report shows payment, the due date moves, the invoice needs review or the client opts out. Sending goes to a simulator until Meta is set up. |

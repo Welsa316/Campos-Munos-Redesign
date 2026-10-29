@@ -340,8 +340,10 @@ the portal, not the public site:
   and lazy components, so the inbox chunk is unaffected.
 - Code: `admin/src/modules/billing/` (views, components, composables).
 - API: a new router under `/api/billing` in `server/app.js`. It inherits the
-  cookie auth and the cross-origin write check automatically; role checks go
-  in a `requireRole` middleware beside `requireAuth`.
+  cookie auth and the cross-origin write check automatically; each route
+  names a capability with `requireCapability` beside `requireAuth`
+  (server/auth/capabilities.js, docs/staff-accounts.md), and the route's
+  `meta.capability` hides it from accounts without it.
 - Uploads (invoice reports): `multipart` or raw bodies need their own body
   parser on that router; the global `express.json()` is capped at 100 kB.
 - The public bundle guard (`site/scripts/check-bundle.js`) already treats
