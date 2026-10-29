@@ -202,10 +202,11 @@ export async function getConversation(db, id, { canSeeBilling = false, env = pro
 
   let invoices = null
   if (canSeeBilling && clients.rows.length) {
+    // Open balances first, then paid ones ("did my payment arrive?").
     invoices = (await db.query(
       `SELECT i.client_id, i.external_invoice_id, i.status, i.balance_cents, COALESCE(i.next_installment_date, i.due_date) AS next_due
          FROM billing_invoices i WHERE i.client_id = ANY($1) AND i.status <> 'void'
-        ORDER BY next_due NULLS LAST LIMIT 20`,
+        ORDER BY (i.status = 'paid'), next_due NULLS LAST LIMIT 20`,
       [clients.rows.map((r) => r.id)]
     )).rows.map((r) => ({
       clientId: Number(r.client_id), invoiceId: r.external_invoice_id, status: r.status,
