@@ -7,6 +7,7 @@ dotenv.config({ path: join(__dirname, '..', '.env') })
 
 import getPool from './pool.js'
 import logger from '../logger.js'
+import { applyBillingSchema } from './billingSchema.js'
 
 async function migrate() {
   const pool = getPool()
@@ -155,6 +156,8 @@ async function migrate() {
       CREATE INDEX IF NOT EXISTS idx_whatsapp_events_from ON whatsapp_events(from_wa_id, received_at DESC);
       CREATE INDEX IF NOT EXISTS idx_whatsapp_events_message_id ON whatsapp_events(wa_message_id);
     `)
+    // Billing tables (additive; see db/billingSchema.js).
+    await applyBillingSchema(client)
     logger.info('Migration complete — tables created.')
   } finally {
     client.release()

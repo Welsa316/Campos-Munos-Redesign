@@ -1,0 +1,6 @@
+Client ID,Client Name,Invoice #,Due Date,Invoice Total,Amount Paid,Balance Due,Status,Payment ID,Payment Date,Payment Amount
+EIM-C-0002,Prueba Dos,INV-1002,12/15/2026,"2,000.00",500.00,"1,500.00",Partial,,,
+EIM-C-0002,Prueba Dos,INV-1002,,,,,,PAY-5002,9/10/2026,500.00
+EIM-C-0003,Prueba Tres,INV-1003,11/30/2026,750.00,0.00,750.00,Unpaid,,,
+EIM-C-0006,Prueba Seis,INV-1006,2/1/2027,"6,000.00","2,000.00","4,000.00",Partial,,,
+EIM-C-0006,Prueba Seis,INV-1006,,,,,,PAY-5003,10/15/2026,"2,000.00"

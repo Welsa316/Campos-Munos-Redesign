@@ -1,0 +1,6 @@
+SYNTHETIC TEST DATA - Invoice Report,,,,,
+Generated 10/29/2026 by test fixture,,,,,
+Client ID,Client Name,Invoice #,Invoice Total,Amount Paid,Balance Due
+EIM-C-0001,Prueba Uno,INV-1001,"1,500.00","1,500.00",0.00
+EIM-C-0003,Prueba Tres,INV-1003,750.00,0.00,750.00
+

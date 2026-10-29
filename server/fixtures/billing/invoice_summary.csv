@@ -1,0 +1,15 @@
+Client ID,Client Name,Invoice #,Invoice Date,Due Date,Invoice Total,Amount Paid,Balance Due,Status,Payment Plan,Next Installment Date,Next Installment Amount,Last Payment Date
+EIM-C-0001,Prueba Uno,INV-1001,1/5/2026,2/4/2026,"$1,500.00","$1,500.00",$0.00,Paid,,,,1/20/2026
+EIM-C-0002,Prueba Dos,INV-1002,9/1/2026,12/15/2026,"$2,000.00",$500.00,"$1,500.00",Partially Paid,,,,9/10/2026
+EIM-C-0003,Prueba Tres,INV-1003,10/1/2026,11/30/2026,$750.00,$0.00,$750.00,Unpaid,,,,
+EIM-C-0004,Prueba Cuatro,INV-1004,6/1/2026,8/1/2026,"$1,200.00",$200.00,"$1,000.00",Overdue,,,,6/15/2026
+EIM-C-0005,Prueba Cinco,INV-1005,3/3/2026,4/2/2026,$900.00,$0.00,$0.00,Void,,,,
+EIM-C-0006,Prueba Seis,INV-1006,2026-03-01,2027-02-01,"$6,000.00","$2,000.00","$4,000.00",Partial,Monthly $500 x 12,11/15/2026,$500.00,10/15/2026
+EIM-C-0007,Prueba Siete,INV-1007,1/10/2026,2/9/2026,$300.00,$300.00,$0.00,Paid,,,,2/1/2026
+EIM-C-0007,Prueba Siete,INV-1008,7/10/2026,12/9/2026,$450.50,$0.00,$450.50,Open,,,,
+EIM-C-0007,Prueba Siete,INV-1009,8/10/2026,9/9/2026,"$1,000.00",$250.25,$749.75,Partial,,,,8/20/2026
+EIM-C-0008,Ana Ejemplo,INV-1010,9/15/2026,12/15/2026,$400.00,$0.00,$400.00,Unpaid,,,,
+EIM-C-0009,Ana Ejemplo,INV-1011,4/15/2026,5/15/2026,$650.00,$650.00,$0.00,Paid,,,,5/1/2026
+EIM-C-0010,"Prueba Ñandú Pérez",INV-1012,9/20/2026,12/20/2026,"$1,000.00",$100.00,$900.00,Pendiente,,,,9/25/2026
+EIM-C-0011,Prueba Once,INV-1013,7/1/2026,8/1/2026,"$1,000.00",$300.00,$800.00,Partial,,,,7/15/2026
+EIM-C-0012,Prueba Doce,INV-1014,8/1/2026,9/1/2026,$120.00,$0.00,$120.00,Sent to collections,,,,
