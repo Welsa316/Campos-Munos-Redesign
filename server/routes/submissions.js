@@ -5,6 +5,7 @@ import { body, param } from 'express-validator'
 import { Resend } from 'resend'
 import getPool from '../db/pool.js'
 import requireAuth from '../middleware/auth.js'
+import requireCapability from '../middleware/requireCapability.js'
 import validate from '../middleware/validate.js'
 import { stripHtml, escapeHtml, escapeCsvField } from '../utils/sanitize.js'
 import { sendLeadConversion } from '../utils/openaiConversions.js'
@@ -178,7 +179,7 @@ router.post(
 )
 
 // Admin — list submissions
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', requireAuth, requireCapability('crm.view'), async (req, res) => {
   try {
     const unreadOnly = req.query.unread === 'true'
     const archived = req.query.archived === 'true'
@@ -232,6 +233,7 @@ router.get('/', requireAuth, async (req, res) => {
 router.get(
   '/:id',
   requireAuth,
+  requireCapability('crm.view'),
   param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid submission ID'),
   validate,
   async (req, res) => {
@@ -242,7 +244,9 @@ router.get(
           [req.params.id]
         ),
         getPool().query(
-          'SELECT id, body, sent_at FROM replies WHERE submission_id = $1 ORDER BY sent_at ASC',
+          `SELECT r.id, r.body, r.sent_at, COALESCE(NULLIF(TRIM(u.display_name), ''), split_part(u.email, '@', 1)) AS sent_by_name
+           FROM replies r LEFT JOIN admin_users u ON u.id = r.sent_by
+          WHERE r.submission_id = $1 ORDER BY r.sent_at ASC`,
           [req.params.id]
         ),
         getPool().query(
@@ -250,7 +254,9 @@ router.get(
           [req.params.id]
         ),
         getPool().query(
-          'SELECT id, body, created_at FROM lead_notes WHERE submission_id = $1 ORDER BY created_at DESC',
+          `SELECT n.id, n.body, n.created_at, COALESCE(NULLIF(TRIM(u.display_name), ''), split_part(u.email, '@', 1)) AS author_name
+             FROM lead_notes n LEFT JOIN admin_users u ON u.id = n.author_id
+            WHERE n.submission_id = $1 ORDER BY n.created_at DESC`,
           [req.params.id]
         ),
       ])
@@ -358,6 +364,7 @@ router.post(
 router.patch(
   '/:id/read',
   requireAuth,
+  requireCapability('crm.manage'),
   param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid submission ID'),
   body('read').optional().isBoolean({ strict: true }),
   validate,
@@ -386,6 +393,7 @@ router.patch(
 router.patch(
   '/:id/archive',
   requireAuth,
+  requireCapability('crm.manage'),
   param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid submission ID'),
   body('archived').optional().isBoolean({ strict: true }),
   validate,
@@ -414,6 +422,7 @@ router.patch(
 router.patch(
   '/:id/status',
   requireAuth,
+  requireCapability('crm.manage'),
   param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid submission ID'),
   body('status').isIn(LEAD_STATUSES).withMessage('Invalid status'),
   validate,
@@ -438,6 +447,7 @@ router.patch(
 router.post(
   '/:id/notes',
   requireAuth,
+  requireCapability('crm.manage'),
   param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid submission ID'),
   body('body').trim().notEmpty().isLength({ max: 5000 }).withMessage('Note is required (max 5000 chars)'),
   validate,
@@ -448,10 +458,10 @@ router.post(
         return res.status(404).json({ error: 'Submission not found' })
       }
       const result = await getPool().query(
-        'INSERT INTO lead_notes (submission_id, body) VALUES ($1, $2) RETURNING id, body, created_at',
-        [req.params.id, stripHtml(req.body.body)]
+        'INSERT INTO lead_notes (submission_id, body, author_id) VALUES ($1, $2, $3) RETURNING id, body, created_at',
+        [req.params.id, stripHtml(req.body.body), req.account.id]
       )
-      res.status(201).json(result.rows[0])
+      res.status(201).json({ ...result.rows[0], author_name: req.account.name })
     } catch (err) {
       req.log.error({ err }, 'Add note error')
       res.status(500).json({ error: 'Internal server error' })
@@ -463,6 +473,7 @@ router.post(
 router.delete(
   '/:id/notes/:noteId',
   requireAuth,
+  requireCapability('crm.manage'),
   param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid submission ID'),
   param('noteId').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid note ID'),
   validate,
@@ -488,7 +499,7 @@ router.delete(
 // Admin — export submissions as CSV. Streams rows directly from the DB cursor
 // to the response, so a 50k-row inbox doesn't materialise the whole result set
 // in memory before writing.
-router.get('/export/csv', requireAuth, async (req, res) => {
+router.get('/export/csv', requireAuth, requireCapability('crm.export'), async (req, res) => {
   let client
   try {
     client = await getPool().connect()
@@ -551,6 +562,7 @@ router.get('/export/csv', requireAuth, async (req, res) => {
 router.post(
   '/:id/reply',
   requireAuth,
+  requireCapability('crm.manage'),
   param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid submission ID'),
   body('body').trim().notEmpty().isLength({ max: 10000 }).withMessage('Reply body is required (max 10000 chars)'),
   validate,
@@ -571,11 +583,11 @@ router.post(
 
       // Save reply to DB first
       const replyResult = await getPool().query(
-        'INSERT INTO replies (submission_id, body) VALUES ($1, $2) RETURNING id, body, sent_at',
-        [submission.id, replyBody]
+        'INSERT INTO replies (submission_id, body, sent_by) VALUES ($1, $2, $3) RETURNING id, body, sent_at',
+        [submission.id, replyBody, req.account.id]
       )
 
-      const reply = replyResult.rows[0]
+      const reply = { ...replyResult.rows[0], sent_by_name: req.account.name }
       let emailFailed = false
 
       // Replying from the inbox IS making contact, so move the lead to
