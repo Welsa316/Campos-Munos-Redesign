@@ -235,6 +235,8 @@ export const BILLING_SCHEMA_SQL = `
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
   CREATE INDEX IF NOT EXISTS idx_billing_client_contacts_phone ON billing_client_contacts(phone_e164);
+  -- IANA zone for the sending window (America/Chicago when unset).
+  ALTER TABLE billing_client_contacts ADD COLUMN IF NOT EXISTS timezone TEXT;
 
   -- Reminder rules and message templates, editable in the portal. Seeded
   -- switched off (server/billing/reminderModel.js).
@@ -342,6 +344,19 @@ export const BILLING_SCHEMA_SQL = `
     handled_by INTEGER REFERENCES admin_users(id) ON DELETE SET NULL
   );
   ALTER TABLE billing_inbound_reviews ADD COLUMN IF NOT EXISTS body TEXT;
+
+  -- Which webhook events billing has handled. A failure while handling
+  -- (say, a database blip during a STOP) leaves it NULL and a sweep retries
+  -- it. Added with every existing row marked handled, so history from before
+  -- billing existed is never replayed.
+  DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'whatsapp_events' AND column_name = 'billing_processed_at') THEN
+      ALTER TABLE whatsapp_events ADD COLUMN billing_processed_at TIMESTAMPTZ;
+      ALTER TABLE whatsapp_events ADD COLUMN billing_attempts INTEGER NOT NULL DEFAULT 0;
+      UPDATE whatsapp_events SET billing_processed_at = NOW();
+    END IF;
+  END $$;
+  CREATE INDEX IF NOT EXISTS idx_whatsapp_events_billing_pending ON whatsapp_events(received_at) WHERE billing_processed_at IS NULL;
 
   -- Last connectivity check per integration (Settings cards).
   CREATE TABLE IF NOT EXISTS billing_integration_checks (

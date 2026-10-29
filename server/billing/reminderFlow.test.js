@@ -26,7 +26,7 @@ const PORTAL = 'http://portal.test'
 let nowIso = '2026-11-27T16:00:00Z' // Friday 10:00 Central
 const CLOCK = () => new Date(nowIso)
 
-let server, base, adminCookie, staffCookie, db, mondayMock, wa, inbound
+let server, base, adminCookie, staffCookie, db, mondayMock, wa, inbound, midBatchProvider
 
 before(async () => {
   if (SKIP) return
@@ -70,7 +70,7 @@ before(async () => {
   const app = express()
   app.use(cookieParser())
   app.use(express.json({ limit: '100kb' }))
-  app.use('/api/billing', createBillingRouter({ env: { MONDAY_PROVIDER: 'mock', WHATSAPP_PROVIDER: 'mock' }, mondayProvider: mondayMock, whatsappProvider: wa, now: CLOCK }))
+  app.use('/api/billing', createBillingRouter({ env: { MONDAY_PROVIDER: 'mock', WHATSAPP_PROVIDER: 'mock', WHATSAPP_SENDING_ENABLED: 'true' }, mondayProvider: mondayMock, whatsappProvider: wa, now: CLOCK }))
   // The real provider, never enabled: proves the sending gate.
   const metaLike = { mode: 'meta', describe: () => ({}), sendTemplate: async () => { throw new Error('must not be called') } }
   app.use('/api/billing-meta', createBillingRouter({ env: { WHATSAPP_PROVIDER: 'meta' }, mondayProvider: mondayMock, whatsappProvider: metaLike, now: CLOCK }))
@@ -86,7 +86,23 @@ before(async () => {
       return { ok: true, providerMessageId: id, simulated: true }
     },
   }
-  app.use('/api/billing-fast', createBillingRouter({ env: { WHATSAPP_PROVIDER: 'mock' }, mondayProvider: mondayMock, whatsappProvider: fast, now: CLOCK }))
+  app.use('/api/billing-fast', createBillingRouter({ env: { WHATSAPP_PROVIDER: 'mock', WHATSAPP_SENDING_ENABLED: 'true' }, mondayProvider: mondayMock, whatsappProvider: fast, now: CLOCK }))
+  // Simulated sending without the switch: must not send either.
+  app.use('/api/billing-off', createBillingRouter({ env: { WHATSAPP_PROVIDER: 'mock' }, mondayProvider: mondayMock, whatsappProvider: wa, now: CLOCK }))
+  // A sender that, mid-batch, sees the next reminder's invoice get paid
+  // (an import approved while the batch is being sent).
+  const midBatch = {
+    mode: 'mock',
+    describe: () => ({ mode: 'mock' }),
+    sent: [],
+    async sendTemplate(req) {
+      midBatch.sent.push(req.idempotencyKey)
+      await db.query("UPDATE billing_invoices SET status = 'paid', balance_cents = 0, paid_cents = total_cents WHERE external_invoice_id = 'INV-1004'")
+      return { ok: true, providerMessageId: `wamid.MID.${midBatch.sent.length}`, simulated: true }
+    },
+  }
+  midBatchProvider = midBatch
+  app.use('/api/billing-mid', createBillingRouter({ env: { WHATSAPP_PROVIDER: 'mock', WHATSAPP_SENDING_ENABLED: 'true' }, mondayProvider: mondayMock, whatsappProvider: midBatch, now: CLOCK }))
   addFallbackHandlers(app)
   server = app.listen(0)
   await new Promise((r) => server.once('listening', r))
@@ -164,7 +180,7 @@ test('reminder flow, end to end, with simulated WhatsApp', { skip: SKIP }, async
     let r = await call('POST', '/api/billing/reminders/evaluate')
     assert.equal(r.json.created, 0)
     assert.ok(r.json.suppressed.some((s) => s.reason === 'no_contact'), JSON.stringify(r.json.suppressed))
-    assert.equal((await call('PUT', `/api/billing/contacts/${c3}`, { body: { phone: '(504) 555-0103', language: 'es' } })).status, 200)
+    assert.equal((await call('PUT', `/api/billing/contacts/${c3}`, { body: { country: '1', phone: '(504) 555-0103', language: 'es' } })).status, 200)
     r = await call('POST', '/api/billing/reminders/evaluate')
     assert.equal(r.json.created, 0)
     assert.ok(r.json.suppressed.some((s) => s.reason === 'no_opt_in'))
@@ -260,7 +276,7 @@ test('reminder flow, end to end, with simulated WhatsApp', { skip: SKIP }, async
     const inv = (await db.query("SELECT id FROM billing_invoices WHERE external_invoice_id = 'INV-1004'")).rows[0].id
     const seed = async (rule, phone) => {
       const key = 'INV-1004@2026-08-01'
-      await call('PUT', `/api/billing/contacts/${c4}`, { body: { phone, language: 'es' } })
+      await call('PUT', `/api/billing/contacts/${c4}`, { body: { phone: `+${phone}`, language: 'es' } })
       await call('POST', `/api/billing/contacts/${c4}/opt-in`, { body: { source: 'intake form' } })
       return Number((await db.query(`INSERT INTO billing_reminders (obligation_key, rule_key, invoice_id, client_id, action, state, to_phone, due_date, template_key, language, params, approved_at)
         VALUES ($1, $6, $2, $3, 'whatsapp', 'approved', $4, '2026-08-01', 'payment_overdue', 'es', $5, NOW()) RETURNING id`,
@@ -288,7 +304,7 @@ test('reminder flow, end to end, with simulated WhatsApp', { skip: SKIP }, async
     await call('PUT', `/api/billing/contacts/${c4}`, { body: { phone: '+1 504 555 0104', language: 'es' } })
     await call('POST', `/api/billing/contacts/${c4}/opt-in`, { body: { source: 'intake form' } })
     const id = Number((await db.query(`INSERT INTO billing_reminders (obligation_key, rule_key, invoice_id, client_id, action, state, to_phone, due_date, template_key, language, params, approved_at)
-      VALUES ('INV-1004@2026-08-01', 'followup_14', $1, $2, 'whatsapp', 'approved', '15045550104', '2026-08-01', 'payment_overdue', 'es', $3, NOW()) RETURNING id`,
+      VALUES ('INV-1004@2026-08-01', 'fast_receipt', $1, $2, 'whatsapp', 'approved', '15045550104', '2026-08-01', 'payment_overdue', 'es', $3, NOW()) RETURNING id`,
     [inv, c4, JSON.stringify({ metaName: 'payment_overdue', languageCode: 'es', bodyParams: ['Prueba', '$1,000.00', '1 de agosto de 2026'] })])).rows[0].id)
     const d = await call('POST', '/api/billing-fast/reminders/dispatch')
     assert.equal(d.json.sent, 1, d.text)
@@ -307,6 +323,108 @@ test('reminder flow, end to end, with simulated WhatsApp', { skip: SKIP }, async
     await call('PUT', `/api/billing/contacts/${c3b}`, { body: { phone: '+1 504 555 0999', language: 'es' } })
     const k = (await db.query('SELECT opted_in_at FROM billing_client_contacts WHERE client_id = $1', [c3b])).rows[0]
     assert.equal(k.opted_in_at, null)
+  })
+
+
+  // --- regression tests for the review of the reminder code -------------------
+
+  const seedApproved = async ({ rule, clientEim, invoice, dueDate, phone, approvedAt = 'NOW()' }) => {
+    const cid = await clientId(clientEim)
+    const inv = (await db.query('SELECT id FROM billing_invoices WHERE external_invoice_id = $1', [invoice])).rows[0].id
+    return Number((await db.query(`INSERT INTO billing_reminders (obligation_key, rule_key, invoice_id, client_id, action, state, to_phone, due_date, template_key, language, params, approved_at)
+      VALUES ($1, $2, $3, $4, 'whatsapp', 'approved', $5, $6, 'payment_overdue', 'es', $7, ${approvedAt}) RETURNING id`,
+    [`${invoice}@${dueDate}`, rule, inv, cid, phone, dueDate, JSON.stringify({ metaName: 'payment_overdue', languageCode: 'es', bodyParams: ['Prueba', '$1.00', 'x'] })])).rows[0].id)
+  }
+
+  await t.test('simulated sending also needs WHATSAPP_SENDING_ENABLED', async () => {
+    const d = await call('POST', '/api/billing-off/reminders/dispatch')
+    assert.equal(d.json.skipped, 'sending_disabled')
+  })
+
+  await t.test('numbers need a country; a bare 10-digit number is not assumed to be American', async () => {
+    const c1 = await clientId('EIM-C-0001')
+    assert.equal((await call('PUT', `/api/billing/contacts/${c1}`, { body: { phone: '33 1234 5678', language: 'es' } })).status, 400)
+    const ok = await call('PUT', `/api/billing/contacts/${c1}`, { body: { phone: '33 1234 5678', country: '52', language: 'es' } })
+    assert.equal(ok.json.phone, '523312345678')
+    const bad = await call('PUT', `/api/billing/contacts/${c1}`, { body: { phone: '+52 33 1234 5678', firstName: 'A\nB', language: 'es' } })
+    assert.equal(bad.status, 400, 'a first name cannot carry a new line into a message')
+  })
+
+  await t.test('the sending window follows the client\'s time zone', async () => {
+    nowIso = '2026-11-30T16:00:00Z' // 10:00 Central, 08:00 Pacific
+    const c4 = await clientId('EIM-C-0004')
+    await call('PUT', `/api/billing/contacts/${c4}`, { body: { phone: '+1 504 555 0144', language: 'es', timezone: 'America/Los_Angeles' } })
+    await call('POST', `/api/billing/contacts/${c4}/opt-in`, { body: { source: 'intake form' } })
+    const id = await seedApproved({ rule: 'tz_test', clientEim: 'EIM-C-0004', invoice: 'INV-1004', dueDate: '2026-08-01', phone: '15045550144' })
+    let d = await call('POST', '/api/billing/reminders/dispatch')
+    assert.equal(d.json.sent, 0)
+    assert.equal((await db.query('SELECT state FROM billing_reminders WHERE id = $1', [id])).rows[0].state, 'approved', 'waits for 9:00 in Los Angeles')
+    await call('PUT', `/api/billing/contacts/${c4}`, { body: { phone: '+1 504 555 0144', language: 'es', timezone: 'America/Chicago' } })
+    await call('POST', `/api/billing/contacts/${c4}/opt-in`, { body: { source: 'intake form' } })
+    d = await call('POST', '/api/billing/reminders/dispatch')
+    assert.equal(d.json.sent, 1)
+  })
+
+  await t.test('a staff follow-up is not cancelled for lack of WhatsApp consent', async () => {
+    const c6 = await clientId('EIM-C-0006')
+    const inv = (await db.query("SELECT id FROM billing_invoices WHERE external_invoice_id = 'INV-1006'")).rows[0].id
+    const id = Number((await db.query(`INSERT INTO billing_reminders (obligation_key, rule_key, invoice_id, client_id, action, state, due_date)
+      VALUES ('INV-1006@2026-11-15', 'followup_14', $1, $2, 'staff_followup', 'draft', '2026-11-15') RETURNING id`, [inv, c6])).rows[0].id)
+    const ap = await call('POST', '/api/billing/reminders/approve', { body: { ids: [id] } })
+    assert.equal(ap.json.tasksDone, 1, 'the follow-up survived to be marked done')
+    assert.equal((await call('POST', '/api/billing/reminders/approve', { body: { ids: 'x' } })).status, 400)
+  })
+
+  await t.test('a failure that retrying cannot fix is not retryable', async () => {
+    const id = await seedApproved({ rule: 'bad_number', clientEim: 'EIM-C-0004', invoice: 'INV-1004', dueDate: '2026-08-01', phone: '15045550144' })
+    await db.query("UPDATE billing_reminders SET state = 'failed', last_error_retryable = FALSE, attempts = 1 WHERE id = $1", [id])
+    const r = await call('POST', `/api/billing/reminders/${id}/retry`)
+    assert.equal(r.status, 409)
+    assert.equal(r.json.code, 'not_retryable')
+  })
+
+  await t.test('a payment confirmed while a batch is being sent stops the later message', async () => {
+    const a = await seedApproved({ rule: 'batch_a', clientEim: 'EIM-C-0004', invoice: 'INV-1004', dueDate: '2026-08-01', phone: '15045550144', approvedAt: "NOW() - INTERVAL '2 minutes'" })
+    const b = await seedApproved({ rule: 'batch_b', clientEim: 'EIM-C-0004', invoice: 'INV-1004', dueDate: '2026-08-01', phone: '15045550144', approvedAt: "NOW() - INTERVAL '1 minute'" })
+    const d = await call('POST', '/api/billing-mid/reminders/dispatch')
+    assert.equal(d.json.sent, 1, d.text)
+    assert.equal(midBatchProvider.sent.length, 1, 'only the first went out')
+    const rows = (await db.query('SELECT id, state, cancel_reason FROM billing_reminders WHERE id = ANY($1) ORDER BY id', [[a, b]])).rows
+    assert.deepEqual(rows.map((r) => [r.state, r.cancel_reason]), [['sent', null], ['cancelled', 'settled']])
+  })
+
+  await t.test('a STOP from a number shared by several clients opts all of them out', async () => {
+    const c1 = await clientId('EIM-C-0001')
+    const c4 = await clientId('EIM-C-0004')
+    await call('PUT', `/api/billing/contacts/${c1}`, { body: { phone: '+1 504 555 0144', language: 'es' } })
+    await call('POST', `/api/billing/contacts/${c1}/opt-in`, { body: { source: 'intake form' } })
+    const listed = (await call('GET', '/api/billing/contacts')).json.find((c) => c.client_id === String(c4) || Number(c.client_id) === c4)
+    assert.equal(listed.shared_with, 1, 'the contacts screen shows the number is shared')
+    await inbound.handleWhatsAppEvent(db, { kind: 'message', key: 'message:wamid.SHARED', from: '15045550144', raw: { text: { body: 'stop' } } })
+    const out = (await db.query('SELECT client_id FROM billing_client_contacts WHERE opted_out_at IS NOT NULL AND client_id = ANY($1)', [[c1, c4]])).rows
+    assert.equal(out.length, 2)
+  })
+
+  await t.test('Meta\'s 521 form of a Mexican number matches the 52 number on file', async () => {
+    const c3 = await clientId('EIM-C-0003')
+    await call('PUT', `/api/billing/contacts/${c3}`, { body: { phone: '33 1234 9999', country: '52', language: 'es' } })
+    await call('POST', `/api/billing/contacts/${c3}/opt-in`, { body: { source: 'intake form' } })
+    await inbound.handleWhatsAppEvent(db, { kind: 'message', key: 'message:wamid.MX', from: '5213312349999', raw: { text: { body: 'BAJA' } } })
+    assert.notEqual((await db.query('SELECT opted_out_at FROM billing_client_contacts WHERE client_id = $1', [c3])).rows[0].opted_out_at, null)
+  })
+
+  await t.test('a STOP whose handling failed once is retried, not lost', async () => {
+    const c2 = await clientId('EIM-C-0002')
+    await call('PUT', `/api/billing/contacts/${c2}`, { body: { phone: '+1 504 555 0122', language: 'en' } })
+    await call('POST', `/api/billing/contacts/${c2}/opt-in`, { body: { source: 'intake form' } })
+    // Stored by the webhook, but billing never got to it.
+    await db.query(`INSERT INTO whatsapp_events (event_key, kind, wa_message_id, from_wa_id, message_type, payload, received_at)
+      VALUES ('message:wamid.LOST', 'message', 'wamid.LOST', '15045550122', 'text', '{"text":{"body":"STOP"}}', NOW() - INTERVAL '5 minutes')`)
+    const { sweepUnhandled } = inbound
+    const r = await sweepUnhandled(db)
+    assert.equal(r.handled, 1)
+    assert.notEqual((await db.query('SELECT opted_out_at FROM billing_client_contacts WHERE client_id = $1', [c2])).rows[0].opted_out_at, null)
+    assert.equal((await sweepUnhandled(db)).handled, 0, 'handled once')
   })
 
   await t.test('audit trail covers consent, approval and sending without names or numbers', async () => {

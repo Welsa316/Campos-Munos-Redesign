@@ -153,12 +153,22 @@ export async function processEvents(events, { store, log, recentKeys, onEvent = 
   }
 }
 
+// Billing handles each stored event, marks it handled, and (at most once a
+// minute) retries any event an earlier failure left unhandled, so a STOP is
+// never lost to a database blip.
+let lastSweep = 0
 export default createWhatsappRouter({
   onEvent: async (evt, log) => {
-    const [{ default: getPool }, { handleWhatsAppEvent }] = await Promise.all([
+    const [{ default: getPool }, { handleWhatsAppEvent, sweepUnhandled }] = await Promise.all([
       import('../db/pool.js'),
       import('../billing/whatsappInbound.js'),
     ])
-    return handleWhatsAppEvent(getPool(), evt, { log })
+    const db = getPool()
+    await handleWhatsAppEvent(db, evt, { log })
+    await db.query('UPDATE whatsapp_events SET billing_processed_at = NOW() WHERE event_key = $1', [evt.key])
+    if (Date.now() - lastSweep > 60 * 1000) {
+      lastSweep = Date.now()
+      sweepUnhandled(db, { log }).catch(() => {})
+    }
   },
 })

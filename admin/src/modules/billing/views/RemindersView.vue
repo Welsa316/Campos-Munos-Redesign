@@ -116,7 +116,7 @@
         <header class="px-5 py-4 border-b border-gray-100">
           <h2 id="tpl-h" class="text-sm font-ui font-semibold text-gray-900">Message templates</h2>
           <p class="text-[11px] font-ui text-gray-500 mt-0.5">
-            WhatsApp only delivers business-initiated messages that use a template Meta approved, word for word. Keep these in step with WhatsApp Manager (category: Utility).
+            The text here is the preview staff approve. What clients receive is the version Meta approved under the same name in WhatsApp Manager (category: Utility), so keep the two identical, and tick "Approved by Meta" only once it is. Real sending refuses templates that are not ticked.
             Placeholders: {{ '{' + '{1}' + '}' }} client's first name, {{ '{' + '{2}' + '}' }} amount, {{ '{' + '{3}' + '}' }} due date. Never add case details or immigration status.
           </p>
         </header>

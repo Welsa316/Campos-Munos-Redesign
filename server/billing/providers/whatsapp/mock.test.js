@@ -21,7 +21,7 @@ const req = (to, key, extra = {}) => ({ to, templateName: 'payment_due_soon', la
 
 function setup() {
   const receipts = []
-  const p = createMockWhatsAppProvider({ onStatus: (r) => { receipts.push(r) }, now: () => FIXED, delayMs: 0 })
+  const p = createMockWhatsAppProvider({ instanceId: 'T', onStatus: (r) => { receipts.push(r) }, now: () => FIXED, delayMs: 0 })
   return { p, receipts }
 }
 
@@ -32,15 +32,15 @@ test('describe()', () => {
 test('normal number: sent, then delivered then read receipts via onStatus', async () => {
   const { p, receipts } = setup()
   const r = await p.sendTemplate(req('15045550101', 'k1'))
-  assert.deepEqual(r, { ok: true, providerMessageId: 'wamid.SIMULATED.1', simulated: true })
+  assert.deepEqual(r, { ok: true, providerMessageId: 'wamid.SIMULATED.T.1', simulated: true })
   assert.equal(receipts.length, 0, 'receipts are asynchronous')
   await p.flushReceipts()
   assert.deepEqual(receipts, [
-    { providerMessageId: 'wamid.SIMULATED.1', status: 'delivered', timestamp: FIXED, simulated: true },
-    { providerMessageId: 'wamid.SIMULATED.1', status: 'read', timestamp: FIXED, simulated: true },
+    { providerMessageId: 'wamid.SIMULATED.T.1', status: 'delivered', timestamp: FIXED, simulated: true },
+    { providerMessageId: 'wamid.SIMULATED.T.1', status: 'read', timestamp: FIXED, simulated: true },
   ])
   const r2 = await p.sendTemplate(req('15045550102', 'k2'))
-  assert.equal(r2.providerMessageId, 'wamid.SIMULATED.2')
+  assert.equal(r2.providerMessageId, 'wamid.SIMULATED.T.2')
 })
 
 test('…0000 → failed 131026, not retryable, nothing sent', async () => {
@@ -110,8 +110,8 @@ test('sent log records exactly what would have gone out; clearSentLog resets', a
   await p.sendTemplate(req('15045550000', 'b')) // failed: not logged
   await p.sendTemplate(req('50212345678', 'c', { templateName: 'payment_overdue', languageCode: 'en_US', bodyParams: [] }))
   assert.deepEqual(p.getSentLog(), [
-    { to: '15045550101', templateName: 'payment_due_soon', languageCode: 'es', bodyParams: ['Ana', '$100.00', '1 de noviembre'], idempotencyKey: 'a', outcome: 'sent', providerMessageId: 'wamid.SIMULATED.1' },
-    { to: '50212345678', templateName: 'payment_overdue', languageCode: 'en_US', bodyParams: [], idempotencyKey: 'c', outcome: 'sent', providerMessageId: 'wamid.SIMULATED.2' },
+    { to: '15045550101', templateName: 'payment_due_soon', languageCode: 'es', bodyParams: ['Ana', '$100.00', '1 de noviembre'], idempotencyKey: 'a', outcome: 'sent', providerMessageId: 'wamid.SIMULATED.T.1' },
+    { to: '50212345678', templateName: 'payment_overdue', languageCode: 'en_US', bodyParams: [], idempotencyKey: 'c', outcome: 'sent', providerMessageId: 'wamid.SIMULATED.T.2' },
   ])
   p.getSentLog()[0].bodyParams.push('mutated')
   assert.equal(p.getSentLog()[0].bodyParams.length, 3, 'log is a copy')
@@ -128,17 +128,26 @@ test('invalid input is refused like the real provider', async () => {
 })
 
 test('a throwing onStatus does not break sending', async () => {
-  const p = createMockWhatsAppProvider({ onStatus: () => { throw new Error('handler down') } })
+  const p = createMockWhatsAppProvider({ instanceId: 'T', onStatus: () => { throw new Error('handler down') } })
   assert.equal((await p.sendTemplate(req('15045550101', 'k'))).ok, true)
   await p.flushReceipts()
 })
 
 test('delayMs delays receipts', async () => {
   const receipts = []
-  const p = createMockWhatsAppProvider({ onStatus: (r) => receipts.push(r.status), delayMs: 15 })
+  const p = createMockWhatsAppProvider({ instanceId: 'T', onStatus: (r) => receipts.push(r.status), delayMs: 15 })
   await p.sendTemplate(req('15045550101', 'k'))
   await new Promise((r) => setTimeout(r, 5))
   assert.deepEqual(receipts, [])
   await p.flushReceipts()
   assert.deepEqual(receipts, ['delivered', 'read'])
+})
+
+test('two simulators (or one after a restart) never hand out the same message id', async () => {
+  const a = createMockWhatsAppProvider()
+  const b = createMockWhatsAppProvider()
+  const send = (p, key) => p.sendTemplate({ to: '15045550101', templateName: 'payment_due_soon', languageCode: 'es', bodyParams: ['A'], idempotencyKey: key })
+  const ra = await send(a, 'k1')
+  const rb = await send(b, 'k2')
+  assert.notEqual(ra.providerMessageId, rb.providerMessageId)
 })

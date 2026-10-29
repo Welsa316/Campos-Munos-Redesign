@@ -276,6 +276,7 @@ Legend: [x] done, [ ] pending, [~] partial (note says what is missing).
 - [x] Cancellation when settled, re-dated, voided, under review, unlinked, opted out, stale, or a "due soon" draft passes its date
 - [x] Retry only definite failures; "unconfirmed" sends are never resent automatically
 - [x] Tests: engine 39, providers 60, webhook hook 2, end-to-end 16
+- [x] Independent review (12 findings: shared phones, cancel during a batch, ungated simulation, mock id collisions, follow-ups, client time zones, lost opt-outs, country codes, retries, template approval). All fixed; each regression test proven to fail without its fix
 - [ ] Activation against the real Cloud API (needs Meta access; see `docs/billing-automation.md` 3b)
 - [ ] Holidays in the sending window (not handled)
 

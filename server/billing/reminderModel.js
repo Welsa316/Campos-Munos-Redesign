@@ -116,6 +116,7 @@ export const CANCEL_REASONS = {
   stale: 'Billing data went stale before sending',
   staff: 'Cancelled by staff',
   expired: 'Not approved before the due date it was about',
+  number_changed: 'The client\u2019s WhatsApp number changed',
 }
 
 /**

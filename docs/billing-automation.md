@@ -19,7 +19,7 @@ builds on the site/portal/API split (`docs/architecture-split.md`).
 | Retention | server/index.js | Raw uploaded files are deleted after `BILLING_UPLOAD_RETENTION_DAYS` (30). |
 
 | Payment reminders (simulated) | Billing → Reminders | Rules (switched off by default) create **drafts** only; staff approve each one; approved reminders go out inside sending hours; delivery and read receipts are tracked; pending reminders are cancelled automatically when a newer report shows payment, the due date moves, the invoice needs review or the client opts out. Sending goes to a simulator until Meta is set up. |
-| WhatsApp contacts and consent | Billing → WhatsApp contacts | Number, language and first name per client; opt-in recorded with how the client agreed; a new number clears consent; a reply of only STOP/BAJA (and similar) opts the client out and cancels their pending reminders. |
+| WhatsApp contacts and consent | Billing → WhatsApp contacts | Number (with its country; nothing is assumed), time zone, language and first name per client; a STOP from a number shared by several clients stops messages to all of them; opt-in recorded with how the client agreed; a new number clears consent; a reply of only STOP/BAJA (and similar) opts the client out and cancels their pending reminders. |
 | Client replies | Billing → Reminders → Client replies | Replies from known clients wait for a person. |
 
 ## 2. Daily workflow for staff
@@ -100,7 +100,10 @@ decision is the firm's, and it must be made before anything below.
    - `WHATSAPP_PHONE_NUMBER_ID=<id>`
    - `WHATSAPP_BUSINESS_ACCOUNT_ID=<id>`
    - `WHATSAPP_GRAPH_API_VERSION` only if the pinned default (`v26.0`) is retired
-   - leave `WHATSAPP_SENDING_ENABLED` unset for now
+   - leave `WHATSAPP_SENDING_ENABLED` unset for now (it gates simulated
+     sending too, so a demo needs it set deliberately)
+   - `BILLING_SCHEDULER_ENABLED=true` only on the API service in Railway,
+     never on a developer machine whose `.env` points at production
 5. The webhook (already deployed, `docs/whatsapp-webhook.md`) must be
    subscribed to the `messages` field; that is how delivery receipts, replies
    and STOP opt-outs arrive.
