@@ -7,9 +7,11 @@
 // Money columns are BIGINT cents. Dates from reports are DATE (no time zone),
 // timestamps are TIMESTAMPTZ.
 export const BILLING_SCHEMA_SQL = `
-  -- Staff roles. The existing account(s) default to 'admin', so nothing
-  -- changes for them; 'staff' can view billing but not approve or sync.
+  -- Staff roles. Adding the column backfills existing accounts as 'admin',
+  -- so nothing changes for them; every account created afterwards is
+  -- 'staff' (view only) unless created as admin on purpose (db/seed.js).
   ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'admin';
+  ALTER TABLE admin_users ALTER COLUMN role SET DEFAULT 'staff';
   DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'admin_users_role_chk') THEN
       ALTER TABLE admin_users ADD CONSTRAINT admin_users_role_chk CHECK (role IN ('admin', 'staff'));

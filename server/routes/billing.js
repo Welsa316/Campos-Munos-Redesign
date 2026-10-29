@@ -14,7 +14,7 @@ import requireRole from '../middleware/requireRole.js'
 import validate from '../middleware/validate.js'
 import { escapeCsvField } from '../utils/sanitize.js'
 import {
-  createImportJob, previewImport, approveImport, cancelImport, MAX_UPLOAD_BYTES, ImportError,
+  createImportJob, previewImport, approveImport, cancelImport, MAX_UPLOAD_BYTES, ImportError, todayInFirmTz,
 } from '../billing/importService.js'
 import {
   getMondayConfig, saveMondayConfig, loadMatchContext, previewSync, applySync, SyncError, writesEnabled,
@@ -26,7 +26,7 @@ import { audit } from '../billing/audit.js'
 
 const idParam = (name) => param(name).isInt({ min: 1, max: 2147483647 }).withMessage('Invalid id')
 
-export function createBillingRouter({ db = null, env = process.env, mondayProvider = null } = {}) {
+export function createBillingRouter({ db = null, env = process.env, mondayProvider = null, now = () => new Date() } = {}) {
   const router = Router()
   const pool = () => db || getPool()
   const fileSource = createFileImportBillingProvider()
@@ -76,8 +76,8 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
       db.query(`SELECT external_invoice_id, client_name, COALESCE(next_installment_date, due_date) AS due, balance_cents
                   FROM billing_invoices
                  WHERE status IN ('unpaid', 'partial') AND balance_cents > 0
-                   AND COALESCE(next_installment_date, due_date) >= CURRENT_DATE
-                 ORDER BY due ASC LIMIT 8`),
+                   AND COALESCE(next_installment_date, due_date) >= $1::date
+                 ORDER BY due ASC LIMIT 8`, [todayInFirmTz(now())]),
       db.query(`SELECT COUNT(*) FILTER (WHERE status = 'needs_review')::int AS needs_review,
                        COUNT(*) FILTER (WHERE status = 'overdue')::int AS overdue,
                        COUNT(*) FILTER (WHERE not_in_latest_report)::int AS absent
@@ -226,6 +226,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
       reportDate: req.body?.reportDate || null,
       actorId: actor(req),
       matchContext,
+      now: now(),
     })
     res.json({ ...result, mondayMatching: { available: matchContext.available, reason: matchContext.reason || null } })
   }))
@@ -264,7 +265,9 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
 
   // --- matching ------------------------------------------------------------------
 
-  router.get('/matching', wrap(async (req, res) => {
+  // Admin only: it reads the whole monday board (every item name, not just
+  // billing clients) and spends API budget on each load.
+  router.get('/matching', admin, wrap(async (req, res) => {
     const db = pool()
     const matchContext = await loadMatchContext(db, safeMonday(), req.log)
     const { links, linkedItemIds } = await loadLinks(db)
@@ -310,11 +313,19 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     if (existing && Number(existing.client_id) !== Number(client.id)) {
       return res.status(409).json({ error: 'That monday.com item is already linked to another client. Unlink it first.' })
     }
-    await db.query(
+    const inserted = await db.query(
       `INSERT INTO billing_client_links (client_id, system, external_id, external_label, method, approved_by)
        VALUES ($1, 'monday', $2, $3, 'manual', $4) ON CONFLICT (system, external_id) DO NOTHING`,
       [client.id, itemId, item.name, actor(req)]
     )
+    if (!inserted.rowCount) {
+      // Someone linked this item between our check and the insert.
+      const owner = (await db.query("SELECT client_id FROM billing_client_links WHERE system = 'monday' AND external_id = $1", [itemId])).rows[0]
+      if (owner && Number(owner.client_id) !== Number(client.id)) {
+        return res.status(409).json({ error: 'That monday.com item was just linked to another client.' })
+      }
+      return res.json({ ok: true, alreadyLinked: true })
+    }
     await db.query(
       `INSERT INTO billing_match_decisions (client_id, decision, system, external_id, decided_by) VALUES ($1, 'approve', 'monday', $2, $3)`,
       [client.id, itemId, actor(req)]
@@ -394,11 +405,11 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
   }))
 
   router.post('/monday/sync/preview', admin, wrap(async (req, res) => {
-    res.json(await previewSync(pool(), getMonday(), { actorId: actor(req) }))
+    res.json(await previewSync(pool(), getMonday(), { actorId: actor(req), env, now: now() }))
   }))
 
   router.post('/monday/sync/:jobId/apply', admin, idParam('jobId'), validate, wrap(async (req, res) => {
-    const result = await applySync(pool(), getMonday(), Number(req.params.jobId), { actorId: actor(req) })
+    const result = await applySync(pool(), getMonday(), Number(req.params.jobId), { actorId: actor(req), env, now: now() })
     req.log?.info({ jobId: result.jobId, written: result.written, failed: result.failed, dryRun: result.dryRun }, 'monday.com sync applied')
     res.json(result)
   }))

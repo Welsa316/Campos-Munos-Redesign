@@ -197,3 +197,20 @@ test('a balance-only report showing zero settles it as paid', () => {
   const r = reconcileInvoice(stored, base({ totalCents: null, balanceCents: 0 }), { ...opts, mappedFields: ['externalInvoiceId', 'balanceAmount'] })
   assert.equal(r.record.status, 'paid', 'the stale "Partial" status text must not veto a zero balance')
 })
+
+test('a balance-only report after an installment was paid does not call the client overdue', () => {
+  // Stored: on a plan, next installment Sep 1, $2,000 owed.
+  const stored = toInvoiceRecord(base({ totalCents: 600000, paidCents: 400000, balanceCents: 200000, paymentPlanText: 'Monthly', nextInstallmentDate: '2026-09-01', nextInstallmentCents: 50000 }), { asOfDate: '2026-08-20', reportDate: '2026-08-20' })
+  // Oct 15 outstanding-only report: $1,500 owed (September was paid), no installment columns.
+  const r = reconcileInvoice(stored, base({ totalCents: null, balanceCents: 150000 }), { asOfDate: '2026-10-15', reportDate: '2026-10-15', mappedFields: ['externalInvoiceId', 'balanceAmount'] })
+  assert.notEqual(r.record.status, 'overdue')
+  assert.equal(r.record.status, 'needs_review', 'on a plan with no known next installment: ask, do not guess')
+  assert.equal(r.record.nextInstallmentDate, null)
+})
+
+test('an unchanged balance keeps the stored installment date', () => {
+  const stored = toInvoiceRecord(base({ totalCents: 600000, paidCents: 400000, balanceCents: 200000, paymentPlanText: 'Monthly', nextInstallmentDate: '2026-11-01' }), opts)
+  const r = reconcileInvoice(stored, base({ totalCents: null, balanceCents: 200000 }), { ...opts, mappedFields: ['externalInvoiceId', 'balanceAmount'] })
+  assert.equal(r.record.nextInstallmentDate, '2026-11-01')
+  assert.equal(r.action, 'unchanged')
+})

@@ -13,6 +13,8 @@ import { listAllItems } from './providers/monday/api.js'
 import { summarizeClient } from './reconcile.js'
 import { fromInvoiceRow, todayInFirmTz } from './importService.js'
 import { audit } from './audit.js'
+import { mondayWritesEnabled } from './providers/monday/index.js'
+import crypto from 'crypto'
 
 export const PREVIEW_TTL_MINUTES = 60
 
@@ -24,7 +26,16 @@ export class SyncError extends Error {
   }
 }
 
-export const writesEnabled = (env = process.env) => env.MONDAY_WRITES_ENABLED === 'true'
+// One definition of the write switch, shared with the provider.
+export const writesEnabled = (env = process.env) => mondayWritesEnabled(env)
+
+/** Fingerprint of the billing figures a preview showed (timestamps excluded). */
+export function summaryFingerprint(summaries) {
+  const rows = summaries
+    .map(({ syncedAt, ...rest }) => rest)
+    .sort((a, b) => String(a.mondayItemId).localeCompare(String(b.mondayItemId)))
+  return crypto.createHash('sha256').update(JSON.stringify(rows)).digest('hex')
+}
 
 export async function getMondayConfig(db) {
   const row = (await db.query("SELECT value, updated_at FROM billing_settings WHERE key = 'monday'")).rows[0]
@@ -53,7 +64,10 @@ export async function loadMatchContext(db, provider, log) {
   if (!cfg?.boardId) return { items: [], eimIdColumnId: null, available: false, reason: 'not_configured' }
   try {
     const { items, complete } = await listAllItems(provider, cfg.boardId)
-    return { items, eimIdColumnId: cfg.eimIdColumnId || null, available: true, complete }
+    // A partial walk could miss a second item carrying the same eImmigration
+    // ID and produce a false unique match; treat it as unavailable.
+    if (!complete) return { items: [], eimIdColumnId: null, available: false, reason: 'unavailable' }
+    return { items, eimIdColumnId: cfg.eimIdColumnId || null, available: true }
   } catch (err) {
     log?.warn?.({ code: err.code }, 'monday items unavailable for matching')
     return { items: [], eimIdColumnId: null, available: false, reason: 'unavailable' }
@@ -83,13 +97,13 @@ export async function buildSummaries(db, { now = new Date() } = {}) {
   return out
 }
 
-export async function previewSync(db, provider, { actorId }) {
+export async function previewSync(db, provider, { actorId, env = process.env, now = new Date() }) {
   const cfg = await getMondayConfig(db)
   if (!cfg?.boardId) throw new SyncError('Connect a monday.com board and map its columns first', 409, 'not_configured')
   const [columns, walk, summaries] = await Promise.all([
     provider.getBoardColumns(cfg.boardId),
     listAllItems(provider, cfg.boardId),
-    buildSummaries(db),
+    buildSummaries(db, { now }),
   ])
   // A partial walk would mark real items 'item_not_found'; refuse instead.
   if (!walk.complete) throw new SyncError('The monday.com board could not be read completely. Try again.', 502, 'partial_board')
@@ -99,7 +113,7 @@ export async function previewSync(db, provider, { actorId }) {
 
   const proposed = buildProposedChanges({ summaries, columnMap: cfg.columnMap || {}, boardColumns: columns, currentItems: items })
   const withChanges = proposed.filter((p) => p.changes.length)
-  const dryRun = provider.mode === 'api' && !writesEnabled()
+  const dryRun = provider.mode === 'api' && !writesEnabled(env)
 
   const client = await db.connect()
   try {
@@ -112,6 +126,7 @@ export async function previewSync(db, provider, { actorId }) {
         items: proposed.length, withChanges: withChanges.length,
         fieldChanges: withChanges.reduce((n, p) => n + p.changes.length, 0),
         skipped: proposed.reduce((n, p) => n + p.skipped.length, 0),
+        summaryHash: summaryFingerprint(summaries),
       }), actorId]
     )).rows[0]
     const clientOf = new Map(summaries.map((s) => [s.mondayItemId, s.clientId]))
@@ -132,12 +147,12 @@ export async function previewSync(db, provider, { actorId }) {
   }
 }
 
-export async function applySync(db, provider, jobId, { actorId, now = new Date() }) {
+export async function applySync(db, provider, jobId, { actorId, now = new Date(), env = process.env }) {
   const claimed = (await db.query(
     `UPDATE billing_sync_jobs SET status = 'applying', applied_by = $2
-      WHERE id = $1 AND status = 'previewed' AND created_at > $3::timestamptz - ($4 || ' minutes')::interval
+      WHERE id = $1 AND status = 'previewed' AND created_at > NOW() - ($3 || ' minutes')::interval
       RETURNING *`,
-    [jobId, actorId, now.toISOString(), String(PREVIEW_TTL_MINUTES)]
+    [jobId, actorId, String(PREVIEW_TTL_MINUTES)]
   )).rows[0]
   if (!claimed) {
     const job = (await db.query('SELECT status FROM billing_sync_jobs WHERE id = $1', [jobId])).rows[0]
@@ -150,8 +165,16 @@ export async function applySync(db, provider, jobId, { actorId, now = new Date()
     throw new SyncError('The monday.com connection changed since this preview. Preview again.', 409, 'mode_changed')
   }
 
+  // The billing figures must still be the ones staff previewed: an import or
+  // a link change in between would otherwise push stale values.
+  const current = summaryFingerprint(await buildSummaries(db, { now }))
+  if (current !== claimed.stats?.summaryHash) {
+    await db.query("UPDATE billing_sync_jobs SET status = 'superseded', error = $2 WHERE id = $1", [jobId, 'Billing data changed after preview'])
+    throw new SyncError('Billing data changed since this preview. Preview again before applying.', 409, 'stale_preview')
+  }
+
   // Decided now, not at preview time: turning writes off must stop an apply.
-  const dryRun = provider.mode === 'api' && !writesEnabled()
+  const dryRun = provider.mode === 'api' && !writesEnabled(env)
   const items = (await db.query("SELECT * FROM billing_sync_items WHERE job_id = $1 AND outcome = 'pending' ORDER BY id", [jobId])).rows
   let written = 0
   let failed = 0

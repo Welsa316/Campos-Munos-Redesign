@@ -115,7 +115,7 @@ export function normalizeRows(table, mapping, { reportType, reportDate = null, d
     else if (bad > 0) fileIssues.push({ field: 'reportDate', code: 'invalid_date', severity: 'warning', message: 'The report date column could not be read; enter the report date manually.' })
   }
   if (!resolvedReportDate && !fileIssues.some((i) => i.field === 'reportDate')) {
-    fileIssues.push({ field: 'reportDate', code: 'no_report_date', severity: 'warning', message: 'The report date is unknown; overdue status cannot be judged until it is entered.' })
+    fileIssues.push({ field: 'reportDate', code: 'no_report_date', severity: 'warning', message: 'The file has no report date column. Enter the date the report was generated before previewing.' })
   }
 
   const invoices = []

@@ -54,9 +54,9 @@
           </div>
           <div>
             <label for="report-date" class="text-[11px] font-ui font-semibold text-gray-700">Report generated on</label>
-            <input id="report-date" v-model="reportDate" type="date"
+            <input id="report-date" v-model="reportDate" type="date" :max="today"
               class="mt-1 w-full text-xs font-ui px-3 py-2 rounded-lg bg-white border border-gray-300 focus:border-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/10" />
-            <p class="mt-1 text-[10px] font-ui text-gray-500 leading-snug">Overdue is judged as of this date. Leave empty to use the date column in the file, or the upload date.</p>
+            <p class="mt-1 text-[10px] font-ui text-gray-500 leading-snug">Required. Overdue is judged as of this date, and an older report never overwrites a newer one. Leave it empty only if the file has a report-date column.</p>
           </div>
         </div>
         <div class="px-5 pb-5 flex flex-wrap items-center gap-3">
@@ -217,6 +217,7 @@ const rowFilter = ref('problems')
 const applied = ref(null)
 
 const id = computed(() => Number(route.params.id))
+const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 const editable = computed(() => job.value && ['uploaded', 'previewed'].includes(job.value.status))
 const exceptionsUrl = computed(() => `${API_BASE}/api/billing/imports/${id.value}/exceptions.csv`)
 const stateLabel = computed(() => ({ uploaded: 'Needs mapping', previewed: 'Awaiting approval', applied: 'Applied', cancelled: 'Cancelled', failed: 'Failed' })[job.value?.status])

@@ -20,7 +20,10 @@ const dbName = (() => { try { return new URL(URL_).pathname.slice(1) } catch { r
 const SKIP = !URL_ ? 'set TEST_DATABASE_URL to run' : (!/test/i.test(dbName) ? 'TEST_DATABASE_URL must name a *test* database' : false)
 
 const PORTAL = 'http://portal.test'
-let server, base, adminCookie, staffCookie, db, mock
+// The scenario's "today". Report dates may not be in the future, so the
+// timeline below (Oct 29 → Nov 2) needs a fixed clock past its last day.
+const CLOCK = () => new Date('2026-11-05T18:00:00Z')
+let server, base, adminCookie, staffCookie, db, mock, apiLike
 
 before(async () => {
   if (SKIP) return
@@ -53,7 +56,11 @@ before(async () => {
   const testApp = express()
   testApp.use(cookieParser())
   testApp.use(express.json({ limit: '100kb' }))
-  testApp.use('/api/billing', createBillingRouter({ env: { MONDAY_PROVIDER: 'mock' }, mondayProvider: mock }))
+  testApp.use('/api/billing', createBillingRouter({ env: { MONDAY_PROVIDER: 'mock' }, mondayProvider: mock, now: CLOCK }))
+  // Same board and database, but the provider claims to be the real API and
+  // MONDAY_WRITES_ENABLED is unset: every apply must be a dry run.
+  apiLike = { ...mock, mode: 'api' }
+  testApp.use('/api/billing-api', createBillingRouter({ env: { MONDAY_PROVIDER: 'api' }, mondayProvider: apiLike, now: CLOCK }))
   addFallbackHandlers(testApp)
   server = testApp.listen(0)
   await new Promise((r) => server.once('listening', r))
@@ -78,7 +85,7 @@ async function call(method, path, { body, cookie = adminCookie, raw, headers = {
       ...(raw ? { 'Content-Type': 'application/octet-stream' } : body ? { 'Content-Type': 'application/json' } : {}),
       ...headers,
     },
-    body: raw ?? (body ? JSON.stringify(body) : undefined),
+    body: raw ?? (body && method !== 'GET' ? JSON.stringify(body) : undefined),
   })
   const text = await res.text()
   let json = null
@@ -118,6 +125,19 @@ test('the full simulated flow', { skip: SKIP }, async (t) => {
     await db.query("UPDATE billing_import_jobs SET status = 'cancelled'")
   })
 
+  await t.test('authorization: every admin-only route refuses staff', async () => {
+    const routes = [
+      ['POST', '/api/billing/imports/1/preview'], ['POST', '/api/billing/imports/1/approve'], ['POST', '/api/billing/imports/1/cancel'],
+      ['GET', '/api/billing/matching'], ['POST', '/api/billing/matching/1'], ['DELETE', '/api/billing/matching/1/1001'],
+      ['POST', '/api/billing/monday/check'], ['GET', '/api/billing/monday/boards'], ['GET', '/api/billing/monday/boards/1/columns'],
+      ['PUT', '/api/billing/monday/config'], ['POST', '/api/billing/monday/sync/preview'], ['POST', '/api/billing/monday/sync/1/apply'],
+    ]
+    for (const [method, path] of routes) {
+      const r = await call(method, path, { cookie: staffCookie, body: {} })
+      assert.equal(r.status, 403, `${method} ${path}`)
+    }
+  })
+
   await t.test('configure the (mock) monday board before importing', async () => {
     const boards = (await call('GET', '/api/billing/monday/boards')).json
     const boardId = boards[0].id
@@ -135,6 +155,19 @@ test('the full simulated flow', { skip: SKIP }, async (t) => {
       },
     })
     assert.equal(res.status, 200, res.text)
+  })
+
+  await t.test('a report with no date, or a future date, cannot be previewed', async () => {
+    const up = await upload(summaryCsv, 'undated.csv')
+    const noDate = await call('POST', `/api/billing/imports/${up.json.id}/preview`, { body: { reportType: 'invoice_summary' } })
+    assert.equal(noDate.json.ready, false)
+    assert.ok(noDate.json.fieldWarnings.some((w) => w.field === 'reportDate' && w.severity === 'error'))
+    const future = await call('POST', `/api/billing/imports/${up.json.id}/preview`, { body: { reportType: 'invoice_summary', reportDate: '2099-01-01' } })
+    assert.equal(future.json.ready, false)
+    assert.match(future.json.fieldWarnings.find((w) => w.field === 'reportDate').message, /future/)
+    assert.equal((await call('POST', `/api/billing/imports/${up.json.id}/approve`)).status, 409, 'never previewed, cannot be approved')
+    await call('POST', `/api/billing/imports/${up.json.id}/cancel`)
+    assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM billing_invoices')).rows[0].n, 0)
   })
 
   let first
@@ -291,6 +324,38 @@ test('the full simulated flow', { skip: SKIP }, async (t) => {
     assert.equal((await invoiceStatus('INV-1003')).balance_cents, '55000', 'the later import stands')
   })
 
+  await t.test('a sync preview is refused after a link change, and after an import', async () => {
+    const pv = await call('POST', '/api/billing/monday/sync/preview')
+    // Link one of the "Ana Ejemplo" clients: billing figures for item 1015 change.
+    const m = (await call('GET', '/api/billing/matching')).json
+    const ana = m.clients.find((c) => c.eimmigrationClientId === 'EIM-C-0008')
+    assert.equal((await call('POST', `/api/billing/matching/${ana.clientId}`, { body: { mondayItemId: '1015' } })).status, 201)
+    const stale = await call('POST', `/api/billing/monday/sync/${pv.json.jobId}/apply`)
+    assert.equal(stale.status, 409)
+    assert.match(stale.json.error, /changed since this preview/)
+
+    const pv2 = await call('POST', '/api/billing/monday/sync/preview')
+    await importFile(summaryCsv.toString().replace('$400.00,$0.00,$400.00,Unpaid', '$400.00,$100.00,$300.00,Partial'), 'ana.csv', { reportType: 'invoice_summary', reportDate: '2026-11-02' })
+    const after = await call('POST', `/api/billing/monday/sync/${pv2.json.jobId}/apply`)
+    assert.equal(after.status, 409, 'an import approved after the preview supersedes it')
+  })
+
+  await t.test('against the real API with writes off, applying is a dry run and writes nothing', async () => {
+    const pv = await call('POST', '/api/billing-api/monday/sync/preview')
+    assert.equal(pv.status, 200, pv.text)
+    assert.equal(pv.json.dryRun, true)
+    assert.ok(pv.json.proposed.some((p) => p.changes.length), 'there is something it would write')
+    mock.clearWriteLog()
+    const ap = await call('POST', `/api/billing-api/monday/sync/${pv.json.jobId}/apply`)
+    assert.equal(ap.status, 200, ap.text)
+    assert.equal(ap.json.status, 'dry_run')
+    assert.equal(ap.json.written, 0)
+    assert.equal(mock.getWriteLog().length, 0)
+    // Bring the board up to date through the mock router for the next steps.
+    const pv2 = await call('POST', '/api/billing/monday/sync/preview')
+    assert.equal((await call('POST', `/api/billing/monday/sync/${pv2.json.jobId}/apply`)).status, 200)
+  })
+
   await t.test('exceptions CSV lists skipped rows and client-match problems', async () => {
     const jobs = (await call('GET', '/api/billing/imports')).json
     const firstJob = jobs.find((j) => j.status === 'applied' && j.filename === 'invoice_summary.csv')
@@ -298,6 +363,16 @@ test('the full simulated flow', { skip: SKIP }, async (t) => {
     assert.equal(csv.status, 200)
     assert.match(csv.text, /INV-1013/)
     assert.match(csv.text, /ambiguous/)
+  })
+
+  await t.test('two genuine same-day payments without ids are both kept, and re-import keeps exactly two', async () => {
+    const csv = 'Payment Date,Client ID,Client Name,Invoice #,Payment Amount,Method,Type\n10/20/2026,EIM-C-0002,Prueba Dos,INV-1002,$250.00,Cash,Payment\n10/20/2026,EIM-C-0002,Prueba Dos,INV-1002,$250.00,Cash,Payment\n'
+    const count = async () => (await db.query("SELECT COUNT(*)::int AS n FROM billing_payments WHERE external_invoice_id = 'INV-1002' AND payment_date = '2026-10-20'")).rows[0].n
+    const r = await importFile(Buffer.from(csv), 'cash.csv', { reportType: 'payment_transactions', reportDate: '2026-11-01' })
+    assert.equal(r.applied.applied.payments, 2)
+    assert.equal(await count(), 2)
+    await importFile(Buffer.from(csv), 'cash.csv', { reportType: 'payment_transactions', reportDate: '2026-11-01' })
+    assert.equal(await count(), 2, 'idempotent')
   })
 
   await t.test('uploaded files are purged after the retention window; the record stays', async () => {

@@ -126,9 +126,18 @@ export function mergeWithExisting(existing, inv, mappedFields) {
     if (field === 'sourceStatus') continue
     merged[field] = existing[field] ?? null
   }
+  const balanceUnchanged = !present.has('balanceAmount') || existing.balanceCents === merged.balanceCents
   if (!present.has('paidAmount')) {
-    const balanceUnchanged = !present.has('balanceAmount') || existing.balanceCents === merged.balanceCents
     merged.paidCents = balanceUnchanged ? (existing.paidCents ?? null) : null
+  }
+  // Same for the installment schedule: once the balance has moved, the stored
+  // "next installment" may already have been paid. Judging the new balance
+  // against it would call a client who just paid overdue. The plan itself is
+  // kept, so an invoice on a plan with no current installment date becomes
+  // needs_review instead of being guessed.
+  if (!balanceUnchanged) {
+    if (!present.has('nextInstallmentDate')) merged.nextInstallmentDate = null
+    if (!present.has('nextInstallmentAmount')) merged.nextInstallmentCents = null
   }
   if (!present.has('invoiceStatus')) {
     merged.sourceStatus = existing.sourceStatus ?? null

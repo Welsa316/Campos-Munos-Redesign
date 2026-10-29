@@ -106,7 +106,7 @@ function mappingToNames(headers, mapping) {
  * @param {object} matchContext { items, eimIdColumnId } from the monday provider
  *   (empty items when no board is configured: everything is 'unmatched').
  */
-export async function previewImport(db, jobId, { mapping: overrides = null, reportType = null, reportDate = null, actorId = null, matchContext = {} } = {}) {
+export async function previewImport(db, jobId, { mapping: overrides = null, reportType = null, reportDate = null, actorId = null, matchContext = {}, now = new Date() } = {}) {
   const job = await loadJob(db, jobId)
   if (!['uploaded', 'previewed'].includes(job.status)) throw new ImportError(`This import is already ${job.status}`, 409, 'bad_state')
   if (!job.raw_file) throw new ImportError('The uploaded file has been purged; upload it again', 410, 'purged')
@@ -124,7 +124,8 @@ export async function previewImport(db, jobId, { mapping: overrides = null, repo
   if (fieldWarnings.some((w) => w.severity === 'error')) {
     // Still stage nothing, but tell staff exactly what is missing.
     await db.query(
-      `UPDATE billing_import_jobs SET mapping = $2, report_type = $3, errors = $4, status = 'uploaded' WHERE id = $1`,
+      `UPDATE billing_import_jobs SET mapping = $2, report_type = $3, errors = $4, status = 'uploaded'
+        WHERE id = $1 AND status IN ('uploaded', 'previewed')`,
       [jobId, JSON.stringify(mappingToNames(table.headers, mapping)), type, JSON.stringify(fieldWarnings)]
     )
     return { jobId, ready: false, fieldWarnings, stats: null }
@@ -132,12 +133,31 @@ export async function previewImport(db, jobId, { mapping: overrides = null, repo
 
   const normalized = normalizeRows(table, mapping, { reportType: type, reportDate: reportDate || null })
   const effectiveReportDate = reportDate || normalized.reportDate || null
-  const asOfDate = effectiveReportDate || todayInFirmTz(job.created_at)
+  // The report date decides overdue status and which report is newer. It is
+  // never guessed from the upload date: an undated old export would otherwise
+  // pass as today's and roll paid invoices back to overdue.
+  const dateProblem = reportDateProblem(effectiveReportDate, now)
+  if (dateProblem) {
+    const warnings = [...fieldWarnings, { field: 'reportDate', severity: 'error', message: dateProblem }]
+    await db.query(
+      `UPDATE billing_import_jobs SET mapping = $2, report_type = $3, errors = $4
+        WHERE id = $1 AND status IN ('uploaded', 'previewed')`,
+      [jobId, JSON.stringify(mappingToNames(table.headers, mapping)), type, JSON.stringify(warnings)]
+    )
+    return { jobId, ready: false, fieldWarnings: warnings, stats: null }
+  }
+  const asOfDate = effectiveReportDate
   const plan = await planChanges(db, normalized, { reportType: type, reportDate: effectiveReportDate, asOfDate, matchContext, mappedFields: Object.keys(mapping.fields) })
 
   const client = await db.connect()
   try {
     await client.query('BEGIN')
+    // Re-check under a row lock: an approval running at the same moment
+    // must not have its staged rows replaced after it applied them.
+    const locked = (await client.query('SELECT status FROM billing_import_jobs WHERE id = $1 FOR UPDATE', [jobId])).rows[0]
+    if (!locked || !['uploaded', 'previewed'].includes(locked.status)) {
+      throw new ImportError(`This import is already ${locked?.status || 'gone'}`, 409, 'bad_state')
+    }
     await client.query('DELETE FROM billing_import_rows WHERE job_id = $1', [jobId])
     for (const r of plan.rows) {
       await client.query(
@@ -191,7 +211,17 @@ async function planChanges(db, normalized, { reportType, reportDate, asOfDate, m
     : []
   const existing = new Map(existingRows.map((r) => [r.external_invoice_id, fromInvoiceRow(r)]))
 
-  const payKeys = payments.map(paymentDedupeKey)
+  // Two genuine same-day payments of the same amount with no id or reference
+  // share a content key; number the occurrences so neither is lost. The
+  // numbering is stable, so re-importing the file still matches both.
+  const seenKeys = new Map()
+  const payKeys = payments.map((p) => {
+    const k = paymentDedupeKey(p)
+    if (p.externalPaymentId) return k
+    const n = (seenKeys.get(k) || 0) + 1
+    seenKeys.set(k, n)
+    return n === 1 ? k : `${k}#${n}`
+  })
   const existingPays = payKeys.length
     ? (await db.query('SELECT * FROM billing_payments WHERE dedupe_key = ANY($1)', [payKeys])).rows
     : []
@@ -227,18 +257,18 @@ async function planChanges(db, normalized, { reportType, reportDate, asOfDate, m
       record: { input: stripRaw(inv), proposed: r.record, reason: r.reason }, matchStatus: matchStatusOf(inv),
     })
   }
-  for (const p of payments) {
-    const r = reconcilePayment(payByKey.get(paymentDedupeKey(p)) || null, p)
+  for (const [i, p] of payments.entries()) {
+    const r = reconcilePayment(payByKey.get(payKeys[i]) || null, p)
     payCounts[r.action]++
     rows.push({
       rowNumber: p.rowNumber, kind: 'payment', action: r.action, changes: r.changes, issues: p.issues || [],
-      record: { input: stripRaw(p), reason: r.reason }, matchStatus: matchStatusOf(p),
+      record: { input: stripRaw(p), reason: r.reason, dedupeKey: payKeys[i] }, matchStatus: matchStatusOf(p),
     })
   }
 
   let absent = []
   if (reportType === 'invoice_summary' || reportType === 'mixed') {
-    const all = (await db.query('SELECT external_invoice_id FROM billing_invoices WHERE status <> $1', ['void'])).rows.map((r) => r.external_invoice_id)
+    const all = (await db.query('SELECT external_invoice_id FROM billing_invoices WHERE status <> $1 ORDER BY external_invoice_id', ['void'])).rows.map((r) => r.external_invoice_id)
     absent = absentInvoices(all, ids, reportType)
   }
 
@@ -279,7 +309,8 @@ export async function approveImport(db, jobId, { actorId, matchContext = {} } = 
       payments: staged.filter((r) => r.kind === 'payment').map((r) => ({ ...r.record.input, issues: r.issues })),
     }
     const reportDate = job.report_date ? toDateString(job.report_date) : null
-    const asOfDate = reportDate || todayInFirmTz(job.created_at)
+    if (!reportDate) throw new ImportError('This import has no report date. Preview it again.', 409, 'no_report_date')
+    const asOfDate = reportDate
     const plan = await planChanges(client, normalized, { reportType: job.report_type, reportDate, asOfDate, matchContext, mappedFields: Object.keys(job.mapping || {}) })
     if (plan.fingerprint !== job.preview_fingerprint) {
       throw new ImportError('Billing data changed since this preview was made. Preview it again before approving.', 409, 'stale_preview')
@@ -363,7 +394,7 @@ export async function approveImport(db, jobId, { actorId, matchContext = {} } = 
            payment_date = EXCLUDED.payment_date, amount_cents = EXCLUDED.amount_cents, payment_type = EXCLUDED.payment_type,
            method = EXCLUDED.method, reference = EXCLUDED.reference, currency = EXCLUDED.currency,
            import_job_id = EXCLUDED.import_job_id, updated_at = NOW()`,
-        [paymentDedupeKey(p), p.externalPaymentId, p.externalInvoiceId, inv?.id ?? null, cid, p.paymentDate,
+        [row.record.dedupeKey, p.externalPaymentId, p.externalInvoiceId, inv?.id ?? null, cid, p.paymentDate,
           p.amountCents, p.paymentType, p.method, p.reference, p.currency || 'USD', jobId]
       )
       applied.payments++
@@ -371,8 +402,13 @@ export async function approveImport(db, jobId, { actorId, matchContext = {} } = 
 
     // A match by the eImmigration ID on the monday item is deterministic:
     // persist it so later imports and syncs use the stored link.
+    // Only links staff saw in the preview: the board may have changed since.
+    const previewedIdMatches = new Set(staged
+      .filter((r) => r.match_status === 'matched_by_id')
+      .map((r) => r.record?.input?.externalClientId)
+      .filter(Boolean))
     for (const [eimId, m] of plan.matchByClient) {
-      if (m.status !== 'matched_by_id') continue
+      if (m.status !== 'matched_by_id' || !previewedIdMatches.has(eimId)) continue
       const cid = await clientIdFor(eimId, null)
       const item = (matchContext.items || []).find((it) => it.id === m.itemIds[0])
       const res = await client.query(
@@ -383,6 +419,8 @@ export async function approveImport(db, jobId, { actorId, matchContext = {} } = 
       applied.links += res.rowCount
     }
 
+    // Any monday.com preview made before this import now shows old figures.
+    await client.query("UPDATE billing_sync_jobs SET status = 'superseded' WHERE status = 'previewed'")
     await client.query(
       `UPDATE billing_import_jobs SET status = 'applied', approved_by = $2, applied_at = NOW() WHERE id = $1`,
       [jobId, actorId]
@@ -419,6 +457,15 @@ export async function purgeExpiredUploads(db, retentionDays = 30) {
 }
 
 // --- helpers ------------------------------------------------------------------------
+
+/** Why a report date is unusable, or null. Never in the future, never before 2000. */
+export function reportDateProblem(date, now = new Date()) {
+  if (!date) return 'Enter the date this report was generated. Overdue status and which report is newer both depend on it.'
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'The report date must be a calendar date.'
+  if (date < '2000-01-01') return 'The report date is implausibly old.'
+  if (date > todayInFirmTz(now)) return 'The report date is in the future. Check for a typo.'
+  return null
+}
 
 async function loadJob(db, jobId) {
   const job = (await db.query('SELECT * FROM billing_import_jobs WHERE id = $1', [jobId])).rows[0]

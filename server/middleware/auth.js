@@ -29,7 +29,7 @@ export default async function requireAuth(req, res, next) {
     req.admin = decoded
     // Role comes from the database on every request, not from the token, so a
     // demotion takes effect immediately.
-    req.adminRole = result.rows[0].role || 'admin'
+    req.adminRole = result.rows[0].role || 'staff'
     next()
   } catch {
     return res.status(401).json({ error: 'Invalid or expired token' })
