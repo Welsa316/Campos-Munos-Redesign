@@ -15,7 +15,11 @@ export default function getPool() {
         : false,
       connectionTimeoutMillis: 10000,
       max: 10,
-      idleTimeoutMillis: 30000,
+      // Opening a connection costs several round trips to the database
+      // (TCP, TLS, auth). Keep idle ones for five minutes, so the portal's
+      // 15-second polling keeps a warm connection instead of reopening one.
+      idleTimeoutMillis: 5 * 60 * 1000,
+      keepAlive: true,
     })
     // A dropped idle connection emits 'error' on the pool; without a listener
     // that would surface as an uncaught exception and crash the process.
