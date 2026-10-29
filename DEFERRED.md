@@ -185,21 +185,11 @@ Deferred by choice — these are pure simplify/DRY cleanups with no active defec
   CHECK in `server/db/migrate.js`), held together only by a comment. Genuine
   cross-package refactor (site/ ↔ server/ import boundary) — scope on its own.
 
-## Staff roles and WhatsApp inbox (branch feat/staff-roles, 2026-10-29)
+## Staff roles and WhatsApp inbox (2026-10-29)
 
 Open items from adding capabilities, the front desk / billing paralegal
 roles and the shared WhatsApp inbox (docs/staff-accounts.md):
 
-- **Merge with the uncommitted WhatsApp-reminder hardening on
-  feat/whatsapp-reminders.** The roles branch starts from 5196ae4 and was
-  built beside that work, not on it. Expect small conflicts in
-  `server/routes/billing.js` (every route's gate changed), and in
-  `server/billing/providers/whatsapp/mock.js` (both add code near the
-  returned object). Resolve, then run the full server suite.
-- **Number variants in the inbox.** A conversation links to a billing client
-  only on an exact number match. Once `phoneVariants()` (Mexico 521…/52…,
-  Argentina 549…/54…) from the reminder hardening is merged, use it in
-  `server/whatsapp/inbox.js` as well.
 - **First sign-in password change is not enforced.** `staff.js` prints a
   temporary password and the docs ask the person to change it; the portal
   does not force it. Small: a `must_change_password` flag checked at login.
@@ -207,5 +197,9 @@ roles and the shared WhatsApp inbox (docs/staff-accounts.md):
   replies without later "delivered"/"read" receipts (reminders get them), so
   in simulation a reply stays at "sent". Real receipts from Meta are read
   from `whatsapp_events` and do show.
+- **Conversation list preview ignores number variants for reminders.** The
+  thread shows reminders sent to either form of a Mexican/Argentine number;
+  the list's last-message preview only counts reminders sent to the exact
+  number the client writes from. Cosmetic.
 - **No staff-management screen** by design for now; accounts change through
   `server/scripts/staff.js` only.

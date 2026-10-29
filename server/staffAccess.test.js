@@ -392,6 +392,20 @@ test('shared WhatsApp inbox', { skip: SKIP }, async (t) => {
     assert.equal(r2.json.code, 'opted_out')
   })
 
+  await t.test('a Mexican number saved without the mobile 1 still links, and its opt-out still stops replies', async () => {
+    const client = (await db.query("INSERT INTO billing_clients (eimmigration_client_id, display_name) VALUES ('EIM-T-MX', 'Lucía Prueba') RETURNING id")).rows[0]
+    // Staff saved +52 33 1234 5678; Meta reports the sender as 5213312345678.
+    await inbound('5213312345678', 'Hola, ¿me pueden llamar?', { hoursAgo: 3 })
+    await db.query(`INSERT INTO billing_client_contacts (client_id, phone_e164, opted_in_at, opted_out_at) VALUES ($1, '523312345678', NOW() - INTERVAL '30 days', NOW() - INTERVAL '1 hour')`, [client.id])
+    const conv = await conversationFor('5213312345678', users.frontCookie)
+    assert.equal(conv.name, 'Lucía Prueba')
+    const detail = await call('GET', `/api/whatsapp/conversations/${conv.id}`, { cookie: users.frontCookie })
+    assert.deepEqual(detail.json.clients.map((c) => [c.name, c.optedOut]), [['Lucía Prueba', true]])
+    const r = await call('POST', `/api/whatsapp/conversations/${conv.id}/messages`, { cookie: users.frontCookie, body: { body: 'Hola', clientKey: 'mx-00000001' } })
+    assert.equal(r.status, 409)
+    assert.equal(r.json.code, 'opted_out')
+  })
+
   await t.test('payment status beside a conversation only for billing.status', async () => {
     const conv = await conversationFor('15045550166', users.frontCookie)
     const withStatus = await call('GET', `/api/whatsapp/conversations/${conv.id}`, { cookie: users.frontCookie })

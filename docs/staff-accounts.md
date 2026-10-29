@@ -140,7 +140,9 @@ payment reminders with who approved them, and delivery status. Conversations
 are assigned to a person (replying to an unassigned conversation claims it),
 can be closed and reopened, and carry internal notes that are never sent.
 A conversation is linked to a billing client when the number matches the one
-saved under Billing → WhatsApp contacts exactly.
+saved under Billing → WhatsApp contacts, including the two forms WhatsApp
+uses for Mexican and Argentine mobiles (521…/52…, 549…/54…); an opt-out
+recorded under either form stops replies.
 
 A reply is sent only when **all** of these hold, checked on the server:
 

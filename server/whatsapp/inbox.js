@@ -14,9 +14,12 @@
 //     may be sent, which is the reminders' job, not a chat box's);
 //   - the client has not opted out since they last wrote, and their last
 //     message is not itself an opt-out word.
+// A number is matched to billing contacts through phoneVariants(): Meta can
+// report a Mexican mobile as 521… when staff saved 52… (Argentina: 549…/54…),
+// and an opt-out recorded under one form must stop replies to the other.
 // Logs and audit rows carry ids and outcomes, never message text or numbers.
 import { audit } from '../billing/audit.js'
-import { classifyInbound } from '../billing/whatsappInbound.js'
+import { classifyInbound, phoneVariants } from '../billing/whatsappInbound.js'
 import { whatsappSendingEnabled } from '../billing/providers/whatsapp/index.js'
 import { resolveCapabilities } from '../auth/capabilities.js'
 import { displayName } from '../auth/account.js'
@@ -82,9 +85,7 @@ export async function listConversations(db, { view = 'open', accountId }) {
      SELECT c.id, c.wa_id, c.status, c.assigned_to, ${NAME_SQL('u')} AS assigned_name,
             l.at AS last_at, l.direction AS last_direction, LEFT(l.body, 140) AS preview, l.message_type AS last_type,
             (SELECT e.contact_name FROM whatsapp_events e WHERE e.from_wa_id = c.wa_id AND e.contact_name IS NOT NULL
-              ORDER BY e.received_at DESC LIMIT 1) AS profile_name,
-            (SELECT string_agg(bc.display_name, ', ' ORDER BY bc.display_name) FROM billing_client_contacts k
-               JOIN billing_clients bc ON bc.id = k.client_id WHERE k.phone_e164 = c.wa_id) AS client_names
+              ORDER BY e.received_at DESC LIMIT 1) AS profile_name
        FROM wa_conversations c
        LEFT JOIN last l ON l.conversation_id = c.id
        LEFT JOIN admin_users u ON u.id = c.assigned_to
@@ -93,10 +94,16 @@ export async function listConversations(db, { view = 'open', accountId }) {
       LIMIT 200`,
     view === 'mine' ? [accountId] : []
   )
+  const namesByPhone = new Map()
+  for (const k of (await db.query(
+    `SELECT k.phone_e164, bc.display_name FROM billing_client_contacts k
+       JOIN billing_clients bc ON bc.id = k.client_id WHERE k.phone_e164 IS NOT NULL AND bc.display_name IS NOT NULL`
+  )).rows) namesByPhone.set(k.phone_e164, [...(namesByPhone.get(k.phone_e164) || []), k.display_name])
+  const clientNames = (waId) => [...new Set(phoneVariants(waId).flatMap((v) => namesByPhone.get(v) || []))].sort().join(', ') || null
   return rows.map((r) => ({
     id: Number(r.id),
     phone: r.wa_id,
-    name: r.client_names || r.profile_name || null,
+    name: clientNames(r.wa_id) || r.profile_name || null,
     profileName: r.profile_name,
     status: r.status,
     assignee: r.assigned_to ? { id: r.assigned_to, name: r.assigned_name } : null,
@@ -134,9 +141,9 @@ export async function replyBlocker(db, waId, { env = process.env, now = new Date
   }
   const optedOut = (await db.query(
     `SELECT 1 FROM billing_client_contacts
-      WHERE phone_e164 = $1 AND opted_out_at IS NOT NULL AND (opted_in_at IS NULL OR opted_out_at > opted_in_at)
+      WHERE phone_e164 = ANY($1) AND opted_out_at IS NOT NULL AND (opted_in_at IS NULL OR opted_out_at > opted_in_at)
         AND opted_out_at > $2 LIMIT 1`,
-    [waId, last.at]
+    [phoneVariants(waId), last.at]
   )).rowCount > 0
   if (optedOut) return { code: 'opted_out', message: 'The client opted out after their last message.' }
   return null
@@ -146,6 +153,7 @@ const STATUS_RANK = { sent: 1, delivered: 2, read: 3 }
 
 export async function getConversation(db, id, { canSeeBilling = false, env = process.env, now = new Date() } = {}) {
   const c = await loadConversation(db, id)
+  const variants = phoneVariants(c.wa_id)
   const [inbound, outbound, reminders, notes, clients, profile] = await Promise.all([
     db.query(
       `SELECT e.id, ${AT_SQL} AS at, ${INBOUND_TEXT_SQL} AS body, e.message_type
@@ -162,7 +170,7 @@ export async function getConversation(db, id, { canSeeBilling = false, env = pro
       `SELECT m.id, m.created_at AS at, r.preview AS body, m.status, m.simulated, ${NAME_SQL('u')} AS approved_by
          FROM billing_messages m LEFT JOIN billing_reminders r ON r.id = m.reminder_id
          LEFT JOIN admin_users u ON u.id = r.approved_by
-        WHERE m.to_phone = $1 ORDER BY m.created_at`, [c.wa_id]
+        WHERE m.to_phone = ANY($1) ORDER BY m.created_at`, [variants]
     ),
     db.query(
       `SELECT n.id, n.body, n.created_at AS at, ${NAME_SQL('u')} AS author
@@ -172,7 +180,7 @@ export async function getConversation(db, id, { canSeeBilling = false, env = pro
     db.query(
       `SELECT bc.id, bc.display_name, k.opted_in_at, k.opted_out_at
          FROM billing_client_contacts k JOIN billing_clients bc ON bc.id = k.client_id
-        WHERE k.phone_e164 = $1 ORDER BY bc.display_name`, [c.wa_id]
+        WHERE k.phone_e164 = ANY($1) ORDER BY bc.display_name`, [variants]
     ),
     db.query(
       `SELECT contact_name FROM whatsapp_events WHERE from_wa_id = $1 AND contact_name IS NOT NULL ORDER BY received_at DESC LIMIT 1`, [c.wa_id]
