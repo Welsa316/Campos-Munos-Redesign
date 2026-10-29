@@ -186,9 +186,11 @@ test('staff roles and capabilities', { skip: SKIP }, async (t) => {
     }
   })
 
-  await t.test('billing paralegal: imports, sync, reminders, WhatsApp; leads read-only', async () => {
+  await t.test('billing paralegal: imports, sync, reminders, WhatsApp; no website leads', async () => {
     const c = users.paraCookie
-    for (const p of ['/api/billing/overview', '/api/billing/imports', '/api/billing/reminders', '/api/billing/integrations', '/api/submissions', `/api/submissions/${users.leadId}`, '/api/whatsapp/conversations']) {
+    const me = await call('GET', '/api/auth/verify', { cookie: c })
+    assert.ok(!me.json.capabilities.some((x) => x.startsWith('crm.')), me.json.capabilities.join(','))
+    for (const p of ['/api/billing/overview', '/api/billing/imports', '/api/billing/reminders', '/api/billing/integrations', '/api/whatsapp/conversations']) {
       assert.equal((await call('GET', p, { cookie: c })).status, 200, p)
     }
     // Allowed actions reach the handler (which may then reject the body).
@@ -196,6 +198,7 @@ test('staff roles and capabilities', { skip: SKIP }, async (t) => {
       assert.notEqual((await call(m, p, { cookie: c, body: { ids: [] } })).status, 403, `${m} ${p}`)
     }
     for (const [m, p, body] of [
+      ['GET', '/api/submissions'], ['GET', '/api/submissions?scope=all'], ['GET', `/api/submissions/${users.leadId}`],
       ['PATCH', `/api/submissions/${users.leadId}/status`, { status: 'closed' }],
       ['POST', `/api/submissions/${users.leadId}/notes`, { body: 'x' }],
       ['POST', `/api/submissions/${users.leadId}/reply`, { body: 'x' }],
