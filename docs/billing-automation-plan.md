@@ -280,7 +280,7 @@ Legend: [x] done, [ ] pending, [~] partial (note says what is missing).
 - [x] Operator documentation + activation checklist (`docs/billing-automation.md`)
 - [x] `.env.example` updated
 - [x] Build / test verification
-- [ ] Independent security review of the billing branch
+- [x] Independent security review of the billing branch (13 findings; all fixed with regression tests in "Close billing gaps found in review")
 - [ ] Verification against a real eImmigration export (needs a sample from the firm)
 
 ### Deviations from the original plan

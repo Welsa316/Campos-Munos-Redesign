@@ -154,7 +154,7 @@ cd server && npm test
 ```
 
 Runs the parsers, mapping, normalisation, reconciliation, matching, monday
-providers and sync builder (232 tests). The end-to-end flow (17 steps over the
+providers and sync builder (234 tests). The end-to-end flow (22 steps over the
 real HTTP API and Postgres) runs when a test database is given:
 
 ```bash
