@@ -9,6 +9,7 @@ import { createApp, addFallbackHandlers } from './app.js'
 import { mountFrontends } from './frontends.js'
 import getPool from './db/pool.js'
 import { purgeExpiredUploads } from './billing/importService.js'
+import { startReminderScheduler } from './billing/scheduler.js'
 import logger from './logger.js'
 
 const isProduction = process.env.NODE_ENV === 'production'
@@ -67,6 +68,9 @@ async function purgeUploads() {
 }
 setTimeout(purgeUploads, 60 * 1000).unref()
 setInterval(purgeUploads, 24 * 60 * 60 * 1000).unref()
+
+// Payment reminders: drafts + sending of approved reminders (never unapproved).
+startReminderScheduler({ pool: getPool(), env: process.env, log: logger })
 
 const server = app.listen(PORT, () => {
   logger.info({ port: PORT }, 'Server listening')

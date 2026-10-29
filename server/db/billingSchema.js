@@ -219,6 +219,130 @@ export const BILLING_SCHEMA_SQL = `
   );
   CREATE INDEX IF NOT EXISTS idx_billing_audit_events_created ON billing_audit_events(created_at DESC);
 
+  -- WhatsApp contact for a billing client. Opt-in is recorded explicitly,
+  -- with who recorded it and how the client agreed: Meta requires consent
+  -- before business-initiated messages, and nothing is sent without it.
+  CREATE TABLE IF NOT EXISTS billing_client_contacts (
+    client_id BIGINT PRIMARY KEY REFERENCES billing_clients(id) ON DELETE CASCADE,
+    phone_e164 VARCHAR(15),
+    first_name TEXT,
+    language CHAR(2) NOT NULL DEFAULT 'es' CHECK (language IN ('es', 'en')),
+    opted_in_at TIMESTAMPTZ,
+    opt_in_source TEXT,
+    opt_in_recorded_by INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
+    opted_out_at TIMESTAMPTZ,
+    opt_out_source TEXT,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+  CREATE INDEX IF NOT EXISTS idx_billing_client_contacts_phone ON billing_client_contacts(phone_e164);
+
+  -- Reminder rules and message templates, editable in the portal. Seeded
+  -- switched off (server/billing/reminderModel.js).
+  CREATE TABLE IF NOT EXISTS billing_reminder_rules (
+    key VARCHAR(40) PRIMARY KEY,
+    label TEXT NOT NULL,
+    trigger VARCHAR(12) NOT NULL CHECK (trigger IN ('before_due', 'after_due')),
+    days INTEGER NOT NULL CHECK (days BETWEEN 0 AND 60),
+    action VARCHAR(16) NOT NULL CHECK (action IN ('whatsapp', 'staff_followup')),
+    template_key VARCHAR(40),
+    enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    updated_by INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+  CREATE TABLE IF NOT EXISTS billing_message_templates (
+    key VARCHAR(40) PRIMARY KEY,
+    meta_name TEXT NOT NULL,
+    params JSONB NOT NULL,
+    languages JSONB NOT NULL,
+    meta_approved BOOLEAN NOT NULL DEFAULT FALSE,
+    updated_by INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  -- One reminder per obligation (invoice at a due date) and rule. The
+  -- UNIQUE pair is what stops a second reminder for the same payment and
+  -- stage, across restarts and instances.
+  CREATE TABLE IF NOT EXISTS billing_reminders (
+    id BIGSERIAL PRIMARY KEY,
+    obligation_key TEXT NOT NULL,
+    rule_key VARCHAR(40) NOT NULL,
+    invoice_id BIGINT REFERENCES billing_invoices(id) ON DELETE SET NULL,
+    client_id BIGINT REFERENCES billing_clients(id) ON DELETE SET NULL,
+    action VARCHAR(16) NOT NULL CHECK (action IN ('whatsapp', 'staff_followup')),
+    state VARCHAR(12) NOT NULL CHECK (state IN ('draft', 'approved', 'queued', 'sent', 'delivered', 'read', 'failed', 'unknown', 'cancelled')),
+    template_key VARCHAR(40),
+    language CHAR(2),
+    to_phone VARCHAR(15),
+    params JSONB NOT NULL DEFAULT '{}',
+    preview TEXT,
+    due_date DATE,
+    balance_cents BIGINT,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT,
+    last_error_retryable BOOLEAN,
+    simulated BOOLEAN NOT NULL DEFAULT FALSE,
+    cancel_reason VARCHAR(30),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    approved_by INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
+    approved_at TIMESTAMPTZ,
+    queued_at TIMESTAMPTZ,
+    sent_at TIMESTAMPTZ,
+    delivered_at TIMESTAMPTZ,
+    read_at TIMESTAMPTZ,
+    cancelled_by INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
+    cancelled_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (obligation_key, rule_key)
+  );
+  CREATE INDEX IF NOT EXISTS idx_billing_reminders_state ON billing_reminders(state, created_at DESC);
+
+  -- Every send attempt. The row is written BEFORE the provider is called,
+  -- so a crash mid-send leaves a 'pending' row that is later marked
+  -- 'unknown' (never resent automatically) instead of being forgotten.
+  CREATE TABLE IF NOT EXISTS billing_messages (
+    id BIGSERIAL PRIMARY KEY,
+    reminder_id BIGINT REFERENCES billing_reminders(id) ON DELETE SET NULL,
+    provider_mode VARCHAR(8) NOT NULL CHECK (provider_mode IN ('mock', 'meta')),
+    simulated BOOLEAN NOT NULL,
+    to_phone VARCHAR(15) NOT NULL,
+    template_name TEXT NOT NULL,
+    language_code TEXT NOT NULL,
+    body_params JSONB NOT NULL,
+    idempotency_key TEXT NOT NULL UNIQUE,
+    status VARCHAR(10) NOT NULL CHECK (status IN ('pending', 'sent', 'delivered', 'read', 'failed', 'unknown')),
+    provider_message_id TEXT UNIQUE,
+    error_code TEXT,
+    error_message TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  -- Receipts that arrived before we stored the message id they refer to
+  -- (Meta can answer the webhook faster than our own write lands). Applied
+  -- as soon as the dispatcher records the id.
+  CREATE TABLE IF NOT EXISTS billing_early_receipts (
+    event_key TEXT PRIMARY KEY,
+    provider_message_id TEXT NOT NULL,
+    status VARCHAR(10) NOT NULL,
+    raw JSONB NOT NULL DEFAULT '{}',
+    received_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+  CREATE INDEX IF NOT EXISTS idx_billing_early_receipts_msg ON billing_early_receipts(provider_message_id);
+
+  -- Client replies that need a person (and opt-outs, for the record).
+  CREATE TABLE IF NOT EXISTS billing_inbound_reviews (
+    id BIGSERIAL PRIMARY KEY,
+    event_key TEXT NOT NULL UNIQUE,
+    client_id BIGINT REFERENCES billing_clients(id) ON DELETE SET NULL,
+    from_phone VARCHAR(15),
+    kind VARCHAR(10) NOT NULL CHECK (kind IN ('reply', 'opt_out', 'opt_in')),
+    body TEXT,
+    received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    handled_at TIMESTAMPTZ,
+    handled_by INTEGER REFERENCES admin_users(id) ON DELETE SET NULL
+  );
+  ALTER TABLE billing_inbound_reviews ADD COLUMN IF NOT EXISTS body TEXT;
+
   -- Last connectivity check per integration (Settings cards).
   CREATE TABLE IF NOT EXISTS billing_integration_checks (
     provider TEXT PRIMARY KEY,

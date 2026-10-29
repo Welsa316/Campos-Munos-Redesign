@@ -23,10 +23,18 @@ import { matchClient, loadLinks } from '../billing/matching.js'
 import { createMondayProvider } from '../billing/providers/monday/index.js'
 import { createFileImportBillingProvider, createEImmigrationApiProvider } from '../billing/providers/billing/index.js'
 import { audit } from '../billing/audit.js'
+import {
+  evaluate as evaluateReminders, cancelIneligible, approveReminders, cancelReminder, retryReminder, resolveUnknown, dispatch,
+  upsertContact, recordOptIn, recordOptOut, saveRule, saveTemplate, loadRules, loadTemplates, ensureDefaults,
+  getReminderSettings, saveReminderSettings, ReminderError,
+} from '../billing/reminderService.js'
+import { createWhatsAppProvider, whatsappSendingEnabled } from '../billing/providers/whatsapp/index.js'
+import { handleWhatsAppEvent } from '../billing/whatsappInbound.js'
+import { SUPPRESSION_REASONS, CANCEL_REASONS } from '../billing/reminderModel.js'
 
 const idParam = (name) => param(name).isInt({ min: 1, max: 2147483647 }).withMessage('Invalid id')
 
-export function createBillingRouter({ db = null, env = process.env, mondayProvider = null, now = () => new Date() } = {}) {
+export function createBillingRouter({ db = null, env = process.env, mondayProvider = null, whatsappProvider = null, now = () => new Date() } = {}) {
   const router = Router()
   const pool = () => db || getPool()
   const fileSource = createFileImportBillingProvider()
@@ -46,6 +54,26 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     return monday
   }
 
+  // WhatsApp sender, one per process. The mock reports its simulated
+  // receipts through the same handler as Meta's webhook.
+  let whatsapp = whatsappProvider
+  let whatsappError = null
+  const getWhatsApp = () => {
+    if (whatsapp) return whatsapp
+    try {
+      whatsapp = createWhatsAppProvider(env, {
+        onStatus: (st) => handleWhatsAppEvent(pool(), {
+          kind: 'status', key: `status:${st.providerMessageId}:${st.status}`, messageId: st.providerMessageId,
+          status: st.status, raw: { errors: st.errors }, timestamp: st.timestamp,
+        }).catch(() => {}),
+      })
+    } catch (err) {
+      whatsappError = err.message
+      throw new ReminderError(`WhatsApp is misconfigured: ${err.message}`, 503, 'whatsapp_config')
+    }
+    return whatsapp
+  }
+
   router.use(requireAuth)
   const admin = requireRole('admin')
   const actor = (req) => req.admin?.id ?? null
@@ -54,7 +82,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     try {
       await fn(req, res)
     } catch (err) {
-      if (err instanceof ImportError || err instanceof SyncError) {
+      if (err instanceof ImportError || err instanceof SyncError || err instanceof ReminderError) {
         return res.status(err.status).json({ error: err.message, code: err.code })
       }
       if (err?.name === 'MondayApiError') {
@@ -235,6 +263,9 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     const db = pool()
     const matchContext = await loadMatchContext(db, safeMonday(), req.log)
     const result = await approveImport(db, Number(req.params.id), { actorId: actor(req), matchContext })
+    // A newer report may have settled or re-dated something a reminder is
+    // waiting to chase: cancel those before anyone can approve or send them.
+    result.remindersCancelled = (await cancelIneligible(db, { now: now(), actorId: actor(req) })).cancelled
     req.log?.info({ jobId: result.jobId, ...result.applied }, 'Billing import applied')
     res.json(result)
   }))
@@ -345,6 +376,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
       `INSERT INTO billing_match_decisions (client_id, decision, system, external_id, decided_by) VALUES ($1, 'unlink', 'monday', $2, $3)`,
       [req.params.clientId, req.params.itemId, actor(req)]
     )
+    await cancelIneligible(db, { now: now(), actorId: actor(req) })
     await audit(db, { actorId: actor(req), action: 'match.unlinked', entityType: 'client', entityId: req.params.clientId, details: { mondayItemId: req.params.itemId } })
     res.json({ ok: true })
   }))
@@ -422,6 +454,145 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     res.json({ ...job, items })
   }))
 
+  // --- reminders (WhatsApp) -------------------------------------------------------
+
+  router.get('/reminders', wrap(async (req, res) => {
+    const db = pool()
+    await ensureDefaults(db)
+    const state = String(req.query.state || '')
+    const groups = {
+      drafts: ["state = 'draft'"], approved: ["state IN ('approved', 'queued')"], sent: ["state IN ('sent', 'delivered', 'read')"],
+      problems: ["state IN ('failed', 'unknown')"], cancelled: ["state = 'cancelled'"],
+    }
+    const where = groups[state] || ["state <> 'cancelled'"]
+    const rows = (await db.query(
+      `SELECT r.id, r.rule_key, r.action, r.state, r.language, r.to_phone, r.preview, r.due_date, r.balance_cents, r.attempts,
+              r.last_error, r.last_error_retryable, r.simulated, r.cancel_reason, r.created_at, r.approved_at, r.sent_at,
+              r.delivered_at, r.read_at, r.cancelled_at, i.external_invoice_id, i.status AS invoice_status, c.display_name AS client_name,
+              u.email AS approved_by
+         FROM billing_reminders r
+         LEFT JOIN billing_invoices i ON i.id = r.invoice_id
+         LEFT JOIN billing_clients c ON c.id = r.client_id
+         LEFT JOIN admin_users u ON u.id = r.approved_by
+        WHERE ${where.join(' AND ')}
+        ORDER BY r.created_at DESC LIMIT 300`
+    )).rows
+    const counts = Object.fromEntries((await db.query(`SELECT state, COUNT(*)::int AS n FROM billing_reminders GROUP BY state`)).rows.map((r) => [r.state, r.n]))
+    const responses = (await db.query('SELECT COUNT(*)::int AS n FROM billing_inbound_reviews WHERE handled_at IS NULL')).rows[0].n
+    const settings = await getReminderSettings(db)
+    let mode = env.WHATSAPP_PROVIDER?.trim().toLowerCase() === 'meta' ? 'meta' : 'mock'
+    res.json({
+      reminders: rows.map((r) => ({ ...r, balance_cents: r.balance_cents == null ? null : Number(r.balance_cents), to_phone: maskPhone(r.to_phone) })),
+      counts, unhandledResponses: responses, settings,
+      provider: { mode, sendingEnabled: whatsappSendingEnabled(env), configError: whatsappError },
+      cancelReasons: CANCEL_REASONS,
+    })
+  }))
+
+  router.post('/reminders/evaluate', admin, wrap(async (req, res) => {
+    const r = await evaluateReminders(pool(), { now: now(), actorId: actor(req) })
+    const reasons = {}
+    for (const s of r.suppressed) reasons[s.reason] = (reasons[s.reason] || 0) + 1
+    res.json({ created: r.created, suppressed: Object.entries(reasons).map(([reason, count]) => ({ reason, label: SUPPRESSION_REASONS[reason] || reason, count })) })
+  }))
+
+  router.post('/reminders/approve', admin, wrap(async (req, res) => {
+    const ids = (req.body?.ids || []).map(Number).filter((n) => Number.isInteger(n) && n > 0)
+    res.json(await approveReminders(pool(), ids, { actorId: actor(req), now: now() }))
+  }))
+
+  router.post('/reminders/:id/cancel', admin, idParam('id'), validate, wrap(async (req, res) => {
+    await cancelReminder(pool(), Number(req.params.id), { actorId: actor(req) })
+    res.json({ ok: true })
+  }))
+
+  router.post('/reminders/:id/retry', admin, idParam('id'), validate, wrap(async (req, res) => {
+    await retryReminder(pool(), Number(req.params.id), { actorId: actor(req) })
+    res.json({ ok: true })
+  }))
+
+  router.post('/reminders/:id/resolve', admin, idParam('id'), validate, wrap(async (req, res) => {
+    await resolveUnknown(pool(), Number(req.params.id), { delivered: req.body?.delivered === true, actorId: actor(req) })
+    res.json({ ok: true })
+  }))
+
+  // Sends approved reminders now (still inside the hours, still gated).
+  router.post('/reminders/dispatch', admin, wrap(async (req, res) => {
+    res.json(await dispatch(pool(), getWhatsApp(), { now: now(), env, log: req.log }))
+  }))
+
+  router.get('/reminders/config', admin, wrap(async (_req, res) => {
+    const db = pool()
+    await ensureDefaults(db)
+    res.json({ rules: await loadRules(db), templates: await loadTemplates(db), settings: await getReminderSettings(db) })
+  }))
+
+  router.put('/reminders/rules/:key', admin, wrap(async (req, res) => {
+    await saveRule(pool(), String(req.params.key), req.body || {}, { actorId: actor(req) })
+    res.json({ ok: true })
+  }))
+
+  router.put('/reminders/templates/:key', admin, wrap(async (req, res) => {
+    await saveTemplate(pool(), String(req.params.key), req.body || {}, { actorId: actor(req) })
+    res.json({ ok: true })
+  }))
+
+  router.put('/reminders/settings', admin, wrap(async (req, res) => {
+    res.json(await saveReminderSettings(pool(), req.body || {}, { actorId: actor(req) }))
+  }))
+
+  // --- contacts & consent ----------------------------------------------------------
+
+  router.get('/contacts', admin, wrap(async (_req, res) => {
+    const rows = (await pool().query(
+      `SELECT c.id AS client_id, c.display_name, c.eimmigration_client_id,
+              k.phone_e164, k.first_name, k.language, k.opted_in_at, k.opt_in_source, k.opted_out_at, k.opt_out_source,
+              EXISTS (SELECT 1 FROM billing_client_links l WHERE l.client_id = c.id) AS linked,
+              COALESCE((SELECT SUM(balance_cents) FROM billing_invoices i WHERE i.client_id = c.id AND i.balance_cents > 0 AND i.status IN ('unpaid','partial','overdue')), 0)::bigint AS owed
+         FROM billing_clients c LEFT JOIN billing_client_contacts k ON k.client_id = c.id
+        ORDER BY c.display_name NULLS LAST, c.id`
+    )).rows
+    res.json(rows.map((r) => ({ ...r, owed: Number(r.owed) })))
+  }))
+
+  router.put('/contacts/:clientId', admin, idParam('clientId'), validate, wrap(async (req, res) => {
+    await upsertContact(pool(), Number(req.params.clientId), req.body || {}, { actorId: actor(req) })
+    res.json({ ok: true })
+  }))
+
+  router.post('/contacts/:clientId/opt-in', admin, idParam('clientId'), validate, wrap(async (req, res) => {
+    await recordOptIn(pool(), Number(req.params.clientId), { source: req.body?.source }, { actorId: actor(req) })
+    res.json({ ok: true })
+  }))
+
+  router.post('/contacts/:clientId/opt-out', admin, idParam('clientId'), validate, wrap(async (req, res) => {
+    await recordOptOut(pool(), Number(req.params.clientId), { source: 'staff' }, { actorId: actor(req) })
+    res.json({ ok: true })
+  }))
+
+  router.get('/responses', admin, wrap(async (req, res) => {
+    const db = pool()
+    const handled = req.query.handled === 'true'
+    const rows = (await db.query(
+      `SELECT r.id, r.kind, r.received_at, r.handled_at, r.from_phone, r.body, c.display_name AS client_name, e.payload
+         FROM billing_inbound_reviews r
+         LEFT JOIN billing_clients c ON c.id = r.client_id
+         LEFT JOIN whatsapp_events e ON e.event_key = r.event_key
+        WHERE (r.handled_at IS NOT NULL) = $1
+        ORDER BY r.received_at DESC LIMIT 200`, [handled]
+    )).rows
+    res.json(rows.map((r) => ({
+      id: Number(r.id), kind: r.kind, receivedAt: r.received_at, handledAt: r.handled_at, clientName: r.client_name,
+      phone: maskPhone(r.from_phone), text: r.body ?? r.payload?.text?.body ?? r.payload?.button?.text ?? null,
+    })))
+  }))
+
+  router.post('/responses/:id/handled', admin, idParam('id'), validate, wrap(async (req, res) => {
+    const { rowCount } = await pool().query('UPDATE billing_inbound_reviews SET handled_at = NOW(), handled_by = $2 WHERE id = $1 AND handled_at IS NULL', [req.params.id, actor(req)])
+    if (!rowCount) return res.status(404).json({ error: 'Already handled or not found' })
+    res.json({ ok: true })
+  }))
+
   // --- integrations ------------------------------------------------------------------
 
   router.get('/integrations', wrap(async (_req, res) => {
@@ -436,6 +607,8 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     else mondayState = check.ok ? 'connected' : 'error'
 
     const waConfigured = Boolean(env.WHATSAPP_VERIFY_TOKEN && env.META_APP_SECRET)
+    const waMode = env.WHATSAPP_PROVIDER?.trim().toLowerCase() === 'meta' ? 'meta' : 'mock'
+    const waSendConfigured = Boolean(env.WHATSAPP_ACCESS_TOKEN && env.WHATSAPP_PHONE_NUMBER_ID)
     res.json([
       { key: 'eimmigration_import', name: 'eImmigration report importer', state: 'connected',
         detail: lastImport ? `Last import applied ${lastImport.applied_at.toISOString()}` : 'No report imported yet' },
@@ -446,8 +619,12 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
             : mondayState === 'unverified' ? 'Token set; run a connection check'
               : check.ok ? `Verified ${check.checked_at.toISOString()}` : `Last check failed (${check.detail?.error || 'error'})`,
         writesEnabled: writesEnabled(env), lastCheckedAt: check?.checked_at ?? null },
-      { key: 'whatsapp', name: 'WhatsApp Cloud API', state: waConfigured ? 'webhook_configured' : 'not_configured',
-        detail: waConfigured ? 'Webhook secrets set (receiving only). Sending is not built yet.' : 'Webhook secrets not set. Sending is not built yet.' },
+      { key: 'whatsapp', name: 'WhatsApp Cloud API',
+        state: waMode === 'mock' ? 'mock' : !waSendConfigured ? 'configuration_error' : whatsappSendingEnabled(env) ? 'unverified' : 'disabled',
+        detail: waMode === 'mock'
+          ? `Simulated sending; no message reaches anyone. Webhook ${waConfigured ? 'secrets set (receiving)' : 'secrets not set'}.`
+          : !waSendConfigured ? 'WHATSAPP_PROVIDER=meta but the access token or phone number id is missing'
+            : whatsappSendingEnabled(env) ? 'Sending switched on. Confirm with a test message to a staff phone.' : 'Configured, but sending is switched off (WHATSAPP_SENDING_ENABLED)' },
     ])
   }))
 
@@ -456,6 +633,13 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
   }
 
   return router
+}
+
+// Show staff enough of a number to recognise it, not the whole thing.
+function maskPhone(p) {
+  if (!p) return null
+  const s = String(p)
+  return s.length > 4 ? `+${s.slice(0, s.length - 4).replace(/\d/g, '•')}${s.slice(-4)}` : s
 }
 
 function pick({ status, detail }) {
