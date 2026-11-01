@@ -59,9 +59,25 @@ export function addDays(date, n) {
  * deriveStatus so status and reminders agree on what "due" means.
  */
 export function relevantDueDate(invoice) {
-  const onPlan = Boolean(invoice.paymentPlanText) || invoice.nextInstallmentDate != null
-  if (onPlan) return invoice.nextInstallmentDate || null
+  if (onPaymentPlan(invoice)) return invoice.nextInstallmentDate || null
   return invoice.dueDate || null
+}
+
+/**
+ * The amount a reminder quotes. On a payment plan it is the next installment,
+ * capped at the balance so a short final installment is quoted as what is
+ * left, and null when the plan gives no amount (quoting the whole balance to
+ * someone paying monthly would be wrong). Otherwise the invoice balance.
+ */
+export function amountDueCents(invoice) {
+  if (!onPaymentPlan(invoice)) return invoice.balanceCents
+  const installment = invoice.nextInstallmentCents
+  if (installment == null || installment <= 0) return null
+  return Math.min(installment, invoice.balanceCents)
+}
+
+function onPaymentPlan(invoice) {
+  return Boolean(invoice.paymentPlanText) || invoice.nextInstallmentDate != null
 }
 
 const MONTHS_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
@@ -189,6 +205,7 @@ export function evaluateReminders({ invoices, contacts, linkedClientIds, rules, 
       else if (rule.trigger === 'before_due' && status !== 'unpaid' && status !== 'partial') continue
       else if (inv.notInLatestReport) reason = 'not_in_latest_report'
       else if (!inv.reportDate || inv.reportDate < staleBefore) reason = 'stale'
+      else if (messaging && amountDueCents(inv) == null) reason = 'no_installment_amount'
       else if (messaging && !linkedClientIds.has(inv.clientId)) reason = 'not_linked'
       else if (messaging && (!contact || !normalizePhone(contact.phone))) reason = 'no_contact'
       else if (messaging && isOptedOut(contact)) reason = 'opted_out'
@@ -228,7 +245,7 @@ export function evaluateReminders({ invoices, contacts, linkedClientIds, rules, 
         params: isMessage
           ? {
               clientFirstName: contact.firstName ? String(contact.firstName).trim() || null : null,
-              amountDue: formatCents(inv.balanceCents),
+              amountDue: formatCents(amountDueCents(inv)),
               dueDate: formatDueDate(due, language),
             }
           : null,

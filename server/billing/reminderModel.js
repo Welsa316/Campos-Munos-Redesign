@@ -98,6 +98,7 @@ export const SUPPRESSION_REASONS = {
   paid: 'Invoice is paid',
   no_balance: 'Nothing owed',
   no_due_date: 'No due date to remind about',
+  no_installment_amount: 'On a payment plan but the report gives no installment amount',
   stale: 'Billing data is older than the freshness limit',
   not_in_latest_report: 'Invoice missing from the latest full report',
   already_handled: 'A reminder for this payment and stage already exists',
