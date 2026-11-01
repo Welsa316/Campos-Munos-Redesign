@@ -2,10 +2,11 @@
 // request so a role change, a revoked capability or a disabled account takes
 // effect on the next click rather than when the 8-hour token expires.
 import { resolveCapabilities, ROLES } from './capabilities.js'
+import { avatarFor } from './avatars.js'
 
 export async function loadAccount(db, id) {
   const { rows } = await db.query(
-    `SELECT id, email, display_name, role, token_version, capability_grants, capability_revokes, disabled_at
+    `SELECT id, email, display_name, role, token_version, capability_grants, capability_revokes, disabled_at, avatar, avatar_bg
        FROM admin_users WHERE id = $1`,
     [id]
   )
@@ -15,9 +16,13 @@ export async function loadAccount(db, id) {
     id: r.id,
     email: r.email,
     name: displayName(r),
+    // Only what was set with staff.js set-name; null when none (name above
+    // then falls back to the email's first part).
+    displayName: (r.display_name && String(r.display_name).trim()) || null,
     role: r.role,
     tokenVersion: r.token_version,
     disabled: Boolean(r.disabled_at),
+    avatar: avatarFor(r),
     capabilities: resolveCapabilities({ role: r.role, grants: r.capability_grants, revokes: r.capability_revokes }),
   }
 }
@@ -43,9 +48,11 @@ export function profileJson(account) {
     authenticated: true,
     email: account.email,
     name: account.name,
+    displayName: account.displayName,
     role: account.role,
     roleLabel: ROLES[account.role]?.label ?? account.role,
     capabilities: [...account.capabilities].sort(),
+    avatar: account.avatar,
   }
 }
 

@@ -10,6 +10,7 @@ database access, using `server/scripts/staff.js`, and every change is audited.
 | Account | Who | Role | Notes |
 |---|---|---|---|
 | `office@camulaw.com` | Front desk (Yoletty) | `admin`, unchanged | The existing login. **Nothing about it changes**: same password, same open sessions, same access to everything, and it stays the address that receives website notifications (`ADMIN_EMAIL`). |
+| Receptionist | To be created | `receptionist` | Phones and WhatsApp only: the call log and the shared WhatsApp inbox. No website leads, no billing (not even payment status), no client consent records. |
 | Billing paralegal | To be created | `billing_paralegal` | Their own email and password. See "Create the billing paralegal's account". |
 
 The `front_desk` role exists for a receptionist login that should *not* have
@@ -28,24 +29,24 @@ every capability on every request; the portal only hides what an account
 cannot use. Changes take effect on the account's next click: there is no
 need to sign out.
 
-| Capability | Lets the account | admin | front_desk | billing_paralegal | staff (legacy) |
-|---|---|:-:|:-:|:-:|:-:|
-| `crm.view` | Read website leads, their notes and email replies | ✓ | ✓ | | ✓ |
-| `crm.manage` | Reply to leads by email, change status, mark read/archived, add notes | ✓ | ✓ | | ✓ |
-| `crm.export` | Download every lead as CSV | ✓ | ✓ | | ✓ |
-| `whatsapp.view` | Read WhatsApp conversations, internal notes, assignments | ✓ | ✓ | ✓ | |
-| `whatsapp.send` | Reply on WhatsApp from the portal (rules below) | ✓ | ✓ | ✓ | |
-| `whatsapp.manage` | Assign conversations, add internal notes, close/reopen | ✓ | ✓ | ✓ | |
-| `whatsapp.contacts` | Client WhatsApp numbers and consent (opt in/out) | ✓ | ✓ | ✓ | |
-| `billing.status` | Read-only invoice list: status, balance, next due date | ✓ | ✓ | ✓ | ✓ |
-| `billing.view` | All billing records: overview, invoice history, imports, sync runs, reminders, integration status | ✓ | | ✓ | ✓ |
-| `billing.import` | Upload, map, approve or cancel eImmigration imports | ✓ | | ✓ | |
-| `billing.reconcile` | Link billing clients to monday.com items | ✓ | | ✓ | |
-| `billing.sync` | Preview and apply the monday.com payment-status sync | ✓ | | ✓ | |
-| `billing.reminders` | Draft, approve, cancel, retry and resolve payment reminders; client replies | ✓ | | ✓ | |
-| `billing.configure` | monday.com board mapping and connection check; reminder rules, templates, sending hours | ✓ | | | |
-| `calls.view` | See the RingCentral call log (Calls) and refresh it (docs/ringcentral-call-log.md) | ✓ | ✓ | | |
-| `integrations.manage` | Connect, check or disconnect the firm's RingCentral account (docs/ringcentral-oauth.md) | ✓ | | | |
+| Capability | Lets the account | admin | front_desk | receptionist | billing_paralegal | staff (legacy) |
+|---|---|:-:|:-:|:-:|:-:|:-:|
+| `crm.view` | Read website leads, their notes and email replies | ✓ | ✓ |  |  | ✓ |
+| `crm.manage` | Reply to leads by email, change status, mark read/archived, add notes | ✓ | ✓ |  |  | ✓ |
+| `crm.export` | Download every lead as CSV | ✓ | ✓ |  |  | ✓ |
+| `whatsapp.view` | Read WhatsApp conversations, internal notes, assignments | ✓ | ✓ | ✓ | ✓ |  |
+| `whatsapp.send` | Reply on WhatsApp from the portal (rules below) | ✓ | ✓ | ✓ | ✓ |  |
+| `whatsapp.manage` | Assign conversations, add internal notes, close/reopen | ✓ | ✓ | ✓ | ✓ |  |
+| `whatsapp.contacts` | Client WhatsApp numbers and consent (opt in/out) | ✓ | ✓ |  | ✓ |  |
+| `billing.status` | Read-only invoice list: status, balance, next due date | ✓ | ✓ |  | ✓ | ✓ |
+| `billing.view` | All billing records: overview, invoice history, imports, sync runs, reminders, integration status | ✓ |  |  | ✓ | ✓ |
+| `billing.import` | Upload, map, approve or cancel eImmigration imports | ✓ |  |  | ✓ |  |
+| `billing.reconcile` | Link billing clients to monday.com items | ✓ |  |  | ✓ |  |
+| `billing.sync` | Preview and apply the monday.com payment-status sync | ✓ |  |  | ✓ |  |
+| `billing.reminders` | Draft, approve, cancel, retry and resolve payment reminders; client replies | ✓ |  |  | ✓ |  |
+| `billing.configure` | monday.com board mapping and connection check; reminder rules, templates, sending hours | ✓ |  |  |  |  |
+| `calls.view` | See the RingCentral call log (Calls) and refresh it (docs/ringcentral-call-log.md) | ✓ | ✓ | ✓ |  |  |
+| `integrations.manage` | Connect, check or disconnect the firm's RingCentral account (docs/ringcentral-oauth.md) | ✓ |  |  |  |  |
 
 `staff` is the view-only role that existed before; it keeps exactly the
 access it had. `billing.configure` is administrator-only by default: it
@@ -57,6 +58,15 @@ The front desk role sees payment **status** (paid, partly paid, overdue,
 balance, next due date) in the invoice list and beside a WhatsApp
 conversation, but not invoice history, imports, reconciliation, monday.com
 or integration settings.
+
+## Home and profile pictures
+
+Every account lands on **Home**: a greeting by its display name (set with
+`set-name`), a card for each section it may open, and, for accounts with the
+matching access, the missed-calls (`calls.view`) and unread-messages
+(`crm.view`) figures. Each person picks their own picture there (a 3D animal
+or an emoji on a colour); until then everyone gets a different default
+animal. No setup is needed; the choice is saved per account.
 
 ## Running the script
 

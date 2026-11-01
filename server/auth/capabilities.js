@@ -48,6 +48,12 @@ export const ROLES = {
       'calls.view',
     ],
   },
+  // Phones and WhatsApp only: no website leads, no billing (not even payment
+  // status), no WhatsApp contact/consent records (those live under Billing).
+  receptionist: {
+    label: 'Receptionist',
+    capabilities: ['whatsapp.view', 'whatsapp.send', 'whatsapp.manage', 'calls.view'],
+  },
   // No website leads (Messages: inbox and contacts); the firm keeps those
   // with the front desk.
   billing_paralegal: {

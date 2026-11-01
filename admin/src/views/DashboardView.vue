@@ -26,31 +26,34 @@
 
     <div class="flex-1 overflow-y-auto">
       <main class="max-w-[1120px] mx-auto px-4 sm:px-8 pt-6 sm:pt-10 pb-10 flex flex-col gap-4 sm:gap-5 font-ui">
-        <!-- Top line, as in the design: practice on the left, date on the right -->
-        <div class="flex items-center justify-between px-1 text-[15px] font-semibold tracking-tight text-gray-900">
-          <span>@camulaw</span>
-          <span class="text-gray-500 font-medium">{{ today }}</span>
-        </div>
-
-        <!-- Who is signed in: drifts in through mist. -->
-        <FadeContent effect="mist" trigger="mount" :duration="1.8" ease="power2.out">
-          <section class="bg-white rounded-3xl shadow-[0_2px_12px_0_rgba(0,0,0,0.03)] px-5 sm:px-7 py-5 sm:py-6 flex items-center gap-4 sm:gap-5" aria-label="Your account">
-            <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-tr from-brand-navy to-brand-navy-light text-white flex items-center justify-center text-xl sm:text-2xl font-semibold flex-shrink-0 ring-4 ring-brand-navy/10" aria-hidden="true">
-              {{ initials }}
-            </div>
+        <!-- Greeting, top left, no card: fades in slowly through mist.
+             The date sits on the right. -->
+        <div class="flex items-start justify-between gap-4 px-1">
+          <FadeContent effect="mist" trigger="mount" :duration="2.6" :delay="0.2" ease="power2.out" class="flex items-center gap-4 min-w-0">
+            <button type="button" @click="showAvatarPicker = true" title="Change your picture" aria-label="Change your picture"
+              class="group relative flex-shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-navy">
+              <UserAvatar :avatar="profile.avatar" :size="avatarSize" label="Your picture" class="ring-4 ring-white shadow-sm transition-transform group-hover:scale-105" />
+              <span class="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-white shadow ring-1 ring-black/5 text-gray-700 inline-flex items-center justify-center">
+                <FaIcon name="pen" class="text-[10px]" />
+              </span>
+            </button>
             <div class="min-w-0">
-              <h2 class="text-[26px] sm:text-[34px] font-semibold tracking-tight text-gray-900 leading-tight">{{ greeting }}</h2>
+              <h2 class="text-[28px] sm:text-[38px] font-semibold tracking-tight text-gray-900 leading-tight">
+                {{ timeOfDay }}<template v-if="firstName">, {{ firstName }}</template>
+              </h2>
               <p class="text-[13px] text-gray-500 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                <span v-if="profile.roleLabel" class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-brand-surface text-gray-800 text-[11px] font-semibold">{{ profile.roleLabel }}</span>
+                <span v-if="profile.roleLabel" class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-white text-gray-800 text-[11px] font-semibold ring-1 ring-gray-200">{{ profile.roleLabel }}</span>
                 <span class="truncate">{{ adminEmail }}</span>
               </p>
             </div>
-          </section>
-        </FadeContent>
+          </FadeContent>
+          <span class="hidden sm:block pt-3 text-[15px] font-medium tracking-tight text-gray-500 whitespace-nowrap">{{ today }}</span>
+        </div>
+
+        <AvatarPicker :visible="showAvatarPicker" :current="profile.avatar" @close="showAvatarPicker = false" @saved="updateProfile" />
 
         <!-- The two figures that need someone today. Asymmetric on purpose. -->
-        <FadeContent v-if="summaries.length" effect="focus" trigger="mount" :duration="1" :delay="0.25" :stagger="0.12" ease="power3.out"
-          class="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4">
+        <RiseIn v-if="summaries.length" :delay="0.15" :stagger="0.12" class="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4">
           <router-link v-for="s in summaries" :key="s.key" :to="s.to" :class="[s.bg, s.span]"
             class="group relative rounded-[24px] p-5 sm:p-6 min-h-[168px] flex flex-col justify-between shadow-sm hover:shadow-lg transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-navy">
             <div class="flex items-start justify-between gap-3">
@@ -69,12 +72,11 @@
               <span v-if="s.pill" :class="s.pillTone" class="text-[11px] font-semibold px-2.5 py-1 rounded-full whitespace-nowrap">{{ s.pill }}</span>
             </div>
           </router-link>
-        </FadeContent>
+        </RiseIn>
 
         <!-- Sections, side by side. -->
         <p class="mt-2 px-1 text-[17px] font-semibold tracking-tight text-gray-900">Go to</p>
-        <FadeContent v-if="cards.length" effect="focus" trigger="mount" :duration="1" :delay="0.5" :stagger="0.1" ease="power3.out"
-          class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <RiseIn v-if="cards.length" :delay="0.35" :stagger="0.1" :class="cards.length > 3 ? 'lg:grid-cols-4' : ''" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <router-link v-for="card in cards" :key="card.key" :to="card.to"
             class="group bg-white rounded-3xl shadow-[0_2px_12px_0_rgba(0,0,0,0.03)] hover:shadow-[0_8px_28px_-6px_rgba(22,28,45,0.18)] p-5 sm:p-6 flex flex-col min-h-[210px] transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy">
             <div class="flex items-start justify-between">
@@ -89,7 +91,7 @@
             <h3 class="text-[22px] font-semibold tracking-tight text-gray-900 mt-0.5">{{ card.title }}</h3>
             <p class="text-[13px] text-gray-500 mt-1.5 leading-relaxed">{{ card.description }}</p>
           </router-link>
-        </FadeContent>
+        </RiseIn>
         <p v-else class="text-sm text-gray-600 bg-white rounded-3xl px-5 py-4">Use the links at the top to open the sections your account can use.</p>
 
         <footer class="mt-4 px-1 flex items-center gap-1.5 text-[13px] tracking-tight">
@@ -111,30 +113,24 @@ import SectionLinks from '../components/portal/SectionLinks.vue'
 import ChangePasswordModal from '../components/messages/ChangePasswordModal.vue'
 import FaIcon from '../components/FaIcon.vue'
 import FadeContent from '../components/FadeContent.vue'
+import RiseIn from '../components/RiseIn.vue'
+import UserAvatar from '../components/UserAvatar.vue'
+import AvatarPicker from '../components/AvatarPicker.vue'
 
 const router = useRouter()
-const { adminEmail, profile, logout, can, canAny } = useAuth()
+const { adminEmail, profile, logout, can, canAny, updateProfile } = useAuth()
 const { get } = useApi()
 const showChangePassword = ref(false)
+const showAvatarPicker = ref(false)
+const avatarSize = typeof window !== 'undefined' && window.innerWidth >= 640 ? 64 : 56
 
-// The name colleagues see (admin_users.display_name, set with
-// scripts/staff.js set-name). Without one the API falls back to the email's
-// first part ("office"), which is no one's name: then no name is used.
-const firstName = computed(() => {
-  const name = String(profile.value.name || '').trim()
-  const local = String(adminEmail.value || '').split('@')[0].toLowerCase()
-  if (!name || name.toLowerCase() === local) return ''
-  return name.split(/\s+/)[0]
-})
-const greeting = computed(() => {
+// The name set with scripts/staff.js set-name. Accounts without one are
+// greeted without a name rather than by their email ("office").
+const firstName = computed(() => String(profile.value.displayName || '').trim().split(/\s+/)[0] || '')
+const timeOfDay = (() => {
   const h = new Date().getHours()
-  const part = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
-  return firstName.value ? `${part}, ${firstName.value}` : part
-})
-const initials = computed(() => {
-  const name = firstName.value ? String(profile.value.name).trim() : String(adminEmail.value || '?').split('@')[0]
-  return name.split(/[\s._-]+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('') || '?'
-})
+  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
+})()
 const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
 // --- the two summary cards ------------------------------------------------------
@@ -214,6 +210,12 @@ const cards = computed(() => [
     tile: 'bg-brand-navy text-white',
     eyebrow: 'Website leads', title: 'Inbox',
     description: 'Contact-form and chat inquiries, with replies and notes.',
+  },
+  can('whatsapp.view') && {
+    key: 'whatsapp', to: { name: 'WhatsApp' }, icon: 'comments',
+    tile: 'bg-[#dcefe6] text-[#0f6b47]',
+    eyebrow: 'Client conversations', title: 'WhatsApp',
+    description: 'Shared WhatsApp inbox: replies, assignments and notes.',
   },
   canAny('billing.view', 'billing.status', 'whatsapp.contacts') && {
     key: 'billing', to: { name: 'BillingOverview' }, icon: 'file-invoice-dollar',

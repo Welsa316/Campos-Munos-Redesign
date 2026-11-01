@@ -6,7 +6,7 @@ const adminEmail = ref('')
 // Who is signed in and what they may do (server/auth/capabilities.js). The
 // portal only uses this to decide what to show; the API checks every
 // request on its own.
-const profile = ref({ name: '', role: '', roleLabel: '', capabilities: [] })
+const profile = ref({ name: '', displayName: '', role: '', roleLabel: '', capabilities: [], avatar: null })
 const loading = ref(false)
 let verified = false
 
@@ -17,16 +17,19 @@ function applyProfile(data) {
   adminEmail.value = data.email
   profile.value = {
     name: data.name || '',
+    displayName: data.displayName || '',
     role: data.role || '',
     roleLabel: data.roleLabel || '',
     capabilities: Array.isArray(data.capabilities) ? data.capabilities : [],
+    // { kind: 'fluent'|'emoji', key, bg, chosen } (server/auth/avatars.js)
+    avatar: data.avatar || null,
   }
 }
 
 function clearProfile() {
   isAuthenticated.value = false
   adminEmail.value = ''
-  profile.value = { name: '', role: '', roleLabel: '', capabilities: [] }
+  profile.value = { name: '', displayName: '', role: '', roleLabel: '', capabilities: [], avatar: null }
 }
 
 /** True when the signed-in account has every named capability. */
@@ -97,6 +100,8 @@ export function useAuth() {
     can,
     canAny,
     homeRoute,
+    // After the account changes something about itself (its picture).
+    updateProfile: applyProfile,
     verify,
     login,
     logout,
