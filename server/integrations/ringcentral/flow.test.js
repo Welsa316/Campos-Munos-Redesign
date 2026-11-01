@@ -95,10 +95,14 @@ before(async () => {
   const cookieParser = (await import('cookie-parser')).default
   const { addFallbackHandlers } = await import('../../app.js')
   const { createIntegrationsRouter } = await import('../../routes/integrations.js')
+  const { createBillingRouter } = await import('../../routes/billing.js')
   const app = express()
   app.use(cookieParser())
   app.use(express.json())
   app.use('/api/integrations', createIntegrationsRouter({ env, fetchImpl: fakeFetch, now: () => clock.t }))
+  // Billing → Integrations shows a RingCentral card from the same env.
+  env.MONDAY_PROVIDER = 'mock'
+  app.use('/api/billing', createBillingRouter({ env }))
   addFallbackHandlers(app)
   server = app.listen(0)
   await new Promise((r) => server.once('listening', r))
@@ -178,6 +182,30 @@ test('RingCentral OAuth flow', { skip: SKIP }, async (t) => {
     } finally { env.RINGCENTRAL_CLIENT_SECRET = saved }
   })
 
+  const card = async (who = users.owner) => {
+    const r = await call('GET', '/api/billing/integrations', { cookie: who.cookie })
+    assert.equal(r.status, 200, r.text)
+    assert.ok(!/AT-\d|RT-\d|client-secret/.test(r.text), 'cards never carry tokens or the secret')
+    return r.json.find((c) => c.key === 'ringcentral')
+  }
+
+  await t.test('Billing → Integrations card: not configured, misconfigured, not connected', async () => {
+    const saved = { ...env }
+    for (const k of Object.keys(env)) if (k.startsWith('RINGCENTRAL_')) delete env[k]
+    try {
+      assert.equal((await card()).state, 'not_configured')
+      env.RINGCENTRAL_CLIENT_ID = 'x'
+      const bad = await card()
+      assert.equal(bad.state, 'configuration_error')
+      assert.match(bad.detail, /RINGCENTRAL_CLIENT_SECRET/)
+    } finally { Object.assign(env, saved) }
+    const c = await card()
+    assert.equal(c.state, 'not_connected')
+    assert.equal(c.canManage, true)
+    // A billing paralegal sees the card but cannot manage it.
+    assert.equal((await card(users.para)).canManage, false)
+  })
+
   await t.test('authorize: RingCentral URL with state; httpOnly binding cookie scoped to the callback; only digests stored', async () => {
     const { url, state, binding, setCookie } = await start()
     assert.equal(url.origin, 'https://platform.devtest.ringcentral.com')
@@ -250,6 +278,7 @@ test('RingCentral OAuth flow', { skip: SKIP }, async (t) => {
     const s = await call('GET', '/api/integrations/ringcentral')
     assert.equal(s.json.status, 'connected')
     assert.equal(s.json.connection.ownerId, '400100')
+    assert.equal((await card()).state, 'connected', 'the billing Integrations card turns green')
     assert.equal(s.json.connection.encryptionKeyMatches, true)
     assert.ok(!/AT-\d|RT-\d|client-secret/.test(s.text), 'status never carries tokens or the secret')
 
@@ -295,6 +324,9 @@ test('RingCentral OAuth flow', { skip: SKIP }, async (t) => {
     const s = await call('GET', '/api/integrations/ringcentral')
     assert.equal(s.json.status, 'connected')
     assert.equal(s.json.connection.lastErrorCode, 'http_503')
+    assert.equal((await card()).state, 'error', 'a failed token check is not green')
+    assert.equal((await call('POST', '/api/integrations/ringcentral/refresh')).status, 200)
+    assert.equal((await card()).state, 'connected', 'the next good check clears it')
   })
 
   await t.test('keep-alive refreshes only when the refresh token nears expiry', async () => {
@@ -332,6 +364,7 @@ test('RingCentral OAuth flow', { skip: SKIP }, async (t) => {
     assert.equal(row.refresh_token_enc, null)
     assert.equal(row.last_error_code, 'invalid_grant')
     assert.equal((await call('GET', '/api/integrations/ringcentral')).json.status, 'needs_reauth')
+    assert.equal((await card()).state, 'needs_reauth')
   })
 
   await t.test('reconnecting replaces the connection; disconnect revokes and deletes', async () => {

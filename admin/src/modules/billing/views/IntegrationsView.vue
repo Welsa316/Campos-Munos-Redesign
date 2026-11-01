@@ -18,6 +18,8 @@
           Production writes: {{ card.writesEnabled ? 'ON' : 'off (dry run)' }}
         </p>
         <router-link v-if="card.key === 'monday'" :to="{ name: 'BillingMonday' }" class="inline-block mt-3 text-xs font-ui font-semibold text-brand-navy underline">Board settings</router-link>
+        <router-link v-if="card.key === 'ringcentral' && card.canManage" :to="{ name: 'Integrations' }" class="inline-block mt-3 text-xs font-ui font-semibold text-brand-navy underline">{{ card.state === 'connected' ? 'Manage connection' : 'Connect RingCentral' }}</router-link>
+        <p v-else-if="card.key === 'ringcentral' && card.state !== 'connected'" class="text-[11px] font-ui text-gray-500 mt-2">An administrator connects it.</p>
         <router-link v-if="card.key === 'eimmigration_import'" :to="{ name: 'BillingImports' }" class="inline-block mt-3 text-xs font-ui font-semibold text-brand-navy underline">Import a report</router-link>
       </section>
     </div>
@@ -38,6 +40,8 @@ const STATE = {
   configuration_error: { label: 'Configuration error', tone: 'bg-red-100 text-brand-red', dot: 'bg-brand-red' },
   error: { label: 'Check failed', tone: 'bg-red-100 text-brand-red', dot: 'bg-brand-red' },
   disabled: { label: 'Disabled', tone: 'bg-gray-100 text-gray-600', dot: 'bg-gray-400' },
+  not_connected: { label: 'Not connected', tone: 'bg-amber-100 text-amber-800', dot: 'bg-amber-500' },
+  needs_reauth: { label: 'Reconnect needed', tone: 'bg-amber-100 text-amber-800', dot: 'bg-amber-500' },
 }
 
 const api = useBillingApi()
