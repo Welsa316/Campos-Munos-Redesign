@@ -24,6 +24,7 @@
     </header>
 
     <ChangePasswordModal :visible="showChangePassword" @close="showChangePassword = false" />
+    <CallDialog :visible="dialog.open" :number="dialog.number" :name="dialog.name" @close="dialog.open = false" />
 
     <div class="flex-1 overflow-y-auto">
       <div class="max-w-[1100px] mx-auto px-4 sm:px-6 py-5 space-y-4">
@@ -42,6 +43,10 @@
               class="w-full pl-8 pr-3 py-2 rounded-lg bg-white ring-1 ring-gray-200 focus:ring-2 focus:ring-brand-navy/40 outline-none text-sm font-ui" />
           </label>
           <div class="ml-auto flex items-center gap-2">
+            <button v-if="canCall" type="button" @click="openCall()"
+              class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-ui font-semibold">
+              <FaIcon name="phone" />New call
+            </button>
             <span class="text-[11px] font-ui text-gray-500" :title="sync?.lastSuccessAt ? fullDate(sync.lastSuccessAt) : ''">{{ updatedLabel }}</span>
             <button type="button" @click="refresh" :disabled="Boolean(refreshing) || !canRefresh"
               class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white ring-1 ring-gray-200 text-gray-700 text-xs font-ui font-semibold hover:bg-gray-50 disabled:opacity-50">
@@ -129,9 +134,15 @@
                 </p>
               </div>
 
-              <div class="text-right">
+              <div class="text-right flex flex-col items-end">
                 <p class="text-[13px] font-ui text-gray-900 tabular-nums whitespace-nowrap">{{ timeOf(c.startedAt) }}</p>
                 <p class="text-[11px] font-ui text-gray-500 tabular-nums mt-0.5">{{ duration(c.durationSeconds) }}</p>
+                <button v-if="canCall && c.number" type="button" @click="openCall(c)"
+                  :aria-label="`Call ${c.name || phone(c.number)}`" :title="`Call ${c.name || phone(c.number)}`"
+                  :class="needsCallback(c) ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-white ring-1 ring-gray-200 text-gray-700 hover:bg-gray-50'"
+                  class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-ui font-semibold">
+                  <FaIcon name="phone" />{{ needsCallback(c) ? 'Call back' : 'Call' }}
+                </button>
               </div>
             </li>
           </ul>
@@ -152,6 +163,7 @@ import { formatPhone, telHref } from '../../utils/phone.js'
 import SectionLinks from '../../components/portal/SectionLinks.vue'
 import ChangePasswordModal from '../../components/messages/ChangePasswordModal.vue'
 import FaIcon from '../../components/FaIcon.vue'
+import CallDialog from './CallDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -184,6 +196,12 @@ const error = ref('')
 const now = ref(Date.now())
 const showChangePassword = ref(false)
 const canSeeLeads = computed(() => can('crm.view'))
+// RingOut (calls.place): your own phone rings first, then the client.
+const canCall = computed(() => can('calls.place') && connection.value === 'connected')
+const dialog = ref({ open: false, number: '', name: '' })
+function openCall(c = null) {
+  dialog.value = { open: true, number: c?.number || '', name: c?.name || '' }
+}
 const canRefresh = computed(() => configured.value && connection.value === 'connected')
 
 function rangeBounds(key) {

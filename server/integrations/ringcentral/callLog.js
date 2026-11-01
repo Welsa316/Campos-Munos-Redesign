@@ -272,6 +272,8 @@ async function runSync(db, config, { trigger, backfillDays, retentionDays, deps,
 
   const inserted = await upsertCalls(db, result.rows)
   await db.query(`DELETE FROM rc_calls WHERE started_at < $1::timestamptz - make_interval(days => $2)`, [now, Math.max(30, retentionDays)])
+  // Portal-placed calls are only needed while they ring; the call itself is in the call log.
+  await db.query(`DELETE FROM rc_ringouts WHERE created_at < $1::timestamptz - INTERVAL '90 days'`, [now])
   await db.query(
     `UPDATE rc_call_sync_state SET scope = $1, scope_checked_at = $2, window_to = $3, last_run_at = $3, last_success_at = $3,
             last_trigger = $4, last_fetched = $5, last_new = $6, last_truncated = $7, last_error_code = NULL, last_error_at = NULL

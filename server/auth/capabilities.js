@@ -23,6 +23,7 @@ export const CAPABILITIES = {
   'billing.reminders': 'Draft, approve, cancel, retry and resolve payment reminders; review client replies',
   'billing.configure': 'monday.com board mapping and connection check; reminder rules, templates and sending hours',
   'calls.view': 'See the RingCentral call log: who called, answered or missed, when, and refresh it',
+  'calls.place': 'Call a number from the portal (RingCentral RingOut rings your own phone first, then the client)',
   // Administrator-only (no role but admin has it): connecting an account
   // grants the API standing access to the firm's phone system.
   'integrations.manage': "Connect, check or disconnect the firm's RingCentral account (OAuth)",
@@ -45,14 +46,14 @@ export const ROLES = {
       'crm.view', 'crm.manage', 'crm.export',
       'whatsapp.view', 'whatsapp.send', 'whatsapp.manage', 'whatsapp.contacts',
       'billing.status',
-      'calls.view',
+      'calls.view', 'calls.place',
     ],
   },
   // Phones and WhatsApp only: no website leads, no billing (not even payment
   // status), no WhatsApp contact/consent records (those live under Billing).
   receptionist: {
     label: 'Receptionist',
-    capabilities: ['whatsapp.view', 'whatsapp.send', 'whatsapp.manage', 'calls.view'],
+    capabilities: ['whatsapp.view', 'whatsapp.send', 'whatsapp.manage', 'calls.view', 'calls.place'],
   },
   // No website leads (Messages: inbox and contacts); the firm keeps those
   // with the front desk.

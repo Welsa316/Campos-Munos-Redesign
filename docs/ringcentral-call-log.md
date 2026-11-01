@@ -24,6 +24,29 @@ they are not counted there). Public holidays are not excluded. The hours are
 the website's opening hours. Clicking the card opens Calls showing exactly
 those calls (`/calls?range=month&filter=unanswered&hours=business`).
 
+## Calling from the portal (RingOut)
+
+Anyone with `calls.place` (administrators, front desk, receptionist) can call
+a number from **Calls**: **New call**, or **Call / Call back** on any call
+with a number. It is RingCentral's RingOut, placed through the firm's
+connection:
+
+1. The first time, the person saves **Ring me at**: their RingCentral direct
+   number (rings their RingCentral app and desk phone) or a mobile.
+2. They click **Call**. RingCentral rings *their* phone first.
+3. They answer; RingCentral dials the client, who sees the connected
+   extension's caller ID (or `RINGCENTRAL_RINGOUT_CALLER_ID` when set).
+4. The window shows *Ringing your phone → Calling the client → Connected*,
+   with **Cancel call** while it rings. The call then appears in the log.
+
+Needs the **RingOut** permission on the RingCentral app (add it, then
+**Connect again** on Integrations); without it the window says so. Calls are
+placed and billed on the extension that made the connection. Numbers that
+must never be dialled are refused before reaching RingCentral: anything
+shorter than a full number (911, 411, short codes), and North American
+premium or invalid area codes (900, 976, 0xx, 1xx). At most 30 calls per
+person per 10 minutes. The audit trail keeps the last 4 digits only.
+
 ## How calls arrive
 
 - The API imports RingCentral's call log every 5 minutes (production only

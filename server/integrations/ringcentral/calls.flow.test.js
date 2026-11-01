@@ -43,6 +43,7 @@ const rec = (id, startTime, direction, result, other, extra = {}) => ({
 const rc = {
   records: [], requests: [], issued: 0, refresh: new Set(),
   accountForbidden: false, extensionForbidden: false, rateLimitOnce: false, unauthorizedOnce: false, delayMs: 0, gate: null, onRequest: null,
+  ringouts: new Map(), ringoutSeq: 0, ringoutForbidden: false, ringoutRequests: [],
 }
 async function fakeFetch(url, init) {
   const u = new URL(url)
@@ -61,6 +62,22 @@ async function fakeFetch(url, init) {
   if (!/^Bearer AT-\d+$/.test(init.headers.Authorization)) return reply(401, { errorCode: 'OAU-149' })
   if (rc.unauthorizedOnce) { rc.unauthorizedOnce = false; return reply(401, { errorCode: 'OAU-149', message: 'Invalid token' }) }
   if (rc.rateLimitOnce) { rc.rateLimitOnce = false; return reply(429, { errorCode: 'CMN-301', message: 'Request rate exceeded' }, { 'retry-after': '60' }) }
+  // RingOut: POST places, GET reads status, DELETE cancels.
+  const ro = /^\/restapi\/v1\.0\/account\/~\/extension\/~\/ring-out(?:\/([^/]+))?$/.exec(u.pathname)
+  if (ro) {
+    rc.ringoutRequests.push({ method: init.method, id: ro[1] || null, body: init.body ? JSON.parse(init.body) : null })
+    if (rc.ringoutForbidden) return reply(403, { errorCode: 'CMN-408', errors: [{ errorCode: 'CMN-408', permissionName: 'RingOut' }] })
+    if (init.method === 'POST') {
+      const id = `ro-${++rc.ringoutSeq}`
+      const status = { callStatus: 'InProgress', callerStatus: 'InProgress', calleeStatus: 'InProgress' }
+      rc.ringouts.set(id, status)
+      return reply(200, { id, uri: `.../ring-out/${id}`, status })
+    }
+    const status = rc.ringouts.get(ro[1])
+    if (!status) return reply(404, { errorCode: 'CMN-102' })
+    if (init.method === 'DELETE') { rc.ringouts.delete(ro[1]); return reply(204) }
+    return reply(200, { id: ro[1], status })
+  }
   const isAccount = u.pathname === '/restapi/v1.0/account/~/call-log'
   if (isAccount && rc.accountForbidden) return reply(403, { errorCode: 'CMN-408', errors: [{ errorCode: 'CMN-408', permissionName: 'ReadCompanyCallLog' }] })
   if (!isAccount && rc.extensionForbidden) return reply(403, { errorCode: 'CMN-408', errors: [{ errorCode: 'CMN-408', permissionName: 'ReadCallLog' }] })
@@ -154,6 +171,13 @@ async function call(method, path, { cookie = users.owner.cookie } = {}) {
   return { status: res.status, json, text }
 }
 const RANGE = `from=${encodeURIComponent('2026-10-30T00:00:00Z')}&to=${encodeURIComponent('2026-10-31T00:00:00Z')}`
+async function send(method, path, body, { cookie = users.owner.cookie } = {}) {
+  const res = await fetch(base + path, { method, headers: { Cookie: cookie, 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) })
+  const text = await res.text()
+  let json = null
+  try { json = JSON.parse(text) } catch { /* empty */ }
+  return { status: res.status, json, text }
+}
 const list = (extra = '', who) => call('GET', `/api/calls?${RANGE}${extra}`, who ? { cookie: who.cookie } : {})
 const sync = async () => { clock.t = new Date(clock.t.getTime() + 60 * 1000); return call('POST', '/api/calls/sync') }
 const byId = (calls, startTime) => calls.find((c) => new Date(c.startedAt).toISOString() === new Date(startTime).toISOString())
@@ -366,5 +390,67 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     await db.query(`INSERT INTO rc_calls (rc_record_id, direction, started_at, outcome, scope) VALUES ('ancient', 'inbound', '2025-01-01T00:00:00Z', 'missed', 'account')`)
     await sync()
     assert.equal((await db.query(`SELECT 1 FROM rc_calls WHERE rc_record_id = 'ancient'`)).rowCount, 0)
+  })
+
+  await t.test('RingOut: who may call, saving "ring me at", refusing numbers that must never be dialled', async () => {
+    assert.equal((await call('GET', '/api/calls/ringout/me', { cookie: users.para.cookie })).status, 403)
+    assert.equal((await call('POST', '/api/calls/ringout', { cookie: users.para.cookie })).status, 403)
+    const desk = { cookie: users.desk.cookie }
+    const none = await call('GET', '/api/calls/ringout/me', desk)
+    assert.equal(none.json.phone, null)
+    assert.equal(none.json.connection, 'connected')
+    const noPhone = await send('POST', '/api/calls/ringout', { to: '(504) 555-0101' }, desk)
+    assert.equal(noPhone.status, 409)
+    assert.equal(noPhone.json.code, 'no_phone')
+    assert.equal((await send('PUT', '/api/calls/ringout/me', { phone: '911' }, desk)).status, 400)
+    const saved = await send('PUT', '/api/calls/ringout/me', { phone: '(504) 555-0100' }, desk)
+    assert.equal(saved.json.phone, '+15045550100')
+    for (const bad of ['911', '1-900-555-0199', '555-0101', '(504) 555-0100']) {
+      const r = await send('POST', '/api/calls/ringout', { to: bad }, desk)
+      assert.equal(r.status, 400, bad)
+    }
+    assert.equal(rc.ringoutRequests.length, 0, 'nothing refused reached RingCentral')
+  })
+
+  await t.test('RingOut: rings my phone, then the client; progress; only my own calls; cancel', async () => {
+    const desk = { cookie: users.desk.cookie }
+    const placed = await send('POST', '/api/calls/ringout', { to: '(504) 555-0101' }, desk)
+    assert.equal(placed.status, 201, placed.text)
+    assert.equal(placed.json.phase, 'ringing_you')
+    assert.equal(placed.json.to, '+15045550101')
+    const sent = rc.ringoutRequests.at(-1)
+    assert.deepEqual(sent.body, { from: { phoneNumber: '+15045550100' }, to: { phoneNumber: '+15045550101' }, playPrompt: false })
+    const id = placed.json.id
+    const status = () => call('GET', `/api/calls/ringout/${id}`, desk)
+    const rcId = [...rc.ringouts.keys()].at(-1)
+    rc.ringouts.set(rcId, { callStatus: 'InProgress', callerStatus: 'Success', calleeStatus: 'InProgress' })
+    assert.equal((await status()).json.phase, 'calling_client')
+    rc.ringouts.set(rcId, { callStatus: 'Success', callerStatus: 'Success', calleeStatus: 'Success' })
+    assert.equal((await status()).json.phase, 'connected')
+    rc.ringouts.delete(rcId) // RingCentral forgets it after the call
+    assert.equal((await status()).json.phase, 'finished')
+    assert.equal((await call('GET', `/api/calls/ringout/${id}`)).status, 404, "another person cannot follow someone else's call")
+
+    const second = await send('POST', '/api/calls/ringout', { to: '+1 504 555 0123' }, desk)
+    const cancelled = await send('DELETE', `/api/calls/ringout/${second.json.id}`, undefined, desk)
+    assert.equal(cancelled.json.phase, 'cancelled')
+    assert.equal(rc.ringoutRequests.at(-1).method, 'DELETE')
+
+    const third = await send('POST', '/api/calls/ringout', { to: '(504) 555-0177' }, desk)
+    rc.ringouts.set([...rc.ringouts.keys()].at(-1), { callStatus: 'InProgress', callerStatus: 'Success', calleeStatus: 'Busy' })
+    assert.deepEqual((await call('GET', `/api/calls/ringout/${third.json.id}`, desk)).json, { id: third.json.id, to: '+15045550177', phase: 'failed', who: 'client', reason: 'Busy' })
+
+    const audits = JSON.stringify((await db.query("SELECT action, details FROM billing_audit_events WHERE entity_type = 'ringout'")).rows)
+    assert.match(audits, /calls\.ringout_placed/)
+    assert.ok(!audits.includes('5045550101'), 'the audit trail keeps only the last 4 digits')
+  })
+
+  await t.test('RingOut: without the RingOut permission the person is told what to fix', async () => {
+    rc.ringoutForbidden = true
+    const r = await send('POST', '/api/calls/ringout', { to: '(504) 555-0101' }, { cookie: users.desk.cookie })
+    rc.ringoutForbidden = false
+    assert.equal(r.status, 409)
+    assert.equal(r.json.code, 'missing_permission')
+    assert.match(r.json.error, /RingOut permission/)
   })
 })

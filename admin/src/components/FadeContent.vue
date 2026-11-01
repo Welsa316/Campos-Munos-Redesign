@@ -10,7 +10,8 @@
 </style>
 
 <script setup>
-// FadeContent from React Bits (reactbits.dev, MIT), ported to Vue 3. Same
+// FadeContent from React Bits (reactbits.dev, MIT + Commons Clause; see
+// THIRD_PARTY_NOTICES.md), ported to Vue 3. Same
 // props, effects and GSAP code as the original JavaScript + CSS variant; the
 // React hooks become onMounted / onBeforeUnmount / watch, and the onStart /
 // onComplete / onDisappearanceComplete callbacks become events
