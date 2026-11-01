@@ -97,6 +97,39 @@ if (ringcentralKeepalive) {
   setInterval(keepAlive, 6 * 60 * 60 * 1000).unref()
 }
 
+// RingCentral call log import every 5 minutes (read-only; docs/ringcentral-call-log.md).
+// Same default as the keep-alive: production only unless RINGCENTRAL_CALL_SYNC
+// says otherwise. One run at a time across instances (advisory lock).
+const callSyncOn = process.env.RINGCENTRAL_CALL_SYNC
+  ? process.env.RINGCENTRAL_CALL_SYNC === 'true'
+  : isProduction
+if (callSyncOn) {
+  const { loadRingCentralConfig } = await import('./integrations/ringcentral/config.js')
+  const { syncCallLog } = await import('./integrations/ringcentral/callLog.js')
+  let running = false
+  const syncCalls = async () => {
+    if (running) return
+    const cfg = loadRingCentralConfig(process.env)
+    if (!cfg.configured) return
+    running = true
+    try {
+      const r = await syncCallLog(getPool(), cfg, {
+        trigger: 'scheduled',
+        backfillDays: Number(process.env.RINGCENTRAL_CALL_BACKFILL_DAYS) || undefined,
+        retentionDays: Number(process.env.RINGCENTRAL_CALL_RETENTION_DAYS) || undefined,
+      })
+      if (r.status === 'error' && r.code !== 'not_connected') logger.warn({ provider: 'ringcentral', code: r.code }, 'Call log import failed')
+      else if (r.status === 'ok' && r.new) logger.info({ provider: 'ringcentral', new: r.new }, 'Call log imported')
+    } catch (err) {
+      logger.warn({ provider: 'ringcentral', err: { name: err?.name, code: err?.code } }, 'Call log import error')
+    } finally {
+      running = false
+    }
+  }
+  setTimeout(syncCalls, 90 * 1000).unref()
+  setInterval(syncCalls, 5 * 60 * 1000).unref()
+}
+
 const server = app.listen(PORT, () => {
   logger.info({ port: PORT }, 'Server listening')
 })

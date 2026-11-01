@@ -20,6 +20,7 @@ import whatsappRoutes from './routes/whatsapp.js'
 import { createWhatsappInboxRouter } from './routes/whatsappInbox.js'
 import { redactUrlSecrets } from './utils/redactUrl.js'
 import { createIntegrationsRouter } from './routes/integrations.js'
+import { createCallsRouter } from './routes/calls.js'
 import {
   resolveOrigins, corsOptionsDelegate, requireTrustedOrigin, resolveClientIp,
 } from './httpSecurity.js'
@@ -96,6 +97,8 @@ export function createApp({ env = process.env, log = logger, beforeFallback } = 
   // OAuth connections (RingCentral). The callback is registered with
   // RingCentral as https://api.camulaw.com/api/integrations/ringcentral/callback.
   app.use('/api/integrations', createIntegrationsRouter({ env }))
+  // RingCentral call log (read-only).
+  app.use('/api/calls', createCallsRouter({ env }))
 
   // API 404s — registered before any frontend fallback so an unknown /api/*
   // path returns JSON instead of a page.

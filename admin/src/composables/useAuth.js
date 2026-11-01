@@ -39,23 +39,9 @@ export function canAny(...names) {
   return names.some((n) => capabilitySet.value.has(n))
 }
 
-// The first screen: where the account does its main work. Whoever works the
-// leads starts on Messages (as every account did before roles); a billing
-// account on Billing.
-const SECTIONS = [
-  { name: 'Inbox', any: ['crm.manage'] },
-  { name: 'BillingOverview', any: ['billing.view'] },
-  { name: 'WhatsApp', any: ['whatsapp.view'] },
-  { name: 'Inbox', any: ['crm.view'] },
-  { name: 'BillingInvoices', any: ['billing.status'] },
-  { name: 'BillingContacts', any: ['whatsapp.contacts'] },
-  { name: 'Integrations', any: ['integrations.manage'] },
-]
-
-/** The first screen this account may open, or the no-access page. */
+/** Home (the dashboard) for any account that may do anything; else the no-access page. */
 export function homeRoute() {
-  const s = SECTIONS.find((x) => canAny(...x.any))
-  return { name: s ? s.name : 'NoAccess' }
+  return { name: capabilitySet.value.size ? 'Home' : 'NoAccess' }
 }
 
 export function useAuth() {

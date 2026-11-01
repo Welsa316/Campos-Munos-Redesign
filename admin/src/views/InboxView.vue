@@ -175,7 +175,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watchEffect } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 import { useApi, rawFetch, goToLogin } from '../composables/useApi.js'
 import SubmissionList from '../components/messages/SubmissionList.vue'
@@ -185,6 +185,7 @@ import ContactsTable from '../components/messages/ContactsTable.vue'
 import SectionLinks from '../components/portal/SectionLinks.vue'
 
 const router = useRouter()
+const route = useRoute()
 const { adminEmail, logout, can } = useAuth()
 const { get, patch } = useApi()
 
@@ -309,6 +310,12 @@ watchEffect(() => {
 
 onMounted(() => {
   fetchSubmissions()
+  // Opened from elsewhere in the portal (a call matched to this lead).
+  const lead = Number(route.query.lead)
+  if (Number.isInteger(lead) && lead > 0) {
+    selectSubmission(lead)
+    router.replace({ query: {} })
+  }
   startPolling()
   document.addEventListener('visibilitychange', onVisibilityChange)
   window.addEventListener('focus', pollNow)
