@@ -104,7 +104,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
 
   router.get('/overview', need('billing.view'), wrap(async (_req, res) => {
     const db = pool()
-    const [totals, upcoming, attention, lastImport, lastSync, unmatched, mondayCfg] = await Promise.all([
+    const [totals, upcoming, attention, lastImport, lastSync, unmatched, mondayCfg, drafts] = await Promise.all([
       db.query(`SELECT status, COUNT(*)::int AS n, COALESCE(SUM(CASE WHEN balance_cents > 0 THEN balance_cents END), 0)::bigint AS owed
                   FROM billing_invoices GROUP BY status`),
       db.query(`SELECT external_invoice_id, client_name, COALESCE(next_installment_date, due_date) AS due, balance_cents
@@ -123,6 +123,8 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
       db.query(`SELECT COUNT(*)::int AS n FROM billing_clients c
                  WHERE NOT EXISTS (SELECT 1 FROM billing_client_links l WHERE l.client_id = c.id)`),
       getMondayConfig(db),
+      // Drafts a rule created that wait for a person to approve (Home card).
+      db.query(`SELECT COUNT(*)::int AS n, MIN(created_at) AS oldest FROM billing_reminders WHERE state = 'draft'`),
     ])
     const byStatus = Object.fromEntries(totals.rows.map((r) => [r.status, { count: r.n, owedCents: Number(r.owed) }]))
     const verifiedOwed = ['unpaid', 'partial', 'overdue'].reduce((s, k) => s + (byStatus[k]?.owedCents || 0), 0)
@@ -134,6 +136,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
       lastImport: lastImport.rows[0] || null,
       lastSync: lastSync.rows[0] || null,
       monday: { configured: Boolean(mondayCfg?.boardId), mode: env.MONDAY_PROVIDER === 'api' ? 'api' : 'mock' },
+      remindersAwaitingApproval: { count: drafts.rows[0].n, oldest: drafts.rows[0].oldest },
     })
   }))
 

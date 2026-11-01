@@ -197,6 +197,8 @@ test('reminder flow, end to end, with simulated WhatsApp', { skip: SKIP }, async
     assert.match(list[0].preview, /Hola Prueba, .*\$750\.00 con vencimiento el 30 de noviembre de 2026/)
     assert.match(list[0].to_phone, /0103$/)
     assert.ok(!list[0].to_phone.includes('504555'), 'number is masked in the queue')
+    // The Home card for billing accounts counts the same draft.
+    assert.equal((await call('GET', '/api/billing/overview')).json.remindersAwaitingApproval.count, 1)
   })
 
   await t.test('nothing is sent before approval', async () => {
