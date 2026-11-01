@@ -50,6 +50,14 @@
           </div>
         </div>
 
+        <!-- A narrower view opened from elsewhere (the Home card) -->
+        <p v-if="businessHours || filter === 'unanswered'" class="flex flex-wrap items-center gap-2 text-xs font-ui text-gray-700">
+          <span class="text-gray-500">Showing</span>
+          <span v-if="filter === 'unanswered'" class="px-2.5 py-1 rounded-full bg-white ring-1 ring-gray-200 font-semibold">Unanswered (missed + voicemail)</span>
+          <span v-if="businessHours" class="px-2.5 py-1 rounded-full bg-white ring-1 ring-gray-200 font-semibold">Business hours · Mon–Fri 9–5</span>
+          <button type="button" @click="clearNarrowing" class="font-semibold text-brand-navy underline">Show all</button>
+        </p>
+
         <!-- Why the list might be empty or incomplete -->
         <p v-if="notice" role="status" :class="notice.tone" class="text-sm font-ui rounded-lg px-4 py-3 flex items-start gap-2">
           <FaIcon :name="notice.icon" class="mt-0.5 flex-shrink-0" />
@@ -137,7 +145,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../../composables/useAuth.js'
 import { useApi } from '../../composables/useApi.js'
 import { formatPhone, telHref } from '../../utils/phone.js'
@@ -146,6 +154,7 @@ import ChangePasswordModal from '../../components/messages/ChangePasswordModal.v
 import FaIcon from '../../components/FaIcon.vue'
 
 const router = useRouter()
+const route = useRoute()
 const { adminEmail, logout, can } = useAuth()
 const { get, post } = useApi()
 
@@ -156,8 +165,11 @@ const RANGES = [
   { key: 'month', label: '30 days' },
 ]
 
-const range = ref('today')
-const filter = ref('all')
+// The Home card opens /calls?range=month&filter=unanswered&hours=business.
+const q0 = route.query
+const range = ref(['today', 'yesterday', 'week', 'month'].includes(q0.range) ? q0.range : 'today')
+const filter = ref(['all', 'answered', 'missed', 'voicemail', 'unanswered', 'outgoing', 'not_returned'].includes(q0.filter) ? q0.filter : 'all')
+const businessHours = ref(q0.hours === 'business')
 const search = ref('')
 const calls = ref([])
 const counts = ref({})
@@ -192,6 +204,7 @@ async function load({ quiet = false } = {}) {
     const { from, to } = rangeBounds(range.value)
     const params = new URLSearchParams({ from: from.toISOString(), to: to.toISOString(), outcome: filter.value })
     if (search.value.trim()) params.set('q', search.value.trim())
+    if (businessHours.value) params.set('businessHours', '1')
     const data = await get(`/api/calls?${params}`)
     calls.value = data.calls
     counts.value = data.counts || {}
@@ -226,8 +239,13 @@ async function refresh() {
 }
 
 function setRange(key) { range.value = key }
+function clearNarrowing() {
+  businessHours.value = false
+  filter.value = 'all'
+  router.replace({ query: {} })
+}
 function setFilter(key) { filter.value = filter.value === key && key !== 'all' ? 'all' : key }
-watch([range, filter], () => load())
+watch([range, filter, businessHours], () => load())
 let searchTimer = null
 watch(search, () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => load({ quiet: true }), 300) })
 

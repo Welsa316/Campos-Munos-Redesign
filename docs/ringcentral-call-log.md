@@ -13,6 +13,17 @@ routing, queues, extensions, greetings or voicemail. The number is a `tel:`
 link, so clicking it opens whatever phone app the computer uses (usually the
 RingCentral app).
 
+## On Home
+
+The **Missed calls in business hours** card counts incoming calls nobody
+answered (missed, or sent to voicemail) during the firm's published hours,
+Monday to Friday 9:00 to 17:00 New Orleans time, over the last 30 days, and
+how many of them have not been called back (withheld numbers can't be, so
+they are not counted there). Public holidays are not excluded. The hours are
+`BUSINESS_HOURS` in `server/integrations/ringcentral/callLog.js`, taken from
+the website's opening hours. Clicking the card opens Calls showing exactly
+those calls (`/calls?range=month&filter=unanswered&hours=business`).
+
 ## How calls arrive
 
 - The API imports RingCentral's call log every 5 minutes (production only

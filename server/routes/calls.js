@@ -3,6 +3,8 @@
 // front desk). Read-only towards RingCentral.
 //
 //   GET  /api/calls        calls in a time range, with counts and import status
+//                          (businessHours=1: Mon–Fri 9–5 New Orleans time only)
+//   GET  /api/calls/summary unanswered business-hours calls, last 30 days
 //   POST /api/calls/sync   import now (at most every 30 seconds; otherwise the
 //                          last result is returned)
 import { Router } from 'express'
@@ -11,7 +13,7 @@ import requireAuth from '../middleware/auth.js'
 import requireCapability, { can } from '../middleware/requireCapability.js'
 import { loadRingCentralConfig } from '../integrations/ringcentral/config.js'
 import { getConnectionStatus } from '../integrations/ringcentral/service.js'
-import { queryCalls, syncCallLog, getSyncState, OUTCOME_FILTERS } from '../integrations/ringcentral/callLog.js'
+import { queryCalls, syncCallLog, getSyncState, summarizeMissed, OUTCOME_FILTERS } from '../integrations/ringcentral/callLog.js'
 
 const MANUAL_SYNC_MIN_INTERVAL_MS = 30 * 1000
 const MAX_RANGE_MS = 400 * 24 * 60 * 60 * 1000
@@ -52,10 +54,25 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
       if (!from || !to || from >= to || to - from > MAX_RANGE_MS) return res.status(400).json({ error: 'Invalid date range' })
       const outcome = typeof req.query.outcome === 'string' && OUTCOME_FILTERS.includes(req.query.outcome) ? req.query.outcome : 'all'
       const q = typeof req.query.q === 'string' ? req.query.q : ''
-      const result = await queryCalls(pool(), { from, to, outcome, q, limit: req.query.limit })
+      const businessHours = ['1', 'true'].includes(String(req.query.businessHours || ''))
+      const result = await queryCalls(pool(), { from, to, outcome, q, limit: req.query.limit, businessHours })
       res.json({ ...result, ...(await status(req)) })
     } catch (err) {
       req.log?.error({ err }, 'List calls error')
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  })
+
+  // Home dashboard: unanswered calls in business hours, last 30 days.
+  router.get('/summary', async (req, res) => {
+    try {
+      const n = clock()
+      const from = typeof req.query.from === 'string' && req.query.from ? new Date(req.query.from) : null
+      if (from && (Number.isNaN(from.getTime()) || from >= n || n - from > 31 * 24 * 60 * 60 * 1000)) return res.status(400).json({ error: 'Invalid start' })
+      const missed = await summarizeMissed(pool(), { now: n, days: 30, from })
+      res.json({ missed, ...(await status(req)) })
+    } catch (err) {
+      req.log?.error({ err }, 'Call summary error')
       res.status(500).json({ error: 'Internal server error' })
     }
   })

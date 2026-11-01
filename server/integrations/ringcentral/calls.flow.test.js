@@ -42,7 +42,7 @@ const rec = (id, startTime, direction, result, other, extra = {}) => ({
 // Fake RingCentral: tokens plus a paginated call log (3 records a page).
 const rc = {
   records: [], requests: [], issued: 0, refresh: new Set(),
-  accountForbidden: false, extensionForbidden: false, rateLimitOnce: false, unauthorizedOnce: false, delayMs: 0,
+  accountForbidden: false, extensionForbidden: false, rateLimitOnce: false, unauthorizedOnce: false, delayMs: 0, gate: null, onRequest: null,
 }
 async function fakeFetch(url, init) {
   const u = new URL(url)
@@ -55,6 +55,8 @@ async function fakeFetch(url, init) {
     return reply(200, { access_token: `AT-${rc.issued}`, refresh_token: `RT-${rc.issued}`, expires_in: 3600, refresh_token_expires_in: 604800, owner_id: '1' })
   }
   rc.requests.push({ path: u.pathname, query: Object.fromEntries(u.searchParams), auth: init.headers.Authorization })
+  rc.onRequest?.()
+  if (rc.gate) await rc.gate
   if (rc.delayMs) await new Promise((r) => setTimeout(r, rc.delayMs))
   if (!/^Bearer AT-\d+$/.test(init.headers.Authorization)) return reply(401, { errorCode: 'OAU-149' })
   if (rc.unauthorizedOnce) { rc.unauthorizedOnce = false; return reply(401, { errorCode: 'OAU-149', message: 'Invalid token' }) }
@@ -237,13 +239,15 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.equal(byId(calls, '2026-10-30T19:30:00Z').name, 'Luis Prueba', 'caller ID used when nothing else matches')
     assert.equal(byId(calls, '2026-10-30T19:00:00Z').number, null)
 
-    assert.deepEqual(r.json.counts, { incoming: 6, answered: 1, missed: 4, voicemail: 1, outgoing: 1, not_returned: 4 })
+    // The withheld number (c7) is missed but cannot be called back, so it is not 'not returned'.
+    assert.deepEqual(r.json.counts, { incoming: 6, answered: 1, missed: 4, voicemail: 1, outgoing: 1, not_returned: 3 })
     assert.deepEqual(calls.map((c) => c.startedAt), [...calls.map((c) => c.startedAt)].sort().reverse(), 'newest first')
   })
 
   await t.test('filters and search', async () => {
     assert.equal((await list('&outcome=missed')).json.calls.length, 4)
-    assert.equal((await list('&outcome=not_returned')).json.calls.length, 4)
+    assert.equal((await list('&outcome=not_returned')).json.calls.length, 3)
+    assert.equal((await list('&outcome=unanswered')).json.calls.length, 5)
     assert.equal((await list('&outcome=outgoing')).json.calls.length, 1)
     assert.equal((await list('&outcome=answered')).json.calls.length, 1)
     assert.equal((await list(`&q=${encodeURIComponent('carmen')}`)).json.calls.length, 2, 'her missed call and the callback')
@@ -320,11 +324,42 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     const { syncCallLog } = await import('./callLog.js')
     const { loadRingCentralConfig } = await import('./config.js')
     const cfg = loadRingCentralConfig(env)
-    rc.delayMs = 150
     const opts = { trigger: 'scheduled', deps: { fetchImpl: fakeFetch, now: () => clock.t }, sleep: async () => {}, pageDelayMs: 0 }
-    const [a, b] = await Promise.all([syncCallLog(db, cfg, opts), syncCallLog(db, cfg, opts)])
-    rc.delayMs = 0
-    assert.deepEqual([a.status, b.status].sort(), ['busy', 'ok'])
+    // Hold the first import inside RingCentral (so it holds the lock) until
+    // the second has tried; no timing assumptions.
+    let release
+    rc.gate = new Promise((r) => { release = r })
+    const inFlight = new Promise((r) => { rc.onRequest = r })
+    const first = syncCallLog(db, cfg, opts)
+    await inFlight
+    const second = await syncCallLog(db, cfg, opts)
+    rc.onRequest = null
+    rc.gate = null
+    release()
+    assert.equal(second.status, 'busy')
+    assert.equal((await first).status, 'ok')
+  })
+
+  await t.test('dashboard summary: unanswered calls in business hours (Mon–Fri 9–5 New Orleans), last 30 days', async () => {
+    // Friday 6:30 pm and Saturday 10 am in New Orleans: outside business hours.
+    await db.query(`INSERT INTO rc_calls (rc_record_id, direction, started_at, outcome, scope, counterpart_number, counterpart_key) VALUES
+      ('after-hours', 'inbound', '2026-10-30T23:30:00Z', 'missed', 'account', '+15045550155', '5045550155'),
+      ('weekend', 'inbound', '2026-10-31T15:00:00Z', 'voicemail', 'account', '+15045550156', '5045550156'),
+      ('too-old', 'inbound', '2026-09-15T15:00:00Z', 'missed', 'account', '+15045550157', '5045550157')`)
+    const s = await call('GET', '/api/calls/summary')
+    assert.equal(s.status, 200)
+    // c2 (returned), c4 voicemail, c5, c7 (withheld), c8, all on a Friday morning or afternoon.
+    assert.equal(s.json.missed.total, 5)
+    assert.equal(s.json.missed.voicemail, 1)
+    assert.equal(s.json.missed.notReturned, 3, 'c4, c5 and c8; c2 was called back and c7 has no number')
+    assert.equal(s.json.missed.businessHours.timeZone, 'America/Chicago')
+    assert.equal(s.json.connection, 'connected')
+    // The Calls page shows the same set when opened from the dashboard card.
+    const listed = await call('GET', `/api/calls?from=${encodeURIComponent('2026-10-01T00:00:00Z')}&to=${encodeURIComponent('2026-11-01T00:00:00Z')}&outcome=unanswered&businessHours=1`)
+    assert.equal(listed.json.calls.length, 5)
+    assert.equal((await call('GET', '/api/calls/summary', { cookie: users.para.cookie })).status, 403)
+    assert.equal((await call('GET', `/api/calls/summary?from=${encodeURIComponent('2026-10-30T20:00:00Z')}`)).json.missed.total, 0, 'a later start leaves them out')
+    assert.equal((await call('GET', '/api/calls/summary?from=2020-01-01')).status, 400, 'at most about a month')
   })
 
   await t.test('calls older than the retention period are deleted', async () => {

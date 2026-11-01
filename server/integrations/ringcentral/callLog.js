@@ -297,7 +297,43 @@ export async function getSyncState(db) {
 
 // --- the list the portal shows ------------------------------------------------------
 
-export const OUTCOME_FILTERS = Object.freeze(['all', 'answered', 'missed', 'voicemail', 'outgoing', 'not_returned'])
+export const OUTCOME_FILTERS = Object.freeze(['all', 'answered', 'missed', 'voicemail', 'unanswered', 'outgoing', 'not_returned'])
+
+// The firm's opening hours, as published on the website (site/index.html,
+// LegalService openingHoursSpecification): Monday to Friday, 9:00 to 17:00,
+// New Orleans time. Public holidays are not excluded.
+export const BUSINESS_HOURS = Object.freeze({ timeZone: 'America/Chicago', days: 'Mon–Fri', start: '09:00', end: '17:00' })
+const local = (col) => `(${col} AT TIME ZONE '${BUSINESS_HOURS.timeZone}')`
+export const businessHoursSql = (col) =>
+  `(EXTRACT(ISODOW FROM ${local(col)}) BETWEEN 1 AND 5 AND ${local(col)}::time >= '${BUSINESS_HOURS.start}' AND ${local(col)}::time < '${BUSINESS_HOURS.end}')`
+
+// A missed call or voicemail counts as returned once the firm called that
+// number back, or the person called again and got through.
+const RETURNED_SQL = `EXISTS (
+  SELECT 1 FROM rc_calls r
+   WHERE r.counterpart_key = c.counterpart_key AND r.started_at > c.started_at AND NOT r.is_internal
+     AND (r.direction = 'outbound' OR r.outcome = 'answered'))`
+
+/**
+ * Unanswered incoming calls (missed or voicemail) during business hours in
+ * the last `days` days, and how many of them nobody has returned yet (a
+ * withheld number cannot be returned, so it is not counted there).
+ */
+export async function summarizeMissed(db, { now = new Date(), days = 30, from: start = null } = {}) {
+  // The portal passes the same start as its "30 days" view (local midnight 29
+  // days ago), so the card and the list agree exactly.
+  const from = start || new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
+  const row = (await db.query(
+    `SELECT COUNT(*)::int AS total,
+            COUNT(*) FILTER (WHERE c.outcome = 'voicemail')::int AS voicemail,
+            COUNT(*) FILTER (WHERE c.counterpart_key <> '' AND NOT ${RETURNED_SQL})::int AS not_returned
+       FROM rc_calls c
+      WHERE NOT c.is_internal AND c.direction = 'inbound' AND c.outcome IN ('missed', 'voicemail')
+        AND c.started_at >= $1 AND c.started_at < $2 AND ${businessHoursSql('c.started_at')}`,
+    [from, now]
+  )).rows[0]
+  return { days, from, to: now, businessHours: BUSINESS_HOURS, total: row.total, voicemail: row.voicemail, notReturned: row.not_returned }
+}
 
 /** "NEW ORLEANS LA" → "New Orleans, LA"; null when caller ID is not a city. */
 export function callerLocation(name) {
@@ -313,9 +349,10 @@ const titleCase = (s) => String(s).toLowerCase().replace(/(^|[\s'-])(\p{L})/gu, 
  * called back (as far as RingCentral saw: a callback from a personal mobile
  * is not in the log).
  */
-export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit = 300 }) {
+export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit = 300, businessHours = false }) {
   const params = [from, to]
   const where = ['c.started_at >= $1', 'c.started_at < $2', 'NOT c.is_internal']
+  if (businessHours) where.push(businessHoursSql('c.started_at'))
   const search = String(q || '').trim().slice(0, 80)
   let searchSql = ''
   if (search) {
@@ -364,8 +401,9 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
     answered: "direction = 'inbound' AND outcome = 'answered'",
     missed: "direction = 'inbound' AND outcome = 'missed'",
     voicemail: "direction = 'inbound' AND outcome = 'voicemail'",
+    unanswered: "direction = 'inbound' AND outcome IN ('missed', 'voicemail')",
     outgoing: "direction = 'outbound'",
-    not_returned: "direction = 'inbound' AND outcome IN ('missed', 'voicemail') AND followup_at IS NULL",
+    not_returned: "direction = 'inbound' AND outcome IN ('missed', 'voicemail') AND followup_at IS NULL AND counterpart_key <> ''",
   }[OUTCOME_FILTERS.includes(outcome) ? outcome : 'all']
 
   const lim = Math.max(1, Math.min(1000, Math.trunc(Number(limit)) || 300))
@@ -377,7 +415,7 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
         COUNT(*) FILTER (WHERE direction = 'inbound' AND outcome = 'missed')::int AS missed,
         COUNT(*) FILTER (WHERE direction = 'inbound' AND outcome = 'voicemail')::int AS voicemail,
         COUNT(*) FILTER (WHERE direction = 'outbound')::int AS outgoing,
-        COUNT(*) FILTER (WHERE direction = 'inbound' AND outcome IN ('missed', 'voicemail') AND followup_at IS NULL)::int AS not_returned
+        COUNT(*) FILTER (WHERE direction = 'inbound' AND outcome IN ('missed', 'voicemail') AND followup_at IS NULL AND counterpart_key <> '')::int AS not_returned
       FROM filtered`, params),
   ])
 
