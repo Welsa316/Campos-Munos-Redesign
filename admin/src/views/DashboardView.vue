@@ -25,14 +25,7 @@
     <ChangePasswordModal :visible="showChangePassword" @close="showChangePassword = false" />
 
     <div class="flex-1 overflow-y-auto overflow-x-hidden">
-      <main class="min-h-full relative isolate max-w-[1120px] mx-auto px-4 sm:px-8 pt-6 sm:pt-10 pb-10 flex flex-col gap-4 sm:gap-5 font-ui">
-        <!-- Soft brand-coloured light for the glass cards to blur. -->
-        <div class="glass-backdrop" aria-hidden="true">
-          <span class="w-[460px] h-[460px] bg-[#7aa2e8] top-[8%] left-[2%]"></span>
-          <span class="w-[380px] h-[380px] bg-[#f3a9a9] top-[14%] right-[6%]" style="animation-delay: -7s"></span>
-          <span class="w-[420px] h-[420px] bg-[#a6dcc4] top-[52%] left-[30%]" style="animation-delay: -13s"></span>
-          <span class="w-[360px] h-[360px] bg-[#c6c7f8] top-[60%] right-[2%]" style="animation-delay: -4s"></span>
-        </div>
+      <main class="min-h-full relative max-w-[1120px] mx-auto px-4 sm:px-8 pt-6 sm:pt-10 pb-10 flex flex-col gap-4 sm:gap-5 font-ui">
         <!-- Greeting, top left, no card. The words rise in letter by letter
              (SplitText); the picture and role line settle in around them. -->
         <div class="flex items-start justify-between gap-4 px-1">
@@ -58,7 +51,10 @@
               </RiseIn>
             </div>
           </div>
-          <span class="hidden sm:block pt-3 text-[15px] font-medium tracking-tight text-gray-500 whitespace-nowrap">{{ today }}</span>
+          <div class="flex items-start gap-4 sm:gap-5 flex-shrink-0">
+            <span class="hidden sm:block pt-3 text-[15px] font-medium tracking-tight text-gray-500 whitespace-nowrap">{{ today }}</span>
+            <ThemeFolder />
+          </div>
         </div>
 
         <AvatarPicker :visible="showAvatarPicker" :current="profile.avatar" @close="showAvatarPicker = false" @saved="updateProfile" />
@@ -66,7 +62,7 @@
         <!-- The two figures that need someone today. Asymmetric on purpose. -->
         <RiseIn v-if="summaries.length" :delay="0.15" :stagger="0.12" class="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4">
           <router-link v-for="s in summaries" :key="s.key" :to="s.to" :class="[s.bg, s.span]" v-glass-light
-            class="group glass glass-interactive rounded-[24px] p-5 sm:p-6 min-h-[168px] flex flex-col justify-between focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-navy">
+            class="group relative glass glass-interactive rounded-[24px] p-5 sm:p-6 min-h-[168px] flex flex-col justify-between focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-navy">
             <div class="flex items-start justify-between gap-3">
               <p :class="s.labelTone" class="flex items-center gap-1.5 text-[13px] font-semibold leading-tight">
                 <FaIcon :name="s.icon" class="text-[13px]" />{{ s.label }}
@@ -128,6 +124,7 @@ import FaIcon from '../components/FaIcon.vue'
 import { money } from '../modules/billing/api.js'
 import SplitText from '../components/SplitText.vue'
 import TiltedCard from '../components/TiltedCard.vue'
+import ThemeFolder from '../components/ThemeFolder.vue'
 import { vGlassLight } from '../directives/glassLight.js'
 import RiseIn from '../components/RiseIn.vue'
 import UserAvatar from '../components/UserAvatar.vue'
@@ -191,16 +188,16 @@ const summaries = computed(() => {
       bg: 'glass-rose',
       icon: 'phone-slash',
       label: 'Missed calls in business hours',
-      labelTone: 'text-[#7c1515]',
-      arrowTone: 'bg-white/70 text-[#7c1515]',
-      numberTone: 'text-[#5c0f0f]',
-      subTone: 'text-[#7c1515]/80',
+      labelTone: 'text-danger-ink',
+      arrowTone: 'bg-white/70 text-danger-ink',
+      numberTone: 'text-danger-ink-strong',
+      subTone: 'text-danger-ink opacity-80',
       value: !m ? '·' : connected ? total : '—',
       sub: connected
         ? `Last 30 days · Mon–Fri 9–5${m.missed.voicemail ? ` · ${m.missed.voicemail} went to voicemail` : ''}`
         : m ? 'RingCentral is not connected yet' : 'Last 30 days · Mon–Fri 9–5',
       pill: connected ? (notReturned ? `${notReturned} not called back` : 'All called back') : null,
-      pillTone: notReturned ? 'bg-brand-red text-white' : 'bg-white/80 text-[#5c0f0f]',
+      pillTone: notReturned ? 'bg-brand-red text-white' : 'bg-white/80 text-danger-ink-strong',
     })
   }
   if (can('crm.view')) {
@@ -212,14 +209,14 @@ const summaries = computed(() => {
       bg: 'glass-navy',
       icon: 'envelope-open-text',
       label: 'Unread messages',
-      labelTone: 'text-white/85',
-      arrowTone: 'bg-white/15 text-white',
-      numberTone: 'text-white',
-      subTone: 'text-white/70',
+      labelTone: 'text-glass-navy-ink opacity-85',
+      arrowTone: 'bg-glass-navy-chip text-glass-navy-ink',
+      numberTone: 'text-glass-navy-ink',
+      subTone: 'text-glass-navy-ink opacity-70',
       value: !u ? '·' : u.count >= 200 ? '200+' : u.count,
       sub: firstName.value ? `Waiting for you, ${firstName.value}` : 'Website and chat inquiries',
       pill: u ? (u.count ? `Oldest from ${ago(u.oldest)}` : 'All caught up') : null,
-      pillTone: 'bg-white/15 text-white',
+      pillTone: 'bg-glass-navy-chip text-glass-navy-ink',
     })
   }
   if (showsBillingFigures.value) {
@@ -233,16 +230,16 @@ const summaries = computed(() => {
       bg: 'glass-rose',
       icon: 'file-invoice-dollar',
       label: 'Overdue invoices',
-      labelTone: 'text-[#7c1515]',
-      arrowTone: 'bg-white/70 text-[#7c1515]',
-      numberTone: 'text-[#5c0f0f]',
-      subTone: 'text-[#7c1515]/80',
+      labelTone: 'text-danger-ink',
+      arrowTone: 'bg-white/70 text-danger-ink',
+      numberTone: 'text-danger-ink-strong',
+      subTone: 'text-danger-ink opacity-80',
       value: !b ? '·' : imported ? overdue.count : '—',
       sub: imported
         ? `From the eImmigration report of ${shortDay(b.lastImport.report_date || b.lastImport.applied_at)}`
         : b ? 'No eImmigration report imported yet' : 'From the latest eImmigration report',
       pill: imported && overdue.count ? `${money(overdue.owedCents)} owed` : imported ? 'Nothing overdue' : null,
-      pillTone: overdue.count ? 'bg-brand-red text-white' : 'bg-white/80 text-[#5c0f0f]',
+      pillTone: overdue.count ? 'bg-brand-red text-white' : 'bg-white/80 text-danger-ink-strong',
     })
     const r = b?.remindersAwaitingApproval
     out.push({
@@ -252,14 +249,14 @@ const summaries = computed(() => {
       bg: 'glass-navy',
       icon: 'bell',
       label: 'Reminders waiting for approval',
-      labelTone: 'text-white/85',
-      arrowTone: 'bg-white/15 text-white',
-      numberTone: 'text-white',
-      subTone: 'text-white/70',
+      labelTone: 'text-glass-navy-ink opacity-85',
+      arrowTone: 'bg-glass-navy-chip text-glass-navy-ink',
+      numberTone: 'text-glass-navy-ink',
+      subTone: 'text-glass-navy-ink opacity-70',
       value: !b ? '·' : r?.count ?? 0,
       sub: 'Payment reminders drafted by the rules',
       pill: r?.count ? `Oldest from ${ago(r.oldest)}` : b ? 'Nothing to approve' : null,
-      pillTone: 'bg-white/15 text-white',
+      pillTone: 'bg-glass-navy-chip text-glass-navy-ink',
     })
   }
   if (out.length === 1) out[0].span = 'md:col-span-12'
@@ -271,7 +268,7 @@ const summaries = computed(() => {
 const cards = computed(() => [
   can('calls.view') && {
     key: 'calls', to: { name: 'Calls' }, icon: 'phone-volume',
-    tile: 'bg-[#f8dede] text-brand-red',
+    tile: 'bg-[color-mix(in_srgb,var(--color-brand-red)_14%,var(--color-white))] text-brand-red',
     eyebrow: 'RingCentral', title: 'Call log',
     description: 'Who called, who answered, and who still needs a call back.',
   },
@@ -283,13 +280,13 @@ const cards = computed(() => [
   },
   can('whatsapp.view') && {
     key: 'whatsapp', to: { name: 'WhatsApp' }, icon: 'comments',
-    tile: 'bg-[#dcefe6] text-[#0f6b47]',
+    tile: 'bg-emerald-100 text-emerald-700',
     eyebrow: 'Client conversations', title: 'WhatsApp',
     description: 'Shared WhatsApp inbox: replies, assignments and notes.',
   },
   canAny('billing.view', 'billing.status', 'whatsapp.contacts') && {
     key: 'billing', to: { name: 'BillingOverview' }, icon: 'file-invoice-dollar',
-    tile: 'bg-[#dbe6f6] text-brand-navy',
+    tile: 'bg-[color-mix(in_srgb,var(--color-brand-navy)_14%,var(--color-white))] text-brand-navy',
     eyebrow: 'Invoices & payments', title: 'Billing',
     description: 'Payment status, balances and reminders.',
   },

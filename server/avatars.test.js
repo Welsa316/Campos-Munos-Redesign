@@ -10,6 +10,7 @@ import { execFileSync } from 'child_process'
 import pg from 'pg'
 import jwt from 'jsonwebtoken'
 import { FLUENT_AVATARS, EMOJI_AVATARS, AVATAR_COLORS, parseAvatar, avatarFor } from './auth/avatars.js'
+import { THEMES, themeFor } from './auth/themes.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ADMIN = join(__dirname, '..', 'admin')
@@ -25,6 +26,18 @@ test('the portal offers exactly what the API accepts, and every 3D animal is bun
     assert.deepEqual([...fs.readFileSync(file).subarray(0, 8)], [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], `${key}.png is not a PNG`)
   }
   assert.match(fs.readFileSync(join(ADMIN, 'THIRD_PARTY_NOTICES.md'), 'utf8'), /Fluent Emoji[\s\S]*MIT License/)
+})
+
+test('themes: the portal offers exactly what the API accepts; Classic by default', async () => {
+  const portal = await import(join(ADMIN, 'src', 'data', 'themes.js'))
+  assert.deepEqual(portal.THEMES.map((t) => t.key), [...THEMES])
+  assert.equal(portal.DEFAULT_THEME, 'classic')
+  assert.equal(themeFor(null), 'classic')
+  assert.equal(themeFor('neon'), 'classic')
+  assert.equal(themeFor('midnight-dark'), 'midnight-dark')
+  // Every theme other than Classic has its colours in the stylesheet.
+  const css = fs.readFileSync(join(ADMIN, 'src', 'style.css'), 'utf8')
+  for (const key of THEMES.filter((k) => k !== 'classic')) assert.match(css, new RegExp(`data-theme="${key}"`), key)
 })
 
 test('only catalogue values parse', () => {
@@ -129,3 +142,20 @@ test('every role sets its own picture; only catalogue values; nothing else chang
   const audits = (await db.query("SELECT details FROM billing_audit_events WHERE action = 'admin_user.avatar_changed'")).rows
   assert.equal(audits.length, 4)
 })
+
+test('every role saves its own theme; it comes back on sign-in; only listed themes', { skip: SKIP }, async () => {
+  const putTheme = (cookie, theme) => fetch(`${base}/api/auth/theme`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}) }, body: JSON.stringify({ theme }) })
+  const verify = async (u) => (await (await fetch(`${base}/api/auth/verify`, { headers: { Cookie: u.cookie } })).json())
+  assert.equal((await verify(users.admin)).theme, 'classic', 'Classic until chosen')
+  for (const [role, theme] of [['admin', 'midnight-dark'], ['front_desk', 'coastal-teal'], ['billing_paralegal', 'violet'], ['staff', 'graphite']]) {
+    const res = await putTheme(users[role].cookie, theme)
+    assert.equal(res.status, 200, role)
+    assert.equal((await verify(users[role])).theme, theme, `${role} keeps ${theme}`)
+  }
+  assert.equal((await verify(users.front_desk)).theme, 'coastal-teal', "one person's theme never changes another's")
+  assert.equal((await putTheme(users.admin.cookie, 'neon')).status, 400)
+  assert.equal((await putTheme(users.admin.cookie, '"><script>')).status, 400)
+  assert.equal((await putTheme(null, 'violet')).status, 401)
+  assert.equal((await verify(users.admin)).theme, 'midnight-dark', 'a refused value changes nothing')
+})
+

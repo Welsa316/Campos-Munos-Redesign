@@ -3,10 +3,11 @@
 // effect on the next click rather than when the 8-hour token expires.
 import { resolveCapabilities, ROLES } from './capabilities.js'
 import { avatarFor } from './avatars.js'
+import { themeFor } from './themes.js'
 
 export async function loadAccount(db, id) {
   const { rows } = await db.query(
-    `SELECT id, email, display_name, role, token_version, capability_grants, capability_revokes, disabled_at, avatar, avatar_bg
+    `SELECT id, email, display_name, role, token_version, capability_grants, capability_revokes, disabled_at, avatar, avatar_bg, theme
        FROM admin_users WHERE id = $1`,
     [id]
   )
@@ -23,6 +24,7 @@ export async function loadAccount(db, id) {
     tokenVersion: r.token_version,
     disabled: Boolean(r.disabled_at),
     avatar: avatarFor(r),
+    theme: themeFor(r.theme),
     capabilities: resolveCapabilities({ role: r.role, grants: r.capability_grants, revokes: r.capability_revokes }),
   }
 }
@@ -53,6 +55,7 @@ export function profileJson(account) {
     roleLabel: ROLES[account.role]?.label ?? account.role,
     capabilities: [...account.capabilities].sort(),
     avatar: account.avatar,
+    theme: account.theme,
   }
 }
 

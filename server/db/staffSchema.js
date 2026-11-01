@@ -27,6 +27,8 @@ export const STAFF_SCHEMA_SQL = `
   -- Only values from server/auth/avatars.js are ever stored.
   ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS avatar TEXT;
   ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS avatar_bg TEXT;
+  -- Portal colour theme (server/auth/themes.js); NULL = Campos Muños Classic.
+  ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS theme TEXT;
 
   -- Who wrote each lead note and sent each email reply. NULL on rows from
   -- before there was more than one account.

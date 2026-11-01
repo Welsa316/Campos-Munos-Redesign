@@ -9,6 +9,7 @@ import requireAuth from '../middleware/auth.js'
 import { clientKey, sessionCookieOptions } from '../httpSecurity.js'
 import { loadAccount, tokenMatches, profileJson } from '../auth/account.js'
 import { parseAvatar, AVATAR_COLORS } from '../auth/avatars.js'
+import { THEMES } from '../auth/themes.js'
 import { audit } from '../billing/audit.js'
 
 const router = Router()
@@ -161,6 +162,24 @@ router.put(
       res.json(profileJson(account))
     } catch (err) {
       req.log?.error({ err }, 'Avatar update error')
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  }
+)
+
+// Any signed-in account sets its own colour theme; it follows the person to
+// any computer they sign in on. Not audited: it changes nothing but colours.
+router.put(
+  '/theme',
+  requireAuth,
+  body('theme').isIn(THEMES).withMessage('Choose one of the themes offered'),
+  validate,
+  async (req, res) => {
+    try {
+      await getPool().query('UPDATE admin_users SET theme = $2 WHERE id = $1', [req.account.id, req.body.theme])
+      res.json({ theme: req.body.theme })
+    } catch (err) {
+      req.log?.error({ err }, 'Theme update error')
       res.status(500).json({ error: 'Internal server error' })
     }
   }
