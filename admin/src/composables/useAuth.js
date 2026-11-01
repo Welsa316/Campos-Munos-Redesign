@@ -1,12 +1,13 @@
 import { ref, computed } from 'vue'
 import { rawFetch } from './useApi.js'
+import { applyTheme, DEFAULT_THEME } from '../data/themes.js'
 
 const isAuthenticated = ref(false)
 const adminEmail = ref('')
 // Who is signed in and what they may do (server/auth/capabilities.js). The
 // portal only uses this to decide what to show; the API checks every
 // request on its own.
-const profile = ref({ name: '', displayName: '', role: '', roleLabel: '', capabilities: [], avatar: null })
+const profile = ref({ name: '', displayName: '', role: '', roleLabel: '', capabilities: [], avatar: null, theme: DEFAULT_THEME })
 const loading = ref(false)
 let verified = false
 
@@ -23,13 +24,24 @@ function applyProfile(data) {
     capabilities: Array.isArray(data.capabilities) ? data.capabilities : [],
     // { kind: 'fluent'|'emoji', key, bg, chosen } (server/auth/avatars.js)
     avatar: data.avatar || null,
+    // Colour theme (server/auth/themes.js); the whole portal follows it.
+    theme: data.theme || DEFAULT_THEME,
   }
+  applyTheme(profile.value.theme)
 }
 
 function clearProfile() {
   isAuthenticated.value = false
   adminEmail.value = ''
-  profile.value = { name: '', displayName: '', role: '', roleLabel: '', capabilities: [], avatar: null }
+  profile.value = { name: '', displayName: '', role: '', roleLabel: '', capabilities: [], avatar: null, theme: DEFAULT_THEME }
+  // Signed out (or someone else signing in on this computer): back to Classic.
+  applyTheme(DEFAULT_THEME)
+}
+
+/** Switch this account's theme on screen (the caller saves it). */
+export function setTheme(key) {
+  profile.value = { ...profile.value, theme: key }
+  applyTheme(key)
 }
 
 /** True when the signed-in account has every named capability. */

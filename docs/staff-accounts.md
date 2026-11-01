@@ -69,6 +69,16 @@ matching access, the missed-calls (`calls.view`) and unread-messages
 or an emoji on a colour); until then everyone gets a different default
 animal. No setup is needed; the choice is saved per account.
 
+**Themes.** The small *Themes* folder at the top right of Home opens six
+colour palettes: Campos Muños Classic (the default), Midnight Executive,
+Coastal Teal, Graphite Minimal, Modern Violet and Midnight Dark. Picking one
+recolours the whole portal at once and is saved to that person's account
+(`admin_users.theme`), so it follows them to any computer and never changes
+what colleagues see. Red keeps meaning "needs attention" in every theme.
+How it works: every colour class in the portal reads a CSS variable, and a
+theme only re-points those variables (`admin/src/style.css`); the list of
+themes is `server/auth/themes.js` and `admin/src/data/themes.js`.
+
 ## Running the script
 
 `server/scripts/staff.js` runs wherever the API's environment is. On Railway,
