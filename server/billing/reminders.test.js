@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  GRACE_DAYS, daysBetween, addDays, relevantDueDate, formatDueDate, evaluateReminders,
+  GRACE_DAYS, daysBetween, addDays, relevantDueDate, amountDueCents, formatDueDate, evaluateReminders,
   renderMessage, cancellationReason, sendingWindow, assertTransition, normalizePhone,
 } from './reminders.js'
 import { DEFAULT_TEMPLATES, TRANSITIONS, REMINDER_STATES, obligationKey } from './reminderModel.js'
@@ -17,7 +17,7 @@ const FOLLOWUP_14 = rule({ key: 'followup_14', trigger: 'after_due', days: 14, a
 
 const invoice = (over = {}) => ({
   id: 10, externalInvoiceId: 'INV-1', clientId: 7, clientName: 'Juan Pérez',
-  status: 'unpaid', balanceCents: 123456, dueDate: '2026-11-05', nextInstallmentDate: null, paymentPlanText: null,
+  status: 'unpaid', balanceCents: 123456, dueDate: '2026-11-05', nextInstallmentDate: null, nextInstallmentCents: null, paymentPlanText: null,
   reportDate: '2026-11-01', notInLatestReport: false, currency: 'USD', ...over,
 })
 const contact = (over = {}) => ({ phone: '15045550101', language: 'es', optedInAt: '2026-10-01T15:00:00Z', optedOutAt: null, firstName: 'Juan', ...over })
@@ -130,7 +130,7 @@ test('catch-up never fires an earlier stage once a later stage exists for the ob
 // ---- payment plans ----------------------------------------------------------
 
 test('payment plan reminds about the next installment, not the invoice due date', () => {
-  const inv = invoice({ dueDate: '2026-09-01', paymentPlanText: '$200 monthly', nextInstallmentDate: '2026-11-05', status: 'partial' })
+  const inv = invoice({ dueDate: '2026-09-01', paymentPlanText: '$200 monthly', nextInstallmentDate: '2026-11-05', nextInstallmentCents: 20000, status: 'partial' })
   const r = run({ invoices: [inv], rules: [DUE_IN_3, OVERDUE_3, OVERDUE_7] })
   assert.deepEqual(keys(r), ['due_in_3'])
   assert.equal(r.candidates[0].obligationKey, 'INV-1@2026-11-05')
@@ -141,6 +141,44 @@ test('a past invoice due date with a future installment does not produce an over
   // invoice due 10-30 → overdue_3 day would be today; the installment is 11-20
   const inv = invoice({ dueDate: '2026-10-30', paymentPlanText: '$200 monthly', nextInstallmentDate: '2026-11-20', status: 'partial' })
   assert.deepEqual(run({ invoices: [inv], rules: [OVERDUE_3] }), { candidates: [], suppressed: [] })
+})
+
+test('payment plan quotes the next installment, not the whole balance', () => {
+  const inv = invoice({ balanceCents: 450000, paymentPlanText: '$300 monthly', nextInstallmentDate: '2026-11-05', nextInstallmentCents: 30000, status: 'partial' })
+  const r = run({ invoices: [inv] })
+  assert.deepEqual(r.candidates[0].params, { clientFirstName: 'Juan', amountDue: '$300.00', dueDate: '5 de noviembre de 2026' })
+  assert.equal(r.candidates[0].balanceCents, 450000)
+  // an installment date alone (no plan text) is still a plan
+  assert.equal(run({ invoices: [{ ...inv, paymentPlanText: null }] }).candidates[0].params.amountDue, '$300.00')
+})
+
+test('an overdue installment quotes the installment too', () => {
+  const inv = invoice({ balanceCents: 450000, paymentPlanText: '$300 monthly', nextInstallmentDate: '2026-10-30', nextInstallmentCents: 30000, status: 'overdue' })
+  const r = run({ invoices: [inv], rules: [OVERDUE_3] })
+  assert.deepEqual(keys(r), ['overdue_3'])
+  assert.equal(r.candidates[0].params.amountDue, '$300.00')
+})
+
+test('a final installment larger than what is left quotes the balance', () => {
+  const inv = invoice({ balanceCents: 12500, paymentPlanText: '$300 monthly', nextInstallmentDate: '2026-11-05', nextInstallmentCents: 30000, status: 'partial' })
+  assert.equal(run({ invoices: [inv] }).candidates[0].params.amountDue, '$125.00')
+})
+
+test('plan with no installment amount: messages are held, staff follow-ups still fire', () => {
+  const inv = invoice({ balanceCents: 450000, paymentPlanText: '$300 monthly', nextInstallmentDate: '2026-10-19', nextInstallmentCents: null, status: 'overdue' })
+  const r = run({ invoices: [inv], rules: [FOLLOWUP_14, { ...OVERDUE_7, days: 14, key: 'overdue_14' }] })
+  assert.deepEqual(keys(r), ['followup_14'])
+  assert.deepEqual(reasons(r), ['no_installment_amount'])
+  assert.equal(run({ invoices: [{ ...inv, nextInstallmentCents: 0 }], rules: [{ ...OVERDUE_7, days: 14, key: 'overdue_14' }] }).suppressed[0].reason, 'no_installment_amount')
+})
+
+test('amountDueCents: balance without a plan, capped installment with one, null when the plan has no amount', () => {
+  assert.equal(amountDueCents(invoice()), 123456)
+  assert.equal(amountDueCents(invoice({ paymentPlanText: 'monthly', nextInstallmentDate: '2026-11-05', nextInstallmentCents: 20000 })), 20000)
+  assert.equal(amountDueCents(invoice({ paymentPlanText: 'monthly', nextInstallmentDate: '2026-11-05', nextInstallmentCents: 999999 })), 123456)
+  assert.equal(amountDueCents(invoice({ paymentPlanText: 'monthly', nextInstallmentDate: '2026-11-05' })), null)
+  // installment amount without any plan marker is ignored
+  assert.equal(amountDueCents(invoice({ nextInstallmentCents: 20000 })), 123456)
 })
 
 test('plan with no next installment: one no_due_date entry per open invoice', () => {
@@ -300,7 +338,7 @@ test('cancellation only applies to pending reminders', () => {
 })
 
 test('a new installment date is a new obligation: old reminder cancels, new one generates', () => {
-  const moved = invoice({ paymentPlanText: '$200 monthly', nextInstallmentDate: '2026-12-05', status: 'partial' })
+  const moved = invoice({ paymentPlanText: '$200 monthly', nextInstallmentDate: '2026-12-05', nextInstallmentCents: 20000, status: 'partial' })
   assert.notEqual(obligationKey('INV-1', relevantDueDate(moved)), 'INV-1@2026-11-05')
   assert.equal(cancel(pending(), moved), 'due_date_changed')
   const r = run({ invoices: [moved], today: '2026-12-02', existing: [{ obligationKey: 'INV-1@2026-11-05', ruleKey: 'due_in_3', state: 'cancelled' }],
