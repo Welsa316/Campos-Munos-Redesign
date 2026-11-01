@@ -31,6 +31,8 @@ const SECTIONS = [
   // The router moves an account without billing.view to the first billing
   // tab it may open.
   { key: 'billing', label: 'Billing', icon: 'file-invoice-dollar', to: { name: 'BillingOverview' }, any: ['billing.view', 'billing.status', 'whatsapp.contacts'] },
+  // Administrators only: connecting RingCentral.
+  { key: 'integrations', label: 'Integrations', icon: 'plug', to: { name: 'Integrations' }, any: ['integrations.manage'] },
 ]
 
 const visible = computed(() => SECTIONS.filter((s) => s.key !== props.current && canAny(...s.any)))

@@ -33,6 +33,8 @@ import {
 import { createWhatsAppProvider, whatsappSendingEnabled } from '../billing/providers/whatsapp/index.js'
 import { handleWhatsAppEvent } from '../billing/whatsappInbound.js'
 import { SUPPRESSION_REASONS, CANCEL_REASONS } from '../billing/reminderModel.js'
+import { loadRingCentralConfig } from '../integrations/ringcentral/config.js'
+import { getConnectionStatus as getRingCentralStatus } from '../integrations/ringcentral/service.js'
 
 const idParam = (name) => param(name).isInt({ min: 1, max: 2147483647 }).withMessage('Invalid id')
 
@@ -601,6 +603,42 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
 
   // --- integrations ------------------------------------------------------------------
 
+  /**
+   * The RingCentral card, by the same rule as the others: green only when the
+   * account was authorised through OAuth (an authenticated token exchange)
+   * and the latest token call did not fail. Variable names, never values.
+   */
+  async function ringCentralCard(db, env, canManage) {
+    const card = { key: 'ringcentral', name: 'RingCentral', canManage }
+    const cfg = loadRingCentralConfig(env)
+    const anySet = ['RINGCENTRAL_CLIENT_ID', 'RINGCENTRAL_CLIENT_SECRET', 'RINGCENTRAL_SERVER_URL', 'RINGCENTRAL_REDIRECT_URI']
+      .some((k) => String(env[k] ?? '').trim())
+    if (!cfg.configured) {
+      return anySet
+        ? { ...card, state: 'configuration_error', detail: `Fix on the API service: ${cfg.problems.join('; ')}` }
+        : { ...card, state: 'not_configured', detail: 'Set RINGCENTRAL_CLIENT_ID, RINGCENTRAL_CLIENT_SECRET, RINGCENTRAL_SERVER_URL and RINGCENTRAL_REDIRECT_URI on the API service.' }
+    }
+    const s = await getRingCentralStatus(db, cfg)
+    const c = s.connection
+    const env_ = cfg.environment === 'sandbox' ? 'sandbox' : 'production'
+    if (s.status === 'not_connected') {
+      return { ...card, state: 'not_connected', detail: `Credentials set (${env_}). An administrator connects the firm's account to finish.` }
+    }
+    if (s.status === 'needs_reauth') {
+      return { ...card, state: 'needs_reauth', detail: `RingCentral stopped accepting the saved authorisation (${c.lastErrorCode || 'expired'}). Connect again.` }
+    }
+    if (c.environmentMismatch || c.encryptionKeyMatches === false) {
+      return { ...card, state: 'error', detail: c.environmentMismatch
+        ? 'Connected to a different RingCentral environment than the server now uses. Connect again.'
+        : 'The token encryption key changed since connecting. Connect again.' }
+    }
+    if (c.lastErrorCode) {
+      return { ...card, state: 'error', detail: `Last token check failed (${c.lastErrorCode}) at ${new Date(c.lastErrorAt).toISOString()}. It retries automatically.` }
+    }
+    const verified = c.lastRefreshedAt || c.connectedAt
+    return { ...card, state: 'connected', detail: `Authorised ${new Date(c.connectedAt).toISOString()}${c.connectedBy ? ` by ${c.connectedBy}` : ''} (${env_}). Last verified ${new Date(verified).toISOString()}.` }
+  }
+
   router.get('/integrations', need('billing.view'), wrap(async (_req, res) => {
     const db = pool()
     const check = (await db.query("SELECT * FROM billing_integration_checks WHERE provider = 'monday'")).rows[0]
@@ -611,6 +649,8 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     else if (!env.MONDAY_API_TOKEN) mondayState = 'configuration_error'
     else if (!check || check.mode !== 'api') mondayState = 'unverified'
     else mondayState = check.ok ? 'connected' : 'error'
+
+    const ringcentral = await ringCentralCard(db, env, can(_req, 'integrations.manage'))
 
     const waConfigured = Boolean(env.WHATSAPP_VERIFY_TOKEN && env.META_APP_SECRET)
     const waMode = env.WHATSAPP_PROVIDER?.trim().toLowerCase() === 'meta' ? 'meta' : 'mock'
@@ -631,6 +671,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
           ? `Simulated sending; no message reaches anyone. Webhook ${waConfigured ? 'secrets set (receiving)' : 'secrets not set'}.`
           : !waSendConfigured ? 'WHATSAPP_PROVIDER=meta but the access token or phone number id is missing'
             : whatsappSendingEnabled(env) ? 'Sending switched on. Confirm with a test message to a staff phone.' : 'Configured, but sending is switched off (WHATSAPP_SENDING_ENABLED)' },
+      ringcentral,
     ])
   }))
 

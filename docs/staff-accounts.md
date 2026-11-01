@@ -44,6 +44,7 @@ need to sign out.
 | `billing.sync` | Preview and apply the monday.com payment-status sync | ✓ | | ✓ | |
 | `billing.reminders` | Draft, approve, cancel, retry and resolve payment reminders; client replies | ✓ | | ✓ | |
 | `billing.configure` | monday.com board mapping and connection check; reminder rules, templates, sending hours | ✓ | | | |
+| `integrations.manage` | Connect, check or disconnect the firm's RingCentral account (docs/ringcentral-oauth.md) | ✓ | | | |
 
 `staff` is the view-only role that existed before; it keeps exactly the
 access it had. `billing.configure` is administrator-only by default: it

@@ -25,7 +25,9 @@ import {
   faChevronDown,
   faChevronRight,
   faChevronUp,
+  faCircleCheck,
   faCircleExclamation,
+  faPlug,
   faCommentDots,
   faDownload,
   faEnvelope,
@@ -55,7 +57,7 @@ export const ICONS = [
   faDownload, faEnvelope, faEnvelopeOpen, faExclamationCircle, faExclamationTriangle, faFileArrowUp, faFileInvoiceDollar, faLink,
   faInbox, faKey, faLocationDot, faMagnifyingGlass, faNoteSticky, faPaperPlane, faPhone,
   faRotateRight, faSpinner, faTrash, faTriangleExclamation, faXmark,
-  faArrowsRotate, faCircleInfo, faCirclePause, faComments, faFlask, faLock, faRotateLeft, faUser,
+  faArrowsRotate, faCircleCheck, faCircleInfo, faPlug, faCirclePause, faComments, faFlask, faLock, faRotateLeft, faUser,
 ]
 
 library.add(...ICONS)
