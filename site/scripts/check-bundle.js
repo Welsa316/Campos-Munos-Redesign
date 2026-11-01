@@ -20,6 +20,7 @@ export const ADMIN_MARKERS = [
   '/api/submissions/export/csv',
   // Portal modules planned next (docs/billing-automation-plan.md).
   '/api/billing/',
+  '/api/integrations/',
   'Client Messages',
   'Change password',
   'Sign Out',

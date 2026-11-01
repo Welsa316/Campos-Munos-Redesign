@@ -38,6 +38,10 @@ export const routes = [
       { path: 'integrations', name: 'BillingSettings', meta: { capability: 'billing.view' }, component: () => import('../modules/billing/views/IntegrationsView.vue') },
     ] },
 
+  // Integrations: third-party accounts an administrator connects (RingCentral).
+  { path: '/integrations', name: 'Integrations', component: () => import('../modules/integrations/IntegrationsView.vue'),
+    meta: { requiresAuth: true, module: 'integrations', capability: 'integrations.manage', title: 'Integrations' } },
+
   // Sales demo of the operations layer. Fabricated data only, no API calls.
   // Deliberately public within the portal (as it was under /admin) and not
   // linked from anywhere.

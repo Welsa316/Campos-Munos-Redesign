@@ -49,6 +49,7 @@ const SECTIONS = [
   { name: 'Inbox', any: ['crm.view'] },
   { name: 'BillingInvoices', any: ['billing.status'] },
   { name: 'BillingContacts', any: ['whatsapp.contacts'] },
+  { name: 'Integrations', any: ['integrations.manage'] },
 ]
 
 /** The first screen this account may open, or the no-access page. */

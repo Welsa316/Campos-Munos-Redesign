@@ -72,6 +72,31 @@ setInterval(purgeUploads, 24 * 60 * 60 * 1000).unref()
 // Payment reminders: drafts + sending of approved reminders (never unapproved).
 startReminderScheduler({ pool: getPool(), env: process.env, log: logger })
 
+// RingCentral: keep an idle connection alive. Refresh tokens expire (7 days
+// by default) unless used, so refresh before that. Only in production by
+// default (a developer machine must not rotate the firm's tokens), and only
+// when the integration is configured and connected. Never logs a token.
+const ringcentralKeepalive = process.env.RINGCENTRAL_KEEPALIVE
+  ? process.env.RINGCENTRAL_KEEPALIVE === 'true'
+  : isProduction
+if (ringcentralKeepalive) {
+  const { loadRingCentralConfig } = await import('./integrations/ringcentral/config.js')
+  const { maintainConnection, RingCentralNotConnectedError } = await import('./integrations/ringcentral/service.js')
+  const keepAlive = async () => {
+    const cfg = loadRingCentralConfig(process.env)
+    if (!cfg.configured) return
+    try {
+      const { refreshed } = await maintainConnection(getPool(), cfg)
+      if (refreshed) logger.info({ provider: 'ringcentral' }, 'RingCentral tokens refreshed')
+    } catch (err) {
+      if (err instanceof RingCentralNotConnectedError && err.code === 'not_connected') return
+      logger.warn({ provider: 'ringcentral', code: err.code }, 'RingCentral keep-alive could not refresh')
+    }
+  }
+  setTimeout(keepAlive, 2 * 60 * 1000).unref()
+  setInterval(keepAlive, 6 * 60 * 60 * 1000).unref()
+}
+
 const server = app.listen(PORT, () => {
   logger.info({ port: PORT }, 'Server listening')
 })

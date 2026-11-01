@@ -22,6 +22,9 @@ export const CAPABILITIES = {
   'billing.sync': 'Preview and apply the monday.com payment-status sync',
   'billing.reminders': 'Draft, approve, cancel, retry and resolve payment reminders; review client replies',
   'billing.configure': 'monday.com board mapping and connection check; reminder rules, templates and sending hours',
+  // Administrator-only (no role but admin has it): connecting an account
+  // grants the API standing access to the firm's phone system.
+  'integrations.manage': "Connect, check or disconnect the firm's RingCentral account (OAuth)",
 }
 
 export const ALL_CAPABILITIES = Object.freeze(Object.keys(CAPABILITIES))

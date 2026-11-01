@@ -18,7 +18,8 @@ import submissionRoutes from './routes/submissions.js'
 import { createBillingRouter } from './routes/billing.js'
 import whatsappRoutes from './routes/whatsapp.js'
 import { createWhatsappInboxRouter } from './routes/whatsappInbox.js'
-import { redactVerifyToken } from './utils/whatsapp.js'
+import { redactUrlSecrets } from './utils/redactUrl.js'
+import { createIntegrationsRouter } from './routes/integrations.js'
 import {
   resolveOrigins, corsOptionsDelegate, requireTrustedOrigin, resolveClientIp,
 } from './httpSecurity.js'
@@ -55,8 +56,9 @@ export function createApp({ env = process.env, log = logger, beforeFallback } = 
       return 'info'
     },
     serializers: {
-      // Meta's verification handshake carries the verify token in the query string.
-      req: (req) => ({ id: req.id, method: req.method, url: redactVerifyToken(req.url), ip: req.remoteAddress }),
+      // Meta's verification handshake carries the verify token in the query
+      // string, and the OAuth callback the authorization code and state.
+      req: (req) => ({ id: req.id, method: req.method, url: redactUrlSecrets(req.url), ip: req.remoteAddress }),
       res: (res) => ({ statusCode: res.statusCode }),
     },
   }))
@@ -91,6 +93,9 @@ export function createApp({ env = process.env, log = logger, beforeFallback } = 
   app.use('/api/submissions', submissionRoutes)
   app.use('/api/billing', createBillingRouter({ env }))
   app.use('/api/whatsapp', createWhatsappInboxRouter({ env }))
+  // OAuth connections (RingCentral). The callback is registered with
+  // RingCentral as https://api.camulaw.com/api/integrations/ringcentral/callback.
+  app.use('/api/integrations', createIntegrationsRouter({ env }))
 
   // API 404s — registered before any frontend fallback so an unknown /api/*
   // path returns JSON instead of a page.
