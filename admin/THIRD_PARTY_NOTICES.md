@@ -30,14 +30,22 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE
 ```
 
-## SplitText (React Bits) and GSAP
+## React Bits: SplitText, TiltedCard, FadeContent
 
-`src/components/SplitText.vue` is a Vue port of SplitText from React Bits
-(https://reactbits.dev, https://github.com/DavidHDev/react-bits), MIT License.
-It uses GSAP and its SplitText plugin (https://gsap.com), under GSAP's
+These portal components are Vue ports of React Bits components
+(https://reactbits.dev, https://github.com/DavidHDev/react-bits), Copyright (c)
+2026 David Haz, used under its "MIT + Commons Clause License Condition v1.0":
+use in an application, website or product (including commercially) is
+permitted with this notice; selling, sublicensing or redistributing the
+components themselves (alone, in a bundle or as a ported version) is not.
+This portal is the firm's internal application and does neither.
+
+- `src/components/SplitText.vue`: SplitText (letter-by-letter reveal).
+- `src/components/TiltedCard.vue`: TiltedCard, without its flip, image,
+  caption and overlay.
+- `src/components/FadeContent.vue`: FadeContent.
+
+## GSAP
+
+SplitText uses GSAP and its SplitText plugin (https://gsap.com), under GSAP's
 Standard "no charge" license (https://gsap.com/standard-license).
-
-## FadeContent (React Bits)
-
-`src/components/FadeContent.vue` is a Vue port of FadeContent from React Bits
-(https://reactbits.dev, https://github.com/DavidHDev/react-bits), MIT License.

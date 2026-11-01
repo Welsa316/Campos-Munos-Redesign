@@ -5,7 +5,8 @@
 </template>
 
 <script setup>
-// SplitText from React Bits (reactbits.dev, MIT), ported to Vue 3. Same
+// SplitText from React Bits (reactbits.dev, MIT + Commons Clause; see
+// THIRD_PARTY_NOTICES.md), ported to Vue 3. Same
 // props, effects, triggers, hover effects and loop as the JavaScript + CSS
 // variant; it uses GSAP's SplitText plugin (free, in the gsap package). The
 // React hooks become onMounted / watch / onBeforeUnmount, @gsap/react's

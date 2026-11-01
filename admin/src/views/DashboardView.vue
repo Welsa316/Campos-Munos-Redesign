@@ -24,8 +24,15 @@
 
     <ChangePasswordModal :visible="showChangePassword" @close="showChangePassword = false" />
 
-    <div class="flex-1 overflow-y-auto">
-      <main class="max-w-[1120px] mx-auto px-4 sm:px-8 pt-6 sm:pt-10 pb-10 flex flex-col gap-4 sm:gap-5 font-ui">
+    <div class="flex-1 overflow-y-auto overflow-x-hidden">
+      <main class="min-h-full relative isolate max-w-[1120px] mx-auto px-4 sm:px-8 pt-6 sm:pt-10 pb-10 flex flex-col gap-4 sm:gap-5 font-ui">
+        <!-- Soft brand-coloured light for the glass cards to blur. -->
+        <div class="glass-backdrop" aria-hidden="true">
+          <span class="w-[460px] h-[460px] bg-[#7aa2e8] top-[8%] left-[2%]"></span>
+          <span class="w-[380px] h-[380px] bg-[#f3a9a9] top-[14%] right-[6%]" style="animation-delay: -7s"></span>
+          <span class="w-[420px] h-[420px] bg-[#a6dcc4] top-[52%] left-[30%]" style="animation-delay: -13s"></span>
+          <span class="w-[360px] h-[360px] bg-[#c6c7f8] top-[60%] right-[2%]" style="animation-delay: -4s"></span>
+        </div>
         <!-- Greeting, top left, no card. The words rise in letter by letter
              (SplitText); the picture and role line settle in around them. -->
         <div class="flex items-start justify-between gap-4 px-1">
@@ -58,8 +65,8 @@
 
         <!-- The two figures that need someone today. Asymmetric on purpose. -->
         <RiseIn v-if="summaries.length" :delay="0.15" :stagger="0.12" class="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4">
-          <router-link v-for="s in summaries" :key="s.key" :to="s.to" :class="[s.bg, s.span]"
-            class="group relative rounded-[24px] p-5 sm:p-6 min-h-[168px] flex flex-col justify-between shadow-sm hover:shadow-lg transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-navy">
+          <router-link v-for="s in summaries" :key="s.key" :to="s.to" :class="[s.bg, s.span]" v-glass-light
+            class="group glass glass-interactive rounded-[24px] p-5 sm:p-6 min-h-[168px] flex flex-col justify-between focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-navy">
             <div class="flex items-start justify-between gap-3">
               <p :class="s.labelTone" class="flex items-center gap-1.5 text-[13px] font-semibold leading-tight">
                 <FaIcon :name="s.icon" class="text-[13px]" />{{ s.label }}
@@ -81,8 +88,9 @@
         <!-- Sections, side by side. -->
         <p class="mt-2 px-1 text-[17px] font-semibold tracking-tight text-gray-900">Go to</p>
         <RiseIn v-if="cards.length" :delay="0.35" :stagger="0.1" :class="cards.length > 3 ? 'lg:grid-cols-4' : ''" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          <router-link v-for="card in cards" :key="card.key" :to="card.to"
-            class="group bg-white rounded-3xl shadow-[0_2px_12px_0_rgba(0,0,0,0.03)] hover:shadow-[0_8px_28px_-6px_rgba(22,28,45,0.18)] p-5 sm:p-6 flex flex-col min-h-[210px] transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy">
+          <TiltedCard v-for="card in cards" :key="card.key" :radius="24" :rotate-amplitude="9" :scale-on-hover="1.03" :glare="0.45" :shadow="0.3" :perspective="900">
+          <router-link :to="card.to"
+            class="group glass rounded-3xl h-full p-5 sm:p-6 flex flex-col min-h-[210px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy">
             <div class="flex items-start justify-between">
               <span :class="card.tile" class="w-[60px] h-[60px] rounded-[18px] flex items-center justify-center transition-transform group-hover:scale-105">
                 <FaIcon :name="card.icon" class="text-[26px]" />
@@ -95,6 +103,7 @@
             <h3 class="text-[22px] font-semibold tracking-tight text-gray-900 mt-0.5">{{ card.title }}</h3>
             <p class="text-[13px] text-gray-500 mt-1.5 leading-relaxed">{{ card.description }}</p>
           </router-link>
+          </TiltedCard>
         </RiseIn>
         <p v-else class="text-sm text-gray-600 bg-white rounded-3xl px-5 py-4">Use the links at the top to open the sections your account can use.</p>
 
@@ -118,6 +127,8 @@ import ChangePasswordModal from '../components/messages/ChangePasswordModal.vue'
 import FaIcon from '../components/FaIcon.vue'
 import { money } from '../modules/billing/api.js'
 import SplitText from '../components/SplitText.vue'
+import TiltedCard from '../components/TiltedCard.vue'
+import { vGlassLight } from '../directives/glassLight.js'
 import RiseIn from '../components/RiseIn.vue'
 import UserAvatar from '../components/UserAvatar.vue'
 import AvatarPicker from '../components/AvatarPicker.vue'
@@ -177,7 +188,7 @@ const summaries = computed(() => {
       // Not connected: an administrator fixes it on Integrations.
       to: connected || !can('integrations.manage') ? { name: 'Calls', query: { range: 'month', filter: 'unanswered', hours: 'business' } } : { name: 'Integrations' },
       span: 'md:col-span-7',
-      bg: 'bg-[#f8dede] hover:bg-[#f5d4d4]',
+      bg: 'glass-rose',
       icon: 'phone-slash',
       label: 'Missed calls in business hours',
       labelTone: 'text-[#7c1515]',
@@ -198,7 +209,7 @@ const summaries = computed(() => {
       key: 'unread',
       to: { name: 'Inbox' },
       span: out.length ? 'md:col-span-5' : 'md:col-span-12',
-      bg: 'bg-brand-navy hover:bg-brand-navy-dark',
+      bg: 'glass-navy',
       icon: 'envelope-open-text',
       label: 'Unread messages',
       labelTone: 'text-white/85',
@@ -219,7 +230,7 @@ const summaries = computed(() => {
       key: 'overdue',
       to: { name: 'BillingInvoices', query: { status: 'overdue' } },
       span: 'md:col-span-7',
-      bg: 'bg-[#f8dede] hover:bg-[#f5d4d4]',
+      bg: 'glass-rose',
       icon: 'file-invoice-dollar',
       label: 'Overdue invoices',
       labelTone: 'text-[#7c1515]',
@@ -238,7 +249,7 @@ const summaries = computed(() => {
       key: 'reminders',
       to: { name: 'BillingReminders' },
       span: 'md:col-span-5',
-      bg: 'bg-brand-navy hover:bg-brand-navy-dark',
+      bg: 'glass-navy',
       icon: 'bell',
       label: 'Reminders waiting for approval',
       labelTone: 'text-white/85',
