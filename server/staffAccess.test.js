@@ -85,11 +85,13 @@ before(async () => {
   const quiet = () => {}
   await staffCli.run(db, 'create', { email: 'yoletty@example.test', name: 'Yoletty', role: 'front_desk' }, quiet)
   await staffCli.run(db, 'create', { email: 'paralegal@example.test', name: 'Paula', role: 'billing_paralegal' }, quiet)
-  for (const [key, email] of [['front', 'yoletty@example.test'], ['para', 'paralegal@example.test']]) {
+  await staffCli.run(db, 'create', { email: 'reception@example.test', name: 'Rita', role: 'receptionist' }, quiet)
+  for (const [key, email] of [['front', 'yoletty@example.test'], ['para', 'paralegal@example.test'], ['recep', 'reception@example.test']]) {
     users[key] = (await db.query('SELECT id, token_version FROM admin_users WHERE email = $1', [email])).rows[0]
   }
   users.frontCookie = `token=${jwt.sign({ id: users.front.id, email: 'x', tv: users.front.token_version }, process.env.JWT_SECRET)}`
   users.paraCookie = `token=${jwt.sign({ id: users.para.id, email: 'x', tv: users.para.token_version }, process.env.JWT_SECRET)}`
+  users.recepCookie = `token=${jwt.sign({ id: users.recep.id, email: 'x', tv: users.recep.token_version }, process.env.JWT_SECRET)}`
 
   const express = (await import('express')).default
   const cookieParser = (await import('cookie-parser')).default
@@ -98,11 +100,13 @@ before(async () => {
   const { createWhatsappInboxRouter } = await import('./routes/whatsappInbox.js')
   const submissions = (await import('./routes/submissions.js')).default
   const auth = (await import('./routes/auth.js')).default
+  const { createCallsRouter } = await import('./routes/calls.js')
   const app = express()
   app.use(cookieParser())
   app.use(express.json({ limit: '100kb' }))
   app.use('/api/auth', auth)
   app.use('/api/submissions', submissions)
+  app.use('/api/calls', createCallsRouter({ env: {} }))
   app.use('/api/billing', createBillingRouter({ env: { MONDAY_PROVIDER: 'mock', WHATSAPP_PROVIDER: 'mock' } }))
   app.use('/api/whatsapp', createWhatsappInboxRouter({ env: { WHATSAPP_SENDING_ENABLED: 'true' }, whatsappProvider: fakeSender('mock') }))
   // As production is today: the real sender configured, sending switched off.
@@ -204,6 +208,25 @@ test('staff roles and capabilities', { skip: SKIP }, async (t) => {
       ['POST', `/api/submissions/${users.leadId}/reply`, { body: 'x' }],
       ['GET', '/api/submissions/export/csv'],
       ['PUT', '/api/billing/monday/config', {}], ['PUT', '/api/billing/reminders/settings', {}],
+    ]) {
+      assert.equal((await call(m, p, { cookie: c, body })).status, 403, `${m} ${p}`)
+    }
+  })
+
+  await t.test('receptionist: WhatsApp and calls only', async () => {
+    const c = users.recepCookie
+    const me = await call('GET', '/api/auth/verify', { cookie: c })
+    assert.equal(me.json.role, 'receptionist')
+    assert.equal(me.json.roleLabel, 'Receptionist')
+    assert.deepEqual(me.json.capabilities, ['calls.view', 'whatsapp.manage', 'whatsapp.send', 'whatsapp.view'])
+    for (const p of ['/api/whatsapp/conversations', '/api/calls', '/api/calls/summary']) {
+      assert.equal((await call('GET', p, { cookie: c })).status, 200, p)
+    }
+    for (const [m, p, body] of [
+      ['GET', '/api/submissions'], ['GET', `/api/submissions/${users.leadId}`], ['GET', '/api/submissions/export/csv'],
+      ['POST', `/api/submissions/${users.leadId}/notes`, { body: 'x' }],
+      ['GET', '/api/billing/invoices'], ['GET', '/api/billing/overview'], ['GET', '/api/billing/contacts'],
+      ['PUT', '/api/billing/contacts/1', {}], ['GET', '/api/billing/integrations'],
     ]) {
       assert.equal((await call(m, p, { cookie: c, body })).status, 403, `${m} ${p}`)
     }

@@ -2,7 +2,7 @@
   <!-- Hidden by a class until GSAP takes over (an inline style, as in the
        React original, would be written back by Vue whenever the parent
        re-renders with fallthrough attributes, hiding the content again). -->
-  <div ref="el" class="fade-content-init"><slot /></div>
+  <component :is="tag" ref="el" class="fade-content-init"><slot /></component>
 </template>
 
 <style>
@@ -24,6 +24,8 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 gsap.registerPlugin(ScrollTrigger)
 
 const props = defineProps({
+  // Wrapper element ('span' to fade a few words inside a heading).
+  tag: { type: String, default: 'div' },
   container: { type: [String, Object], default: null },
   effect: { type: String, default: 'fade' }, // fade | focus | develop | dissolve | mist | pixel
   blur: { type: [Boolean, Number], default: false },

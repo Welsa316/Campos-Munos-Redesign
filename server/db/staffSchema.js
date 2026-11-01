@@ -12,7 +12,7 @@ export const STAFF_SCHEMA_SQL = `
   -- ROLES in server/auth/capabilities.js.
   ALTER TABLE admin_users DROP CONSTRAINT IF EXISTS admin_users_role_chk;
   ALTER TABLE admin_users ADD CONSTRAINT admin_users_role_chk
-    CHECK (role IN ('admin', 'staff', 'front_desk', 'billing_paralegal'));
+    CHECK (role IN ('admin', 'staff', 'front_desk', 'billing_paralegal', 'receptionist'));
 
   -- Per-account adjustments on top of the role, set with scripts/staff.js.
   -- Unknown names in either list grant nothing.
@@ -22,6 +22,11 @@ export const STAFF_SCHEMA_SQL = `
   ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS display_name TEXT;
   -- A disabled account cannot sign in and its open sessions stop working.
   ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS disabled_at TIMESTAMPTZ;
+  -- The profile picture each person picks on Home ('fluent:fox', 'emoji:🦊')
+  -- and its background colour; NULL until they choose (a default is shown).
+  -- Only values from server/auth/avatars.js are ever stored.
+  ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS avatar TEXT;
+  ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS avatar_bg TEXT;
 
   -- Who wrote each lead note and sent each email reply. NULL on rows from
   -- before there was more than one account.

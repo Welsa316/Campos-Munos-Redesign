@@ -8,6 +8,8 @@ import validate from '../middleware/validate.js'
 import requireAuth from '../middleware/auth.js'
 import { clientKey, sessionCookieOptions } from '../httpSecurity.js'
 import { loadAccount, tokenMatches, profileJson } from '../auth/account.js'
+import { parseAvatar, AVATAR_COLORS } from '../auth/avatars.js'
+import { audit } from '../billing/audit.js'
 
 const router = Router()
 
@@ -138,6 +140,27 @@ router.post(
       res.json({ ok: true })
     } catch (err) {
       req.log.error({ err: err }, 'Change password error')
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  }
+)
+
+// Any signed-in account sets its own profile picture (no capability needed).
+// Only catalogue values are accepted (server/auth/avatars.js).
+router.put(
+  '/avatar',
+  requireAuth,
+  body('avatar').custom((v) => Boolean(parseAvatar(v))).withMessage('Choose one of the pictures offered'),
+  body('bg').isIn(AVATAR_COLORS).withMessage('Choose one of the colours offered'),
+  validate,
+  async (req, res) => {
+    try {
+      await getPool().query('UPDATE admin_users SET avatar = $2, avatar_bg = $3 WHERE id = $1', [req.account.id, req.body.avatar, req.body.bg])
+      await audit(getPool(), { actorId: req.account.id, action: 'admin_user.avatar_changed', entityType: 'admin_user', entityId: req.account.id, details: { kind: parseAvatar(req.body.avatar).kind } })
+      const account = await loadAccount(getPool(), req.account.id)
+      res.json(profileJson(account))
+    } catch (err) {
+      req.log?.error({ err }, 'Avatar update error')
       res.status(500).json({ error: 'Internal server error' })
     }
   }
