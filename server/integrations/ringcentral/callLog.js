@@ -299,7 +299,7 @@ export async function getSyncState(db) {
 
 // --- the list the portal shows ------------------------------------------------------
 
-export const OUTCOME_FILTERS = Object.freeze(['all', 'answered', 'missed', 'voicemail', 'unanswered', 'outgoing', 'not_returned'])
+export const OUTCOME_FILTERS = Object.freeze(['all', 'answered', 'missed', 'voicemail', 'unanswered', 'outgoing', 'not_returned', 'excluded'])
 
 // The firm's opening hours, as published on the website (site/index.html,
 // LegalService openingHoursSpecification): Monday to Friday, 9:00 to 17:00,
@@ -316,6 +316,11 @@ const RETURNED_SQL = `EXISTS (
    WHERE r.counterpart_key = c.counterpart_key AND r.started_at > c.started_at AND NOT r.is_internal
      AND (r.direction = 'outbound' OR r.outcome = 'answered'))`
 
+// Staff marked it as needing no callback, on its own or by its number
+// (callExclusions.js). It stays in the log but leaves every missed count.
+const EXCLUDED_SQL = `(EXISTS (SELECT 1 FROM rc_call_exclusions x WHERE x.call_id = c.id)
+  OR (c.counterpart_key <> '' AND EXISTS (SELECT 1 FROM rc_ignored_numbers ig WHERE ig.counterpart_key = c.counterpart_key)))`
+
 /**
  * Unanswered incoming calls (missed or voicemail) during business hours in
  * the last `days` days, and how many of them nobody has returned yet (a
@@ -331,7 +336,7 @@ export async function summarizeMissed(db, { now = new Date(), days = 30, from: s
             COUNT(*) FILTER (WHERE c.counterpart_key <> '' AND NOT ${RETURNED_SQL})::int AS not_returned
        FROM rc_calls c
       WHERE NOT c.is_internal AND c.direction = 'inbound' AND c.outcome IN ('missed', 'voicemail')
-        AND c.started_at >= $1 AND c.started_at < $2 AND ${businessHoursSql('c.started_at')}`,
+        AND c.started_at >= $1 AND c.started_at < $2 AND ${businessHoursSql('c.started_at')} AND NOT ${EXCLUDED_SQL}`,
     [from, now]
   )).rows[0]
   return { days, from, to: now, businessHours: BUSINESS_HOURS, total: row.total, voicemail: row.voicemail, notReturned: row.not_returned }
@@ -374,7 +379,9 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
       SELECT c.*,
              lead.id AS lead_id, lead.first_name AS lead_first, lead.last_name AS lead_last, lead.n AS lead_count,
              cl.client_id, cl.client_name,
-             fu.started_at AS followup_at, fu.direction AS followup_direction, fu.outcome AS followup_outcome
+             fu.started_at AS followup_at, fu.direction AS followup_direction, fu.outcome AS followup_outcome,
+             ex.kind AS excluded_kind, ex.reason AS excluded_reason, ex.note AS excluded_note, ex.created_at AS excluded_at,
+             COALESCE(NULLIF(exu.display_name, ''), exu.email) AS excluded_by
         FROM rc_calls c
         LEFT JOIN LATERAL (
           SELECT s.id, s.first_name, s.last_name, COUNT(*) OVER () AS n
@@ -393,6 +400,16 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
              AND r.counterpart_key = c.counterpart_key AND r.started_at > c.started_at AND NOT r.is_internal
              AND (r.direction = 'outbound' OR r.outcome = 'answered')
            ORDER BY r.started_at LIMIT 1) fu ON TRUE
+        -- A number rule wins over a single-call exclusion: it is the broader one.
+        LEFT JOIN LATERAL (
+          SELECT e.kind, e.reason, e.note, e.created_at, e.created_by FROM (
+            SELECT 'number' AS kind, ig.reason, ig.note, ig.created_at, ig.created_by, 1 AS rank
+              FROM rc_ignored_numbers ig WHERE c.counterpart_key <> '' AND ig.counterpart_key = c.counterpart_key
+            UNION ALL
+            SELECT 'call', x.reason, x.note, x.created_at, x.created_by, 2 FROM rc_call_exclusions x WHERE x.call_id = c.id) e
+           WHERE c.direction = 'inbound' AND c.outcome IN ('missed', 'voicemail')
+           ORDER BY e.rank LIMIT 1) ex ON TRUE
+        LEFT JOIN admin_users exu ON exu.id = ex.created_by
        WHERE ${where.join(' AND ')}
     ), filtered AS (
       SELECT * FROM base b ${searchSql ? `WHERE ${searchSql}` : ''}
@@ -401,11 +418,12 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
   const outcomeSql = {
     all: 'TRUE',
     answered: "direction = 'inbound' AND outcome = 'answered'",
-    missed: "direction = 'inbound' AND outcome = 'missed'",
-    voicemail: "direction = 'inbound' AND outcome = 'voicemail'",
-    unanswered: "direction = 'inbound' AND outcome IN ('missed', 'voicemail')",
+    missed: "direction = 'inbound' AND outcome = 'missed' AND excluded_kind IS NULL",
+    voicemail: "direction = 'inbound' AND outcome = 'voicemail' AND excluded_kind IS NULL",
+    unanswered: "direction = 'inbound' AND outcome IN ('missed', 'voicemail') AND excluded_kind IS NULL",
     outgoing: "direction = 'outbound'",
-    not_returned: "direction = 'inbound' AND outcome IN ('missed', 'voicemail') AND followup_at IS NULL AND counterpart_key <> ''",
+    not_returned: "direction = 'inbound' AND outcome IN ('missed', 'voicemail') AND followup_at IS NULL AND counterpart_key <> '' AND excluded_kind IS NULL",
+    excluded: 'excluded_kind IS NOT NULL',
   }[OUTCOME_FILTERS.includes(outcome) ? outcome : 'all']
 
   const lim = Math.max(1, Math.min(1000, Math.trunc(Number(limit)) || 300))
@@ -414,10 +432,11 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
     db.query(`${base} SELECT
         COUNT(*) FILTER (WHERE direction = 'inbound')::int AS incoming,
         COUNT(*) FILTER (WHERE direction = 'inbound' AND outcome = 'answered')::int AS answered,
-        COUNT(*) FILTER (WHERE direction = 'inbound' AND outcome = 'missed')::int AS missed,
-        COUNT(*) FILTER (WHERE direction = 'inbound' AND outcome = 'voicemail')::int AS voicemail,
+        COUNT(*) FILTER (WHERE direction = 'inbound' AND outcome = 'missed' AND excluded_kind IS NULL)::int AS missed,
+        COUNT(*) FILTER (WHERE direction = 'inbound' AND outcome = 'voicemail' AND excluded_kind IS NULL)::int AS voicemail,
         COUNT(*) FILTER (WHERE direction = 'outbound')::int AS outgoing,
-        COUNT(*) FILTER (WHERE direction = 'inbound' AND outcome IN ('missed', 'voicemail') AND followup_at IS NULL AND counterpart_key <> '')::int AS not_returned
+        COUNT(*) FILTER (WHERE direction = 'inbound' AND outcome IN ('missed', 'voicemail') AND followup_at IS NULL AND counterpart_key <> '' AND excluded_kind IS NULL)::int AS not_returned,
+        COUNT(*) FILTER (WHERE excluded_kind IS NOT NULL)::int AS excluded
       FROM filtered`, params),
   ])
 
@@ -460,6 +479,10 @@ function present(r) {
     firm: { number: r.firm_number, name: r.firm_name, extension: r.firm_extension },
     answeredBy: r.answered_by_name || r.answered_by_extension ? { name: r.answered_by_name, extension: r.answered_by_extension } : null,
     followUp,
+    // Marked as needing no callback: this call alone, or every call from its number.
+    exclusion: r.excluded_kind
+      ? { scope: r.excluded_kind, reason: r.excluded_reason, note: r.excluded_note, by: r.excluded_by, at: r.excluded_at }
+      : null,
   }
 }
 

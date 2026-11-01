@@ -218,7 +218,7 @@ test('staff roles and capabilities', { skip: SKIP }, async (t) => {
     const me = await call('GET', '/api/auth/verify', { cookie: c })
     assert.equal(me.json.role, 'receptionist')
     assert.equal(me.json.roleLabel, 'Receptionist')
-    assert.deepEqual(me.json.capabilities, ['calls.place', 'calls.view', 'whatsapp.manage', 'whatsapp.send', 'whatsapp.view'])
+    assert.deepEqual(me.json.capabilities, ['calls.exclude', 'calls.place', 'calls.view', 'whatsapp.manage', 'whatsapp.send', 'whatsapp.view'])
     for (const p of ['/api/whatsapp/conversations', '/api/calls', '/api/calls/summary']) {
       assert.equal((await call('GET', p, { cookie: c })).status, 200, p)
     }

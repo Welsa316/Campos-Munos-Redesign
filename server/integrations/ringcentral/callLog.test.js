@@ -63,3 +63,13 @@ test('outbound, internal, fax and malformed records', () => {
   assert.equal(anon.counterpart_number, null)
   assert.equal(anon.is_internal, false, 'a withheld number is still an outside call')
 })
+
+test('exclusion reasons agree across the API, the database and the portal', async () => {
+  const { EXCLUSION_REASONS } = await import('./callExclusions.js')
+  const { INTEGRATIONS_SCHEMA_SQL } = await import('../../db/integrationsSchema.js')
+  const portal = (await import('../../../admin/src/modules/calls/exclusionReasons.js')).EXCLUSION_REASONS.map((r) => r.key)
+  assert.deepEqual(portal, [...EXCLUSION_REASONS])
+  const checks = [...INTEGRATIONS_SCHEMA_SQL.matchAll(/reason IN \(([^)]*)\)/g)].map((m) => m[1].match(/'([^']+)'/g).map((q) => q.slice(1, -1)))
+  assert.equal(checks.length, 2, 'rc_call_exclusions and rc_ignored_numbers')
+  for (const c of checks) assert.deepEqual(c, [...EXCLUSION_REASONS])
+})

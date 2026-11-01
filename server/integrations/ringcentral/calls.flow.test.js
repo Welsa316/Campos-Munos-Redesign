@@ -264,7 +264,7 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.equal(byId(calls, '2026-10-30T19:00:00Z').number, null)
 
     // The withheld number (c7) is missed but cannot be called back, so it is not 'not returned'.
-    assert.deepEqual(r.json.counts, { incoming: 6, answered: 1, missed: 4, voicemail: 1, outgoing: 1, not_returned: 3 })
+    assert.deepEqual(r.json.counts, { incoming: 6, answered: 1, missed: 4, voicemail: 1, outgoing: 1, not_returned: 3, excluded: 0 })
     assert.deepEqual(calls.map((c) => c.startedAt), [...calls.map((c) => c.startedAt)].sort().reverse(), 'newest first')
   })
 
@@ -384,6 +384,81 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.equal((await call('GET', '/api/calls/summary', { cookie: users.para.cookie })).status, 403)
     assert.equal((await call('GET', `/api/calls/summary?from=${encodeURIComponent('2026-10-30T20:00:00Z')}`)).json.missed.total, 0, 'a later start leaves them out')
     assert.equal((await call('GET', '/api/calls/summary?from=2020-01-01')).status, 400, 'at most about a month')
+  })
+
+  await t.test('missed calls that need no callback: marked by call or by number, out of every missed count, undoable', async () => {
+    const idOf = async (rid) => Number((await db.query('SELECT id FROM rc_calls WHERE rc_record_id = $1', [rid])).rows[0].id)
+    const mark = (rid, body, who = users.desk) => idOf(rid).then((id) => send('POST', `/api/calls/${id}/exclusion`, body, { cookie: who.cookie }))
+    const unmark = (rid, who = users.desk) => idOf(rid).then((id) => send('DELETE', `/api/calls/${id}/exclusion`, undefined, { cookie: who.cookie }))
+    const summary = async () => (await call('GET', '/api/calls/summary')).json.missed
+    const base = (await list()).json.counts
+    const baseSummary = await summary()
+    assert.equal(base.excluded, 0)
+
+    // c8: a machine reading out a verification code. This call only.
+    const r = await mark('c8', { reason: 'verification', scope: 'call' })
+    assert.equal(r.status, 200)
+    let l = await list()
+    assert.deepEqual(l.json.counts, { ...base, missed: base.missed - 1, not_returned: base.not_returned - 1, excluded: 1 })
+    const c8 = byId(l.json.calls, '2026-10-30T19:30:00Z')
+    assert.equal(c8.exclusion.scope, 'call')
+    assert.equal(c8.exclusion.reason, 'verification')
+    assert.equal(c8.exclusion.by, 'desk@example.test')
+    assert.equal(c8.outcome, 'missed', 'still shown as what it was')
+    const ids = async (o) => (await list(`&outcome=${o}`)).json.calls.map((c) => c.id)
+    assert.ok(!(await ids('missed')).includes(c8.id))
+    assert.ok(!(await ids('not_returned')).includes(c8.id))
+    assert.ok(!(await ids('unanswered')).includes(c8.id))
+    assert.deepEqual(await ids('excluded'), [c8.id])
+    assert.deepEqual(await summary(), { ...baseSummary, total: baseSummary.total - 1, notReturned: baseSummary.notReturned - 1 })
+
+    // c4: someone from the firm testing the line from their mobile. Every call
+    // from that number, including one that comes in later.
+    assert.equal((await mark('c4', { reason: 'staff_test', scope: 'number', note: '  Ana testing the line  ' }, users.owner)).status, 200)
+    await db.query(`INSERT INTO rc_calls (rc_record_id, direction, started_at, outcome, scope, counterpart_number, counterpart_key)
+      VALUES ('later-test', 'inbound', '2026-10-30T20:15:00Z', 'missed', 'account', '+15045550177', '5045550177')`)
+    l = await list()
+    assert.deepEqual(l.json.counts, { ...base, incoming: base.incoming + 1, voicemail: base.voicemail - 1, missed: base.missed - 1, not_returned: base.not_returned - 2, excluded: 3 })
+    const later = byId(l.json.calls, '2026-10-30T20:15:00Z')
+    assert.deepEqual({ ...later.exclusion, at: undefined }, { scope: 'number', reason: 'staff_test', note: 'Ana testing the line', by: 'owner@example.test', at: undefined })
+    assert.equal(byId(l.json.calls, '2026-10-30T15:00:00Z').exclusion, null, 'an answered call is never shown as excluded')
+
+    // Marking again replaces the reason; still one mark.
+    assert.equal((await mark('c8', { reason: 'spam' })).status, 200)
+    assert.equal(byId((await list()).json.calls, '2026-10-30T19:30:00Z').exclusion.reason, 'spam')
+    assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM rc_call_exclusions')).rows[0].n, 1)
+
+    // What cannot be marked.
+    assert.equal((await mark('c8', { reason: 'nope' })).json.code, 'invalid_reason')
+    assert.equal((await mark('c8', { reason: 'other', note: '   ' })).json.code, 'note_required')
+    assert.equal((await mark('c8', { reason: 'spam', scope: 'everyone' })).json.code, 'invalid_scope')
+    const answered = await mark('c1', { reason: 'spam' })
+    assert.equal(answered.status, 409)
+    assert.equal(answered.json.code, 'not_unanswered')
+    assert.equal((await mark('c3', { reason: 'spam' })).status, 409, 'an outgoing call')
+    const withheld = await mark('c7', { reason: 'spam', scope: 'number' })
+    assert.equal(withheld.status, 409)
+    assert.equal(withheld.json.code, 'no_number')
+    assert.equal((await send('POST', '/api/calls/999999/exclusion', { reason: 'spam' }, { cookie: users.desk.cookie })).status, 404)
+
+    // Who may mark: calls.exclude. Seeing calls is not enough.
+    assert.equal((await mark('c5', { reason: 'spam' }, users.para)).status, 403)
+    const viewer = (await db.query(
+      `INSERT INTO admin_users (email, password_hash, role, capability_revokes) VALUES ('viewer@example.test', 'x', 'front_desk', '{calls.exclude}') RETURNING id, token_version`
+    )).rows[0]
+    const viewerCookie = `token=${jwt.sign({ id: viewer.id, email: 'x', tv: viewer.token_version }, process.env.JWT_SECRET)}`
+    assert.equal((await list('', { cookie: viewerCookie })).status, 200)
+    assert.equal((await mark('c5', { reason: 'spam' }, { cookie: viewerCookie })).status, 403)
+    assert.equal((await unmark('c8', { cookie: viewerCookie })).status, 403)
+    assert.equal((await send('POST', `/api/calls/${await idOf('c5')}/exclusion`, { reason: 'spam' }, { cookie: '' })).status, 401)
+
+    // Count them again: the number rule goes with it, the later call counts again.
+    const back = await unmark('later-test')
+    assert.deepEqual(back.json, { callId: await idOf('later-test'), removedCall: false, removedNumber: true })
+    assert.equal((await unmark('c8')).json.removedCall, true)
+    await db.query(`DELETE FROM rc_calls WHERE rc_record_id = 'later-test'`)
+    assert.deepEqual((await list()).json.counts, base)
+    assert.deepEqual(await summary(), baseSummary)
   })
 
   await t.test('calls older than the retention period are deleted', async () => {

@@ -47,6 +47,7 @@ need to sign out.
 | `billing.configure` | monday.com board mapping and connection check; reminder rules, templates, sending hours | ✓ |  |  |  |  |
 | `calls.view` | See the RingCentral call log (Calls) and refresh it (docs/ringcentral-call-log.md) | ✓ | ✓ | ✓ |  |  |
 | `calls.place` | Call a number from the portal (RingCentral RingOut rings your own phone first, then the client) | ✓ | ✓ | ✓ |  |  |
+| `calls.exclude` | Mark missed calls that need no callback (verification codes, test calls, spam) so they leave the missed-call counts | ✓ | ✓ | ✓ |  |  |
 | `integrations.manage` | Connect, check or disconnect the firm's RingCentral account (docs/ringcentral-oauth.md) | ✓ |  |  |  |  |
 
 `staff` is the view-only role that existed before; it keeps exactly the

@@ -23,6 +23,26 @@ they are not counted there). Public holidays are not excluded. The hours are
 `BUSINESS_HOURS` in `server/integrations/ringcentral/callLog.js`, taken from
 the website's opening hours. Clicking the card opens Calls showing exactly
 those calls (`/calls?range=month&filter=unanswered&hours=business`).
+Calls marked as needing no callback (below) are not counted.
+
+## Missed calls that need no callback
+
+Some missed calls are not people waiting for the firm: a machine reading out
+a verification code, someone from the firm ringing the line to test it, spam.
+Anyone with `calls.exclude` (administrators, front desk, receptionist) can
+press **No callback needed** on a missed call or voicemail and pick why:
+verification code or automated call, someone from the firm, spam, or other
+(with a note). Tick **every call from this number** for a number that keeps
+calling, such as a staff member's mobile; that covers its past and future
+calls.
+
+A marked call leaves the Missed, Voicemail and Not called back counts, the
+Unanswered view and the Home card. It stays in the log under **All calls**,
+tagged with the reason, who marked it and when; the **excluded** link under
+the counts lists them. **Count it again** removes the mark (for a number,
+every call from it counts again). The marks are `rc_call_exclusions` (one
+call) and `rc_ignored_numbers` (a number) in
+`server/integrations/ringcentral/callExclusions.js`.
 
 ## Calling from the portal (RingOut)
 
@@ -101,7 +121,9 @@ the legacy staff role do not have it; grant it to one account with
 
 | Route | |
 |---|---|
-| `GET /api/calls?from&to&outcome&q&limit` | `outcome`: all, answered, missed, voicemail, outgoing, not_returned. Returns calls, counts, connection and import status. |
+| `GET /api/calls?from&to&outcome&q&limit` | `outcome`: all, answered, missed, voicemail, unanswered, outgoing, not_returned, excluded. Returns calls, counts, connection and import status. |
+| `POST /api/calls/:id/exclusion` | `{ reason, note, scope }`: mark a missed call or voicemail as needing no callback. `reason`: verification, staff_test, spam, other (note required); `scope`: call or number. `calls.exclude`. |
+| `DELETE /api/calls/:id/exclusion` | Count it again: removes the call's mark and its number's, if any. `calls.exclude`. |
 | `POST /api/calls/sync` | Import now (skipped if one ran in the last 30 s) |
 
 ## Tests

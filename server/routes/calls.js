@@ -7,6 +7,8 @@
 //   GET  /api/calls/summary unanswered business-hours calls, last 30 days
 //   POST /api/calls/sync   import now (at most every 30 seconds; otherwise the
 //                          last result is returned)
+//   POST|DELETE /api/calls/:id/exclusion  mark a missed call as needing no
+//                          callback, or count it again (calls.exclude)
 //   GET|PUT /api/calls/ringout/me       the phone RingCentral rings for me first
 //   POST    /api/calls/ringout          call a number (RingOut; calls.place)
 //   GET|DELETE /api/calls/ringout/:id   progress / cancel (own calls only)
@@ -18,6 +20,7 @@ import requireCapability, { can } from '../middleware/requireCapability.js'
 import { loadRingCentralConfig } from '../integrations/ringcentral/config.js'
 import { getConnectionStatus } from '../integrations/ringcentral/service.js'
 import { queryCalls, syncCallLog, getSyncState, summarizeMissed, OUTCOME_FILTERS } from '../integrations/ringcentral/callLog.js'
+import { excludeCall, includeCall, CallExclusionError } from '../integrations/ringcentral/callExclusions.js'
 import { placeRingOut, ringOutStatus, cancelRingOut, getMyPhone, setMyPhone, RingOutError } from '../integrations/ringcentral/ringout.js'
 
 const MANUAL_SYNC_MIN_INTERVAL_MS = 30 * 1000
@@ -104,6 +107,32 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
       res.status(500).json({ error: 'Internal server error' })
     }
   })
+
+  // --- Missed calls that need no callback (calls.exclude) ------------------------
+
+  const exclude = requireCapability('calls.exclude')
+  const exclusionWrap = (fn) => async (req, res) => {
+    try {
+      await fn(req, res)
+    } catch (err) {
+      if (err instanceof CallExclusionError) return res.status(err.status).json({ error: err.message, code: err.code })
+      req.log?.error({ err }, 'Call exclusion error')
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  }
+
+  router.post('/:id(\\d+)/exclusion', exclude, exclusionWrap(async (req, res) => {
+    const b = req.body || {}
+    const out = await excludeCall(pool(), { callId: Number(req.params.id), reason: b.reason, note: b.note, scope: b.scope, accountId: req.account.id })
+    req.log?.info({ call: out.callId, scope: out.scope, reason: out.reason }, 'Missed call marked as needing no callback')
+    res.json(out)
+  }))
+
+  router.delete('/:id(\\d+)/exclusion', exclude, exclusionWrap(async (req, res) => {
+    const out = await includeCall(pool(), { callId: Number(req.params.id) })
+    req.log?.info({ call: out.callId, removedCall: out.removedCall, removedNumber: out.removedNumber }, 'Missed call counted again')
+    res.json(out)
+  }))
 
   // --- RingOut: call a number from the portal (calls.place) ---------------------
 
