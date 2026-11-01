@@ -75,9 +75,16 @@ Coastal Teal, Graphite Minimal, Modern Violet and Midnight Dark. Picking one
 recolours the whole portal at once and is saved to that person's account
 (`admin_users.theme`), so it follows them to any computer and never changes
 what colleagues see. Red keeps meaning "needs attention" in every theme.
-How it works: every colour class in the portal reads a CSS variable, and a
-theme only re-points those variables (`admin/src/style.css`); the list of
-themes is `server/auth/themes.js` and `admin/src/data/themes.js`.
+How it works: `admin/src/data/themes.js` is the single source of truth. Each
+theme defines the same set of semantic tokens (surfaces, text, icons,
+interactive, navigation bar, chart and status colours), and choosing a theme
+writes those tokens onto the page as CSS variables. `admin/src/style.css` maps
+every colour class the portal uses onto those tokens. The top navigation bars
+use the theme's "sidebar" tokens. The last theme used on a computer is
+remembered locally, so the page never flashes Classic before your own theme
+loads. `admin/test/themes.test.js` checks that every theme defines the same
+tokens and that text, focus rings and status badges meet WCAG AA contrast.
+The server's list of allowed theme names is `server/auth/themes.js`.
 
 ## Running the script
 

@@ -5,7 +5,7 @@
          drops away, and below 1280px the title and every button label
          (icons keep their aria-labels) so the view toggle and the actions fit
          without overlapping. -->
-    <header class="h-16 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 gap-3 z-10">
+    <header class="nav-chrome h-16 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 gap-3 z-10">
       <div class="flex items-center gap-3 sm:gap-4 min-w-0">
         <img src="/logo.png" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
         <div class="w-px h-8 bg-gray-200 hidden sm:block" aria-hidden="true"></div>
@@ -41,7 +41,7 @@
         </button>
         <span
           v-else-if="notifyPermission === 'denied'"
-          class="hidden xl:flex items-center gap-2 px-3 py-2 text-xs text-gray-400 font-ui"
+          class="hidden xl:flex items-center gap-2 px-3 py-2 text-xs text-gray-500 font-ui"
           title="Notifications are blocked for this site. Re-enable them in your browser's site settings."
         >
           <i class="fa-solid fa-bell-slash text-xs" aria-hidden="true"></i>

@@ -1,7 +1,7 @@
 <template>
   <div class="h-dvh flex flex-col bg-brand-surface overflow-hidden">
     <!-- Same shell as the inbox: white bar, logo, section title, actions. -->
-    <header class="flex-shrink-0 bg-white border-b border-gray-200 z-10">
+    <header class="nav-chrome flex-shrink-0 bg-white border-b border-gray-200 z-10">
       <div class="h-16 flex items-center px-4 sm:px-6 gap-3">
         <div class="flex items-center gap-3 sm:gap-4 min-w-0">
           <img src="/logo.png" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />

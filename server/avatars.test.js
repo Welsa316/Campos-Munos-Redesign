@@ -35,9 +35,8 @@ test('themes: the portal offers exactly what the API accepts; Classic by default
   assert.equal(themeFor(null), 'classic')
   assert.equal(themeFor('neon'), 'classic')
   assert.equal(themeFor('midnight-dark'), 'midnight-dark')
-  // Every theme other than Classic has its colours in the stylesheet.
-  const css = fs.readFileSync(join(ADMIN, 'src', 'style.css'), 'utf8')
-  for (const key of THEMES.filter((k) => k !== 'classic')) assert.match(css, new RegExp(`data-theme="${key}"`), key)
+  // Every theme carries the full token contract (contrast is checked in admin/test/themes.test.js).
+  for (const t of portal.THEMES) assert.deepEqual(Object.keys(t.tokens).sort(), [...portal.TOKEN_NAMES].sort(), t.key)
 })
 
 test('only catalogue values parse', () => {

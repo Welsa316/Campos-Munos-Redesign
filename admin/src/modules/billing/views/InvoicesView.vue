@@ -4,7 +4,7 @@
       <header class="px-4 sm:px-5 py-4 border-b border-gray-100 space-y-3">
         <div class="flex flex-wrap items-center gap-3">
           <h2 class="text-sm font-ui font-semibold text-gray-900">
-            Invoices <span class="text-gray-400 font-normal">{{ invoices.length }}<span v-if="invoices.length >= 500">+</span></span>
+            Invoices <span class="text-gray-500 font-normal">{{ invoices.length }}<span v-if="invoices.length >= 500">+</span></span>
           </h2>
           <div class="relative ml-auto w-full sm:w-72">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" aria-hidden="true"></i>

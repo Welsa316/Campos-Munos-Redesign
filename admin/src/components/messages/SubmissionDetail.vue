@@ -172,7 +172,7 @@
             >{{ savingNote ? 'Saving…' : 'Add' }}</button>
           </form>
 
-          <p v-if="notes.length === 0" class="text-xs text-gray-400 font-ui italic">
+          <p v-if="notes.length === 0" class="text-xs text-gray-500 font-ui italic">
             No notes yet. Anything logged here stays internal.
           </p>
           <ul v-else class="space-y-2 max-h-48 overflow-y-auto">

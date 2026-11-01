@@ -8,7 +8,7 @@
       <div class="flex flex-wrap items-center gap-3 mb-3">
         <h2 class="font-ui font-semibold text-gray-900 text-sm tracking-wide">
           {{ archivedView ? 'Archived' : 'Contacts' }}
-          <span class="ml-1 text-gray-400 font-normal">{{ filtered.length }} of {{ contacts.length }}</span>
+          <span class="ml-1 text-gray-500 font-normal">{{ filtered.length }} of {{ contacts.length }}</span>
         </h2>
 
         <!-- Archived leads are a separate book, not a sub-set of the live one:
