@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { rawFetch } from './useApi.js'
-import { applyTheme, DEFAULT_THEME } from '../data/themes.js'
+import { applyTheme, cacheTheme, DEFAULT_THEME } from '../data/themes.js'
 
 const isAuthenticated = ref(false)
 const adminEmail = ref('')
@@ -28,6 +28,7 @@ function applyProfile(data) {
     theme: data.theme || DEFAULT_THEME,
   }
   applyTheme(profile.value.theme)
+  cacheTheme(profile.value.theme)
 }
 
 function clearProfile() {
@@ -36,12 +37,14 @@ function clearProfile() {
   profile.value = { name: '', displayName: '', role: '', roleLabel: '', capabilities: [], avatar: null, theme: DEFAULT_THEME }
   // Signed out (or someone else signing in on this computer): back to Classic.
   applyTheme(DEFAULT_THEME)
+  cacheTheme(null)
 }
 
 /** Switch this account's theme on screen (the caller saves it). */
 export function setTheme(key) {
   profile.value = { ...profile.value, theme: key }
   applyTheme(key)
+  cacheTheme(key)
 }
 
 /** True when the signed-in account has every named capability. */

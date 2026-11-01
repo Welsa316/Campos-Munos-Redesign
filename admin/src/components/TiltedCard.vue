@@ -224,7 +224,7 @@ onBeforeUnmount(() => cleanup?.())
 .tilted-card__shadow {
   position: absolute;
   inset: 0;
-  background: var(--tc-shadow-color, rgba(22, 28, 45, 0.5));
+  background: var(--tc-shadow-color, var(--shadow-color));
   filter: blur(20px);
   opacity: 0;
   pointer-events: none;

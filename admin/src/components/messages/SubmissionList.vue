@@ -135,7 +135,7 @@
               </span>
             </div>
             <p class="text-xs text-gray-500 font-ui truncate leading-relaxed"
-              :class="{ 'italic text-gray-400': !sub.message }">
+              :class="{ 'italic text-gray-500': !sub.message }">
               {{ sub.message || '(no message)' }}
             </p>
           </div>
@@ -181,7 +181,7 @@
           @click="$emit('openNotes', sub.id)"
           :aria-label="`Notes for ${sub.first_name} ${sub.last_name}`"
           :title="sub.note_count ? `${sub.note_count} note(s)` : 'Add a note'"
-          :class="sub.note_count ? 'text-brand-navy' : 'text-gray-400 hover:text-gray-600'"
+          :class="sub.note_count ? 'text-brand-navy' : 'text-gray-500 hover:text-gray-600'"
           class="inline-flex items-center gap-1 text-[11px] font-ui font-semibold px-2 py-1 rounded-full hover:bg-brand-surface transition-colors"
         >
           <i class="fa-solid fa-note-sticky text-[11px]" aria-hidden="true"></i>

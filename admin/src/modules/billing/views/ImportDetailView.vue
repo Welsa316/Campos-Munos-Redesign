@@ -127,7 +127,7 @@
               <tr v-for="r in job.rows" :key="r.kind + r.row_number" class="border-b border-gray-50 align-top">
                 <td class="px-5 py-2.5 tabular-nums text-gray-500">{{ r.row_number }}</td>
                 <td class="px-2 py-2.5 text-gray-800 whitespace-nowrap">
-                  <span class="text-[9px] uppercase tracking-wider text-gray-400 mr-1">{{ r.kind }}</span>
+                  <span class="text-[9px] uppercase tracking-wider text-gray-500 mr-1">{{ r.kind }}</span>
                   {{ r.kind === 'invoice' ? r.record.input.externalInvoiceId : (r.record.input.externalPaymentId || r.record.input.externalInvoiceId) }}
                   <span v-if="r.kind === 'payment'" class="block text-gray-500 tabular-nums">{{ money(r.record.input.amountCents) }} · {{ r.record.input.paymentType }}</span>
                 </td>

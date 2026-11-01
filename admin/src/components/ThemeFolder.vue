@@ -7,7 +7,7 @@
       :aria-expanded="open" aria-controls="theme-folder-panel" aria-haspopup="dialog" @click="toggle">
       <span ref="tileFaceRef" class="glass w-[52px] h-[52px] rounded-[16px] grid grid-cols-2 gap-[3px] p-[7px] transition-transform duration-200 group-hover:scale-[1.06] group-active:scale-95">
         <!-- Four tiny swatches of the palettes on offer, with the palette mark. -->
-        <span v-for="t in THEMES.slice(0, 3)" :key="t.key" class="rounded-[5px]" :style="{ background: t.preview.rail }"></span>
+        <span v-for="t in THEMES.slice(0, 3)" :key="t.key" class="rounded-[5px]" :style="{ background: t.tokens['sidebar-bg'] }"></span>
         <span class="rounded-[5px] bg-white/80 flex items-center justify-center text-brand-navy"><FaIcon name="palette" class="text-[11px]" /></span>
       </span>
       <span class="text-[11px] font-ui font-semibold text-gray-600 group-hover:text-gray-900">Themes</span>
@@ -35,22 +35,22 @@
           class="theme-option group/opt text-left rounded-[18px] bg-white/70 p-2 transition-[box-shadow,transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-white/90 hover:shadow-[0_10px_24px_-14px_rgba(22,28,45,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy">
           <!-- Miniature dashboard: rail, greeting, the two summary cards, the section cards. -->
           <span class="block h-[84px] rounded-[12px] overflow-hidden flex transition-transform duration-300 group-hover/opt:scale-[1.02]"
-            :style="{ background: t.preview.page, boxShadow: `inset 0 0 0 1px ${t.preview.line}` }" aria-hidden="true">
-            <span class="w-[20%] h-full flex flex-col items-center gap-[5px] pt-2.5" :style="{ background: t.preview.rail }">
+            :style="{ background: t.tokens['app-bg'], boxShadow: `inset 0 0 0 1px ${t.tokens.border}` }" aria-hidden="true">
+            <span class="w-[20%] h-full flex flex-col items-center gap-[5px] pt-2.5" :style="{ background: t.tokens['sidebar-bg'] }">
               <span class="w-2.5 h-2.5 rounded-full bg-white/80"></span>
               <span class="w-3.5 h-[3px] rounded-full bg-white/35"></span>
               <span class="w-3.5 h-[3px] rounded-full bg-white/35"></span>
               <span class="w-3.5 h-[3px] rounded-full bg-white/35"></span>
             </span>
             <span class="flex-1 p-2 flex flex-col gap-[5px] min-w-0">
-              <span class="h-[5px] w-[55%] rounded-full" :style="{ background: t.preview.ink, opacity: 0.75 }"></span>
+              <span class="h-[5px] w-[55%] rounded-full" :style="{ background: t.tokens['text-primary'], opacity: 0.75 }"></span>
               <span class="flex gap-[5px] h-[24px]">
-                <span class="flex-[7] rounded-[6px]" :style="{ background: `color-mix(in srgb, ${t.preview.accent} 20%, ${t.preview.panel})` }"></span>
-                <span class="flex-[5] rounded-[6px]" :style="{ background: t.preview.primary }"></span>
+                <span class="flex-[7] rounded-[6px]" :style="{ background: t.tokens['error-soft'] }"></span>
+                <span class="flex-[5] rounded-[6px]" :style="{ background: t.tokens.primary }"></span>
               </span>
               <span class="flex gap-[5px] flex-1">
-                <span v-for="n in 3" :key="n" class="flex-1 rounded-[6px] p-[4px]" :style="{ background: t.preview.panel, boxShadow: `inset 0 0 0 1px ${t.preview.line}` }">
-                  <span class="block w-[9px] h-[9px] rounded-[3px]" :style="{ background: n === 1 ? t.preview.accent : n === 2 ? t.preview.primary : t.preview.soft }"></span>
+                <span v-for="n in 3" :key="n" class="flex-1 rounded-[6px] p-[4px]" :style="{ background: t.tokens.surface, boxShadow: `inset 0 0 0 1px ${t.tokens.border}` }">
+                  <span class="block w-[9px] h-[9px] rounded-[3px]" :style="{ background: n === 1 ? t.tokens.accent : n === 2 ? t.tokens.primary : t.tokens['primary-soft'] }"></span>
                 </span>
               </span>
             </span>
@@ -209,7 +209,7 @@ function switchTheme(key) {
   if (!reduced()) {
     root.classList.add('theme-switching')
     clearTimeout(switchTimer)
-    switchTimer = setTimeout(() => root.classList.remove('theme-switching'), 520)
+    switchTimer = setTimeout(() => root.classList.remove('theme-switching'), 260)
   }
   setTheme(key)
 }
@@ -224,6 +224,6 @@ onBeforeUnmount(() => {
 
 <style>
 /* The panel is more opaque than the cards so its text reads over anything. */
-.theme-panel.glass.is-moving { -webkit-backdrop-filter: none; backdrop-filter: none; --glass-a: 0.9; }
-.theme-panel.glass { --glass-a: 0.84; box-shadow: inset 0 1px 0 var(--glass-hi), 0 24px 60px -24px rgb(15 20 35 / 0.45), 0 2px 8px rgb(15 20 35 / 0.06); }
+.theme-panel.glass.is-moving { -webkit-backdrop-filter: none; backdrop-filter: none; --glass-amount: 96%; }
+.theme-panel.glass { --glass-fill: var(--surface-elevated); --glass-amount: 90%; box-shadow: inset 0 1px 0 var(--glass-hi), 0 24px 60px -24px var(--shadow-color), 0 2px 8px var(--shadow-color); }
 </style>

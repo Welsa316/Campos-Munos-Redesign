@@ -1,7 +1,7 @@
 <template>
   <div class="h-dvh flex flex-col bg-brand-surface overflow-hidden">
     <!-- Same shell as every section. -->
-    <header class="h-16 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 gap-3 z-10">
+    <header class="nav-chrome h-16 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 gap-3 z-10">
       <div class="flex items-center gap-3 sm:gap-4 min-w-0">
         <img src="/logo.png" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
         <div class="w-px h-8 bg-gray-200 hidden sm:block" aria-hidden="true"></div>
@@ -83,21 +83,24 @@
 
         <!-- Sections, side by side. -->
         <p class="mt-2 px-1 text-[17px] font-semibold tracking-tight text-gray-900">Go to</p>
-        <RiseIn v-if="cards.length" :delay="0.35" :stagger="0.1" :class="cards.length > 3 ? 'lg:grid-cols-4' : ''" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          <TiltedCard v-for="card in cards" :key="card.key" :radius="24" :rotate-amplitude="9" :scale-on-hover="1.03" :glare="0.45" :shadow="0.3" :perspective="900">
-          <router-link :to="card.to"
-            class="group glass rounded-3xl h-full p-5 sm:p-6 flex flex-col min-h-[210px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy">
+        <!-- The row always fills its width: one or two big cards, three or
+             four standard, five or more compact (a short last row stretches). -->
+        <RiseIn v-if="cards.length" :delay="0.35" :stagger="0.1" class="flex flex-wrap gap-3 sm:gap-4">
+          <TiltedCard v-for="card in cards" :key="card.key" :class="cardBasis" class="grow min-w-0"
+            :radius="24" :rotate-amplitude="cardSize === 'lg' ? 6 : 9" :scale-on-hover="cardSize === 'lg' ? 1.02 : 1.03" :glare="0.45" :shadow="0.3" :perspective="cardSize === 'lg' ? 1200 : 900">
+          <router-link :to="card.to" :class="SIZE[cardSize].card"
+            class="group glass rounded-3xl h-full flex flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy">
             <div class="flex items-start justify-between">
-              <span :class="card.tile" class="w-[60px] h-[60px] rounded-[18px] flex items-center justify-center transition-transform group-hover:scale-105">
-                <FaIcon :name="card.icon" class="text-[26px]" />
+              <span :class="[card.tile, SIZE[cardSize].tile]" class="flex items-center justify-center transition-transform group-hover:scale-105">
+                <FaIcon :name="card.icon" :class="SIZE[cardSize].icon" />
               </span>
               <span class="w-8 h-8 rounded-full border border-gray-200 text-gray-500 inline-flex items-center justify-center group-hover:bg-gray-900 group-hover:text-white group-hover:border-gray-900 transition-colors">
                 <FaIcon name="arrow-right" class="text-xs" />
               </span>
             </div>
-            <p class="mt-5 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400">{{ card.eyebrow }}</p>
-            <h3 class="text-[22px] font-semibold tracking-tight text-gray-900 mt-0.5">{{ card.title }}</h3>
-            <p class="text-[13px] text-gray-500 mt-1.5 leading-relaxed">{{ card.description }}</p>
+            <p :class="SIZE[cardSize].eyebrow" class="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">{{ card.eyebrow }}</p>
+            <h3 :class="SIZE[cardSize].title" class="font-semibold tracking-tight text-gray-900 mt-0.5">{{ card.title }}</h3>
+            <p :class="SIZE[cardSize].text" class="text-gray-500 mt-1.5 leading-relaxed">{{ card.description }}</p>
           </router-link>
           </TiltedCard>
         </RiseIn>
@@ -291,6 +294,22 @@ const cards = computed(() => [
     description: 'Payment status, balances and reminders.',
   },
 ].filter(Boolean))
+
+// "Go to" cards size themselves to how many there are (whole class names,
+// so Tailwind sees them).
+const cardSize = computed(() => (cards.value.length <= 2 ? 'lg' : cards.value.length <= 4 ? 'md' : 'sm'))
+const cardBasis = computed(() => {
+  const n = cards.value.length
+  if (n === 1) return 'basis-full'
+  if (n === 2) return 'basis-full sm:basis-[calc(50%-0.5rem)]'
+  if (n === 3) return 'basis-full sm:basis-[calc(50%-0.5rem)] lg:basis-[calc(33.333%-0.67rem)]'
+  return 'basis-full sm:basis-[calc(50%-0.5rem)] lg:basis-[calc(25%-0.75rem)]'
+})
+const SIZE = {
+  lg: { card: 'p-6 sm:p-8 min-h-[240px]', tile: 'w-[72px] h-[72px] rounded-[20px]', icon: 'text-[32px]', eyebrow: 'mt-6', title: 'text-[26px] sm:text-[28px]', text: 'text-[14px] max-w-md' },
+  md: { card: 'p-5 sm:p-6 min-h-[210px]', tile: 'w-[60px] h-[60px] rounded-[18px]', icon: 'text-[26px]', eyebrow: 'mt-5', title: 'text-[22px]', text: 'text-[13px]' },
+  sm: { card: 'p-4 sm:p-5 min-h-[180px]', tile: 'w-[48px] h-[48px] rounded-[14px]', icon: 'text-[21px]', eyebrow: 'mt-4', title: 'text-[19px]', text: 'text-[12.5px]' },
+}
 
 onMounted(() => {
   if (showsBillingFigures.value) {

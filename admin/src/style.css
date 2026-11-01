@@ -39,8 +39,8 @@
   }
 
   ::selection {
-    background-color: var(--color-brand-navy);
-    color: white;
+    background-color: var(--primary);
+    color: var(--text-on-primary);
   }
 }
 
@@ -49,7 +49,7 @@
 }
 .btn-magnetic:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 40px -8px rgba(0, 63, 141, 0.3);
+  box-shadow: 0 12px 40px -8px color-mix(in srgb, var(--primary) 30%, transparent);
 }
 .btn-magnetic:active {
   transform: translateY(0);
@@ -69,32 +69,32 @@
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(107, 114, 128, 1);
+  color: var(--text-muted);
   margin-bottom: 0.5rem;
 }
 .form-input {
   width: 100%;
   padding: 1rem 1.25rem;
-  background: white;
-  border: 1px solid rgba(209, 213, 219, 1);
+  background: var(--input-bg);
+  border: 1px solid var(--border-strong);
   border-radius: 0.75rem;
-  color: #1a1a1a;
+  color: var(--text-primary);
   font-family: var(--font-ui);
   font-size: 1rem;
   transition: all 0.3s;
 }
 .form-input:focus {
   outline: none;
-  border-color: var(--color-brand-navy);
-  box-shadow: 0 0 0 3px rgba(0, 63, 141, 0.1);
-  background: white;
+  border-color: var(--primary-ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 22%, transparent);
+  background: var(--input-bg);
 }
 .form-input::placeholder {
-  color: rgba(156, 163, 175, 1);
+  color: var(--icon-muted);
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-brand-navy);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -113,137 +113,177 @@ select:focus-visible {
   }
 }
 
-@layer components {
-/* ---------------------------------------------------------------------------
-   Themes (Home → Themes; saved per person, docs/staff-accounts.md).
-   Every colour class in the portal reads a CSS variable (bg-white is
-   var(--color-white), text-brand-navy var(--color-brand-navy), …), so a theme
-   only re-points variables on the root. Brand red stays red in every theme:
-   it means "needs attention", not decoration. Classic is the @theme above.
-   --------------------------------------------------------------------------- */
+/* ===========================================================================
+   Themes (Home → Themes; saved per person; docs/staff-accounts.md).
+
+   src/data/themes.js is the single source of truth: applyTheme() writes the
+   chosen theme's semantic tokens (--app-bg, --surface, --text-primary,
+   --primary, --success, …, the same contract in every theme) onto <html>.
+
+   This section then points the portal's existing colour classes at those
+   tokens, so no component needs theme-specific markup:
+     1. the Tailwind palette the portal uses (white, the grey scale, the
+        brand colours, the status hues) becomes semantic tokens;
+     2. where one class means a different thing for text than for fills
+        (white text on a coloured button vs a white panel; a link vs a
+        primary button), a narrow rule gives the text its own token;
+     3. .nav-chrome (each section's top bar, the portal's navigation) takes
+        the theme's navigation colours.
+   Layout, sizes, radii and typography are untouched: only colours change.
+   =========================================================================== */
+
+/* 1. Palette → tokens. Fills read the palette variable directly. */
 :root {
-  --glass-rgb: 255 255 255;
-  --glass-alpha: 0.52;
-  --glass-border: rgb(255 255 255 / 0.6);
-  --glass-hi: rgb(255 255 255 / 0.8);
-  --glass-sheen: rgb(255 255 255 / 0.42);
-  --glass-shadow: rgb(22 28 45 / 0.28);
-  --glass-primary-rgb: 0 52 120;
-  --danger-tint-rgb: 248 214 214;
-  --danger-ink: #7c1515;
-  --danger-ink-strong: #5c0f0f;
-  /* Text on the deep primary-tinted glass card (light in every theme). */
-  --glass-navy-ink: #ffffff;
-}
-:root[data-theme="midnight-executive"] {
-  --color-brand-navy: #2a56a8; --color-brand-navy-light: #3a6fd0; --color-brand-navy-dark: #1b3b78;
-  --color-brand-dark: #141c2f; --color-brand-surface: #eef1f7; --color-brand-light: #f6f8fc;
-  --glass-primary-rgb: 20 28 47;
-}
-:root[data-theme="coastal-teal"] {
-  --color-brand-navy: #17766b; --color-brand-navy-light: #1f8f82; --color-brand-navy-dark: #0f5a51;
-  --color-brand-dark: #133f40; --color-brand-surface: #eef5f4; --color-brand-light: #f5faf9;
-  --glass-primary-rgb: 19 63 64;
-}
-:root[data-theme="graphite"] {
-  --color-brand-navy: #3f4653; --color-brand-navy-light: #5b6475; --color-brand-navy-dark: #272c35;
-  --color-brand-dark: #23272d; --color-brand-surface: #f2f3f5; --color-brand-light: #f7f8f9;
-  --glass-primary-rgb: 35 39 45;
-}
-:root[data-theme="violet"] {
-  --color-brand-navy: #6347b0; --color-brand-navy-light: #7a5fc9; --color-brand-navy-dark: #4b3487;
-  --color-brand-dark: #2e2245; --color-brand-surface: #f2f1f8; --color-brand-light: #f8f7fc;
-  --glass-primary-rgb: 46 34 69;
-}
-/* Dark: "white" becomes the panel colour and the grey scale turns over, so
-   every bg-white / text-gray-* in the portal follows; status tints (amber
-   notices, green pills, …) become dark tints with light text. text-white on
-   a coloured button reads as "text on colour": dark on the bright accent. */
-:root[data-theme="midnight-dark"] {
-  --color-white: #171e27;
-  --color-brand-navy: #5aa2f5; --color-brand-navy-light: #7ab5f7; --color-brand-navy-dark: #3d86de;
-  --color-brand-red: #f0605f; --color-brand-red-light: #f47c7b;
-  --color-brand-dark: #e6ebf1; --color-brand-surface: #0e131a; --color-brand-light: #121922;
-  --color-gray-50: #1b222c; --color-gray-100: #212a35; --color-gray-200: #2b3441; --color-gray-300: #3a4452;
-  --color-gray-400: #6c7686; --color-gray-500: #8c96a6; --color-gray-600: #a9b2bf; --color-gray-700: #c5ccd6;
-  --color-gray-800: #dde2e9; --color-gray-900: #eef1f5; --color-gray-950: #f7f8fa;
-  --color-red-50: #2a1719; --color-red-100: #3a1d20; --color-red-200: #55262a; --color-red-700: #f6a3a3; --color-red-800: #f8baba; --color-red-900: #fbd0d0;
-  --color-amber-50: #2a2112; --color-amber-100: #3a2c14; --color-amber-200: #5a4317; --color-amber-700: #f5c76b; --color-amber-800: #f7d38a; --color-amber-900: #f9e0aa;
-  --color-green-50: #13261c; --color-green-100: #173322; --color-green-200: #1f4a30; --color-green-700: #7fdca2; --color-green-800: #9ae5b6; --color-green-900: #b7eecb;
-  --color-emerald-50: #10261f; --color-emerald-100: #133328; --color-emerald-200: #1b4a3a; --color-emerald-700: #6fd9b0; --color-emerald-800: #8fe3c2; --color-emerald-900: #b0edd5;
-  --color-violet-50: #1e1a2e; --color-violet-100: #27203d; --color-violet-200: #392e5c; --color-violet-700: #c2b2f5; --color-violet-800: #d1c5f7; --color-violet-900: #e0d8fa;
-  --color-orange-50: #2a1c12; --color-orange-100: #3a2514; --color-orange-200: #5a3717; --color-orange-700: #f7b27a; --color-orange-800: #f9c497; --color-orange-900: #fbd6b5;
-  --color-sky-50: #10202c; --color-sky-100: #132a3a; --color-sky-200: #1b3d55; --color-sky-700: #8cc8f2; --color-sky-800: #a8d6f5; --color-sky-900: #c4e3f8;
-  --glass-rgb: 27 35 46;
-  --glass-alpha: 0.6;
-  --glass-border: rgb(255 255 255 / 0.1);
-  --glass-hi: rgb(255 255 255 / 0.12);
-  --glass-sheen: rgb(255 255 255 / 0.06);
-  --glass-shadow: rgb(0 0 0 / 0.5);
-  --glass-primary-rgb: 34 70 122;
-  --danger-tint-rgb: 74 28 33;
-  --danger-ink: #f6b4b4;
-  --danger-ink-strong: #ffd9d9;
-  --glass-navy-ink: #eef3fa;
+  --color-white: var(--surface);
+  --color-brand-surface: var(--app-bg);
+  --color-brand-light: var(--content-bg);
+  --color-brand-dark: var(--text-primary);
+  --color-brand-navy: var(--primary);
+  --color-brand-navy-dark: var(--primary-hover);
+  --color-brand-navy-light: color-mix(in srgb, var(--primary) 82%, var(--surface));
+  --color-brand-red: var(--danger-solid);
+  --color-brand-red-light: var(--danger-solid-hover);
+
+  --color-gray-50: var(--surface-subtle);
+  --color-gray-100: var(--divider);
+  --color-gray-200: var(--border);
+  --color-gray-300: var(--border-strong);
+  --color-gray-400: var(--icon-muted);
+  --color-gray-500: var(--text-muted);
+  --color-gray-600: var(--text-secondary);
+  --color-gray-700: var(--text-strong);
+  --color-gray-800: var(--text-primary);
+  --color-gray-900: var(--text-primary);
+  --color-gray-950: var(--text-primary);
+
+  /* Status hues: 50–100 soft tint, 200–300 a light edge, 400–700 the solid
+     fill (dots, call buttons), 800–950 the text colour. Text set in a
+     400–700 class is pointed at the text colour below. */
+  --color-green-50: var(--success-soft); --color-green-100: var(--success-soft);
+  --color-green-200: color-mix(in srgb, var(--success) 28%, var(--success-soft)); --color-green-300: color-mix(in srgb, var(--success) 45%, var(--success-soft));
+  --color-green-400: var(--success-solid); --color-green-500: var(--success-solid); --color-green-600: var(--success-solid); --color-green-700: color-mix(in srgb, var(--success-solid) 86%, #000);
+  --color-green-800: var(--success); --color-green-900: var(--success); --color-green-950: var(--success);
+  --color-emerald-50: var(--success-soft); --color-emerald-100: var(--success-soft);
+  --color-emerald-200: color-mix(in srgb, var(--success) 28%, var(--success-soft)); --color-emerald-300: color-mix(in srgb, var(--success) 45%, var(--success-soft));
+  --color-emerald-400: var(--success-solid); --color-emerald-500: var(--success-solid); --color-emerald-600: var(--success-solid); --color-emerald-700: color-mix(in srgb, var(--success-solid) 86%, #000);
+  --color-emerald-800: var(--success); --color-emerald-900: var(--success); --color-emerald-950: var(--success);
+  --color-amber-50: var(--warning-soft); --color-amber-100: var(--warning-soft);
+  --color-amber-200: color-mix(in srgb, var(--warning) 28%, var(--warning-soft)); --color-amber-300: color-mix(in srgb, var(--warning) 45%, var(--warning-soft));
+  --color-amber-400: var(--warning-solid); --color-amber-500: var(--warning-solid); --color-amber-600: var(--warning-solid); --color-amber-700: color-mix(in srgb, var(--warning-solid) 86%, #000);
+  --color-amber-800: var(--warning); --color-amber-900: var(--warning); --color-amber-950: var(--warning);
+  --color-orange-50: var(--warning-soft); --color-orange-100: var(--warning-soft);
+  --color-orange-200: color-mix(in srgb, var(--warning) 28%, var(--warning-soft)); --color-orange-300: color-mix(in srgb, var(--warning) 45%, var(--warning-soft));
+  --color-orange-400: var(--warning-solid); --color-orange-500: var(--warning-solid); --color-orange-600: var(--warning-solid); --color-orange-700: color-mix(in srgb, var(--warning-solid) 86%, #000);
+  --color-orange-800: var(--warning); --color-orange-900: var(--warning); --color-orange-950: var(--warning);
+  --color-red-50: var(--error-soft); --color-red-100: var(--error-soft);
+  --color-red-200: color-mix(in srgb, var(--error) 28%, var(--error-soft)); --color-red-300: color-mix(in srgb, var(--error) 45%, var(--error-soft));
+  --color-red-400: var(--danger-solid); --color-red-500: var(--danger-solid); --color-red-600: var(--danger-solid); --color-red-700: var(--danger-solid-hover);
+  --color-red-800: var(--error); --color-red-900: var(--error); --color-red-950: var(--error);
+  --color-sky-50: var(--info-soft); --color-sky-100: var(--info-soft);
+  --color-sky-200: color-mix(in srgb, var(--info) 28%, var(--info-soft)); --color-sky-300: color-mix(in srgb, var(--info) 45%, var(--info-soft));
+  --color-sky-400: var(--info-solid); --color-sky-500: var(--info-solid); --color-sky-600: var(--info-solid); --color-sky-700: color-mix(in srgb, var(--info-solid) 86%, #000);
+  --color-sky-800: var(--info); --color-sky-900: var(--info); --color-sky-950: var(--info);
+  /* Violet marks "simulated / test mode": informational. */
+  --color-violet-50: var(--info-soft); --color-violet-100: var(--info-soft);
+  --color-violet-200: color-mix(in srgb, var(--info) 28%, var(--info-soft)); --color-violet-300: color-mix(in srgb, var(--info) 45%, var(--info-soft));
+  --color-violet-400: var(--info-solid); --color-violet-500: var(--info-solid); --color-violet-600: var(--info-solid); --color-violet-700: color-mix(in srgb, var(--info-solid) 86%, #000);
+  --color-violet-800: var(--info); --color-violet-900: var(--info); --color-violet-950: var(--info);
 }
 
-/* Changing theme cross-fades colours (only while switching, so normal
-   hover transitions are untouched). Off with reduced motion. */
+/* 2. Text (and rings/borders) that must not take a fill colour. These sit
+   outside the utility layer on purpose, so they win over the plain class. */
+.text-white, .hover\:text-white:hover, .focus\:text-white:focus,
+.group:hover .group-hover\:text-white { color: var(--text-on-primary); }
+
+.text-brand-navy, .hover\:text-brand-navy:hover, .group:hover .group-hover\:text-brand-navy,
+.disabled\:hover\:text-brand-navy:disabled:hover { color: var(--text-link); }
+.ring-brand-navy, .hover\:ring-brand-navy:hover, .focus\:ring-brand-navy:focus,
+.focus-visible\:ring-brand-navy:focus-visible { --tw-ring-color: var(--primary-ring); }
+.border-brand-navy, .hover\:border-brand-navy:hover, .focus\:border-brand-navy:focus,
+.focus-within\:border-brand-navy:focus-within { border-color: var(--primary-ring); }
+
+.text-brand-red, .hover\:text-brand-red:hover { color: var(--error); }
+.ring-brand-red { --tw-ring-color: var(--danger-solid); }
+
+.text-green-600, .text-green-700, .text-emerald-600, .text-emerald-700 { color: var(--success); }
+.text-amber-600, .text-amber-700, .text-orange-700 { color: var(--warning); }
+.text-sky-700, .text-violet-700 { color: var(--info); }
+
+/* Dark "inverse" buttons (Save, the arrow on hover). */
+.bg-gray-900, .hover\:bg-gray-900:hover, .group:hover .group-hover\:bg-gray-900 { background-color: var(--inverse-bg); }
+.hover\:bg-black:hover { background-color: var(--inverse-bg-hover); }
+.group:hover .group-hover\:border-gray-900, .hover\:ring-gray-900:hover { border-color: var(--inverse-bg); --tw-ring-color: var(--inverse-bg); }
+
+/* Text on the tinted summary cards on Home. */
+.text-danger-ink { color: var(--error); }
+.text-danger-ink-strong { color: var(--error); }
+.text-glass-navy-ink { color: var(--text-on-sidebar); }
+.bg-glass-navy-chip { background-color: var(--sidebar-hover); }
+
+/* 3. Navigation chrome: each section's top bar is the portal's navigation
+   and takes the theme's navigation colours (the counterpart of a sidebar). */
+.nav-chrome {
+  --color-white: var(--sidebar-bg);
+  --color-brand-surface: var(--sidebar-hover);
+  --color-gray-100: var(--sidebar-border);
+  --color-gray-200: var(--sidebar-border);
+  --color-gray-400: var(--icon-on-sidebar);
+  --color-gray-500: var(--text-sidebar-muted);
+  --color-gray-600: var(--text-sidebar-muted);
+  --color-gray-700: var(--text-on-sidebar);
+  --color-gray-800: var(--text-on-sidebar);
+  --color-gray-900: var(--text-on-sidebar);
+  --color-red-50: var(--sidebar-hover);
+}
+.nav-chrome .text-brand-navy, .nav-chrome .hover\:text-brand-navy:hover { color: var(--text-on-sidebar); }
+.nav-chrome .hover\:text-brand-red:hover { color: var(--sidebar-danger); }
+.nav-chrome .border-brand-navy { border-color: var(--icon-sidebar-active); }
+.nav-chrome [aria-current="page"] { color: var(--text-on-sidebar); }
+/* The firm's navy logo turns light on the navigation colour. */
+.nav-chrome img[src$="logo.png"] { filter: brightness(0) invert(1); opacity: 0.92; }
+
+@layer components {
+/* Changing theme cross-fades colours only (never layout), ~220 ms. Only
+   while switching, so normal hover transitions are untouched. Off with
+   reduced motion (see the global rule above). */
 :root.theme-switching, :root.theme-switching * {
-  transition: background-color 0.45s ease, color 0.45s ease, border-color 0.45s ease, fill 0.45s ease, stroke 0.45s ease, box-shadow 0.45s ease !important;
+  transition: background-color 0.22s ease, color 0.22s ease, border-color 0.22s ease, fill 0.22s ease, stroke 0.22s ease, outline-color 0.22s ease !important;
 }
 
 /* ---------------------------------------------------------------------------
-   Liquid glass (Home cards). A web rendition of Apple's Liquid Glass: the
-   panel blurs and saturates what lies behind it, carries a light tint, a
-   bright top edge and a soft sheen, and (.glass-interactive) a light that
-   follows the pointer. Colours come from the theme variables above. With
-   reduced transparency the panel turns solid.
+   Liquid glass (Home cards): a translucent panel of the theme's surface that
+   blurs what lies behind it, with a bright top edge and a soft sheen;
+   .glass-interactive adds a light that follows the pointer. With reduced
+   transparency the panel turns solid.
    --------------------------------------------------------------------------- */
 .glass {
-  --glass-tint: var(--glass-rgb);
-  --glass-a: var(--glass-alpha);
+  --glass-fill: var(--surface);
+  --glass-amount: 70%;
   background:
-    linear-gradient(160deg, var(--glass-sheen) 0%, rgb(255 255 255 / 0) 42%),
-    linear-gradient(135deg, rgb(var(--glass-tint) / calc(var(--glass-a) + 0.1)), rgb(var(--glass-tint) / var(--glass-a)));
+    linear-gradient(160deg, var(--glass-sheen) 0%, transparent 42%),
+    color-mix(in srgb, var(--glass-fill) var(--glass-amount), transparent);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--glass-edge);
   box-shadow:
-    inset 0 1px 0 var(--glass-hi),
-    inset 0 -1px 0 rgb(255 255 255 / 0.12),
-    0 12px 32px -14px var(--glass-shadow);
+    inset 0 1px 0 var(--glass-edge),
+    0 12px 32px -14px var(--shadow-color);
 }
-.glass-rose { --glass-tint: var(--danger-tint-rgb); --glass-a: 0.58; }
-.glass-navy {
-  --glass-tint: var(--glass-primary-rgb); --glass-a: 0.82;
-  border-color: rgb(255 255 255 / 0.22);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.3),
-    inset 0 -1px 0 rgb(255 255 255 / 0.06),
-    0 14px 34px -14px rgb(0 20 60 / 0.45);
-}
-/* Text on the tinted panels (themed: light text on dark tints in dark mode). */
-.text-glass-navy-ink { color: var(--glass-navy-ink); }
-.bg-glass-navy-chip { background-color: rgb(255 255 255 / 0.15); }
-/* The firm's navy logo turns light on the dark theme's header. */
-:root[data-theme="midnight-dark"] img[src$="logo.png"] { filter: brightness(0) invert(1); opacity: 0.88; }
-.text-danger-ink { color: var(--danger-ink); }
-.text-danger-ink-strong { color: var(--danger-ink-strong); }
-/* The light that follows the pointer (v-glass-light sets --gl-x/--gl-y). */
+.glass-rose { --glass-fill: var(--error-soft); --glass-amount: 88%; }
+.glass-navy { --glass-fill: var(--sidebar-bg); --glass-amount: 92%; border-color: color-mix(in srgb, var(--text-on-sidebar) 18%, transparent); }
 .glass-interactive { position: relative; }
 .glass-interactive::after {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: radial-gradient(420px circle at var(--gl-x, 50%) var(--gl-y, 0%), rgb(255 255 255 / 0.3), rgb(255 255 255 / 0) 60%);
-  mix-blend-mode: screen;
+  background: radial-gradient(420px circle at var(--gl-x, 50%) var(--gl-y, 0%), rgb(255 255 255 / 0.22), transparent 60%);
+  mix-blend-mode: soft-light;
   opacity: var(--gl-on, 0);
   transition: opacity 0.35s ease;
   pointer-events: none;
 }
 @media (prefers-reduced-transparency: reduce) {
-  .glass { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgb(var(--glass-tint) / 0.97); }
+  .glass { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--glass-fill); }
 }
 }

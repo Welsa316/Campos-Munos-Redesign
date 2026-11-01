@@ -1,0 +1,75 @@
+// Theme contract and accessibility (src/data/themes.js): every theme defines
+// the same tokens, and every text/background pairing the portal actually
+// uses meets WCAG AA (4.5:1 text, 3:1 focus rings and active indicators).
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { THEMES, TOKEN_NAMES, DEFAULT_THEME } from '../src/data/themes.js'
+
+const hex = (v) => /^#[0-9a-f]{6}$/i.test(v)
+function luminance(h) {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255)
+    .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+export function contrast(a, b) {
+  const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m)
+  return (x + 0.05) / (y + 0.05)
+}
+
+// [foreground, [backgrounds], minimum]
+const TEXT = 4.5
+const UI = 3
+const PAIRS = [
+  ['text-primary', ['surface', 'surface-elevated', 'app-bg', 'content-bg', 'surface-subtle', 'surface-hover', 'surface-selected', 'input-bg'], TEXT],
+  ['text-secondary', ['surface', 'surface-elevated', 'app-bg', 'content-bg', 'surface-subtle', 'surface-hover', 'input-bg'], TEXT],
+  ['text-muted', ['surface', 'app-bg', 'content-bg', 'surface-subtle'], TEXT],
+  ['text-link', ['surface', 'app-bg', 'content-bg', 'surface-subtle', 'primary-soft'], TEXT],
+  ['text-on-primary', ['primary', 'primary-hover', 'success-solid', 'warning-solid', 'danger-solid', 'danger-solid-hover', 'info-solid', 'inverse-bg'], TEXT],
+  ['text-on-sidebar', ['sidebar-bg', 'sidebar-hover', 'sidebar-active'], TEXT],
+  ['text-sidebar-muted', ['sidebar-bg', 'sidebar-hover'], TEXT],
+  ['icon-on-sidebar', ['sidebar-bg', 'sidebar-hover'], UI],
+  ['sidebar-danger', ['sidebar-bg', 'sidebar-hover'], TEXT],
+  ['success', ['success-soft', 'surface'], TEXT],
+  ['warning', ['warning-soft', 'surface'], TEXT],
+  ['error', ['error-soft', 'surface', 'app-bg'], TEXT],
+  ['info', ['info-soft', 'surface'], TEXT],
+  ['neutral', ['neutral-soft', 'surface'], TEXT],
+  ['focus-ring', ['surface', 'app-bg'], UI],
+  ['primary-ring', ['surface', 'app-bg'], UI],
+  ['icon-active', ['surface'], UI],
+  ['icon-primary', ['surface', 'app-bg'], UI],
+  ['icon-secondary', ['surface'], UI],
+  ['icon-sidebar-active', ['sidebar-active'], UI],
+]
+
+test('every theme implements the same token contract; Classic is the default', () => {
+  assert.equal(THEMES[0].key, DEFAULT_THEME)
+  assert.equal(new Set(THEMES.map((t) => t.key)).size, 6)
+  for (const t of THEMES) {
+    assert.deepEqual(Object.keys(t.tokens).sort(), [...TOKEN_NAMES].sort(), t.key)
+    assert.ok(['light', 'dark'].includes(t.scheme), t.key)
+  }
+})
+
+test('WCAG AA for every pairing the portal uses, in every theme', () => {
+  const failures = []
+  for (const t of THEMES) {
+    for (const [fg, bgs, min] of PAIRS) {
+      for (const bg of bgs) {
+        const a = t.tokens[fg]
+        const b = t.tokens[bg]
+        assert.ok(hex(a) && hex(b), `${t.key}: ${fg}/${bg} must be #rrggbb (${a} on ${b})`)
+        const ratio = contrast(a, b)
+        if (ratio < min) failures.push(`${t.key}: ${fg} ${a} on ${bg} ${b} = ${ratio.toFixed(2)} (needs ${min})`)
+      }
+    }
+  }
+  assert.deepEqual(failures, [])
+})
+
+test('status colours mean the same thing in every light theme', () => {
+  const light = THEMES.filter((t) => t.scheme === 'light')
+  for (const k of ['success', 'warning', 'error', 'info', 'neutral']) {
+    assert.equal(new Set(light.map((t) => t.tokens[k])).size, 1, k)
+  }
+})
