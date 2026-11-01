@@ -1,5 +1,6 @@
-// Read-only RingCentral REST calls with a bearer token. GET only: nothing in
-// this file can change anything in the firm's RingCentral account.
+// RingCentral REST calls with a bearer token. GET reads; rcSend is used only
+// to place, and cancel, a RingOut call a staff member asked for. Nothing
+// here changes numbers, routing, queues, extensions, greetings or settings.
 //
 // Errors (RingCentral API reference, "Errors" and "Rate limits"): a JSON body
 // with errorCode (e.g. CMN-408 missing permission, CMN-301 rate limited,
@@ -22,7 +23,17 @@ export class RingCentralApiError extends Error {
 
 const safeCode = (v, re) => (typeof v === 'string' && re.test(v) ? v : null)
 
-export async function rcGet(config, accessToken, path, query = {}, { fetchImpl = globalThis.fetch } = {}) {
+export async function rcGet(config, accessToken, path, query = {}, deps = {}) {
+  return rcRequest(config, accessToken, 'GET', path, { query }, deps)
+}
+
+/** POST / DELETE (RingOut only). */
+export async function rcSend(config, accessToken, method, path, body, deps = {}) {
+  if (!['POST', 'DELETE'].includes(method)) throw new Error('rcSend is for POST and DELETE')
+  return rcRequest(config, accessToken, method, path, { body }, deps)
+}
+
+async function rcRequest(config, accessToken, method, path, { query = {}, body } = {}, { fetchImpl = globalThis.fetch } = {}) {
   if (!path.startsWith('/restapi/')) throw new Error('RingCentral path must start with /restapi/')
   const url = new URL(`${config.serverUrl}${path}`)
   for (const [k, v] of Object.entries(query)) if (v != null && v !== '') url.searchParams.set(k, String(v))
@@ -30,21 +41,25 @@ export async function rcGet(config, accessToken, path, query = {}, { fetchImpl =
   try {
     const signal = typeof AbortSignal?.timeout === 'function' ? AbortSignal.timeout(TIMEOUT_MS) : undefined
     res = await fetchImpl(url.toString(), {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
+      method,
+      headers: {
+        Authorization: `Bearer ${accessToken}`, Accept: 'application/json',
+        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
       signal,
     })
   } catch {
     throw new RingCentralApiError('network_error', { retryable: true })
   }
   const text = await res.text().catch(() => '')
-  let body = null
-  try { body = text ? JSON.parse(text) : null } catch { body = null }
-  if (res.status >= 200 && res.status < 300) return body ?? {}
+  let json = null
+  try { json = text ? JSON.parse(text) : null } catch { json = null }
+  if (res.status >= 200 && res.status < 300) return json ?? {}
 
-  const first = Array.isArray(body?.errors) ? body.errors[0] : null
-  const code = safeCode(body?.errorCode, /^[A-Z]{2,5}-\d{1,4}$/) || safeCode(first?.errorCode, /^[A-Z]{2,5}-\d{1,4}$/)
-    || safeCode(body?.error, /^[a-z_]{1,40}$/) || `http_${res.status}`
+  const first = Array.isArray(json?.errors) ? json.errors[0] : null
+  const code = safeCode(json?.errorCode, /^[A-Z]{2,5}-\d{1,4}$/) || safeCode(first?.errorCode, /^[A-Z]{2,5}-\d{1,4}$/)
+    || safeCode(json?.error, /^[a-z_]{1,40}$/) || `http_${res.status}`
   const retryAfterSecs = Number(res.headers?.get?.('retry-after'))
   throw new RingCentralApiError(code, {
     status: res.status,
@@ -54,4 +69,4 @@ export async function rcGet(config, accessToken, path, query = {}, { fetchImpl =
   })
 }
 
-export default { rcGet, RingCentralApiError }
+export default { rcGet, rcSend, RingCentralApiError }

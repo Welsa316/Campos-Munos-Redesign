@@ -7,13 +7,18 @@
 //   GET  /api/calls/summary unanswered business-hours calls, last 30 days
 //   POST /api/calls/sync   import now (at most every 30 seconds; otherwise the
 //                          last result is returned)
+//   GET|PUT /api/calls/ringout/me       the phone RingCentral rings for me first
+//   POST    /api/calls/ringout          call a number (RingOut; calls.place)
+//   GET|DELETE /api/calls/ringout/:id   progress / cancel (own calls only)
 import { Router } from 'express'
+import rateLimit from 'express-rate-limit'
 import getPool from '../db/pool.js'
 import requireAuth from '../middleware/auth.js'
 import requireCapability, { can } from '../middleware/requireCapability.js'
 import { loadRingCentralConfig } from '../integrations/ringcentral/config.js'
 import { getConnectionStatus } from '../integrations/ringcentral/service.js'
 import { queryCalls, syncCallLog, getSyncState, summarizeMissed, OUTCOME_FILTERS } from '../integrations/ringcentral/callLog.js'
+import { placeRingOut, ringOutStatus, cancelRingOut, getMyPhone, setMyPhone, RingOutError } from '../integrations/ringcentral/ringout.js'
 
 const MANUAL_SYNC_MIN_INTERVAL_MS = 30 * 1000
 const MAX_RANGE_MS = 400 * 24 * 60 * 60 * 1000
@@ -99,6 +104,54 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
       res.status(500).json({ error: 'Internal server error' })
     }
   })
+
+  // --- RingOut: call a number from the portal (calls.place) ---------------------
+
+  const place = requireCapability('calls.place')
+  // A slip that fires many calls is stopped well before it costs anything.
+  const placeLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: 30,
+    keyGenerator: (req) => `account:${req.account?.id}`,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many calls placed in a few minutes. Wait a moment and try again.', code: 'too_many_calls' },
+  })
+  const ringWrap = (fn) => async (req, res) => {
+    try {
+      await fn(req, res)
+    } catch (err) {
+      if (err instanceof RingOutError) return res.status(err.status).json({ error: err.message, code: err.code })
+      req.log?.error({ err: { name: err?.name, code: err?.code } }, 'RingOut error')
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  }
+
+  router.get('/ringout/me', place, ringWrap(async (req, res) => {
+    const conn = await getConnectionStatus(pool(), config())
+    res.json({ phone: await getMyPhone(pool(), req.account.id), connection: conn.status, configured: conn.configured })
+  }))
+
+  router.put('/ringout/me', place, ringWrap(async (req, res) => {
+    const phone = await setMyPhone(pool(), req.account.id, typeof req.body?.phone === 'string' ? req.body.phone : null)
+    res.json({ phone })
+  }))
+
+  router.post('/ringout', place, placeLimiter, ringWrap(async (req, res) => {
+    const cfg = config()
+    if (!cfg.configured) throw new RingOutError('not_configured', 'RingCentral is not set up on the server', 409)
+    const out = await placeRingOut(pool(), cfg, { accountId: req.account.id, to: typeof req.body?.to === 'string' ? req.body.to : '', env }, deps)
+    req.log?.info({ provider: 'ringcentral', ringout: out.id, phase: out.phase }, 'RingOut placed')
+    res.status(201).json(out)
+  }))
+
+  router.get('/ringout/:id(\\d+)', place, ringWrap(async (req, res) => {
+    res.json(await ringOutStatus(pool(), config(), { id: Number(req.params.id), accountId: req.account.id }, deps))
+  }))
+
+  router.delete('/ringout/:id(\\d+)', place, ringWrap(async (req, res) => {
+    res.json(await cancelRingOut(pool(), config(), { id: Number(req.params.id), accountId: req.account.id }, deps))
+  }))
 
   return router
 }

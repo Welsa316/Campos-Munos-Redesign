@@ -30,6 +30,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE
 ```
 
+## SplitText (React Bits) and GSAP
+
+`src/components/SplitText.vue` is a Vue port of SplitText from React Bits
+(https://reactbits.dev, https://github.com/DavidHDev/react-bits), MIT License.
+It uses GSAP and its SplitText plugin (https://gsap.com), under GSAP's
+Standard "no charge" license (https://gsap.com/standard-license).
+
 ## FadeContent (React Bits)
 
 `src/components/FadeContent.vue` is a Vue port of FadeContent from React Bits

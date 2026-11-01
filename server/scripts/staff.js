@@ -124,6 +124,11 @@ export async function run(db, command, opts, out = console.log) {
       const u = await findUser(db, need(opts, 'email'))
       const role = need(opts, 'role')
       if (!isRole(role)) throw new Error(`Unknown role ${role}. Roles: ${ROLE_NAMES.join(', ')}`)
+      // Same rule as disable: someone must always be able to administer.
+      if (u.role === 'admin' && role !== 'admin' && !u.disabled_at) {
+        const others = (await db.query("SELECT COUNT(*)::int AS n FROM admin_users WHERE role = 'admin' AND disabled_at IS NULL AND id <> $1", [u.id])).rows[0].n
+        if (others === 0) throw new Error('That is the last enabled administrator; make another account an administrator first.')
+      }
       const row = (await db.query('UPDATE admin_users SET role = $2 WHERE id = $1 RETURNING *', [u.id, role])).rows[0]
       await auditCli(db, u.id, 'staff.role_changed', { from: u.role, to: role })
       out(describe(row))

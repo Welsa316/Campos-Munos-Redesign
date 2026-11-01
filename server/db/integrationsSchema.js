@@ -97,6 +97,23 @@ export const INTEGRATIONS_SCHEMA_SQL = `
   CREATE INDEX IF NOT EXISTS idx_rc_calls_started ON rc_calls(started_at DESC);
   CREATE INDEX IF NOT EXISTS idx_rc_calls_key ON rc_calls(counterpart_key, started_at);
 
+  -- RingOut ("call this number" from the portal): the phone RingCentral rings
+  -- first for each person (their direct number rings their RingCentral app),
+  -- and each call they placed, so its progress can be shown and cancelled.
+  ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS ringout_phone TEXT;
+  CREATE TABLE IF NOT EXISTS rc_ringouts (
+    id BIGSERIAL PRIMARY KEY,
+    rc_ringout_id TEXT NOT NULL,
+    placed_by INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
+    to_number TEXT NOT NULL,
+    from_number TEXT NOT NULL,
+    phase VARCHAR(16) NOT NULL CHECK (phase IN ('ringing_you', 'calling_client', 'connected', 'finished', 'failed', 'cancelled')),
+    rc_status JSONB NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+  CREATE INDEX IF NOT EXISTS idx_rc_ringouts_placed_by ON rc_ringouts(placed_by, created_at DESC);
+
   -- Where the import stands: one row.
   CREATE TABLE IF NOT EXISTS rc_call_sync_state (
     key VARCHAR(20) PRIMARY KEY CHECK (key = 'ringcentral'),

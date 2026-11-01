@@ -26,27 +26,31 @@
 
     <div class="flex-1 overflow-y-auto">
       <main class="max-w-[1120px] mx-auto px-4 sm:px-8 pt-6 sm:pt-10 pb-10 flex flex-col gap-4 sm:gap-5 font-ui">
-        <!-- Greeting, top left, no card: fades in slowly through mist.
-             The date sits on the right. -->
+        <!-- Greeting, top left, no card. The words rise in letter by letter
+             (SplitText); the picture and role line settle in around them. -->
         <div class="flex items-start justify-between gap-4 px-1">
-          <FadeContent effect="mist" trigger="mount" :duration="2.6" :delay="0.2" ease="power2.out" class="flex items-center gap-4 min-w-0">
-            <button type="button" @click="showAvatarPicker = true" title="Change your picture" aria-label="Change your picture"
-              class="group relative flex-shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-navy">
-              <UserAvatar :avatar="profile.avatar" :size="avatarSize" label="Your picture" class="ring-4 ring-white shadow-sm transition-transform group-hover:scale-105" />
-              <span class="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-white shadow ring-1 ring-black/5 text-gray-700 inline-flex items-center justify-center">
-                <FaIcon name="pen" class="text-[10px]" />
-              </span>
-            </button>
+          <div class="flex items-center gap-4 min-w-0">
+            <RiseIn :duration="0.7" :distance="10">
+              <button type="button" @click="showAvatarPicker = true" title="Change your picture" aria-label="Change your picture"
+                class="group relative flex-shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-navy">
+                <UserAvatar :avatar="profile.avatar" :size="avatarSize" label="Your picture" class="ring-4 ring-white shadow-sm transition-transform group-hover:scale-105" />
+                <span class="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-white shadow ring-1 ring-black/5 text-gray-700 inline-flex items-center justify-center">
+                  <FaIcon name="pen" class="text-[10px]" />
+                </span>
+              </button>
+            </RiseIn>
             <div class="min-w-0">
-              <h2 class="text-[28px] sm:text-[38px] font-semibold tracking-tight text-gray-900 leading-tight">
-                {{ timeOfDay }}<template v-if="firstName">, {{ firstName }}</template>
-              </h2>
-              <p class="text-[13px] text-gray-500 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                <span v-if="profile.roleLabel" class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-white text-gray-800 text-[11px] font-semibold ring-1 ring-gray-200">{{ profile.roleLabel }}</span>
-                <span class="truncate">{{ adminEmail }}</span>
-              </p>
+              <SplitText tag="h2" :text="greetingText" effect="rise" split-type="chars" :delay="35" :duration="1.1"
+                trigger="load" text-align="left" hover-effect="lift"
+                class-name="text-[28px] sm:text-[38px] font-semibold tracking-tight text-gray-900 leading-tight" />
+              <RiseIn :delay="0.55" :distance="8">
+                <p class="text-[13px] text-gray-500 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span v-if="profile.roleLabel" class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-white text-gray-800 text-[11px] font-semibold ring-1 ring-gray-200">{{ profile.roleLabel }}</span>
+                  <span class="truncate">{{ adminEmail }}</span>
+                </p>
+              </RiseIn>
             </div>
-          </FadeContent>
+          </div>
           <span class="hidden sm:block pt-3 text-[15px] font-medium tracking-tight text-gray-500 whitespace-nowrap">{{ today }}</span>
         </div>
 
@@ -112,7 +116,8 @@ import { useApi } from '../composables/useApi.js'
 import SectionLinks from '../components/portal/SectionLinks.vue'
 import ChangePasswordModal from '../components/messages/ChangePasswordModal.vue'
 import FaIcon from '../components/FaIcon.vue'
-import FadeContent from '../components/FadeContent.vue'
+import { money } from '../modules/billing/api.js'
+import SplitText from '../components/SplitText.vue'
 import RiseIn from '../components/RiseIn.vue'
 import UserAvatar from '../components/UserAvatar.vue'
 import AvatarPicker from '../components/AvatarPicker.vue'
@@ -127,6 +132,7 @@ const avatarSize = typeof window !== 'undefined' && window.innerWidth >= 640 ? 6
 // The name set with scripts/staff.js set-name. Accounts without one are
 // greeted without a name rather than by their email ("office").
 const firstName = computed(() => String(profile.value.displayName || '').trim().split(/\s+/)[0] || '')
+const greetingText = computed(() => (firstName.value ? `${timeOfDay}, ${firstName.value}` : timeOfDay))
 const timeOfDay = (() => {
   const h = new Date().getHours()
   return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
@@ -139,6 +145,19 @@ const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: '
 const monthStart = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - 29); return d })()
 const missed = ref(null) // { connection, configured, missed: {...} }
 const unread = ref(null) // { count, oldest }
+const billing = ref(null) // /api/billing/overview, for billing accounts
+
+// Which figures an account sees: phones and messages for whoever answers
+// them (front desk, receptionist, administrators); billing figures for
+// accounts that work billing but not phones or leads (billing paralegal).
+const showsBillingFigures = computed(() => can('billing.view') && !can('calls.view') && !can('crm.view'))
+
+function shortDay(d) {
+  const s = String(d || '')
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s)
+  const date = m && s.length <= 10 ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s)
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
 
 function ago(d) {
   const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400000)
@@ -192,6 +211,46 @@ const summaries = computed(() => {
       pillTone: 'bg-white/15 text-white',
     })
   }
+  if (showsBillingFigures.value) {
+    const b = billing.value
+    const imported = Boolean(b?.lastImport)
+    const overdue = b?.byStatus?.overdue || { count: 0, owedCents: 0 }
+    out.push({
+      key: 'overdue',
+      to: { name: 'BillingInvoices', query: { status: 'overdue' } },
+      span: 'md:col-span-7',
+      bg: 'bg-[#f8dede] hover:bg-[#f5d4d4]',
+      icon: 'file-invoice-dollar',
+      label: 'Overdue invoices',
+      labelTone: 'text-[#7c1515]',
+      arrowTone: 'bg-white/70 text-[#7c1515]',
+      numberTone: 'text-[#5c0f0f]',
+      subTone: 'text-[#7c1515]/80',
+      value: !b ? '·' : imported ? overdue.count : '—',
+      sub: imported
+        ? `From the eImmigration report of ${shortDay(b.lastImport.report_date || b.lastImport.applied_at)}`
+        : b ? 'No eImmigration report imported yet' : 'From the latest eImmigration report',
+      pill: imported && overdue.count ? `${money(overdue.owedCents)} owed` : imported ? 'Nothing overdue' : null,
+      pillTone: overdue.count ? 'bg-brand-red text-white' : 'bg-white/80 text-[#5c0f0f]',
+    })
+    const r = b?.remindersAwaitingApproval
+    out.push({
+      key: 'reminders',
+      to: { name: 'BillingReminders' },
+      span: 'md:col-span-5',
+      bg: 'bg-brand-navy hover:bg-brand-navy-dark',
+      icon: 'bell',
+      label: 'Reminders waiting for approval',
+      labelTone: 'text-white/85',
+      arrowTone: 'bg-white/15 text-white',
+      numberTone: 'text-white',
+      subTone: 'text-white/70',
+      value: !b ? '·' : r?.count ?? 0,
+      sub: 'Payment reminders drafted by the rules',
+      pill: r?.count ? `Oldest from ${ago(r.oldest)}` : b ? 'Nothing to approve' : null,
+      pillTone: 'bg-white/15 text-white',
+    })
+  }
   if (out.length === 1) out[0].span = 'md:col-span-12'
   return out
 })
@@ -226,6 +285,9 @@ const cards = computed(() => [
 ].filter(Boolean))
 
 onMounted(() => {
+  if (showsBillingFigures.value) {
+    get('/api/billing/overview').then((d) => { billing.value = d }).catch(() => { billing.value = {} })
+  }
   if (can('calls.view')) {
     get(`/api/calls/summary?from=${encodeURIComponent(monthStart.toISOString())}`)
       .then((d) => { missed.value = d })

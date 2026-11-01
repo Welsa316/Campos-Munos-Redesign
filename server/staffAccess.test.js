@@ -218,7 +218,7 @@ test('staff roles and capabilities', { skip: SKIP }, async (t) => {
     const me = await call('GET', '/api/auth/verify', { cookie: c })
     assert.equal(me.json.role, 'receptionist')
     assert.equal(me.json.roleLabel, 'Receptionist')
-    assert.deepEqual(me.json.capabilities, ['calls.view', 'whatsapp.manage', 'whatsapp.send', 'whatsapp.view'])
+    assert.deepEqual(me.json.capabilities, ['calls.place', 'calls.view', 'whatsapp.manage', 'whatsapp.send', 'whatsapp.view'])
     for (const p of ['/api/whatsapp/conversations', '/api/calls', '/api/calls/summary']) {
       assert.equal((await call('GET', p, { cookie: c })).status, 200, p)
     }
@@ -306,6 +306,15 @@ test('staff roles and capabilities', { skip: SKIP }, async (t) => {
   await t.test('the last administrator cannot be disabled', async () => {
     await db.query("UPDATE admin_users SET role = 'staff' WHERE role = 'admin' AND email <> 'owner@example.test'")
     await assert.rejects(staffCli.run(db, 'disable', { email: 'owner@example.test' }, () => {}), /last enabled administrator/)
+    // Nor demoted: make someone else an administrator first, then it works.
+    await assert.rejects(staffCli.run(db, 'set-role', { email: 'owner@example.test', role: 'receptionist' }, () => {}), /last enabled administrator/)
+    assert.equal((await db.query("SELECT role FROM admin_users WHERE email = 'owner@example.test'")).rows[0].role, 'admin')
+    await staffCli.run(db, 'set-role', { email: 'paralegal@example.test', role: 'admin' }, () => {})
+    await staffCli.run(db, 'set-role', { email: 'owner@example.test', role: 'receptionist' }, () => {})
+    assert.equal((await db.query("SELECT role FROM admin_users WHERE email = 'owner@example.test'")).rows[0].role, 'receptionist')
+    // Put things back for the tests that follow.
+    await staffCli.run(db, 'set-role', { email: 'owner@example.test', role: 'admin' }, () => {})
+    await staffCli.run(db, 'set-role', { email: 'paralegal@example.test', role: 'billing_paralegal' }, () => {})
   })
 
   await t.test('the script never takes a password as an argument; a generated one signs in', async () => {
