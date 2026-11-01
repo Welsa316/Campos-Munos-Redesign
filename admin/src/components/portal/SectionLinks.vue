@@ -19,21 +19,24 @@ const props = defineProps({
   // The section this header belongs to; it is not linked to itself.
   current: { type: String, required: true },
   // From which width the links carry a text label (icon and tooltip below).
-  labelAt: { type: String, default: 'lg' },
+  labelAt: { type: String, default: 'xl' },
 })
 
 // Whole class names, so Tailwind sees them.
 const LABEL_AT = { sm: 'hidden sm:inline', lg: 'hidden lg:inline', xl: 'hidden xl:inline', '2xl': 'hidden 2xl:inline' }
 
 const SECTIONS = [
+  { key: 'home', label: 'Home', icon: 'house', to: { name: 'Home' }, any: [] },
   { key: 'messages', label: 'Messages', icon: 'inbox', to: { name: 'Inbox' }, any: ['crm.view'] },
   { key: 'whatsapp', label: 'WhatsApp', icon: 'comments', to: { name: 'WhatsApp' }, any: ['whatsapp.view'] },
   // The router moves an account without billing.view to the first billing
   // tab it may open.
   { key: 'billing', label: 'Billing', icon: 'file-invoice-dollar', to: { name: 'BillingOverview' }, any: ['billing.view', 'billing.status', 'whatsapp.contacts'] },
+  { key: 'calls', label: 'Calls', icon: 'phone-volume', to: { name: 'Calls' }, any: ['calls.view'] },
   // Administrators only: connecting RingCentral.
   { key: 'integrations', label: 'Integrations', icon: 'plug', to: { name: 'Integrations' }, any: ['integrations.manage'] },
 ]
 
-const visible = computed(() => SECTIONS.filter((s) => s.key !== props.current && canAny(...s.any)))
+// An empty list means every signed-in account (Home).
+const visible = computed(() => SECTIONS.filter((s) => s.key !== props.current && (!s.any.length || canAny(...s.any))))
 </script>

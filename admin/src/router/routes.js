@@ -14,9 +14,18 @@ export const routes = [
   { path: '/login', name: 'Login', component: () => import('../views/LoginView.vue'),
     meta: { title: 'Sign in' } },
 
-  // Messages module: lead inbox + contacts pipeline.
-  { path: '/', name: 'Inbox', component: () => import('../views/InboxView.vue'),
+  // Home: the greeting and one big card per section the account may open.
+  { path: '/', name: 'Home', component: () => import('../views/DashboardView.vue'),
+    meta: { requiresAuth: true, module: 'home', title: 'Home' } },
+
+  // Messages module: lead inbox + contacts pipeline (at '/' before the home
+  // dashboard). ?lead=<id> opens one lead.
+  { path: '/inbox', name: 'Inbox', component: () => import('../views/InboxView.vue'),
     meta: { requiresAuth: true, module: 'messages', capability: 'crm.view' } },
+
+  // Calls module: the RingCentral call log (read-only).
+  { path: '/calls', name: 'Calls', component: () => import('../modules/calls/CallsView.vue'),
+    meta: { requiresAuth: true, module: 'calls', capability: 'calls.view', title: 'Calls' } },
 
   // WhatsApp module: the shared conversation inbox.
   { path: '/whatsapp/:id(\\d+)?', name: 'WhatsApp', component: () => import('../modules/whatsapp/WhatsAppView.vue'),

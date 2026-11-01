@@ -48,6 +48,70 @@ export const INTEGRATIONS_SCHEMA_SQL = `
       OR (status = 'needs_reauth' AND access_token_enc IS NULL AND refresh_token_enc IS NULL)
     )
   );
+
+  -- One comparable key per phone number, used to match a caller to a lead or
+  -- client however each was typed: digits only, and for North American
+  -- numbers the last 10 digits ('+1 (504) 555-0101' and '504.555.0101' agree).
+  -- Empty for no number.
+  CREATE OR REPLACE FUNCTION cm_phone_key(raw TEXT) RETURNS TEXT
+    LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $fn$
+      SELECT CASE
+        WHEN d ~ '^1[0-9]{10}$' THEN right(d, 10)
+        ELSE d
+      END
+      FROM (SELECT regexp_replace(COALESCE(raw, ''), '[^0-9]', '', 'g') AS d) x
+    $fn$;
+  CREATE INDEX IF NOT EXISTS idx_submissions_phone_key ON submissions (cm_phone_key(phone));
+  CREATE INDEX IF NOT EXISTS idx_billing_client_contacts_phone_key ON billing_client_contacts (cm_phone_key(phone_e164));
+
+  -- RingCentral call log, imported by server/integrations/ringcentral/callLog.js
+  -- (docs/ringcentral-call-log.md). One row per RingCentral call log record.
+  -- Only what the portal shows is kept: no recordings, no raw payload.
+  CREATE TABLE IF NOT EXISTS rc_calls (
+    id BIGSERIAL PRIMARY KEY,
+    rc_record_id TEXT NOT NULL UNIQUE,
+    telephony_session_id TEXT,
+    session_id TEXT,
+    direction VARCHAR(8) NOT NULL CHECK (direction IN ('inbound', 'outbound')),
+    started_at TIMESTAMPTZ NOT NULL,
+    duration_seconds INTEGER NOT NULL DEFAULT 0,
+    -- RingCentral's own result text ('Accepted', 'Missed', ...) and our reading of it.
+    result_raw TEXT,
+    outcome VARCHAR(10) NOT NULL CHECK (outcome IN ('answered', 'missed', 'voicemail', 'connected', 'no_answer', 'other')),
+    -- The person outside the firm: caller on inbound calls, callee on outbound.
+    counterpart_number TEXT,
+    counterpart_key TEXT NOT NULL DEFAULT '',
+    caller_id_name TEXT,
+    -- The firm's side: the number or line reached, or the extension calling out.
+    firm_number TEXT,
+    firm_name TEXT,
+    firm_extension TEXT,
+    answered_by_name TEXT,
+    answered_by_extension TEXT,
+    is_internal BOOLEAN NOT NULL DEFAULT FALSE,
+    scope VARCHAR(10) NOT NULL CHECK (scope IN ('account', 'extension')),
+    rc_last_modified_at TIMESTAMPTZ,
+    first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+  CREATE INDEX IF NOT EXISTS idx_rc_calls_started ON rc_calls(started_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_rc_calls_key ON rc_calls(counterpart_key, started_at);
+
+  -- Where the import stands: one row.
+  CREATE TABLE IF NOT EXISTS rc_call_sync_state (
+    key VARCHAR(20) PRIMARY KEY CHECK (key = 'ringcentral'),
+    scope VARCHAR(10) CHECK (scope IN ('account', 'extension')),
+    scope_checked_at TIMESTAMPTZ,
+    window_to TIMESTAMPTZ,
+    last_run_at TIMESTAMPTZ,
+    last_success_at TIMESTAMPTZ,
+    last_trigger VARCHAR(10),
+    last_fetched INTEGER,
+    last_new INTEGER,
+    last_truncated BOOLEAN NOT NULL DEFAULT FALSE,
+    last_error_code TEXT,
+    last_error_at TIMESTAMPTZ
+  );
 `
 
 export async function applyIntegrationsSchema(db) {

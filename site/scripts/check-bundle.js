@@ -21,6 +21,7 @@ export const ADMIN_MARKERS = [
   // Portal modules planned next (docs/billing-automation-plan.md).
   '/api/billing/',
   '/api/integrations/',
+  '/api/calls',
   'Client Messages',
   'Change password',
   'Sign Out',

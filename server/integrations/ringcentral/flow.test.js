@@ -167,6 +167,8 @@ test('RingCentral OAuth flow', { skip: SKIP }, async (t) => {
     assert.equal(s.status, 200)
     assert.equal(s.json.status, 'not_connected')
     assert.equal(s.json.configured, true)
+    assert.equal(s.json.clientId, 'test-client-id')
+    assert.equal(s.json.serverHost, 'platform.devtest.ringcentral.com')
     assert.equal(s.headers.get('cache-control'), 'no-store')
   })
 

@@ -232,6 +232,10 @@ export async function getConnectionStatus(db, config) {
     configProblems: config?.configured ? [] : (config?.problems || []),
     environment: config?.environment ?? null,
     redirectUri: config?.redirectUri || null,
+    // Public values (both travel in the authorize link), shown so an
+    // administrator can match them against the RingCentral app.
+    clientId: config?.configured ? config.clientId : null,
+    serverHost: config?.configured ? new URL(config.serverUrl).host : null,
     status: row ? row.status : 'not_connected',
     connection: row ? {
       environment: row.environment,
