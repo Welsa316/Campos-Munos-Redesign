@@ -105,8 +105,13 @@
             </div>
           </div>
 
-          <footer v-if="data?.redirectUri" class="px-5 py-3 border-t border-gray-100 text-[11px] font-ui text-gray-500">
-            Redirect URI registered on the RingCentral app: <span class="text-gray-700 break-all">{{ data.redirectUri }}</span>
+          <footer v-if="data?.redirectUri" class="px-5 py-3 border-t border-gray-100 text-[11px] font-ui text-gray-500 space-y-1">
+            <p>What this server sends to RingCentral. The app with this client ID must have exactly this redirect URI saved, in the same environment.</p>
+            <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-0.5">
+              <template v-if="data.clientId"><dt>Client ID</dt><dd class="text-gray-700 break-all font-mono">{{ data.clientId }}</dd></template>
+              <template v-if="data.serverHost"><dt>RingCentral</dt><dd class="text-gray-700">{{ data.serverHost }} ({{ data.environment }})</dd></template>
+              <dt>Redirect URI</dt><dd class="text-gray-700 break-all font-mono">{{ data.redirectUri }}</dd>
+            </dl>
           </footer>
         </section>
       </div>
