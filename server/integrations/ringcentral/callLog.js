@@ -379,6 +379,11 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
       SELECT c.*,
              lead.id AS lead_id, lead.first_name AS lead_first, lead.last_name AS lead_last, lead.n AS lead_count,
              cl.client_id, cl.client_name,
+             -- Marked "someone from the firm" for every call from the number:
+             -- a colleague's own phone, so not a website lead even when they
+             -- once tried the contact form with it.
+             EXISTS (SELECT 1 FROM rc_ignored_numbers fn
+                      WHERE c.counterpart_key <> '' AND fn.counterpart_key = c.counterpart_key AND fn.reason = 'staff_test') AS from_firm,
              fu.started_at AS followup_at, fu.direction AS followup_direction, fu.outcome AS followup_outcome,
              ex.kind AS excluded_kind, ex.reason AS excluded_reason, ex.note AS excluded_note, ex.created_at AS excluded_at,
              COALESCE(NULLIF(exu.display_name, ''), exu.email) AS excluded_by
@@ -474,7 +479,8 @@ function present(r) {
     callerIdName: r.caller_id_name,
     // Where the call came from, when the carrier sent a city instead of a name.
     callerLocation: callerLocation(r.caller_id_name),
-    lead: r.lead_id ? { id: r.lead_id, name: leadName, matches: Number(r.lead_count) } : null,
+    fromFirm: r.from_firm,
+    lead: r.lead_id && !r.from_firm ? { id: r.lead_id, name: leadName, matches: Number(r.lead_count) } : null,
     client: r.client_id ? { id: Number(r.client_id), name: r.client_name } : null,
     firm: { number: r.firm_number, name: r.firm_name, extension: r.firm_extension },
     answeredBy: r.answered_by_name || r.answered_by_extension ? { name: r.answered_by_name, extension: r.answered_by_extension } : null,

@@ -114,7 +114,9 @@
               <div class="min-w-0">
                 <p class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                   <span class="text-[15px] font-ui font-semibold text-gray-900 truncate">{{ c.name || (c.number ? 'Unknown caller' : 'Private number') }}</span>
-                  <span v-if="c.client" class="text-[10px] font-ui font-bold uppercase tracking-[0.08em] px-1.5 py-0.5 rounded bg-brand-navy/10 text-brand-navy">Client</span>
+                  <span v-if="c.fromFirm" class="text-[10px] font-ui font-bold uppercase tracking-[0.08em] px-1.5 py-0.5 rounded bg-gray-100 text-gray-700"
+                    title="Marked as someone from the firm for every call from this number">Firm</span>
+                  <span v-else-if="c.client" class="text-[10px] font-ui font-bold uppercase tracking-[0.08em] px-1.5 py-0.5 rounded bg-brand-navy/10 text-brand-navy">Client</span>
                   <router-link v-else-if="c.lead && canSeeLeads" :to="{ name: 'Inbox', query: { lead: c.lead.id } }"
                     class="text-[10px] font-ui font-bold uppercase tracking-[0.08em] px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 hover:bg-amber-200"
                     :title="c.lead.matches > 1 ? `${c.lead.matches} website leads use this number; showing the latest` : 'Open the website lead'">
