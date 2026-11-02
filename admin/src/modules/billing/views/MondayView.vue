@@ -18,7 +18,7 @@
         <button v-if="canConfigure" @click="check" :disabled="Boolean(busy)" class="px-3 py-2 rounded-lg text-xs font-ui font-semibold text-brand-navy ring-1 ring-brand-navy/30 hover:bg-brand-surface">Check connection</button>
       </section>
 
-      <!-- Board + column mapping (billing.configure) -->
+      <!-- Board + column mapping (monday.configure, administrators only) -->
       <section v-if="canConfigure" class="bg-white rounded-xl ring-1 ring-gray-200" aria-labelledby="cfg-h">
         <header class="px-5 py-4 border-b border-gray-100">
           <h2 id="cfg-h" class="text-sm font-ui font-semibold text-gray-900">Board and columns</h2>
@@ -163,8 +163,9 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useBillingApi, shortDate } from '../api.js'
 import { can } from '../../../composables/useAuth.js'
 
-// The board mapping is setup; running the sync is day-to-day work.
-const canConfigure = can('billing.configure')
+// The board mapping is the administrator's setup; running the sync is
+// day-to-day work.
+const canConfigure = can('monday.configure')
 const canSync = can('billing.sync')
 
 const FIELDS = [
@@ -234,7 +235,7 @@ async function load() {
       for (const f of FIELDS) map[f.key] = cfg.columnMap?.[f.key]?.columnId || ''
       for (const s of SUMMARY_STATUSES) labels[s.key] = cfg.columnMap?.status?.labels?.[s.key] || ''
       keep.value = [...(cfg.columnMap?.status?.keep || [])]
-      // The board lists feed only the setup section (billing.configure).
+      // The board lists feed only the setup section (monday.configure).
       if (canConfigure) {
         await loadBoards()
         await loadColumns(false)

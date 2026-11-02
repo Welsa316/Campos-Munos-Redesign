@@ -204,8 +204,9 @@ test('RingCentral OAuth flow', { skip: SKIP }, async (t) => {
     const c = await card()
     assert.equal(c.state, 'not_connected')
     assert.equal(c.canManage, true)
-    // A billing paralegal sees the card but cannot manage it.
-    assert.equal((await card(users.para)).canManage, false)
+    // Integrations are the administrator's: a billing paralegal cannot even
+    // see the status cards.
+    assert.equal((await call('GET', '/api/billing/integrations', { cookie: users.para.cookie })).status, 403)
   })
 
   await t.test('authorize: RingCentral URL with state; httpOnly binding cookie scoped to the callback; only digests stored', async () => {

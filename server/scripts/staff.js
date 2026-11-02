@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // Staff accounts, from the command line, by an administrator with database
-// access. There is deliberately no screen for this (docs/staff-accounts.md).
+// access. The portal's Team tab does the same through the same rules
+// (server/auth/team.js); this script is for when nobody can sign in as an
+// administrator, and for the first administrator (docs/staff-accounts.md).
 //
 //   node scripts/staff.js list
 //   node scripts/staff.js roles
@@ -22,14 +24,15 @@
 import dotenv from 'dotenv'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
-import crypto from 'crypto'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: join(__dirname, '..', '.env') })
 
-const { default: bcrypt } = await import('bcrypt')
 const { default: getPool } = await import('../db/pool.js')
-const { CAPABILITIES, ROLES, ROLE_NAMES, resolveCapabilities, isCapability, isRole } = await import('../auth/capabilities.js')
+const { CAPABILITIES, ROLES, resolveCapabilities } = await import('../auth/capabilities.js')
+const team = await import('../auth/team.js')
+const { recordActivity } = await import('../activity/recorder.js')
+const { ACTIONS } = await import('../activity/actions.js')
 
 export function parseArgs(argv) {
   const [command, ...rest] = argv
@@ -47,18 +50,14 @@ export function parseArgs(argv) {
   return { command, opts }
 }
 
-export function generatePassword() {
-  // 18 random bytes → 24 URL-safe characters.
-  return crypto.randomBytes(18).toString('base64url')
-}
+export const generatePassword = team.generatePassword
 
-function choosePassword() {
+// undefined: let the shared code generate one (and return it to print).
+function chosenPassword() {
   const given = process.env.STAFF_PASSWORD
-  if (given != null) {
-    if (given.length < 12) throw new Error('STAFF_PASSWORD must be at least 12 characters')
-    return { password: given, generated: false }
-  }
-  return { password: generatePassword(), generated: true }
+  if (given == null) return undefined
+  if (given.length < 12) throw new Error('STAFF_PASSWORD must be at least 12 characters')
+  return given
 }
 
 const need = (opts, key) => {
@@ -66,18 +65,17 @@ const need = (opts, key) => {
   return opts[key]
 }
 
-async function findUser(db, email) {
-  const row = (await db.query('SELECT * FROM admin_users WHERE LOWER(email) = LOWER($1)', [email])).rows[0]
-  if (!row) throw new Error(`No account with email ${email}`)
-  return row
-}
+const osUser = () => process.env.USER || process.env.USERNAME || null
+const CLI = { via: 'cli', get osUser() { return osUser() } }
 
-async function auditCli(db, userId, action, details = {}) {
-  // actor_id NULL: the change came from the command line, not a portal session.
-  await db.query(
-    `INSERT INTO billing_audit_events (actor_id, action, entity_type, entity_id, details) VALUES (NULL, $1, 'admin_user', $2, $3)`,
-    [action, String(userId), JSON.stringify({ via: 'scripts/staff.js', osUser: process.env.USER || process.env.USERNAME || null, ...details })]
-  )
+// The same line the portal's Team tab writes, marked as from the command line.
+async function logCli(db, routeKey, row, details = {}) {
+  const def = ACTIONS[routeKey]
+  await recordActivity(db, {
+    actorEmail: osUser() ? `${osUser()} (command line)` : 'command line',
+    action: def.key, label: def.label, entityType: 'account', entityId: String(row.id),
+    source: 'cli', details: { account: row.email, ...details },
+  })
 }
 
 function describe(row) {
@@ -88,6 +86,8 @@ function describe(row) {
   ].filter(Boolean).join(' ')
   return `${row.disabled_at ? '[DISABLED] ' : ''}${row.email}  name=${row.display_name || '-'}  role=${row.role}${extra ? `  overrides: ${extra}` : ''}\n    ${[...caps].sort().join(', ') || '(no capabilities)'}`
 }
+
+const find = (db, opts) => team.findAccount(db, { email: need(opts, 'email') })
 
 export async function run(db, command, opts, out = console.log) {
   switch (command) {
@@ -103,102 +103,59 @@ export async function run(db, command, opts, out = console.log) {
       return
     }
     case 'create': {
-      const email = need(opts, 'email').trim().toLowerCase()
-      const role = need(opts, 'role')
-      if (!isRole(role)) throw new Error(`Unknown role ${role}. Roles: ${ROLE_NAMES.join(', ')}`)
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('That is not an email address')
-      const exists = (await db.query('SELECT 1 FROM admin_users WHERE LOWER(email) = LOWER($1)', [email])).rowCount
-      if (exists) throw new Error(`An account with ${email} already exists. Use set-role or reset-password.`)
-      const { password, generated } = choosePassword()
-      const hash = await bcrypt.hash(password, 12)
-      const row = (await db.query(
-        `INSERT INTO admin_users (email, password_hash, role, display_name, password_updated_at) VALUES ($1, $2, $3, $4, NOW()) RETURNING *`,
-        [email, hash, role, opts.name?.trim() || null]
-      )).rows[0]
-      await auditCli(db, row.id, 'staff.created', { role })
+      const { row, password } = await team.createAccount(db, { email: need(opts, 'email'), name: opts.name, role: need(opts, 'role'), password: chosenPassword() }, CLI)
+      await logCli(db, 'POST /api/team', row, { role: row.role })
       out(`Created ${describe(row)}`)
-      if (generated) out(`\nTemporary password on the next line, shown once. Copy only the password itself; give it to them in person and ask them to change it with the Password button:\n${password}\n`)
+      if (password) out(`\nTemporary password on the next line, shown once. Copy only the password itself; give it to them in person and ask them to change it with the Password button:\n${password}\n`)
       return
     }
     case 'set-role': {
-      const u = await findUser(db, need(opts, 'email'))
-      const role = need(opts, 'role')
-      if (!isRole(role)) throw new Error(`Unknown role ${role}. Roles: ${ROLE_NAMES.join(', ')}`)
-      // Same rule as disable: someone must always be able to administer.
-      if (u.role === 'admin' && role !== 'admin' && !u.disabled_at) {
-        const others = (await db.query("SELECT COUNT(*)::int AS n FROM admin_users WHERE role = 'admin' AND disabled_at IS NULL AND id <> $1", [u.id])).rows[0].n
-        if (others === 0) throw new Error('That is the last enabled administrator; make another account an administrator first.')
-      }
-      const row = (await db.query('UPDATE admin_users SET role = $2 WHERE id = $1 RETURNING *', [u.id, role])).rows[0]
-      await auditCli(db, u.id, 'staff.role_changed', { from: u.role, to: role })
+      const u = await find(db, opts)
+      const row = await team.setRole(db, u, need(opts, 'role'), CLI)
+      await logCli(db, 'PUT /api/team/:id/role', row, { role: row.role })
       out(describe(row))
       return
     }
     case 'grant':
     case 'revoke': {
-      const u = await findUser(db, need(opts, 'email'))
+      const u = await find(db, opts)
       const cap = need(opts, 'capability')
-      if (!isCapability(cap)) throw new Error(`Unknown capability ${cap}. Run "roles" for the list.`)
-      // A grant cancels an earlier revoke of the same capability and the
-      // other way round, so the two lists never disagree.
-      const [add, remove] = command === 'grant' ? ['capability_grants', 'capability_revokes'] : ['capability_revokes', 'capability_grants']
-      const row = (await db.query(
-        `UPDATE admin_users SET ${add} = ARRAY(SELECT DISTINCT unnest(array_append(${add}, $2::text))),
-                                ${remove} = array_remove(${remove}, $2::text)
-          WHERE id = $1 RETURNING *`,
-        [u.id, cap]
-      )).rows[0]
-      await auditCli(db, u.id, `staff.capability_${command === 'grant' ? 'granted' : 'revoked'}`, { capability: cap })
+      const row = await team.setCapability(db, u, cap, command, CLI)
+      await logCli(db, 'PUT /api/team/:id/capabilities/:capability', row, { capability: cap, state: command })
       out(describe(row))
       return
     }
     case 'clear-overrides': {
-      const u = await findUser(db, need(opts, 'email'))
-      const row = (await db.query("UPDATE admin_users SET capability_grants = '{}', capability_revokes = '{}' WHERE id = $1 RETURNING *", [u.id])).rows[0]
-      await auditCli(db, u.id, 'staff.overrides_cleared')
+      const row = await team.clearOverrides(db, await find(db, opts), CLI)
+      await logCli(db, 'POST /api/team/:id/clear-overrides', row)
       out(describe(row))
       return
     }
     case 'set-name': {
-      const u = await findUser(db, need(opts, 'email'))
-      const name = need(opts, 'name').trim()
-      if (name.length > 60) throw new Error('Name: up to 60 characters')
-      const row = (await db.query('UPDATE admin_users SET display_name = $2 WHERE id = $1 RETURNING *', [u.id, name])).rows[0]
-      await auditCli(db, u.id, 'staff.renamed')
+      const row = await team.setName(db, await find(db, opts), need(opts, 'name'), CLI)
+      await logCli(db, 'PUT /api/team/:id/name', row)
       out(describe(row))
       return
     }
     case 'reset-password': {
-      const u = await findUser(db, need(opts, 'email'))
-      const { password, generated } = choosePassword()
-      const hash = await bcrypt.hash(password, 12)
-      await db.query('UPDATE admin_users SET password_hash = $2, password_updated_at = NOW(), token_version = token_version + 1 WHERE id = $1', [u.id, hash])
-      await auditCli(db, u.id, 'staff.password_reset')
+      const u = await find(db, opts)
+      const password = await team.resetPassword(db, u, chosenPassword(), CLI)
+      await logCli(db, 'POST /api/team/:id/reset-password', u)
       out(`Password reset for ${u.email}; their open sessions are signed out.`)
-      if (generated) out(`\nTemporary password on the next line, shown once. Copy only the password itself:\n${password}\n`)
+      if (password) out(`\nTemporary password on the next line, shown once. Copy only the password itself:\n${password}\n`)
       return
     }
     case 'sign-out': {
-      const u = await findUser(db, need(opts, 'email'))
-      await db.query('UPDATE admin_users SET token_version = token_version + 1 WHERE id = $1', [u.id])
-      await auditCli(db, u.id, 'staff.signed_out')
+      const u = await find(db, opts)
+      await team.signOutEverywhere(db, u, CLI)
+      await logCli(db, 'POST /api/team/:id/sign-out', u)
       out(`Every open session for ${u.email} is signed out.`)
       return
     }
     case 'disable':
     case 'enable': {
-      const u = await findUser(db, need(opts, 'email'))
-      if (command === 'disable') {
-        const admins = (await db.query("SELECT COUNT(*)::int AS n FROM admin_users WHERE role = 'admin' AND disabled_at IS NULL AND id <> $1", [u.id])).rows[0].n
-        if (u.role === 'admin' && admins === 0) throw new Error('That is the last enabled administrator; enable or create another first.')
-      }
-      const row = (await db.query(
-        command === 'disable'
-          ? 'UPDATE admin_users SET disabled_at = NOW(), token_version = token_version + 1 WHERE id = $1 RETURNING *'
-          : 'UPDATE admin_users SET disabled_at = NULL WHERE id = $1 RETURNING *',
-        [u.id]
-      )).rows[0]
-      await auditCli(db, u.id, `staff.${command}d`)
+      const row = await team.setDisabled(db, await find(db, opts), command === 'disable', CLI)
+      await logCli(db, `POST /api/team/:id/${command}`, row)
       out(describe(row))
       return
     }

@@ -12,7 +12,9 @@ export const LEAD_STATUSES = [
     pill: 'bg-green-100 text-green-800 ring-green-200', dot: 'bg-green-600' },
   { key: 'retained', label: 'Retained', hint: 'Signed on as a client',
     pill: 'bg-brand-navy/10 text-brand-navy ring-brand-navy/20', dot: 'bg-brand-navy' },
-  { key: 'closed', label: 'Closed', hint: 'Not moving forward',
+  // Stored as 'closed' (existing rows and the CHECK constraint); the front
+  // desk uses it for junk and not-real inquiries, so it reads as Spam.
+  { key: 'closed', label: 'Spam', hint: 'Junk or not a real inquiry',
     pill: 'bg-gray-100 text-gray-600 ring-gray-200', dot: 'bg-gray-400' },
 ]
 
