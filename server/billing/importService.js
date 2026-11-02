@@ -276,16 +276,59 @@ async function planChanges(db, normalized, { reportType, reportDate, asOfDate, m
   for (const m of matchByClient.values()) matching[m.status]++
   matching.no_client_id = new Set([...invoices, ...payments].filter((r) => !r.externalClientId).map((r) => normalizeName(r.clientName))).size
 
+  const phones = await planPhones(db, [...invoices, ...payments])
+
   const warnings = rows.reduce((n, r) => n + r.issues.filter((i) => i.severity === 'warning').length, 0)
   const errors = rows.reduce((n, r) => n + r.issues.filter((i) => i.severity === 'error').length, 0)
   const stats = {
     counts: { invoices: invoices.length, payments: payments.length, ...prefix('invoice_', counts), ...prefix('payment_', payCounts), absent: absent.length, warnings, errors },
     statuses,
     matching,
+    phones: phones.counts,
     absentInvoiceIds: absent.slice(0, 200),
   }
   const fingerprint = sha256(JSON.stringify(rows.map((r) => [r.kind, r.rowNumber, r.action, r.changes])) + JSON.stringify(absent))
-  return { rows, stats, fingerprint, absent, matchByClient }
+  return { rows, stats, fingerprint, absent, matchByClient, phones: phones.list }
+}
+
+/**
+ * What the report's phone column would do to each client's WhatsApp number.
+ *   new       no number on file yet: the report's is saved
+ *   changed   the number on file came from an earlier report and differs: replaced
+ *   same      already on file
+ *   kept      staff saved a different number: theirs stays, the report's is ignored
+ *   conflict  the client's rows disagree on the number: nothing is saved
+ * Only clients with an eImmigration ID, and only numbers that could be read.
+ */
+async function planPhones(db, records) {
+  const counts = { new: 0, changed: 0, same: 0, kept: 0, conflict: 0, invalid: 0 }
+  counts.invalid = records.filter((r) => (r.issues || []).some((i) => i.code === 'invalid_phone')).length
+  const byClient = new Map()
+  for (const r of records) {
+    if (!r.externalClientId || !r.clientPhone) continue
+    if (!byClient.has(r.externalClientId)) byClient.set(r.externalClientId, new Set())
+    byClient.get(r.externalClientId).add(r.clientPhone)
+  }
+  if (!byClient.size) return { counts, list: [] }
+  const onFile = new Map((await db.query(
+    `SELECT c.eimmigration_client_id, k.phone_e164, k.phone_source FROM billing_clients c
+       JOIN billing_client_contacts k ON k.client_id = c.id WHERE c.eimmigration_client_id = ANY($1)`,
+    [[...byClient.keys()]]
+  )).rows.map((r) => [r.eimmigration_client_id, r]))
+  const list = []
+  for (const [eimId, set] of byClient) {
+    let action
+    const [phone] = set
+    const k = onFile.get(eimId)
+    if (set.size > 1) action = 'conflict'
+    else if (!k || !k.phone_e164) action = 'new'
+    else if (k.phone_e164 === phone) action = 'same'
+    else if (k.phone_source === 'import') action = 'changed'
+    else action = 'kept'
+    counts[action]++
+    if (action === 'new' || action === 'changed') list.push({ eimId, phone, action })
+  }
+  return { counts, list }
 }
 
 const prefix = (p, o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [p + k, v]))
@@ -331,7 +374,7 @@ export async function approveImport(db, jobId, { actorId, matchContext = {} } = 
       return Number(rows[0].id)
     }
 
-    const applied = { invoices: 0, payments: 0, links: 0 }
+    const applied = { invoices: 0, payments: 0, links: 0, phones: 0 }
     for (const row of plan.rows) {
       if (row.kind !== 'invoice' || !['insert', 'update'].includes(row.action)) continue
       const rec = row.record.proposed
@@ -417,6 +460,37 @@ export async function approveImport(db, jobId, { actorId, matchContext = {} } = 
         [cid, m.itemIds[0], item?.name ?? null, actorId]
       )
       applied.links += res.rowCount
+    }
+
+    // WhatsApp numbers from the report. Only ever fills an empty number or
+    // replaces one an earlier report set: a number staff saved is theirs.
+    for (const p of plan.phones) {
+      const cid = await clientIdFor(p.eimId, null)
+      if (p.action === 'new') {
+        const res = await client.query(
+          `INSERT INTO billing_client_contacts (client_id, phone_e164, phone_source) VALUES ($1, $2, 'import')
+           ON CONFLICT (client_id) DO UPDATE SET phone_e164 = EXCLUDED.phone_e164, phone_source = 'import',
+             opted_in_at = NULL, opt_in_source = NULL, updated_at = NOW()
+           WHERE billing_client_contacts.phone_e164 IS NULL`,
+          [cid, p.phone]
+        )
+        applied.phones += res.rowCount
+        continue
+      }
+      // Consent belongs to a number: a new number clears a recorded opt-in,
+      // and reminders drafted for the old one are cancelled. An opt-out stays.
+      const res = await client.query(
+        `UPDATE billing_client_contacts SET phone_e164 = $2, opted_in_at = NULL, opt_in_source = NULL, updated_at = NOW()
+          WHERE client_id = $1 AND phone_source = 'import' AND phone_e164 IS DISTINCT FROM $2`,
+        [cid, p.phone]
+      )
+      if (!res.rowCount) continue
+      applied.phones++
+      await client.query(
+        `UPDATE billing_reminders SET state = 'cancelled', cancel_reason = 'number_changed', cancelled_at = NOW(), updated_at = NOW()
+          WHERE client_id = $1 AND action = 'whatsapp' AND state IN ('draft', 'approved')`,
+        [cid]
+      )
     }
 
     // Any monday.com preview made before this import now shows old figures.

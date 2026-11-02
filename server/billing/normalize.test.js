@@ -297,3 +297,16 @@ test('status and payment-type vocabulary', () => {
 test('unknown report type is refused', () => {
   assert.throws(() => normalizeRows(table('a\n1\n'), detectMapping(['a']), { reportType: 'guess' }), /Unknown report type/)
 })
+
+test('client phone: US numbers without a code, other countries with +, anything else warned and left out', () => {
+  const table = parseCsv('ID Cliente,Cliente,Factura,Saldo,Teléfono\n'
+    + 'C1,Ana,INV-1,100.00,(504) 555-0101\n'
+    + 'C2,Bea,INV-2,100.00,+52 33 1234 5678\n'
+    + 'C3,Cruz,INV-3,100.00,555-0103\n'
+    + 'C4,Dora,INV-4,100.00,\n')
+  const mapping = detectMapping(table.headers)
+  const { invoices } = normalizeRows(table, mapping, { reportType: 'invoice_summary', reportDate: REPORT_DATE })
+  assert.deepEqual(invoices.map((i) => i.clientPhone), ['15045550101', '523312345678', null, null])
+  assert.deepEqual(invoices[2].issues.map((i) => `${i.severity}:${i.code}`), ['warning:invalid_phone'])
+  assert.deepEqual(invoices[3].issues.filter((i) => i.field === 'clientPhone'), [], 'a blank phone is not a problem')
+})

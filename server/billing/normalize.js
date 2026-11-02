@@ -15,6 +15,7 @@
 import { REPORT_TYPES } from './model.js'
 import { parseMoneyToCents, formatCents } from './money.js'
 import { parseDate } from './dates.js'
+import { normalizePhone } from './reminders.js'
 
 const STATUS_HINTS = {
   void: ['void', 'voided', 'cancelled', 'canceled', 'anulada', 'anulado', 'cancelada', 'cancelado'],
@@ -153,6 +154,14 @@ export function normalizeRows(table, mapping, { reportType, reportDate = null, d
       }
       return r.date
     }
+    // The client's WhatsApp number. Ten digits are read as a US number;
+    // anything else needs its country code (+52 ...). An unreadable number is
+    // left out, never guessed.
+    const phoneText = text(row, 'clientPhone')
+    const clientPhone = phoneText === null ? null : normalizePhone(phoneText)
+    if (phoneText !== null && !clientPhone) {
+      issue('clientPhone', 'invalid_phone', 'warning', `Phone "${phoneText}" could not be read as a WhatsApp number (10-digit US, or with + and the country code); it was not imported.`)
+    }
     const cur = normalizeCurrency(cell(row, 'currency'), defaultCurrency)
     if (cur.error) issue('currency', 'invalid_currency', 'error', cur.error)
     else if (cur.currency !== defaultCurrency) issue('currency', 'non_default_currency', 'warning', `Row is in ${cur.currency}, not ${defaultCurrency}.`)
@@ -184,6 +193,7 @@ export function normalizeRows(table, mapping, { reportType, reportDate = null, d
         externalInvoiceId: text(row, 'externalInvoiceId'),
         externalClientId: text(row, 'externalClientId'),
         clientName: text(row, 'clientName'),
+        clientPhone,
         paymentDate,
         amountCents,
         paymentType,
@@ -248,6 +258,7 @@ export function normalizeRows(table, mapping, { reportType, reportDate = null, d
       externalInvoiceId,
       externalClientId: text(row, 'externalClientId'),
       clientName: text(row, 'clientName'),
+      clientPhone,
       invoiceDate,
       dueDate,
       totalCents,
