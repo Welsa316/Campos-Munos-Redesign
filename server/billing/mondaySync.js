@@ -29,6 +29,11 @@ export class MondayEncodeError extends Error {
   }
 }
 
+/** Labels on the status column the sync never changes (status entry `keep`). */
+export function keptLabels(entry) {
+  return Array.isArray(entry?.keep) ? entry.keep.filter((l) => typeof l === 'string' && l !== '') : []
+}
+
 /** Status labels defined on a column, from its parsed settings_str. */
 export function statusLabels(settings) {
   const raw = settings?.labels
@@ -119,9 +124,12 @@ function sameValue(columnType, current, encoded) {
   }
 }
 
-function targetFor(field, summary, entry, column) {
+function targetFor(field, summary, entry, column, current) {
   switch (field) {
     case 'status': {
+      // Labels staff set by hand (on hold, autopay, ...) say something no
+      // report can know: an item showing one is left alone.
+      if (keptLabels(entry).includes(String(current?.text ?? '').trim())) return { skip: 'label_kept' }
       const label = entry.labels?.[summary.overallStatus]
       if (!label) return { skip: 'label_not_mapped' }
       return { raw: label }
@@ -178,7 +186,7 @@ export function buildProposedChanges({ summaries = [], columnMap = {}, boardColu
       if (!column) return skipped.push({ field, reason: 'column_missing' })
       if (!FIELD_COLUMN_TYPES[field].includes(column.type)) return skipped.push({ field, reason: 'wrong_column_type' })
       if (usedColumns.has(column.id)) return skipped.push({ field, reason: 'duplicate_column' })
-      const target = targetFor(field, summary, entry, column)
+      const target = targetFor(field, summary, entry, column, item.columns?.[column.id])
       if (target.skip) return skipped.push({ field, reason: target.skip })
       let encoded
       try {
@@ -256,13 +264,19 @@ export function validateColumnMap(columnMap, boardColumns = []) {
       continue
     }
     if (field === 'status') {
+      // A state with no label leaves Status as it is for clients in that state.
       const defined = statusLabels(column.settings)
-      for (const status of SUMMARY_STATUSES) {
-        const label = entry.labels?.[status]
-        if (!label) errors.push({ field, code: 'missing_label', status, message: `No label chosen for "${status}"` })
-        else if (!defined.includes(label)) {
+      const targets = SUMMARY_STATUSES.map((status) => [status, entry.labels?.[status]]).filter(([, label]) => label)
+      if (!targets.length) errors.push({ field, code: 'missing_label', message: 'Choose a label for at least one payment state' })
+      for (const [status, label] of targets) {
+        if (!defined.includes(label)) {
           errors.push({ field, code: 'unknown_label', status, message: `Label "${label}" does not exist on column "${column.title}"` })
         }
+      }
+      const written = new Set(targets.map(([, label]) => label))
+      for (const label of keptLabels(entry)) {
+        if (!defined.includes(label)) errors.push({ field, code: 'unknown_label', message: `Label "${label}" does not exist on column "${column.title}"` })
+        else if (written.has(label)) errors.push({ field, code: 'kept_label_written', message: `"${label}" cannot be both written by the sync and left alone` })
       }
     }
   }

@@ -255,7 +255,6 @@ test('validateColumnMap reports wrong types, missing columns, missing and unknow
   )
   const has = (field, code) => errors.some((e) => e.field === field && e.code === code)
   assert.ok(has('status', 'unknown_label'))
-  assert.ok(errors.some((e) => e.code === 'missing_label' && e.status === 'no_invoices'))
   assert.ok(has('outstanding', 'wrong_column_type'))
   assert.ok(has('lastPaymentDate', 'wrong_column_type'))
   assert.ok(has('nextDueDate', 'column_missing'))
@@ -263,6 +262,52 @@ test('validateColumnMap reports wrong types, missing columns, missing and unknow
   assert.ok(has('bogus', 'unknown_field'))
   // status mapped onto a non-status column
   assert.ok(validateColumnMap({ status: { columnId: 'saldo', labels: COLUMN_MAP.status.labels } }, cols).some((e) => e.code === 'wrong_column_type'))
+})
+
+// Staff-set labels and states with no label ----------------------------------
+
+// A board where Status also carries workflow labels staff set by hand: the
+// sync writes only the payment states it was given labels for.
+const KEEP_MAP = {
+  status: { columnId: 'estado_pago', labels: { paid: 'Pagado', partial: 'Pago parcial', unpaid: 'Pendiente', overdue: 'Vencido' }, keep: ['Revisar'] },
+  outstanding: { columnId: 'saldo' },
+}
+
+test('an item showing a kept label keeps it, through apply, while its balance still syncs', async () => {
+  const provider = createMockMondayProvider()
+  const board = await loadBoard(provider)
+  // 1007 shows "Revisar" with 2000 owed; the report now says paid in full.
+  const [p] = buildProposedChanges({ summaries: [summary('1007', { overallStatus: 'paid', outstandingCents: 0 })], columnMap: KEEP_MAP, ...board })
+  assert.deepEqual(p.changes.map((c) => [c.field, c.from, c.to]), [['outstanding', '2000', '0.00']])
+  assert.ok(p.skipped.some((s) => s.field === 'status' && s.reason === 'label_kept'))
+  await applyAll(provider, [p])
+  const after = (await loadBoard(provider)).currentItems.find((i) => i.id === '1007')
+  assert.equal(after.columns.estado_pago.text, 'Revisar')
+  assert.equal(after.columns.saldo.text, '0.00')
+})
+
+test('an item showing any other label is still updated to the payment state', async () => {
+  const board = await loadBoard(createMockMondayProvider())
+  // 1002 shows "Pendiente": the sync owns that label, so it moves to paid.
+  const [p] = buildProposedChanges({ summaries: [summary('1002', { overallStatus: 'paid', outstandingCents: 0 })], columnMap: KEEP_MAP, ...board })
+  assert.ok(p.changes.some((c) => c.field === 'status' && c.from === 'Pendiente' && c.to === 'Pagado'))
+})
+
+test('a payment state with no label leaves Status as it is', async () => {
+  const board = await loadBoard(createMockMondayProvider())
+  // 1006 has an empty Status; "no invoices" has no label in KEEP_MAP.
+  const [p] = buildProposedChanges({ summaries: [summary('1006', { overallStatus: 'no_invoices' })], columnMap: KEEP_MAP, ...board })
+  assert.ok(!p.changes.some((c) => c.field === 'status'))
+  assert.ok(p.skipped.some((s) => s.field === 'status' && s.reason === 'label_not_mapped'))
+})
+
+test('validateColumnMap: some states may go unlabelled, but not all; kept labels must exist and not be written', async () => {
+  const cols = await createMockMondayProvider().getBoardColumns(SYNTHETIC_BOARD_ID)
+  assert.deepEqual(validateColumnMap(KEEP_MAP, cols), [])
+  const codes = (status) => validateColumnMap({ status: { columnId: 'estado_pago', ...status } }, cols).map((e) => e.code)
+  assert.deepEqual(codes({ labels: {} }), ['missing_label'])
+  assert.deepEqual(codes({ labels: { paid: 'Pagado' }, keep: ['ON HOLD'] }), ['unknown_label'])
+  assert.deepEqual(codes({ labels: { paid: 'Pagado' }, keep: ['Pagado'] }), ['kept_label_written'])
 })
 
 test('last-sync values use the firm\'s Central-time calendar, not UTC', async () => {
