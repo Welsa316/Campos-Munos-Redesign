@@ -147,7 +147,7 @@ async function importCsv(csv, reportDate) {
 const clientId = async (eim) => Number((await db.query('SELECT id FROM billing_clients WHERE eimmigration_client_id = $1', [eim])).rows[0].id)
 const reminders = async () => (await db.query('SELECT id, rule_key, state, cancel_reason, client_id, attempts FROM billing_reminders ORDER BY id')).rows.map((r) => ({ ...r, id: Number(r.id) }))
 const enable = (key, days) => call('PUT', `/api/billing/reminders/rules/${key}`, { body: { enabled: true, ...(days != null ? { days } : {}) } })
-const STATUS_MAP = { paid: 'Pagado', partial: 'Pago parcial', unpaid: 'Pendiente', overdue: 'Vencido', needs_review: 'Revisar', no_invoices: 'Sin facturas' }
+const STATUS_MAP = { paid: 'PAID', partial: 'Partial', unpaid: 'Not Due Yet', overdue: 'DUE', needs_review: 'ON HOLD', no_invoices: 'New client' }
 
 test('reminder flow, end to end, with simulated WhatsApp', { skip: SKIP }, async (t) => {
   const summary = fs.readFileSync(join(FIX, 'invoice_summary.csv'), 'utf8')

@@ -4,11 +4,11 @@ import { encodeColumnValue, buildProposedChanges, toColumnValues, validateColumn
 import { createMockMondayProvider, SYNTHETIC_BOARD_ID } from './providers/monday/mock.js'
 import { listAllItems } from './providers/monday/api.js'
 
-const STATUS_SETTINGS = { labels: { 0: 'Pendiente', 1: 'Pagado', 2: 'Vencido', 3: 'Pago parcial', 4: 'Revisar', 5: 'Sin facturas' } }
+const STATUS_SETTINGS = { labels: { 0: 'Not Due Yet', 1: 'PAID', 2: 'DUE', 3: 'Partial', 4: 'ON HOLD', 5: 'New client' } }
 const COLUMN_MAP = {
   status: {
     columnId: 'estado_pago',
-    labels: { paid: 'Pagado', partial: 'Pago parcial', unpaid: 'Pendiente', overdue: 'Vencido', needs_review: 'Revisar', no_invoices: 'Sin facturas' },
+    labels: { paid: 'PAID', partial: 'Partial', unpaid: 'Not Due Yet', overdue: 'DUE', needs_review: 'ON HOLD', no_invoices: 'New client' },
   },
   outstanding: { columnId: 'saldo' },
   lastPaymentDate: { columnId: 'ultimo_pago' },
@@ -56,13 +56,13 @@ const BATCH = [
 // encodeColumnValue ---------------------------------------------------------
 
 test('encodeColumnValue: status uses an existing label', () => {
-  assert.deepEqual(encodeColumnValue('status', 'Pagado', STATUS_SETTINGS), { label: 'Pagado' })
+  assert.deepEqual(encodeColumnValue('status', 'PAID', STATUS_SETTINGS), { label: 'PAID' })
   assert.deepEqual(encodeColumnValue('status', 'Done', { labels: [{ id: 1, label: 'Done' }] }), { label: 'Done' })
 })
 
 test('encodeColumnValue: unknown status label is rejected', () => {
   assert.throws(() => encodeColumnValue('status', 'Cancelado', STATUS_SETTINGS), (e) => e instanceof MondayEncodeError && e.code === 'unknown_label')
-  assert.throws(() => encodeColumnValue('status', 'Pagado', {}), { code: 'unknown_label' })
+  assert.throws(() => encodeColumnValue('status', 'PAID', {}), { code: 'unknown_label' })
 })
 
 test('encodeColumnValue: numbers are cents rendered with 2 decimals', () => {
@@ -101,8 +101,8 @@ test('buildProposedChanges emits only real diffs, with from/to text', async () =
 
   const c2 = byId['1002'].changes
   assert.deepEqual(c2.map((c) => c.field), ['status', 'outstanding', 'lastPaymentDate', 'lastSync'])
-  assert.deepEqual(c2[0], { field: 'status', columnId: 'estado_pago', columnTitle: 'Estado de pago', from: 'Pendiente', to: 'Pago parcial', value: { label: 'Pago parcial' } })
-  assert.deepEqual(c2[1], { field: 'outstanding', columnId: 'saldo', columnTitle: 'Saldo pendiente', from: '1500', to: '1000.00', value: '1000.00' })
+  assert.deepEqual(c2[0], { field: 'status', columnId: 'estado_pago', columnTitle: 'Status', from: 'Not Due Yet', to: 'Partial', value: { label: 'Partial' } })
+  assert.deepEqual(c2[1], { field: 'outstanding', columnId: 'saldo', columnTitle: 'Balance due', from: '1500', to: '1000.00', value: '1000.00' })
   assert.deepEqual(c2[2].value, { date: '2026-10-20' })
   assert.deepEqual(c2[3].value, 'Oct 29, 2026, 10:00 AM CT')
 
@@ -224,11 +224,11 @@ test('duplicate summaries for one item are not double-applied', async () => {
 
 test('toColumnValues builds the change_multiple_column_values object', () => {
   const values = toColumnValues([
-    { columnId: 'estado_pago', value: { label: 'Pagado' } },
+    { columnId: 'estado_pago', value: { label: 'PAID' } },
     { columnId: 'saldo', value: '0.00' },
     { columnId: 'proximo_venc', value: null },
   ])
-  assert.deepEqual(values, { estado_pago: { label: 'Pagado' }, saldo: '0.00', proximo_venc: null })
+  assert.deepEqual(values, { estado_pago: { label: 'PAID' }, saldo: '0.00', proximo_venc: null })
   assert.throws(() => toColumnValues([{ columnId: 'a', value: 1 }, { columnId: 'a', value: 2 }]), { code: 'duplicate_column' })
 })
 
@@ -244,7 +244,7 @@ test('validateColumnMap reports wrong types, missing columns, missing and unknow
   const cols = await createMockMondayProvider().getBoardColumns(SYNTHETIC_BOARD_ID)
   const errors = validateColumnMap(
     {
-      status: { columnId: 'estado_pago', labels: { paid: 'Pagado', partial: 'Parcialito', unpaid: 'Pendiente', overdue: 'Vencido', needs_review: 'Revisar' } },
+      status: { columnId: 'estado_pago', labels: { paid: 'PAID', partial: 'Partly', unpaid: 'Not Due Yet', overdue: 'DUE', needs_review: 'ON HOLD' } },
       outstanding: { columnId: 'ultima_sync' }, // text
       lastPaymentDate: { columnId: 'saldo' }, // numbers
       nextDueDate: { columnId: 'gone' },
@@ -269,28 +269,28 @@ test('validateColumnMap reports wrong types, missing columns, missing and unknow
 // A board where Status also carries workflow labels staff set by hand: the
 // sync writes only the payment states it was given labels for.
 const KEEP_MAP = {
-  status: { columnId: 'estado_pago', labels: { paid: 'Pagado', partial: 'Pago parcial', unpaid: 'Pendiente', overdue: 'Vencido' }, keep: ['Revisar'] },
+  status: { columnId: 'estado_pago', labels: { paid: 'PAID', partial: 'Partial', unpaid: 'Not Due Yet', overdue: 'DUE' }, keep: ['ON HOLD'] },
   outstanding: { columnId: 'saldo' },
 }
 
 test('an item showing a kept label keeps it, through apply, while its balance still syncs', async () => {
   const provider = createMockMondayProvider()
   const board = await loadBoard(provider)
-  // 1007 shows "Revisar" with 2000 owed; the report now says paid in full.
+  // 1007 shows "ON HOLD" with 2000 owed; the report now says paid in full.
   const [p] = buildProposedChanges({ summaries: [summary('1007', { overallStatus: 'paid', outstandingCents: 0 })], columnMap: KEEP_MAP, ...board })
   assert.deepEqual(p.changes.map((c) => [c.field, c.from, c.to]), [['outstanding', '2000', '0.00']])
   assert.ok(p.skipped.some((s) => s.field === 'status' && s.reason === 'label_kept'))
   await applyAll(provider, [p])
   const after = (await loadBoard(provider)).currentItems.find((i) => i.id === '1007')
-  assert.equal(after.columns.estado_pago.text, 'Revisar')
+  assert.equal(after.columns.estado_pago.text, 'ON HOLD')
   assert.equal(after.columns.saldo.text, '0.00')
 })
 
 test('an item showing any other label is still updated to the payment state', async () => {
   const board = await loadBoard(createMockMondayProvider())
-  // 1002 shows "Pendiente": the sync owns that label, so it moves to paid.
+  // 1002 shows "Not Due Yet": the sync owns that label, so it moves to paid.
   const [p] = buildProposedChanges({ summaries: [summary('1002', { overallStatus: 'paid', outstandingCents: 0 })], columnMap: KEEP_MAP, ...board })
-  assert.ok(p.changes.some((c) => c.field === 'status' && c.from === 'Pendiente' && c.to === 'Pagado'))
+  assert.ok(p.changes.some((c) => c.field === 'status' && c.from === 'Not Due Yet' && c.to === 'PAID'))
 })
 
 test('a payment state with no label leaves Status as it is', async () => {
@@ -306,8 +306,8 @@ test('validateColumnMap: some states may go unlabelled, but not all; kept labels
   assert.deepEqual(validateColumnMap(KEEP_MAP, cols), [])
   const codes = (status) => validateColumnMap({ status: { columnId: 'estado_pago', ...status } }, cols).map((e) => e.code)
   assert.deepEqual(codes({ labels: {} }), ['missing_label'])
-  assert.deepEqual(codes({ labels: { paid: 'Pagado' }, keep: ['ON HOLD'] }), ['unknown_label'])
-  assert.deepEqual(codes({ labels: { paid: 'Pagado' }, keep: ['Pagado'] }), ['kept_label_written'])
+  assert.deepEqual(codes({ labels: { paid: 'PAID' }, keep: ['Archived'] }), ['unknown_label'])
+  assert.deepEqual(codes({ labels: { paid: 'PAID' }, keep: ['PAID'] }), ['kept_label_written'])
 })
 
 test('last-sync values use the firm\'s Central-time calendar, not UTC', async () => {

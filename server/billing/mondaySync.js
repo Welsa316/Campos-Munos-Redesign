@@ -3,7 +3,7 @@
 // and the board's current state into a reviewable list of column changes.
 //
 // Value formats follow the change_multiple_column_values column JSON:
-//   status      { label: 'Pagado' }      (label must already exist on the column)
+//   status      { label: 'PAID' }      (label must already exist on the column)
 //   numbers     '123.45'                 (string)
 //   date        { date: 'YYYY-MM-DD' }   (null clears)
 //   text        'plain string'
