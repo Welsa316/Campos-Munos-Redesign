@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 import { routes } from './routes.js'
+import { reloadForStaleBuild, clearStaleBuildMark } from './staleBuild.js'
 
 const BRAND = 'Campos Muños Law'
 
@@ -39,8 +40,16 @@ router.beforeEach(async (to) => {
   }
 })
 
-router.afterEach((to) => {
+// A tab left open across a deploy: load the page fresh instead of a click
+// that does nothing (staleBuild.js).
+router.onError((err, to) => {
+  if (typeof window === 'undefined' || !to) return
+  reloadForStaleBuild(err, router.resolve(to.fullPath).href, { storage: window.sessionStorage, assign: (href) => window.location.assign(href) })
+})
+
+router.afterEach((to, _from, failure) => {
   if (typeof document === 'undefined') return
+  if (!failure) clearStaleBuildMark(window.sessionStorage)
   // Views that own a live title (the inbox's unread count) set their own.
   if (to.meta?.title) document.title = `${to.meta.title} | ${BRAND}`
 })
