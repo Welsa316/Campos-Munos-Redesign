@@ -57,18 +57,34 @@
           </div>
 
           <!-- Status label mapping -->
-          <div v-if="statusColumn" class="rounded-lg ring-1 ring-gray-100 p-4">
-            <p class="text-[11px] font-ui font-semibold text-gray-700">Which label on “{{ statusColumn.title }}” means…</p>
-            <div class="mt-3 grid grid-cols-[minmax(0,1fr)] sm:grid-cols-2 xl:grid-cols-3 gap-3">
-              <div v-for="s in SUMMARY_STATUSES" :key="s.key">
-                <label :for="`lbl-${s.key}`" class="text-[11px] font-ui text-gray-600">{{ s.label }}</label>
-                <select :id="`lbl-${s.key}`" v-model="labels[s.key]"
-                  class="mt-1 w-full text-xs font-ui px-3 py-1.5 rounded-lg bg-white border border-gray-300 focus:border-brand-navy focus:outline-none">
-                  <option value="">Choose a label</option>
-                  <option v-for="l in statusLabels" :key="l" :value="l">{{ l }}</option>
-                </select>
+          <div v-if="statusColumn" class="rounded-lg ring-1 ring-gray-100 p-4 space-y-5">
+            <div>
+              <p class="text-[11px] font-ui font-semibold text-gray-700">Which label on “{{ statusColumn.title }}” means…</p>
+              <p class="text-[10px] font-ui text-gray-500 mt-0.5">A state with no matching label can be left out: clients in that state keep whatever Status shows.</p>
+              <div class="mt-3 grid grid-cols-[minmax(0,1fr)] sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                <div v-for="s in SUMMARY_STATUSES" :key="s.key">
+                  <label :for="`lbl-${s.key}`" class="text-[11px] font-ui text-gray-600">{{ s.label }}</label>
+                  <select :id="`lbl-${s.key}`" v-model="labels[s.key]"
+                    class="mt-1 w-full text-xs font-ui px-3 py-1.5 rounded-lg bg-white border border-gray-300 focus:border-brand-navy focus:outline-none">
+                    <option value="">Leave Status unchanged</option>
+                    <option v-for="l in statusLabels" :key="l" :value="l">{{ l }}</option>
+                  </select>
+                </div>
               </div>
             </div>
+
+            <fieldset v-if="keepable.length">
+              <legend class="text-[11px] font-ui font-semibold text-gray-700">Labels the sync never changes</legend>
+              <p class="text-[10px] font-ui text-gray-500 mt-0.5">For labels your team sets by hand, such as on hold or autopay. A client showing one of these keeps it; their balance and dates still update.</p>
+              <div class="mt-2 flex flex-wrap gap-2">
+                <label v-for="l in keepable" :key="l"
+                  :class="keep.includes(l) ? 'bg-brand-navy/10 ring-brand-navy/40 text-brand-navy' : 'ring-gray-300 text-gray-700 hover:bg-gray-50'"
+                  class="inline-flex items-center gap-2 rounded-full ring-1 px-3 py-1.5 min-h-11 sm:min-h-0 text-xs font-ui cursor-pointer transition-colors">
+                  <input type="checkbox" :value="l" v-model="keep" class="w-3.5 h-3.5 accent-brand-navy" />
+                  {{ l }}
+                </label>
+              </div>
+            </fieldset>
           </div>
 
           <div v-if="columns.length" class="flex items-center gap-3">
@@ -168,7 +184,8 @@ const SUMMARY_STATUSES = [
 ]
 const SKIP_REASONS = {
   item_not_found: 'item no longer on the board', not_mapped: 'not mapped', column_missing: 'column removed from the board',
-  wrong_column_type: 'column type changed', duplicate_column: 'column used twice', label_not_mapped: 'status label not chosen',
+  wrong_column_type: 'column type changed', duplicate_column: 'column used twice', label_not_mapped: 'no label for this payment state, left as it is',
+  label_kept: 'label set by staff, left as it is',
   unknown_label: 'label no longer exists', invalid_value: 'value not accepted', no_other_changes: 'nothing else changed',
   duplicate_summary: 'item linked to two clients',
 }
@@ -185,6 +202,7 @@ const boardId = ref('')
 const columns = ref([])
 const map = reactive({ status: '', outstanding: '', lastPaymentDate: '', nextDueDate: '', lastSync: '' })
 const labels = reactive({})
+const keep = ref([])
 const eimIdColumnId = ref('')
 const savedAt = ref(null)
 const plan = ref(null)
@@ -197,6 +215,9 @@ const statusLabels = computed(() => {
   if (!raw) return []
   return (Array.isArray(raw) ? raw.map((l) => (typeof l === 'string' ? l : l?.label ?? l?.name)) : Object.values(raw)).filter(Boolean)
 })
+// A label the sync writes cannot also be one it leaves alone.
+const chosenLabels = computed(() => new Set(SUMMARY_STATUSES.map((s) => labels[s.key]).filter(Boolean)))
+const keepable = computed(() => statusLabels.value.filter((l) => !chosenLabels.value.has(l)))
 const changed = computed(() => (plan.value?.proposed || []).filter((p) => p.changes.length))
 const skippedList = computed(() => (plan.value?.proposed || []).flatMap((p) => p.skipped.filter((s) => s.reason !== 'no_other_changes' && s.reason !== 'not_mapped').map((s) => ({ ...s, itemName: p.itemName }))))
 const skippedCount = computed(() => skippedList.value.length)
@@ -211,7 +232,8 @@ async function load() {
       boardId.value = cfg.boardId
       eimIdColumnId.value = cfg.eimIdColumnId || ''
       for (const f of FIELDS) map[f.key] = cfg.columnMap?.[f.key]?.columnId || ''
-      Object.assign(labels, cfg.columnMap?.status?.labels || {})
+      for (const s of SUMMARY_STATUSES) labels[s.key] = cfg.columnMap?.status?.labels?.[s.key] || ''
+      keep.value = [...(cfg.columnMap?.status?.keep || [])]
       // The board lists feed only the setup section (billing.configure).
       if (canConfigure) {
         await loadBoards()
@@ -233,7 +255,7 @@ async function loadBoards() {
 async function loadColumns(reset = true) {
   columns.value = []
   if (!boardId.value) return
-  if (reset) { for (const k of Object.keys(map)) map[k] = ''; eimIdColumnId.value = '' }
+  if (reset) { for (const k of Object.keys(map)) map[k] = ''; for (const s of SUMMARY_STATUSES) labels[s.key] = ''; keep.value = []; eimIdColumnId.value = '' }
   try { columns.value = (await api.mondayColumns(boardId.value)).columns } catch (err) { error.value = err.message }
 }
 
@@ -250,7 +272,10 @@ async function save() {
     for (const f of FIELDS) {
       if (!map[f.key]) continue
       columnMap[f.key] = { columnId: map[f.key] }
-      if (f.key === 'status') columnMap.status.labels = Object.fromEntries(SUMMARY_STATUSES.map((s) => [s.key, labels[s.key] || null]))
+      if (f.key === 'status') {
+        columnMap.status.labels = Object.fromEntries(SUMMARY_STATUSES.map((s) => [s.key, labels[s.key] || null]))
+        columnMap.status.keep = keep.value.filter((l) => keepable.value.includes(l))
+      }
     }
     await api.saveMondayConfig({ boardId: boardId.value, columnMap, eimIdColumnId: eimIdColumnId.value || null })
     savedAt.value = Date.now()

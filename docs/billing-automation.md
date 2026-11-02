@@ -53,8 +53,13 @@ Needs: a monday.com account with access to the client board.
    Check connection. It should show the account and turn the card green.
 4. Choose the client board. Map the columns. The board needs, created by a
    monday admin beforehand (the app never creates or restructures columns):
-   - a **status** column whose labels cover: paid, partially paid, unpaid,
-     overdue, needs review, no invoices (labels in any language)
+   - a **status** column with labels for the payment states the firm wants
+     written (paid, partially paid, unpaid, overdue, needs review, no
+     invoices; labels in any language). A state can be left without a label:
+     clients in that state keep whatever Status shows. Labels the team sets
+     by hand (on hold, autopay, ...) can be ticked under "Labels the sync
+     never changes": a client showing one keeps it, while their balance and
+     dates still update.
    - a **numbers** column for the outstanding balance
    - two **date** columns (last payment, next due)
    - optionally a date or text column for "last billing sync"
