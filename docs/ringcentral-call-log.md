@@ -34,7 +34,10 @@ press **No callback needed** on a missed call or voicemail and pick why:
 verification code or automated call, someone from the firm, spam, or other
 (with a note). Tick **every call from this number** for a number that keeps
 calling, such as a staff member's mobile; that covers its past and future
-calls.
+calls. A number marked "someone from the firm" for every call is labelled
+**Firm** on all its calls, answered and outgoing included, and is no longer
+shown as a website lead even if that person once tried the contact form with
+it.
 
 A marked call leaves the Missed, Voicemail and Not called back counts, the
 Unanswered view and the Home card. It stays in the log under **All calls**,

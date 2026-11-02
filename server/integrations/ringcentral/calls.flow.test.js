@@ -461,6 +461,43 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.deepEqual(await summary(), baseSummary)
   })
 
+  await t.test('a number marked as someone from the firm is not a website lead, on any call from it', async () => {
+    const idOf = async (rid) => Number((await db.query('SELECT id FROM rc_calls WHERE rc_record_id = $1', [rid])).rows[0].id)
+    const mark = (rid, body) => idOf(rid).then((id) => send('POST', `/api/calls/${id}/exclusion`, body, { cookie: users.desk.cookie }))
+    const unmark = (rid) => idOf(rid).then((id) => send('DELETE', `/api/calls/${id}/exclusion`, undefined, { cookie: users.desk.cookie }))
+    // A colleague's mobile that is also on two contact-form messages (c5).
+    await db.query(`INSERT INTO rc_calls (rc_record_id, direction, started_at, outcome, scope, counterpart_number, counterpart_key)
+      VALUES ('firm-answered', 'inbound', '2026-10-30T20:30:00Z', 'answered', 'account', '+15045550199', '5045550199')`)
+    const garcia = async () => {
+      const l = (await list()).json.calls
+      return [byId(l, '2026-10-30T18:00:00Z'), byId(l, '2026-10-30T20:30:00Z')]
+    }
+    for (const c of await garcia()) {
+      assert.equal(c.fromFirm, false)
+      assert.equal(c.lead.matches, 2)
+    }
+
+    // Spam for the number: still the website lead it was.
+    assert.equal((await mark('c5', { reason: 'spam', scope: 'number' })).status, 200)
+    for (const c of await garcia()) assert.equal(c.lead.matches, 2, 'only "someone from the firm" says who the caller is')
+
+    assert.equal((await mark('c5', { reason: 'staff_test', scope: 'number' })).status, 200)
+    for (const c of await garcia()) {
+      assert.equal(c.fromFirm, true, 'the answered call too, which was never marked itself')
+      assert.equal(c.lead, null)
+      assert.equal(c.name, 'Rosa Garcia', 'the name stays')
+    }
+    assert.equal(byId((await list()).json.calls, '2026-10-30T15:00:00Z').lead.name, 'Maria Lopez', 'other numbers are untouched')
+
+    // Marking one call alone says nothing about the number.
+    await unmark('c5')
+    assert.equal((await mark('c5', { reason: 'staff_test', scope: 'call' })).status, 200)
+    for (const c of await garcia()) assert.equal(c.fromFirm, false)
+
+    await unmark('c5')
+    await db.query(`DELETE FROM rc_calls WHERE rc_record_id = 'firm-answered'`)
+  })
+
   await t.test('calls older than the retention period are deleted', async () => {
     await db.query(`INSERT INTO rc_calls (rc_record_id, direction, started_at, outcome, scope) VALUES ('ancient', 'inbound', '2025-01-01T00:00:00Z', 'missed', 'account')`)
     await sync()
