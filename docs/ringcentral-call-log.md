@@ -85,8 +85,13 @@ person per 10 minutes. The audit trail keeps the last 4 digits only.
   apart and a rate-limit answer just ends the run; the next one catches up.
 - Calls older than `RINGCENTRAL_CALL_RETENTION_DAYS` (365) are deleted.
 - Stored: time, direction, duration, RingCentral's result, the outside
-  number and caller ID, the firm-side line or extension, who answered. Not
-  stored: recordings, recording links, the raw RingCentral payload.
+  number and caller ID, the firm-side line or extension, who answered, and
+  each step RingCentral recorded for the call (`rc_calls.legs`: who it rang,
+  forwarded or transferred to, voicemail, and how each ended). Not stored:
+  recordings, recording links, voicemail links, the raw RingCentral payload.
+- Calls imported before steps were kept are read again once, over the
+  backfill period (`rc_call_sync_state.legs_backfilled_at`); older ones show
+  no path.
 
 ## Whose calls
 
@@ -108,6 +113,7 @@ call log".
 | Name only | RingCentral's caller ID, when it is a name |
 | Unknown caller · City, ST | No match; the carrier sent a location instead of a name |
 | Private number | The caller withheld their number |
+| Called … → Rang … → Went to voicemail | Where an incoming call went, in order: the firm number dialled, each extension it rang, forwards and transfers, and voicemail, with how each step ended. Shown on missed calls and on calls that passed through more than one place (a call answered straight away already says who answered). A forward to a number outside the firm shows only its last 4 digits. Search finds a call by the name of anyone it rang |
 | Not called back | A missed call or voicemail with no later outgoing call to that number and no later answered call from it, as far as RingCentral saw (a call back from a personal mobile is not in the log) |
 
 Numbers are matched on their digits (last 10 for US/Canada), so

@@ -136,6 +136,13 @@
                     <span v-else-if="c.number && !c.exclusion" class="text-brand-red font-semibold"> · Not called back</span>
                   </template>
                 </p>
+                <!-- Where the call went, from RingCentral's own record of each step. -->
+                <ol v-if="showPath(c)" class="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] font-ui text-gray-600" :aria-label="`Where the call went, ${c.path.length} steps`" data-call-path>
+                  <li v-for="(s, i) in c.path" :key="i" class="inline-flex items-center gap-1.5">
+                    <span v-if="i > 0" aria-hidden="true" class="text-gray-500">→</span>
+                    <span>{{ stepLabel(s) }}<span v-if="stepResult(s)" :class="s.result === 'answered' ? 'text-green-700' : 'text-gray-500'"> · {{ stepResult(s) }}</span></span>
+                  </li>
+                </ol>
                 <!-- Marked as needing no callback: out of the missed counts, still in the log. -->
                 <div v-if="c.exclusion" class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-ui">
                   <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-semibold">
@@ -148,7 +155,7 @@
                 <button v-else-if="canExclude && isMissedIncoming(c)" type="button" @click="excluding = c" :data-exclude="c.id"
                   class="mt-1 inline-flex items-center min-h-11 -my-2 sm:min-h-0 sm:my-0 text-[12px] font-ui font-semibold text-gray-600 hover:text-brand-navy underline decoration-gray-300 underline-offset-2">No callback needed</button>
                 <!-- Only when the caller dialled an extension directly; calls to the main line all look alike. -->
-                <p v-if="c.direction === 'inbound' && c.firm.extension" class="text-[11px] font-ui text-gray-500 mt-0.5">
+                <p v-if="!showPath(c) && c.direction === 'inbound' && c.firm.extension" class="text-[11px] font-ui text-gray-500 mt-0.5">
                   Dialled {{ person({ name: c.firm.name, extension: c.firm.extension }) }}
                 </p>
               </div>
@@ -374,6 +381,25 @@ function statusLine(c) {
   if (c.outcome === 'missed') return 'Missed call'
   if (c.outcome === 'voicemail') return 'Left a voicemail'
   return c.result || 'Call'
+}
+// The path is shown when it says more than the status line: a missed call
+// (whose phones it rang), or one that went through more than one place. A
+// call answered straight away already reads "Answered by ...".
+function showPath(c) {
+  const hops = (c.path || []).filter((s) => s.kind !== 'line')
+  return hops.length > 1 || (hops.length === 1 && c.outcome !== 'answered')
+}
+function stepLabel(s) {
+  if (s.kind === 'line') return `Called ${s.number ? phone(s.number) : s.name || 'the firm'}`
+  const who = person(s) || (s.numberEnd ? `number ending ${s.numberEnd}` : 'another phone')
+  if (s.kind === 'forwarded') return `Forwarded to ${who}`
+  if (s.kind === 'transferred') return `Transferred to ${who}`
+  if (s.kind === 'voicemail') return `Went to voicemail (${who})`
+  return `Rang ${who}`
+}
+function stepResult(s) {
+  if (s.kind === 'voicemail' || s.kind === 'line') return ''
+  return { answered: 'answered', no_answer: 'no answer', busy: 'busy' }[s.result] || ''
 }
 const isMissedIncoming = (c) => c.direction === 'inbound' && (c.outcome === 'missed' || c.outcome === 'voicemail')
 const needsCallback = (c) => isMissedIncoming(c) && !c.followUp && c.number && !c.exclusion

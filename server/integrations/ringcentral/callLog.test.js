@@ -1,7 +1,7 @@
 // Reading RingCentral call log records, without a database.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { classifyOutcome, isGenericCallerId, normalizeRecord } from './callLog.js'
+import { classifyOutcome, isGenericCallerId, normalizeRecord, compactLegs, callPath } from './callLog.js'
 
 test('outcomes: answered, missed, voicemail; outgoing connected or not', () => {
   assert.equal(classifyOutcome('inbound', 'Accepted'), 'answered')
@@ -72,4 +72,59 @@ test('exclusion reasons agree across the API, the database and the portal', asyn
   const checks = [...INTEGRATIONS_SCHEMA_SQL.matchAll(/reason IN \(([^)]*)\)/g)].map((m) => m[1].match(/'([^']+)'/g).map((q) => q.slice(1, -1)))
   assert.equal(checks.length, 2, 'rc_call_exclusions and rc_ignored_numbers')
   for (const c of checks) assert.deepEqual(c, [...EXCLUSION_REASONS])
+})
+
+const MAIN = { phoneNumber: '+15049106508', name: 'Campos Muños Law' }
+const CALLER = { phoneNumber: '+15045550101', name: 'MARIA LOPEZ' }
+const leg = (at, legType, result, to, extra = {}) => ({ startTime: `2026-10-30T15:0${at}:00.000Z`, legType, action: 'Phone Call', result, from: CALLER, to, duration: 10, ...extra })
+
+test('call path: the line dialled, each extension it rang, the forward and the voicemail, in order', () => {
+  const legs = compactLegs([
+    // Out of order on purpose; RingCentral does not promise an order.
+    leg(3, 'Voicemail', 'Voicemail', { name: 'Ciro', extensionNumber: '102' }, { message: { uri: 'https://example.invalid/vm' } }),
+    leg(0, 'PstnToSip', 'Missed', MAIN, { master: true }),
+    leg(1, 'Accept', 'Missed', { name: 'Yoletty', extensionNumber: '101' }),
+    leg(2, 'FindMe', 'No Answer', { name: 'Ciro', extensionNumber: '102' }),
+  ])
+  assert.ok(!JSON.stringify(legs).includes('example.invalid'), 'no voicemail link kept')
+  const path = callPath(legs, 'inbound')
+  assert.deepEqual(path.map((s) => [s.kind, s.name, s.extension, s.result]), [
+    ['line', 'Campos Muños Law', null, null],
+    ['rang', 'Yoletty', '101', 'no_answer'],
+    ['voicemail', 'Ciro', '102', 'voicemail'],
+  ], 'Ciro ringing and then his voicemail is one step')
+  assert.equal(path[0].number, '+15049106508')
+})
+
+test('call path: a transfer after answering; the line picking up is not a step of its own', () => {
+  const path = callPath(compactLegs([
+    leg(0, 'PstnToSip', 'Accepted', MAIN, { master: true }),
+    leg(0, 'Accept', 'Accepted', MAIN),
+    leg(1, 'Accept', 'Accepted', { name: 'Front desk queue', extensionNumber: '200' }),
+    leg(2, 'Transfer', 'Accepted', { name: 'Yoletty', extensionNumber: '101' }),
+  ]), 'inbound')
+  assert.deepEqual(path.map((s) => [s.kind, s.name, s.result]), [
+    ['line', 'Campos Muños Law', null],
+    ['rang', 'Front desk queue', 'answered'],
+    ['transferred', 'Yoletty', 'answered'],
+  ])
+})
+
+test('call path: a forward to a mobile shows the last 4 digits only', () => {
+  const legs = compactLegs([
+    leg(0, 'PstnToSip', 'Missed', MAIN, { master: true }),
+    leg(1, 'FollowMe', 'No Answer', { phoneNumber: '+15045559876' }),
+  ])
+  const path = callPath(legs, 'inbound')
+  assert.deepEqual({ ...path[1], seconds: undefined }, { kind: 'forwarded', name: null, extension: null, number: null, numberEnd: '9876', result: 'no_answer', seconds: undefined })
+  assert.ok(!JSON.stringify(path).includes('555987'), 'the full number is not shown')
+})
+
+test('call path: none for outgoing calls, calls without steps, or steps imported before they were kept', () => {
+  const legs = compactLegs([leg(0, 'Accept', 'Accepted', { name: 'Yoletty', extensionNumber: '101' })])
+  assert.equal(callPath(legs, 'outbound'), null)
+  assert.equal(callPath([], 'inbound'), null)
+  assert.equal(callPath(null, 'inbound'), null)
+  assert.deepEqual(compactLegs(undefined), [])
+  assert.equal(compactLegs(Array.from({ length: 50 }, () => leg(0, 'Accept', 'Accepted', MAIN))).length, 30, 'capped')
 })

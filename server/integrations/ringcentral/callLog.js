@@ -115,7 +115,97 @@ export function normalizeRecord(rec, scope) {
     is_internal: !counterpart.phoneNumber && Boolean(counterpart.extensionNumber || counterpart.extensionId),
     scope,
     rc_last_modified_at: rec.lastModifiedTime && !Number.isNaN(new Date(rec.lastModifiedTime).getTime()) ? new Date(rec.lastModifiedTime) : null,
+    legs: compactLegs(rec.legs),
   }
+}
+
+const MAX_LEGS = 30
+const party = (p) => {
+  if (!p || typeof p !== 'object') return null
+  const out = { name: cap(p.name), ext: cap(p.extensionNumber, 20), number: cap(p.phoneNumber, 40) }
+  return out.name || out.ext || out.number ? out : null
+}
+
+/**
+ * The steps RingCentral recorded for a call (Detailed view: each ring,
+ * forward, transfer and voicemail), kept small: who each step went to and
+ * how it ended. No recordings, voicemail links or billing.
+ */
+export function compactLegs(legs) {
+  if (!Array.isArray(legs)) return []
+  return legs.slice(0, MAX_LEGS).filter((l) => l && typeof l === 'object').map((l) => ({
+    type: cap(l.legType, 40),
+    action: cap(l.action, 40),
+    result: cap(l.result, 60),
+    reason: cap(l.reason, 60),
+    at: cap(l.startTime, 40),
+    seconds: Math.max(0, Math.trunc(Number(l.duration) || 0)),
+    master: l.master === true,
+    from: party(l.from),
+    to: party(l.to),
+  }))
+}
+
+const LEG_RESULT = (result) => {
+  const r = norm(result)
+  if (ANSWERED.has(r)) return 'answered'
+  if (r === 'voicemail') return 'voicemail'
+  if (r === 'busy') return 'busy'
+  if (INBOUND_MISSED.has(r)) return 'no_answer'
+  return null
+}
+
+/**
+ * Where an incoming call went, in order: the line the caller dialled, then
+ * each extension, forward, transfer or voicemail it reached, with how that
+ * step ended. A number outside the firm (a forward to someone's mobile) is
+ * shown by its last 4 digits only. null when the call was imported before
+ * steps were kept, or is not incoming.
+ */
+export function callPath(legs, direction) {
+  if (direction !== 'inbound' || !Array.isArray(legs) || !legs.length) return null
+  const time = (l) => Date.parse(l.at) || 0
+  const ordered = legs.map((l, i) => ({ l, i })).sort((a, b) => time(a.l) - time(b.l) || a.i - b.i).map((x) => x.l)
+  const steps = []
+  let prevKey = null
+  for (const leg of ordered) {
+    const to = leg.to
+    if (!to) continue
+    const key = [to.name, to.ext, String(to.number || '').replace(/\D/g, '')].join('|')
+    const hint = `${leg.type || ''} ${leg.action || ''}`
+    const result = LEG_RESULT(leg.result)
+    const kind = steps.length === 0 && !to.ext
+      ? 'line'
+      : /voicemail/i.test(hint) || result === 'voicemail' ? 'voicemail'
+        : /transfer/i.test(hint) ? 'transferred'
+          : /find ?me|follow ?me|forward/i.test(hint) ? 'forwarded'
+            : 'rang'
+    const step = {
+      kind,
+      name: to.name || null,
+      extension: to.ext || null,
+      // The firm's own line is shown whole; anyone else's number only by its end.
+      number: kind === 'line' ? to.number || null : null,
+      numberEnd: kind !== 'line' && !to.ext && to.number ? to.number.replace(/\D/g, '').slice(-4) : null,
+      result: kind === 'line' ? null : result,
+      seconds: leg.seconds || 0,
+    }
+    const prev = steps[steps.length - 1]
+    const same = prev && key === prevKey
+    prevKey = key
+    // RingCentral often records the same place twice (the line, then the line
+    // picking up; an extension, then its voicemail): keep one step, with the
+    // more telling kind and outcome. The dialled line has no outcome.
+    if (same) {
+      if (prev.kind === 'line') continue
+      if (step.kind !== 'rang') prev.kind = step.kind
+      if (step.result) prev.result = step.result
+      prev.seconds = Math.max(prev.seconds, step.seconds)
+      continue
+    }
+    steps.push(step)
+  }
+  return steps.length ? steps : null
 }
 
 // --- import ----------------------------------------------------------------------
@@ -157,8 +247,8 @@ async function upsertCalls(db, rows) {
     const res = await db.query(
       `INSERT INTO rc_calls (rc_record_id, telephony_session_id, session_id, direction, started_at, duration_seconds, result_raw, outcome,
               counterpart_number, counterpart_key, caller_id_name, firm_number, firm_name, firm_extension,
-              answered_by_name, answered_by_extension, is_internal, scope, rc_last_modified_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, cm_phone_key($9), $10, $11, $12, $13, $14, $15, $16, $17, $18)
+              answered_by_name, answered_by_extension, is_internal, scope, rc_last_modified_at, legs)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, cm_phone_key($9), $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
        ON CONFLICT (rc_record_id) DO UPDATE SET
               telephony_session_id = EXCLUDED.telephony_session_id, session_id = EXCLUDED.session_id,
               direction = EXCLUDED.direction, started_at = EXCLUDED.started_at, duration_seconds = EXCLUDED.duration_seconds,
@@ -166,13 +256,13 @@ async function upsertCalls(db, rows) {
               counterpart_key = EXCLUDED.counterpart_key, caller_id_name = EXCLUDED.caller_id_name,
               firm_number = EXCLUDED.firm_number, firm_name = EXCLUDED.firm_name, firm_extension = EXCLUDED.firm_extension,
               answered_by_name = EXCLUDED.answered_by_name, answered_by_extension = EXCLUDED.answered_by_extension,
-              is_internal = EXCLUDED.is_internal, rc_last_modified_at = EXCLUDED.rc_last_modified_at, updated_at = NOW()
+              is_internal = EXCLUDED.is_internal, rc_last_modified_at = EXCLUDED.rc_last_modified_at, legs = EXCLUDED.legs, updated_at = NOW()
               -- A company-wide record is never replaced by the narrower per-user copy.
         WHERE rc_calls.scope = EXCLUDED.scope OR EXCLUDED.scope = 'account'
        RETURNING (xmax = 0) AS inserted`,
       [r.rc_record_id, r.telephony_session_id, r.session_id, r.direction, r.started_at, r.duration_seconds, r.result_raw, r.outcome,
         r.counterpart_number, r.caller_id_name, r.firm_number, r.firm_name, r.firm_extension,
-        r.answered_by_name, r.answered_by_extension, r.is_internal, r.scope, r.rc_last_modified_at]
+        r.answered_by_name, r.answered_by_extension, r.is_internal, r.scope, r.rc_last_modified_at, JSON.stringify(r.legs ?? [])]
     )
     if (res.rows[0]?.inserted) inserted++
   }
@@ -217,9 +307,11 @@ async function runSync(db, config, { trigger, backfillDays, retentionDays, deps,
   const state = (await db.query(`SELECT * FROM rc_call_sync_state WHERE key = 'ringcentral'`)).rows[0]
 
   const dateTo = now
-  const dateFrom = state.window_to
-    ? new Date(new Date(state.window_to).getTime() - OVERLAP_MS)
-    : new Date(now.getTime() - Math.min(90, Math.max(1, backfillDays)) * 24 * 60 * 60 * 1000)
+  const backfillFrom = new Date(now.getTime() - Math.min(90, Math.max(1, backfillDays)) * 24 * 60 * 60 * 1000)
+  let dateFrom = state.window_to ? new Date(new Date(state.window_to).getTime() - OVERLAP_MS) : backfillFrom
+  // Calls imported before their steps were kept: read the backfill period
+  // again once, so recent calls show where they went too.
+  if (!state.legs_backfilled_at && dateFrom > backfillFrom) dateFrom = backfillFrom
 
   const recordError = async (code) => {
     await db.query(
@@ -276,7 +368,8 @@ async function runSync(db, config, { trigger, backfillDays, retentionDays, deps,
   await db.query(`DELETE FROM rc_ringouts WHERE created_at < $1::timestamptz - INTERVAL '90 days'`, [now])
   await db.query(
     `UPDATE rc_call_sync_state SET scope = $1, scope_checked_at = $2, window_to = $3, last_run_at = $3, last_success_at = $3,
-            last_trigger = $4, last_fetched = $5, last_new = $6, last_truncated = $7, last_error_code = NULL, last_error_at = NULL
+            last_trigger = $4, last_fetched = $5, last_new = $6, last_truncated = $7, last_error_code = NULL, last_error_at = NULL,
+            legs_backfilled_at = COALESCE(legs_backfilled_at, $3)
       WHERE key = 'ringcentral'`,
     [scope, scopeCheckedAt, dateTo, trigger, result.fetched, inserted, result.truncated]
   )
@@ -370,7 +463,8 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
     } else {
       params.push(`%${search.replace(/[\\%_]/g, (m) => `\\${m}`)}%`)
       const p = `$${params.length}`
-      searchSql = `(b.client_name ILIKE ${p} OR (b.lead_first || ' ' || b.lead_last) ILIKE ${p} OR b.caller_id_name ILIKE ${p} OR b.answered_by_name ILIKE ${p})`
+      searchSql = `(b.client_name ILIKE ${p} OR (b.lead_first || ' ' || b.lead_last) ILIKE ${p} OR b.caller_id_name ILIKE ${p} OR b.answered_by_name ILIKE ${p}
+        OR EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(b.legs, '[]'::jsonb)) leg WHERE leg->'to'->>'name' ILIKE ${p}))`
     }
   }
 
@@ -480,6 +574,7 @@ function present(r) {
     // Where the call came from, when the carrier sent a city instead of a name.
     callerLocation: callerLocation(r.caller_id_name),
     fromFirm: r.from_firm,
+    path: callPath(r.legs, r.direction),
     lead: r.lead_id && !r.from_firm ? { id: r.lead_id, name: leadName, matches: Number(r.lead_count) } : null,
     client: r.client_id ? { id: Number(r.client_id), name: r.client_name } : null,
     firm: { number: r.firm_number, name: r.firm_name, extension: r.firm_extension },
@@ -492,4 +587,4 @@ function present(r) {
   }
 }
 
-export default { syncCallLog, queryCalls, getSyncState, normalizeRecord, classifyOutcome, isGenericCallerId }
+export default { syncCallLog, queryCalls, getSyncState, normalizeRecord, classifyOutcome, isGenericCallerId, compactLegs, callPath }
