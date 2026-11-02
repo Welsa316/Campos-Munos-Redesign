@@ -114,6 +114,26 @@ export const INTEGRATIONS_SCHEMA_SQL = `
   );
   CREATE INDEX IF NOT EXISTS idx_rc_ringouts_placed_by ON rc_ringouts(placed_by, created_at DESC);
 
+  -- Missed calls that need no callback (a verification code read out by a
+  -- machine, someone from the firm testing the line, spam). They stay in the
+  -- log but leave the missed and not-called-back counts. Either one call, or
+  -- every call from a number (a staff member's mobile). Who and why are kept.
+  CREATE TABLE IF NOT EXISTS rc_call_exclusions (
+    call_id BIGINT PRIMARY KEY REFERENCES rc_calls(id) ON DELETE CASCADE,
+    reason VARCHAR(20) NOT NULL CHECK (reason IN ('verification', 'staff_test', 'spam', 'other')),
+    note TEXT,
+    created_by INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+  CREATE TABLE IF NOT EXISTS rc_ignored_numbers (
+    counterpart_key TEXT PRIMARY KEY CHECK (counterpart_key <> ''),
+    number TEXT,
+    reason VARCHAR(20) NOT NULL CHECK (reason IN ('verification', 'staff_test', 'spam', 'other')),
+    note TEXT,
+    created_by INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
   -- Where the import stands: one row.
   CREATE TABLE IF NOT EXISTS rc_call_sync_state (
     key VARCHAR(20) PRIMARY KEY CHECK (key = 'ringcentral'),

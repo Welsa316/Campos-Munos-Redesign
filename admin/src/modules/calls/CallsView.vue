@@ -25,6 +25,7 @@
 
     <ChangePasswordModal :visible="showChangePassword" @close="showChangePassword = false" />
     <CallDialog :visible="dialog.open" :number="dialog.number" :name="dialog.name" @close="dialog.open = false" />
+    <ExcludeCallDialog :call="excluding" @close="excluding = null" @saved="afterExclude" />
 
     <div class="flex-1 overflow-y-auto">
       <div class="max-w-[1100px] mx-auto px-4 sm:px-6 py-5 space-y-4">
@@ -56,9 +57,10 @@
         </div>
 
         <!-- A narrower view opened from elsewhere (the Home card) -->
-        <p v-if="businessHours || filter === 'unanswered'" class="flex flex-wrap items-center gap-2 text-xs font-ui text-gray-700">
+        <p v-if="businessHours || filter === 'unanswered' || filter === 'excluded'" class="flex flex-wrap items-center gap-2 text-xs font-ui text-gray-700">
           <span class="text-gray-500">Showing</span>
           <span v-if="filter === 'unanswered'" class="px-2.5 py-1 rounded-full bg-white ring-1 ring-gray-200 font-semibold">Unanswered (missed + voicemail)</span>
+          <span v-if="filter === 'excluded'" class="px-2.5 py-1 rounded-full bg-white ring-1 ring-gray-200 font-semibold">Marked as no callback needed</span>
           <span v-if="businessHours" class="px-2.5 py-1 rounded-full bg-white ring-1 ring-gray-200 font-semibold">Business hours · Mon–Fri 9–5</span>
           <button type="button" @click="clearNarrowing" class="font-semibold text-brand-navy underline">Show all</button>
         </p>
@@ -82,6 +84,10 @@
             <p :class="tile.tone" class="font-ui text-2xl font-light tabular-nums leading-tight mt-0.5">{{ tile.count }}</p>
           </button>
         </div>
+        <p v-if="counts.excluded && filter !== 'excluded'" class="-mt-1 text-xs font-ui text-gray-600">
+          {{ counts.excluded }} {{ counts.excluded === 1 ? 'call was' : 'calls were' }} marked as needing no callback and {{ counts.excluded === 1 ? 'is' : 'are' }} left out of these counts.
+          <button type="button" @click="setFilter('excluded')" class="font-semibold text-brand-navy underline">Show {{ counts.excluded === 1 ? 'it' : 'them' }}</button>
+        </p>
 
         <div v-if="loading && !calls.length" class="py-16 text-center text-sm text-gray-500 font-ui">
           <i class="fa-solid fa-spinner fa-spin mr-2" aria-hidden="true"></i>Loading calls…
@@ -100,7 +106,7 @@
             <li v-for="c in day.calls" :key="c.id"
               class="px-4 sm:px-5 py-3 border-t border-gray-100 first:border-t-0 grid grid-cols-[36px_minmax(0,1fr)_auto] gap-x-3 items-start"
               :class="needsCallback(c) ? 'bg-red-50/40' : ''">
-              <span :class="look(c).badge" class="w-9 h-9 rounded-full inline-flex items-center justify-center text-sm" :title="look(c).label">
+              <span :class="c.exclusion ? 'bg-gray-100 text-gray-500' : look(c).badge" class="w-9 h-9 rounded-full inline-flex items-center justify-center text-sm" :title="look(c).label">
                 <FaIcon :name="look(c).icon" />
                 <span class="sr-only">{{ look(c).label }}</span>
               </span>
@@ -121,13 +127,24 @@
                   <span v-else class="text-gray-500">Number withheld</span>
                   <span v-if="!c.name && c.callerLocation" class="text-gray-500"> · {{ c.callerLocation }}</span>
                 </p>
-                <p class="text-[13px] font-ui mt-1" :class="look(c).text">
+                <p class="text-[13px] font-ui mt-1" :class="c.exclusion ? 'text-gray-600' : look(c).text">
                   {{ statusLine(c) }}
                   <template v-if="isMissedIncoming(c)">
                     <span v-if="c.followUp" class="text-green-700"> · {{ followUpText(c.followUp) }}</span>
-                    <span v-else-if="c.number" class="text-brand-red font-semibold"> · Not called back</span>
+                    <span v-else-if="c.number && !c.exclusion" class="text-brand-red font-semibold"> · Not called back</span>
                   </template>
                 </p>
+                <!-- Marked as needing no callback: out of the missed counts, still in the log. -->
+                <div v-if="c.exclusion" class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-ui">
+                  <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-semibold">
+                    <FaIcon name="circle-check" />No callback needed · {{ exclusionLabel(c.exclusion.reason) }}
+                  </span>
+                  <span class="text-gray-500">{{ exclusionDetail(c) }}</span>
+                  <button v-if="canExclude" type="button" @click="countAgain(c)" :disabled="countingAgain === c.id" :data-count-again="c.id"
+                    class="inline-flex items-center min-h-11 -my-2 sm:min-h-0 sm:my-0 text-left font-semibold text-brand-navy underline disabled:opacity-50">{{ c.exclusion.scope === 'number' ? 'Count this number again' : 'Count it again' }}</button>
+                </div>
+                <button v-else-if="canExclude && isMissedIncoming(c)" type="button" @click="excluding = c" :data-exclude="c.id"
+                  class="mt-1 inline-flex items-center min-h-11 -my-2 sm:min-h-0 sm:my-0 text-[12px] font-ui font-semibold text-gray-600 hover:text-brand-navy underline decoration-gray-300 underline-offset-2">No callback needed</button>
                 <!-- Only when the caller dialled an extension directly; calls to the main line all look alike. -->
                 <p v-if="c.direction === 'inbound' && c.firm.extension" class="text-[11px] font-ui text-gray-500 mt-0.5">
                   Dialled {{ person({ name: c.firm.name, extension: c.firm.extension }) }}
@@ -155,7 +172,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../../composables/useAuth.js'
 import { useApi } from '../../composables/useApi.js'
@@ -164,11 +181,13 @@ import SectionLinks from '../../components/portal/SectionLinks.vue'
 import ChangePasswordModal from '../../components/messages/ChangePasswordModal.vue'
 import FaIcon from '../../components/FaIcon.vue'
 import CallDialog from './CallDialog.vue'
+import ExcludeCallDialog from './ExcludeCallDialog.vue'
+import { exclusionLabel } from './exclusionReasons.js'
 
 const router = useRouter()
 const route = useRoute()
 const { adminEmail, logout, can } = useAuth()
-const { get, post } = useApi()
+const { get, post, del } = useApi()
 
 const RANGES = [
   { key: 'today', label: 'Today' },
@@ -180,7 +199,7 @@ const RANGES = [
 // The Home card opens /calls?range=month&filter=unanswered&hours=business.
 const q0 = route.query
 const range = ref(['today', 'yesterday', 'week', 'month'].includes(q0.range) ? q0.range : 'today')
-const filter = ref(['all', 'answered', 'missed', 'voicemail', 'unanswered', 'outgoing', 'not_returned'].includes(q0.filter) ? q0.filter : 'all')
+const filter = ref(['all', 'answered', 'missed', 'voicemail', 'unanswered', 'outgoing', 'not_returned', 'excluded'].includes(q0.filter) ? q0.filter : 'all')
 const businessHours = ref(q0.hours === 'business')
 const search = ref('')
 const calls = ref([])
@@ -203,6 +222,42 @@ function openCall(c = null) {
   dialog.value = { open: true, number: c?.number || '', name: c?.name || '' }
 }
 const canRefresh = computed(() => configured.value && connection.value === 'connected')
+
+// Missed calls that need no callback (calls.exclude): a verification code, a
+// test call from the firm, spam. They leave the missed counts.
+const canExclude = computed(() => can('calls.exclude'))
+const excluding = ref(null)
+const countingAgain = ref(null)
+// The control that was pressed is replaced by its opposite; keep keyboard
+// focus on that row instead of losing it to the page.
+const refocus = (attr, id) => nextTick(() => document.querySelector(`[${attr}="${id}"]`)?.focus())
+async function afterExclude() {
+  const id = excluding.value?.id
+  excluding.value = null
+  await load({ quiet: true })
+  refocus('data-count-again', id)
+}
+async function countAgain(c) {
+  countingAgain.value = c.id
+  error.value = ''
+  try {
+    await del(`/api/calls/${c.id}/exclusion`)
+    await load({ quiet: true })
+    refocus('data-exclude', c.id)
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    countingAgain.value = null
+  }
+}
+function exclusionDetail(c) {
+  const e = c.exclusion
+  const parts = []
+  if (e.note) parts.push(e.note)
+  if (e.scope === 'number') parts.push('every call from this number')
+  parts.push(`marked by ${e.by || 'a former user'}, ${new Date(e.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`)
+  return parts.join(' · ')
+}
 
 function rangeBounds(key) {
   const start = new Date()
@@ -319,7 +374,7 @@ function statusLine(c) {
   return c.result || 'Call'
 }
 const isMissedIncoming = (c) => c.direction === 'inbound' && (c.outcome === 'missed' || c.outcome === 'voicemail')
-const needsCallback = (c) => isMissedIncoming(c) && !c.followUp && c.number
+const needsCallback = (c) => isMissedIncoming(c) && !c.followUp && c.number && !c.exclusion
 function followUpText(f) {
   const when = timeOrDate(f.at)
   return f.kind === 'called_back' ? `Called back ${when}` : f.kind === 'call_back_attempt' ? `Tried calling back ${when}` : `Reached later ${when}`
@@ -387,6 +442,7 @@ const notice = computed(() => {
 const emptyText = computed(() => {
   if (connection.value !== 'connected') return 'No calls to show yet.'
   if (search.value.trim()) return 'No calls match that search in this range.'
+  if (filter.value === 'excluded') return 'No calls in this range are marked as needing no callback.'
   if (filter.value !== 'all') return 'No calls of this kind in this range.'
   return sync.value?.lastSuccessAt ? 'No calls in this range.' : 'Calls appear here after the first update from RingCentral. Press Refresh to fetch them now.'
 })
