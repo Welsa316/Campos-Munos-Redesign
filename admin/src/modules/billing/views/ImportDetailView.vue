@@ -105,6 +105,11 @@
           {{ job.stats.counts.absent }} invoice(s) we already have are not in this full report. They will be flagged for review, not marked paid.
         </p>
 
+        <p v-if="phoneSummary" class="mx-5 mb-4 text-[11px] font-ui text-gray-700 bg-brand-surface rounded-lg px-3 py-2">
+          <span class="font-semibold">WhatsApp numbers:</span> {{ phoneSummary }}.
+          A number staff saved on the contacts page is never replaced by a report.
+        </p>
+
         <div class="px-5 pb-3 flex flex-wrap gap-1.5" role="group" aria-label="Filter rows">
           <button v-for="f in ROW_FILTERS" :key="f.key" @click="setRowFilter(f.key)" :aria-pressed="rowFilter === f.key"
             :class="rowFilter === f.key ? 'bg-brand-navy text-white ring-brand-navy' : 'bg-brand-surface text-gray-600 ring-transparent hover:text-gray-900'"
@@ -153,7 +158,8 @@
         <div v-if="canImport && job.status === 'previewed'" class="px-5 py-4 border-t border-gray-100 flex flex-wrap items-center gap-3 bg-brand-light rounded-b-xl">
           <p class="text-xs font-ui text-gray-700 flex-1 min-w-[16rem]">
             Approving writes {{ job.stats.counts.invoice_insert }} new and {{ job.stats.counts.invoice_update }} changed invoices and
-            {{ job.stats.counts.payment_insert + job.stats.counts.payment_update }} payments. Skipped rows are not imported. monday.com is not touched.
+            {{ job.stats.counts.payment_insert + job.stats.counts.payment_update }} payments<template v-if="phonesWritten">, and saves {{ phonesWritten }} WhatsApp number(s)</template>.
+            Skipped rows are not imported. monday.com is not touched.
           </p>
           <button @click="approve" :disabled="Boolean(busy)"
             class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-navy text-white text-sm font-ui font-semibold hover:bg-brand-navy-dark disabled:opacity-50">
@@ -240,6 +246,24 @@ const tiles = computed(() => {
     { label: 'Clients needing a match', count: (m.ambiguous || 0) + (m.unmatched || 0), tone: 'text-amber-700' },
     { label: 'Needs review', count: job.value?.stats?.statuses?.needs_review || 0, tone: 'text-violet-700' },
   ]
+})
+
+// What the report's phone column does to the clients' WhatsApp numbers.
+const phonesWritten = computed(() => {
+  const p = job.value?.stats?.phones
+  return p ? (p.new || 0) + (p.changed || 0) : 0
+})
+const phoneSummary = computed(() => {
+  const p = job.value?.stats?.phones
+  if (!p) return ''
+  return [
+    [p.new, 'new'],
+    [p.changed, 'replaced (an earlier report set them)'],
+    [p.same, 'already on file'],
+    [p.kept, 'left as staff saved them'],
+    [p.invalid, 'unreadable (need a 10-digit US number, or + and the country code)'],
+    [p.conflict, 'not saved (the client\u2019s rows disagree)'],
+  ].filter(([n]) => n).map(([n, label]) => `${n} ${label}`).join(' · ')
 })
 
 function samples(header) {

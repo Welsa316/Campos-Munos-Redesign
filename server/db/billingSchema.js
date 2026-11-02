@@ -237,6 +237,10 @@ export const BILLING_SCHEMA_SQL = `
   CREATE INDEX IF NOT EXISTS idx_billing_client_contacts_phone ON billing_client_contacts(phone_e164);
   -- IANA zone for the sending window (America/Chicago when unset).
   ALTER TABLE billing_client_contacts ADD COLUMN IF NOT EXISTS timezone TEXT;
+  -- Who set the number: 'staff' on the contacts page, 'import' from an
+  -- eImmigration report. Imports only ever replace their own numbers; NULL
+  -- (numbers saved before this column existed) counts as staff.
+  ALTER TABLE billing_client_contacts ADD COLUMN IF NOT EXISTS phone_source VARCHAR(10) CHECK (phone_source IN ('staff', 'import'));
 
   -- Reminder rules and message templates, editable in the portal. Seeded
   -- switched off (server/billing/reminderModel.js).
@@ -297,6 +301,10 @@ export const BILLING_SCHEMA_SQL = `
     UNIQUE (obligation_key, rule_key)
   );
   CREATE INDEX IF NOT EXISTS idx_billing_reminders_state ON billing_reminders(state, created_at DESC);
+  -- What the client's consent rested on when the draft was made: their
+  -- recorded opt-in, or the firm's policy (consent on intake forms and
+  -- payment plan agreements).
+  ALTER TABLE billing_reminders ADD COLUMN IF NOT EXISTS consent_basis TEXT;
 
   -- Every send attempt. The row is written BEFORE the provider is called,
   -- so a crash mid-send leaves a 'pending' row that is later marked

@@ -22,7 +22,7 @@ export const CAPABILITIES = {
   'billing.reconcile': 'Link billing clients to monday.com items',
   'billing.sync': 'Preview and apply the monday.com payment-status sync',
   'billing.reminders': 'Draft, approve, cancel, retry and resolve payment reminders; review client replies',
-  'billing.configure': 'Reminder rules, templates and sending hours',
+  'billing.configure': 'Reminder rules, templates and sending hours; the firm-wide WhatsApp consent setting',
   'calls.view': 'See the RingCentral call log: who called, answered or missed, when, and refresh it',
   'calls.place': 'Call a number from the portal (RingCentral RingOut rings your own phone first, then the client)',
   'calls.exclude': 'Mark missed calls that need no callback (verification codes, test calls, spam) so they leave the missed-call counts',

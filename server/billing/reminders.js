@@ -118,6 +118,22 @@ function hasOptIn(contact) {
 }
 
 /**
+ * Consent to message this contact: a recorded opt-in, or the firm's policy
+ * (consent taken on intake forms and payment plan agreements) when it is on.
+ * Never decides opt-outs: isOptedOut is checked first and always wins, so
+ * turning the policy on does not reach anyone who replied STOP.
+ */
+function hasConsent(contact, firmConsent) {
+  return hasOptIn(contact) || Boolean(firmConsent)
+}
+
+/** What a reminder's consent rests on, kept with the reminder. */
+function consentBasisOf(contact, firmConsent) {
+  if (hasOptIn(contact)) return contact.optInSource ? `Opt-in: ${contact.optInSource}` : 'Recorded opt-in'
+  return firmConsent ? `Firm policy: ${firmConsent.basis}` : null
+}
+
+/**
  * Status as of `today`. The stored status was derived at import time; an
  * unpaid/partial invoice whose relevant due date has since passed is overdue
  * by the same rule reconcile.js uses (relevantDue < asOfDate).
@@ -161,7 +177,7 @@ function isLaterStage(later, earlier) {
  *
  * @returns {{ candidates: object[], suppressed: object[] }}
  */
-export function evaluateReminders({ invoices, contacts, linkedClientIds, rules, existing = [], today, staleAfterDays = 10 }) {
+export function evaluateReminders({ invoices, contacts, linkedClientIds, rules, existing = [], today, staleAfterDays = 10, firmConsent = null }) {
   toUtcMs(today)
   const handled = new Set(existing.map((r) => `${r.obligationKey}|${r.ruleKey}`))
   const rulesByKey = new Map(rules.map((r) => [r.key, r]))
@@ -209,7 +225,7 @@ export function evaluateReminders({ invoices, contacts, linkedClientIds, rules, 
       else if (messaging && !linkedClientIds.has(inv.clientId)) reason = 'not_linked'
       else if (messaging && (!contact || !normalizePhone(contact.phone))) reason = 'no_contact'
       else if (messaging && isOptedOut(contact)) reason = 'opted_out'
-      else if (messaging && !hasOptIn(contact)) reason = 'no_opt_in'
+      else if (messaging && !hasConsent(contact, firmConsent)) reason = 'no_opt_in'
       else if (handled.has(`${key}|${rule.key}`)) reason = 'already_handled'
       else {
         const later = (existingRulesByObligation.get(key) || []).find((r) => isLaterStage(r, rule))
@@ -242,6 +258,7 @@ export function evaluateReminders({ invoices, contacts, linkedClientIds, rules, 
         language,
         dueDate: due,
         balanceCents: inv.balanceCents,
+        consentBasis: isMessage ? consentBasisOf(contact, firmConsent) : null,
         params: isMessage
           ? {
               clientFirstName: contact.firstName ? String(contact.firstName).trim() || null : null,
@@ -303,7 +320,7 @@ export function renderMessage(template, language, params) {
  * settled precedes due_date_changed: paying an installment usually moves the
  * next installment date, and "paid" is the truth staff need to see.
  */
-export function cancellationReason(reminder, invoice, contact, linked, { today, staleAfterDays = 10 } = {}) {
+export function cancellationReason(reminder, invoice, contact, linked, { today, staleAfterDays = 10, firmConsent = null } = {}) {
   if (!PENDING_STATES.includes(reminder.state)) return null
   let reason = null
   if (!invoice || invoice.status === 'void') reason = 'void'
@@ -311,7 +328,7 @@ export function cancellationReason(reminder, invoice, contact, linked, { today, 
   else if (invoice.status === 'paid' || invoice.balanceCents === 0) reason = 'settled'
   else if (invoice.balanceCents == null || invoice.balanceCents < 0) reason = 'no_balance'
   else if (reminder.obligationKey !== obligationKey(invoice.externalInvoiceId, relevantDueDate(invoice))) reason = 'due_date_changed'
-  else if (!contact || !normalizePhone(contact.phone) || !hasOptIn(contact) || isOptedOut(contact)) reason = 'opted_out'
+  else if (!contact || !normalizePhone(contact.phone) || !hasConsent(contact, firmConsent) || isOptedOut(contact)) reason = 'opted_out'
   else if (!linked) reason = 'unlinked'
   else if (invoice.notInLatestReport || !invoice.reportDate || invoice.reportDate < addDays(today, -staleAfterDays)) reason = 'stale'
   if (reason && !(reason in CANCEL_REASONS)) throw new Error(`Unknown cancel reason ${reason}`)

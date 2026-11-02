@@ -11,6 +11,7 @@ export const CANONICAL_FIELDS = [
   // key, label, kind, required-for (report types that need it to be useful)
   { key: 'externalClientId', label: 'eImmigration client ID', kind: 'id' },
   { key: 'clientName', label: 'Client name', kind: 'text' },
+  { key: 'clientPhone', label: 'Client phone (WhatsApp)', kind: 'text' },
   { key: 'externalInvoiceId', label: 'Invoice ID', kind: 'id' },
   { key: 'invoiceDate', label: 'Invoice date', kind: 'date' },
   { key: 'dueDate', label: 'Due date', kind: 'date' },

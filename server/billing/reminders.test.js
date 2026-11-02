@@ -22,8 +22,8 @@ const invoice = (over = {}) => ({
 })
 const contact = (over = {}) => ({ phone: '15045550101', language: 'es', optedInAt: '2026-10-01T15:00:00Z', optedOutAt: null, firstName: 'Juan', ...over })
 
-function run({ invoices = [invoice()], contacts = new Map([[7, contact()]]), linked = new Set([7]), rules = [DUE_IN_3], existing = [], today = TODAY, staleAfterDays } = {}) {
-  return evaluateReminders({ invoices, contacts, linkedClientIds: linked, rules, existing, today, ...(staleAfterDays != null ? { staleAfterDays } : {}) })
+function run({ invoices = [invoice()], contacts = new Map([[7, contact()]]), linked = new Set([7]), rules = [DUE_IN_3], existing = [], today = TODAY, staleAfterDays, firmConsent = null } = {}) {
+  return evaluateReminders({ invoices, contacts, linkedClientIds: linked, rules, existing, today, firmConsent, ...(staleAfterDays != null ? { staleAfterDays } : {}) })
 }
 const reasons = (r) => r.suppressed.map((s) => s.reason)
 const keys = (r) => r.candidates.map((c) => c.ruleKey)
@@ -62,6 +62,7 @@ test('before_due fires exactly on due − N and produces the exact candidate', (
   assert.deepEqual(r.candidates, [{
     invoiceId: 10, externalInvoiceId: 'INV-1', clientId: 7, obligationKey: 'INV-1@2026-11-05', ruleKey: 'due_in_3',
     action: 'whatsapp', templateKey: 'payment_due_soon', language: 'es', dueDate: '2026-11-05', balanceCents: 123456,
+    consentBasis: 'Recorded opt-in',
     params: { clientFirstName: 'Juan', amountDue: '$1,234.56', dueDate: '5 de noviembre de 2026' },
   }])
 })
@@ -238,6 +239,40 @@ test('opted out after opting in suppresses; opting in again later restores', () 
   assert.deepEqual(keys(run({ contacts: new Map([[7, contact({ optedInAt: '2026-10-20T00:00:00Z', optedOutAt: '2026-10-10T00:00:00Z' })]]) })), ['due_in_3'])
 })
 
+// ---- firm-wide consent ----------------------------------------------------------
+
+const FIRM = { basis: 'Signed intake form or payment plan agreement' }
+
+test('firm policy: a client with a number and no recorded opt-in gets a reminder, and its basis is kept', () => {
+  const none = new Map([[7, contact({ optedInAt: null })]])
+  assert.deepEqual(reasons(run({ contacts: none })), ['no_opt_in'], 'without the policy, no opt-in means no reminder')
+  const r = run({ contacts: none, firmConsent: FIRM })
+  assert.deepEqual(keys(r), ['due_in_3'])
+  assert.equal(r.candidates[0].consentBasis, 'Firm policy: Signed intake form or payment plan agreement')
+})
+
+test('firm policy never reaches a client who opted out, with or without an earlier opt-in', () => {
+  const stopOnly = new Map([[7, contact({ optedInAt: null, optedOutAt: '2026-10-20T15:00:00Z' })]])
+  assert.deepEqual(reasons(run({ contacts: stopOnly, firmConsent: FIRM })), ['opted_out'])
+  const inThenOut = new Map([[7, contact({ optedInAt: '2026-10-01T15:00:00Z', optedOutAt: '2026-10-20T15:00:00Z' })]])
+  assert.deepEqual(reasons(run({ contacts: inThenOut, firmConsent: FIRM })), ['opted_out'])
+})
+
+test('firm policy still needs a number, and a recorded opt-in stays the stated basis', () => {
+  assert.deepEqual(reasons(run({ contacts: new Map([[7, contact({ phone: null, optedInAt: null })]]), firmConsent: FIRM })), ['no_contact'])
+  const r = run({ contacts: new Map([[7, contact({ optInSource: 'verbal at consultation' })]]), firmConsent: FIRM })
+  assert.equal(r.candidates[0].consentBasis, 'Opt-in: verbal at consultation')
+})
+
+test('cancellation: a pending reminder resting on the firm policy is cancelled once the policy is off', () => {
+  const rem = { obligationKey: obligationKey('INV-1', '2026-11-05'), ruleKey: 'due_in_3', state: 'approved' }
+  const noOptIn = contact({ optedInAt: null })
+  assert.equal(cancellationReason(rem, invoice(), noOptIn, true, { today: TODAY, firmConsent: FIRM }), null)
+  assert.equal(cancellationReason(rem, invoice(), noOptIn, true, { today: TODAY }), 'opted_out')
+  const stopped = contact({ optedInAt: null, optedOutAt: '2026-10-20T15:00:00Z' })
+  assert.equal(cancellationReason(rem, invoice(), stopped, true, { today: TODAY, firmConsent: FIRM }), 'opted_out')
+})
+
 test('suppression is not flooded: only rules whose day (incl. grace) is today are reported', () => {
   const r = run({ invoices: [invoice({ status: 'void' })], rules: [DUE_IN_3, DUE_TOMORROW, OVERDUE_3, OVERDUE_7, FOLLOWUP_14] })
   assert.deepEqual(r.suppressed.map((s) => [s.ruleKey, s.reason]), [['due_in_3', 'void']])
@@ -248,7 +283,7 @@ test('staff_followup creates a task candidate with no message, even without What
   assert.deepEqual(r.suppressed, [])
   assert.deepEqual(r.candidates, [{
     invoiceId: 10, externalInvoiceId: 'INV-1', clientId: 7, obligationKey: 'INV-1@2026-10-19', ruleKey: 'followup_14',
-    action: 'staff_followup', templateKey: null, language: 'es', dueDate: '2026-10-19', balanceCents: 123456, params: null,
+    action: 'staff_followup', templateKey: null, language: 'es', dueDate: '2026-10-19', balanceCents: 123456, consentBasis: null, params: null,
   }])
   assert.equal(only({ rules: [FOLLOWUP_14], invoices: [invoice({ status: 'paid', balanceCents: 0, dueDate: '2026-10-19' })] }), 'paid')
 })

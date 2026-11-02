@@ -69,6 +69,36 @@ export async function saveReminderSettings(db, value, { actorId }) {
   return v
 }
 
+// Where WhatsApp consent comes from. Off: each client's opt-in is recorded
+// on the contacts page. On: the firm takes consent on its intake forms and
+// payment plan agreements, so every client with a number counts as having
+// agreed. An opt-out (a STOP reply, or one recorded by staff) still wins.
+export const DEFAULT_CONSENT_POLICY = { firmPolicy: false, basis: 'Signed intake form or payment plan agreement' }
+
+export async function getConsentPolicy(db) {
+  const row = (await db.query("SELECT value, updated_at FROM billing_settings WHERE key = 'consent'")).rows[0]
+  return { ...DEFAULT_CONSENT_POLICY, ...(row?.value || {}), updatedAt: row?.updated_at ?? null }
+}
+
+export async function saveConsentPolicy(db, { firmPolicy, basis } = {}, { actorId }) {
+  if (typeof firmPolicy !== 'boolean') throw new ReminderError('Choose whether the firm policy applies')
+  const text = String(basis ?? '').trim()
+  if (text.length < 3 || text.length > 200 || /[\r\n\t]/.test(text)) throw new ReminderError('Say where consent is taken, in one line (for example: signed intake form or payment plan agreement)')
+  const v = { firmPolicy, basis: text }
+  await db.query(
+    `INSERT INTO billing_settings (key, value, updated_by) VALUES ('consent', $1, $2)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_by = EXCLUDED.updated_by, updated_at = NOW()`,
+    [JSON.stringify(v), actorId]
+  )
+  await audit(db, { actorId, action: 'reminders.consent_policy_saved', entityType: 'settings', entityId: 'consent', details: v })
+  // Switching the policy off withdraws the consent it gave: pending reminders
+  // resting on it are cancelled now rather than at send time.
+  if (!firmPolicy) await cancelIneligible(db, { actorId })
+  return getConsentPolicy(db)
+}
+
+const firmConsentOf = (policy) => (policy.firmPolicy ? { basis: policy.basis } : null)
+
 /** Seed the example rules and templates (switched off) on first use. */
 export async function ensureDefaults(db) {
   for (const r of DEFAULT_RULES) {
@@ -157,9 +187,11 @@ export async function upsertContact(db, clientId, { phone, country, firstName, l
   const prev = (await db.query('SELECT phone_e164 FROM billing_client_contacts WHERE client_id = $1', [clientId])).rows[0]
   const phoneChanged = prev && prev.phone_e164 !== e164
   await db.query(
-    `INSERT INTO billing_client_contacts (client_id, phone_e164, first_name, language, timezone)
-     VALUES ($1, $2, $3, COALESCE($4, 'es'), $5)
+    `INSERT INTO billing_client_contacts (client_id, phone_e164, first_name, language, timezone, phone_source)
+     VALUES ($1, $2, $3, COALESCE($4, 'es'), $5, 'staff')
      ON CONFLICT (client_id) DO UPDATE SET phone_e164 = EXCLUDED.phone_e164, first_name = EXCLUDED.first_name,
+       -- A number saved here is the staff's: later imports never replace it.
+       phone_source = 'staff',
        language = EXCLUDED.language, timezone = EXCLUDED.timezone, updated_at = NOW(),
        -- Consent belongs to a number. A new number needs a new opt-in.
        opted_in_at = CASE WHEN billing_client_contacts.phone_e164 IS DISTINCT FROM EXCLUDED.phone_e164 THEN NULL ELSE billing_client_contacts.opted_in_at END,
@@ -203,7 +235,7 @@ async function cancelPendingForClient(db, clientId, reason, actorId) {
 
 // --- evaluation --------------------------------------------------------------------
 
-async function loadWorld(db, { today, settings }) {
+async function loadWorld(db, { today, settings, consent }) {
   const invoices = (await db.query(
     `SELECT i.*, c.eimmigration_client_id FROM billing_invoices i JOIN billing_clients c ON c.id = i.client_id
       WHERE i.status IN ('unpaid', 'partial', 'overdue', 'paid', 'void', 'needs_review')`
@@ -216,13 +248,13 @@ async function loadWorld(db, { today, settings }) {
   const contacts = new Map((await db.query(
     'SELECT k.*, c.display_name FROM billing_client_contacts k JOIN billing_clients c ON c.id = k.client_id'
   )).rows.map((c) => [Number(c.client_id), {
-    phone: c.phone_e164, language: c.language, optedInAt: c.opted_in_at, optedOutAt: c.opted_out_at, timezone: c.timezone,
+    phone: c.phone_e164, language: c.language, optedInAt: c.opted_in_at, optInSource: c.opt_in_source, optedOutAt: c.opted_out_at, timezone: c.timezone,
     // Staff can set a preferred first name; otherwise the first word of the
     // name in eImmigration ("María" from "María García Pérez").
     firstName: c.first_name || String(c.display_name || '').trim().split(/\s+/)[0] || null,
   }]))
   const linkedClientIds = new Set((await db.query("SELECT DISTINCT client_id FROM billing_client_links WHERE system = 'monday'")).rows.map((r) => Number(r.client_id)))
-  return { invoices, contacts, linkedClientIds, today, staleAfterDays: settings.staleAfterDays }
+  return { invoices, contacts, linkedClientIds, today, staleAfterDays: settings.staleAfterDays, firmConsent: firmConsentOf(consent) }
 }
 
 /**
@@ -232,8 +264,9 @@ async function loadWorld(db, { today, settings }) {
  */
 export async function cancelIneligible(db, { now = new Date(), actorId = null } = {}) {
   const settings = await getReminderSettings(db)
+  const consent = await getConsentPolicy(db)
   const today = todayInFirmTz(now)
-  const world = await loadWorld(db, { today, settings })
+  const world = await loadWorld(db, { today, settings, consent })
   const byInvoice = new Map(world.invoices.map((i) => [i.id, i]))
   const pending = (await db.query('SELECT * FROM billing_reminders WHERE state = ANY($1)', [CANCELLABLE])).rows
   const triggers = new Map((await db.query('SELECT key, trigger FROM billing_reminder_rules')).rows.map((r) => [r.key, r.trigger]))
@@ -246,7 +279,7 @@ export async function cancelIneligible(db, { now = new Date(), actorId = null } 
       ? cancellationReason(
         { obligationKey: r.obligation_key, ruleKey: r.rule_key, state: r.state, dueDate: r.due_date },
         inv, world.contacts.get(Number(r.client_id)) || null, world.linkedClientIds.has(Number(r.client_id)),
-        { today, staleAfterDays: settings.staleAfterDays },
+        { today, staleAfterDays: settings.staleAfterDays, firmConsent: world.firmConsent },
       )
       : 'void'
     // A staff follow-up is a phone call, not a WhatsApp message: missing
@@ -270,7 +303,7 @@ export async function evaluate(db, { now = new Date(), actorId = null } = {}) {
   const settings = await getReminderSettings(db)
   const today = todayInFirmTz(now)
   await cancelIneligible(db, { now, actorId })
-  const world = await loadWorld(db, { today, settings })
+  const world = await loadWorld(db, { today, settings, consent: await getConsentPolicy(db) })
   const rules = await loadRules(db)
   const templates = new Map((await loadTemplates(db)).map((t) => [t.key, t]))
   const existing = (await db.query('SELECT obligation_key, rule_key, state FROM billing_reminders')).rows
@@ -299,11 +332,11 @@ export async function evaluate(db, { now = new Date(), actorId = null } = {}) {
     }
     const res = await db.query(
       `INSERT INTO billing_reminders (obligation_key, rule_key, invoice_id, client_id, action, state, template_key, language,
-          to_phone, params, preview, due_date, balance_cents)
-       VALUES ($1, $2, $3, $4, $5, 'draft', $6, $7, $8, $9, $10, $11, $12)
+          to_phone, params, preview, due_date, balance_cents, consent_basis)
+       VALUES ($1, $2, $3, $4, $5, 'draft', $6, $7, $8, $9, $10, $11, $12, $13)
        ON CONFLICT (obligation_key, rule_key) DO NOTHING`,
       [c.obligationKey, c.ruleKey, c.invoiceId, c.clientId, c.action, c.templateKey, language, toPhone,
-        JSON.stringify(params), preview, c.dueDate, c.balanceCents]
+        JSON.stringify(params), preview, c.dueDate, c.balanceCents, c.consentBasis]
     )
     created += res.rowCount
   }
@@ -378,6 +411,7 @@ export async function dispatch(db, provider, { now = new Date(), env = process.e
   // deliberate as the real thing (it is how a demo is run on purpose).
   if (!whatsappSendingEnabled(env)) return { skipped: 'sending_disabled' }
   const settings = await getReminderSettings(db)
+  const firmConsent = firmConsentOf(await getConsentPolicy(db))
   await markStalePendingUnknown(db)
   await cancelIneligible(db, { now })
 
@@ -424,7 +458,7 @@ export async function dispatch(db, provider, { now = new Date(), env = process.e
       reason = cancellationReason(
         { obligationKey: r.obligation_key, ruleKey: r.rule_key, state: 'approved', dueDate: r.due_date },
         { ...fromInvoiceRow(inv), id: Number(inv.id), notInLatestReport: inv.not_in_latest_report },
-        contact, linked, { today, staleAfterDays: settings.staleAfterDays },
+        contact, linked, { today, staleAfterDays: settings.staleAfterDays, firmConsent },
       )
     }
     if (!reason && (!k?.phone_e164 || k.phone_e164 !== r.to_phone)) reason = 'number_changed'

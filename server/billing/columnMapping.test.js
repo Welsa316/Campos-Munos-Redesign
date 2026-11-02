@@ -162,3 +162,11 @@ test('missing-field warnings for payment reports', () => {
   ])
   assert.deepEqual(codes(missingFieldWarnings(mapOf('clientName'), null)), ['error:_mapping'])
 })
+
+test('a phone column maps to the client phone without taking the client name', () => {
+  assert.deepEqual(fieldsOf(['Client ID', 'Client Name', 'Phone Number', 'Balance Due']), { externalClientId: 0, clientName: 1, clientPhone: 2, balanceAmount: 3 })
+  assert.deepEqual(fieldsOf(['Cliente', 'Teléfono', 'Saldo']), { clientName: 0, clientPhone: 1, balanceAmount: 2 })
+  assert.equal(fieldsOf(['Celular']).clientPhone, 0)
+  assert.equal(fieldsOf(['Contact', 'Contact Phone']).clientName, 0)
+  assert.equal(fieldsOf(['Contact', 'Contact Phone']).clientPhone, 1)
+})

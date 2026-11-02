@@ -93,7 +93,29 @@
     <!-- Rules, templates, hours. Read-only without billing.configure: the
          fieldset disables every control inside it. -->
     <fieldset v-if="view === 'setup' && config" :disabled="!canConfigure" class="space-y-5 min-w-0 border-0 p-0 m-0">
-      <p v-if="!canConfigure" class="text-xs font-ui text-gray-600 bg-brand-surface rounded-lg px-4 py-3">Shown for reference. Rules, templates and sending hours are changed by an administrator.</p>
+      <p v-if="!canConfigure" class="text-xs font-ui text-gray-600 bg-brand-surface rounded-lg px-4 py-3">Shown for reference. Consent, rules, templates and sending hours are changed by an administrator.</p>
+      <section class="bg-white rounded-xl ring-1 ring-gray-200 p-5 space-y-3" aria-labelledby="consent-h">
+        <div>
+          <h2 id="consent-h" class="text-sm font-ui font-semibold text-gray-900">WhatsApp consent</h2>
+          <p class="text-[11px] font-ui text-gray-500 mt-0.5">
+            Where the firm gets clients' agreement to WhatsApp messages. With the firm policy on, every client with a WhatsApp number counts as
+            having agreed, and nobody records consent one client at a time. A client who replies STOP or BAJA, or whom staff mark as opted out,
+            still gets nothing. Turning the policy off cancels the reminders waiting on it.
+          </p>
+        </div>
+        <label class="flex items-center sm:items-start gap-2.5 min-h-11 sm:min-h-0 text-xs font-ui text-gray-800 cursor-pointer">
+          <input type="checkbox" v-model="consent.firmPolicy" class="mt-0.5 rounded border-gray-300" />
+          <span><span class="font-semibold">Firm policy:</span> clients agree when they sign</span>
+        </label>
+        <div class="flex flex-wrap items-end gap-3">
+          <label class="flex flex-col gap-1 flex-1 min-w-[14rem] text-[11px] font-ui font-semibold text-gray-700">
+            Where consent is taken (kept with every reminder)
+            <input v-model="consent.basis" maxlength="200" class="text-xs font-normal px-3 py-1.5 rounded-lg border border-gray-300 focus:border-brand-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy" />
+          </label>
+          <button @click="saveConsent" :disabled="Boolean(busy) || !consentChanged" class="min-h-11 sm:min-h-0 px-3 py-1.5 rounded-lg bg-brand-navy text-white text-xs font-ui font-semibold hover:bg-brand-navy-dark disabled:opacity-50">Save</button>
+        </div>
+      </section>
+
       <section class="bg-white rounded-xl ring-1 ring-gray-200" aria-labelledby="rules-h">
         <header class="px-5 py-4 border-b border-gray-100">
           <h2 id="rules-h" class="text-sm font-ui font-semibold text-gray-900">Rules</h2>
@@ -211,6 +233,11 @@ const data = ref(null)
 const responses = ref([])
 const config = ref(null)
 const hours = ref({ startHour: 9, endHour: 18, days: [1, 2, 3, 4, 5], timeZone: 'America/Chicago', staleAfterDays: 10 })
+const consent = ref({ firmPolicy: false, basis: '' })
+const consentChanged = computed(() => {
+  const saved = config.value?.consent
+  return Boolean(saved) && (saved.firmPolicy !== consent.value.firmPolicy || saved.basis !== consent.value.basis.trim())
+})
 const loading = ref(true)
 const busy = ref('')
 const error = ref('')
@@ -251,6 +278,7 @@ async function load() {
     if (view.value === 'setup' || !config.value) {
       config.value = await get('/api/billing/reminders/config')
       hours.value = { ...config.value.settings }
+      consent.value = { firmPolicy: config.value.consent.firmPolicy, basis: config.value.consent.basis }
     }
     data.value = await get(`/api/billing/reminders?state=${isQueue.value ? view.value : 'drafts'}`)
     selected.value = new Set()
@@ -301,6 +329,12 @@ function resolve(r, delivered) {
 const markHandled = (m) => act('handled', () => post(`/api/billing/responses/${m.id}/handled`, {}))
 const saveRule = (r) => act('rule', () => put(`/api/billing/reminders/rules/${r.key}`, { days: r.days, enabled: r.enabled }), () => 'Rule saved.')
 const saveTemplate = (t) => act('template', () => put(`/api/billing/reminders/templates/${t.key}`, { metaName: t.metaName, languages: t.languages, metaApproved: t.metaApproved }), () => 'Template saved.')
+function saveConsent() {
+  const turningOff = config.value.consent.firmPolicy && !consent.value.firmPolicy
+  if (turningOff && !window.confirm('Turn the firm policy off? Reminders waiting for clients without a recorded opt-in are cancelled.')) return
+  act('consent', () => put('/api/billing/consent', { firmPolicy: consent.value.firmPolicy, basis: consent.value.basis.trim() }),
+    (r) => (r.firmPolicy ? 'Firm policy on: clients with a WhatsApp number get reminders unless they opted out.' : 'Firm policy off: each client needs a recorded opt-in.'))
+}
 const saveHours = () => act('hours', () => put('/api/billing/reminders/settings', hours.value), () => 'Sending hours saved.')
 function toggleDay(i) {
   const d = new Set(hours.value.days)

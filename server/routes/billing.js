@@ -28,7 +28,7 @@ import { audit } from '../billing/audit.js'
 import {
   evaluate as evaluateReminders, cancelIneligible, approveReminders, cancelReminder, retryReminder, resolveUnknown, dispatch,
   upsertContact, recordOptIn, recordOptOut, saveRule, saveTemplate, loadRules, loadTemplates, ensureDefaults,
-  getReminderSettings, saveReminderSettings, ReminderError,
+  getReminderSettings, saveReminderSettings, getConsentPolicy, saveConsentPolicy, ReminderError,
 } from '../billing/reminderService.js'
 import { createWhatsAppProvider, whatsappSendingEnabled } from '../billing/providers/whatsapp/index.js'
 import { handleWhatsAppEvent } from '../billing/whatsappInbound.js'
@@ -534,7 +534,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
   router.get('/reminders/config', need('billing.view'), wrap(async (_req, res) => {
     const db = pool()
     await ensureDefaults(db)
-    res.json({ rules: await loadRules(db), templates: await loadTemplates(db), settings: await getReminderSettings(db) })
+    res.json({ rules: await loadRules(db), templates: await loadTemplates(db), settings: await getReminderSettings(db), consent: await getConsentPolicy(db) })
   }))
 
   router.put('/reminders/rules/:key', need('billing.configure'), wrap(async (req, res) => {
@@ -553,10 +553,20 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
 
   // --- contacts & consent ----------------------------------------------------------
 
+  // The firm-wide consent policy: read by anyone who works the contacts list,
+  // changed only by an administrator.
+  router.get('/consent', need('whatsapp.contacts'), wrap(async (_req, res) => {
+    res.json(await getConsentPolicy(pool()))
+  }))
+
+  router.put('/consent', need('billing.configure'), wrap(async (req, res) => {
+    res.json(await saveConsentPolicy(pool(), req.body || {}, { actorId: actor(req) }))
+  }))
+
   router.get('/contacts', need('whatsapp.contacts'), wrap(async (req, res) => {
     const rows = (await pool().query(
       `SELECT c.id AS client_id, c.display_name, c.eimmigration_client_id,
-              k.phone_e164, k.first_name, k.language, k.timezone, k.opted_in_at, k.opt_in_source, k.opted_out_at, k.opt_out_source,
+              k.phone_e164, k.phone_source, k.first_name, k.language, k.timezone, k.opted_in_at, k.opt_in_source, k.opted_out_at, k.opt_out_source,
               (SELECT COUNT(*)::int FROM billing_client_contacts k2 WHERE k2.phone_e164 = k.phone_e164 AND k2.client_id <> c.id) AS shared_with,
               EXISTS (SELECT 1 FROM billing_client_links l WHERE l.client_id = c.id) AS linked,
               COALESCE((SELECT SUM(balance_cents) FROM billing_invoices i WHERE i.client_id = c.id AND i.balance_cents > 0 AND i.status IN ('unpaid','partial','overdue')), 0)::bigint AS owed

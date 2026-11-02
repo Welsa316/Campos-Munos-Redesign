@@ -83,6 +83,7 @@ export const ACTIONS = {
   'PUT /api/billing/reminders/rules/:key': { key: 'reminders.rule_changed', label: 'Changed a reminder rule', entity: 'rule' },
   'PUT /api/billing/reminders/templates/:key': { key: 'reminders.template_changed', label: 'Changed a reminder template', entity: 'template' },
   'PUT /api/billing/reminders/settings': { key: 'reminders.settings_changed', label: 'Changed reminder sending hours' },
+  'PUT /api/billing/consent': { key: 'consent.policy_changed', label: 'Changed the firm-wide WhatsApp consent setting' },
   'PUT /api/billing/contacts/:clientId': { key: 'contacts.changed', label: 'Edited a client’s WhatsApp number', entity: 'client' },
   'POST /api/billing/contacts/:clientId/opt-in': { key: 'contacts.opted_in', label: 'Recorded a client’s WhatsApp opt-in', entity: 'client' },
   'POST /api/billing/contacts/:clientId/opt-out': { key: 'contacts.opted_out', label: 'Recorded a client’s WhatsApp opt-out', entity: 'client' },

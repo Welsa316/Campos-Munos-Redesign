@@ -23,6 +23,11 @@ export const HEADER_ALIASES = {
     'Client Name', 'Client', 'Contact Name', 'Contact', 'Customer Name', 'Customer', 'Full Name', 'Name',
     'Client Full Name', 'Bill To', 'Nombre del Cliente', 'Nombre de Cliente', 'Cliente', 'Nombre', 'Nombre Completo',
   ],
+  clientPhone: [
+    'Phone', 'Phone Number', 'Client Phone', 'Contact Phone', 'Customer Phone', 'Primary Phone', 'Mobile',
+    'Mobile Phone', 'Mobile Number', 'Cell', 'Cell Phone', 'Cell Number', 'WhatsApp', 'WhatsApp Number',
+    'Telefono', 'Numero de Telefono', 'Telefono del Cliente', 'Celular', 'Telefono Celular', 'Movil',
+  ],
   externalInvoiceId: [
     'Invoice #', 'Invoice No', 'Invoice Number', 'Invoice ID', 'Invoice', 'Inv #', 'Inv No', 'Invoice Ref',
     'Bill Number', 'Bill #', 'Factura', 'Factura #', 'Numero de Factura', 'No. de Factura', 'ID de Factura',
