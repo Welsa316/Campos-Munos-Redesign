@@ -5,7 +5,12 @@
       <header class="px-4 sm:px-5 py-4 border-b border-gray-100 space-y-3">
         <div>
           <h2 class="text-sm font-ui font-semibold text-gray-900">WhatsApp contacts and consent</h2>
-          <p class="text-[11px] font-ui text-gray-500 mt-0.5">
+          <p v-if="policy.firmPolicy" class="text-[11px] font-ui text-gray-500 mt-0.5">
+            Firm policy: consent is taken on the {{ policy.basis.toLowerCase() }}, so a client with a number and a monday.com link gets payment
+            reminders. Nothing needs recording here. A client who replies STOP or BAJA is opted out automatically; record an opt-out for anyone
+            who asks another way. Numbers come from the eImmigration report; a number saved here is kept and never replaced by a report.
+          </p>
+          <p v-else class="text-[11px] font-ui text-gray-500 mt-0.5">
             A payment reminder is only drafted for a client with a number, a recorded opt-in and a monday.com link. Record how the client agreed
             (signed intake form, said yes at a consultation). Changing a number clears the consent: it belongs to the number.
             A client who replies STOP or BAJA is opted out automatically.
@@ -33,7 +38,7 @@
             <p class="mt-1 font-semibold" :class="consent(c).tone">{{ consent(c).label }}</p>
             <p v-if="!c.linked" class="text-amber-700">Not linked to monday.com yet</p>
             <p v-if="c.shared_with" class="text-amber-700">Number shared with {{ c.shared_with }} other client(s): a STOP from it stops messages to all of them</p>
-            <p v-if="c.phone_e164" class="text-gray-500">Saved as +{{ c.phone_e164 }}</p>
+            <p v-if="c.phone_e164" class="text-gray-500">Saved as +{{ c.phone_e164 }}{{ c.phone_source === 'import' ? ' · from the eImmigration report' : '' }}</p>
           </div>
           <div class="space-y-2">
             <div class="flex flex-wrap items-end gap-2">
@@ -69,7 +74,7 @@
               <button @click="save(c)" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg bg-brand-navy text-white font-semibold hover:bg-brand-navy-dark">Save</button>
             </div>
             <div v-if="c.phone_e164" class="flex flex-wrap items-end gap-2">
-              <template v-if="!isOptedIn(c)">
+              <template v-if="!isOptedIn(c) && !(policy.firmPolicy && !isOptedOut(c))">
                 <label class="flex flex-col gap-1 flex-1 min-w-[14rem]">
                   <span class="text-[11px] font-semibold text-gray-700">How did the client agree to WhatsApp messages?</span>
                   <input v-model="edit(c).source" placeholder="e.g. signed intake form, 10/12/2026" :aria-label="`Consent source for ${c.display_name}`"
@@ -126,11 +131,15 @@ const ZONES = [
   { id: 'America/Bogota', label: 'Colombia / Perú' }, { id: 'America/Caracas', label: 'Venezuela' },
 ]
 const firstWord = (n) => String(n || '').trim().split(/\s+/)[0] || ''
-const isOptedIn = (c) => Boolean(c.opted_in_at) && !(c.opted_out_at && c.opted_out_at > c.opted_in_at)
+const isOptedOut = (c) => Boolean(c.opted_out_at) && (!c.opted_in_at || c.opted_out_at > c.opted_in_at)
+const isOptedIn = (c) => Boolean(c.opted_in_at) && !isOptedOut(c)
+// The firm-wide consent policy (Billing → Reminders → Rules & templates).
+const policy = ref({ firmPolicy: false, basis: '' })
 function consent(c) {
   if (!c.phone_e164) return { label: 'No WhatsApp number', tone: 'text-gray-500' }
-  if (c.opted_out_at && (!c.opted_in_at || c.opted_out_at > c.opted_in_at)) return { label: `Opted out ${shortDate(c.opted_out_at)}${c.opt_out_source === 'whatsapp_reply' ? ' (replied STOP)' : ''}`, tone: 'text-brand-red' }
+  if (isOptedOut(c)) return { label: `Opted out ${shortDate(c.opted_out_at)}${c.opt_out_source === 'whatsapp_reply' ? ' (replied STOP)' : ''}`, tone: 'text-brand-red' }
   if (c.opted_in_at) return { label: `Opted in ${shortDate(c.opted_in_at)} · ${c.opt_in_source}`, tone: 'text-green-700' }
+  if (policy.value.firmPolicy) return { label: 'Agreed under the firm policy', tone: 'text-green-700' }
   return { label: 'No consent recorded', tone: 'text-amber-700' }
 }
 function edit(c) {
@@ -152,7 +161,11 @@ const shown = computed(() => {
 
 async function load() {
   loading.value = true
-  try { rows.value = await get('/api/billing/contacts') } catch (err) { error.value = err.message } finally { loading.value = false }
+  try {
+    const [list, p] = await Promise.all([get('/api/billing/contacts'), get('/api/billing/consent')])
+    rows.value = list
+    policy.value = p
+  } catch (err) { error.value = err.message } finally { loading.value = false }
 }
 async function act(name, fn) {
   busy.value = name

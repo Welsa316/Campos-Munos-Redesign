@@ -73,7 +73,7 @@ export const REPORT_TYPE_LABELS = {
 }
 
 export const FIELD_LABELS = {
-  externalClientId: 'eImmigration client ID', clientName: 'Client name', externalInvoiceId: 'Invoice ID',
+  externalClientId: 'eImmigration client ID', clientName: 'Client name', clientPhone: 'Client phone (WhatsApp)', externalInvoiceId: 'Invoice ID',
   invoiceDate: 'Invoice date', dueDate: 'Due date', totalAmount: 'Invoice total', paidAmount: 'Amount paid',
   balanceAmount: 'Balance due', invoiceStatus: 'Invoice status', paymentPlan: 'Payment plan',
   nextInstallmentDate: 'Next installment due', nextInstallmentAmount: 'Next installment amount',

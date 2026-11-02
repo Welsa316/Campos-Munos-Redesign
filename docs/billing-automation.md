@@ -20,6 +20,8 @@ builds on the site/portal/API split (`docs/architecture-split.md`).
 
 | Payment reminders (simulated) | Billing → Reminders | Rules (switched off by default) create **drafts** only; staff approve each one; a client on a payment plan is reminded of the next installment amount (never the whole balance), and gets no message if the report gives no installment amount; approved reminders go out inside sending hours; delivery and read receipts are tracked; pending reminders are cancelled automatically when a newer report shows payment, the due date moves, the invoice needs review or the client opts out. Sending goes to a simulator until Meta is set up. |
 | WhatsApp contacts and consent | Billing → WhatsApp contacts | Number (with its country; nothing is assumed), time zone, language and first name per client; a STOP from a number shared by several clients stops messages to all of them; opt-in recorded with how the client agreed; a new number clears consent; a reply of only STOP/BAJA (and similar) opts the client out and cancels their pending reminders. |
+| Numbers from the report | Billing → Imports | An optional phone column in the eImmigration export fills in each client's WhatsApp number. Ten digits are read as a US number; any other country needs + and its code; anything else is left out and flagged. A report only fills an empty number or replaces one an earlier report set: a number staff saved is never replaced. If a client's rows disagree on the number, none is saved. The preview counts each case. |
+| Firm-wide consent | Billing → Reminders → Rules & templates | The firm takes WhatsApp consent on intake forms and payment plan agreements. With the firm policy on, every client with a number counts as having agreed and nothing is recorded per client; each draft keeps the stated basis ("Firm policy: …"). An opt-out always wins. Switching the policy off cancels the reminders that relied on it. Changed with `billing.configure`. |
 | Client replies | Billing → Reminders → Client replies | Replies from known clients wait for a person. |
 
 ## 2. Daily workflow for staff
@@ -112,7 +114,8 @@ decision is the firm's, and it must be made before anything below.
 5. The webhook (already deployed, `docs/whatsapp-webhook.md`) must be
    subscribed to the `messages` field; that is how delivery receipts, replies
    and STOP opt-outs arrive.
-6. Record a staff member's phone as a test "client" with consent, create a
+6. Record a staff member's phone as a test "client" (with consent, or with the
+   firm policy on), create a
    reminder for a synthetic invoice, approve it, set
    `WHATSAPP_SENDING_ENABLED=true`, send, and confirm it arrives and shows
    "Read". Then switch on the rules the firm wants.
@@ -222,7 +225,8 @@ Policy
 Reminder tests (engine, providers, webhook hook, and a 16-step end-to-end
 flow: consent, drafts, approval gate, send, receipts, cancellation when a
 newer report shows payment, STOP opt-out, definite vs unconfirmed failures,
-the live-sending switch) run with the same command.
+the live-sending switch) run with the same command. `consentFlow.test.js`
+covers numbers from the report and the firm-wide consent policy end to end.
 
 
 ```bash
