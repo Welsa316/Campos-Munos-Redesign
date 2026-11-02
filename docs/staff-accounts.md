@@ -1,17 +1,29 @@
 # Staff accounts, roles and the shared WhatsApp inbox
 
-Who can do what in the staff portal, how an administrator sets it up, and
-what the WhatsApp inbox will and will not send. There is deliberately no
-screen for managing accounts: changes are made by an administrator with
-database access, using `server/scripts/staff.js`, and every change is audited.
+Who can do what in the staff portal, how the administrator sets it up, what
+the activity log records, and what the WhatsApp inbox will and will not send.
+Accounts are managed on the portal's **Team** tab (administrators only), or
+with `server/scripts/staff.js` from a shell with database access. Both apply
+the same rules (`server/auth/team.js`) and every change lands in the
+activity log.
 
 ## The accounts
 
 | Account | Who | Role | Notes |
 |---|---|---|---|
 | `office@camulaw.com` | Front desk (Yoletty) | `admin`, unchanged | The existing login. **Nothing about it changes**: same password, same open sessions, same access to everything, and it stays the address that receives website notifications (`ADMIN_EMAIL`). |
-| Receptionist | To be created | `receptionist` | Phones and WhatsApp only: the call log and the shared WhatsApp inbox. No website leads, no billing (not even payment status), no client consent records. |
+| Receptionist | To be created | `receptionist` | Phones, WhatsApp, and the website intake inbox to **read**: the call log, the shared WhatsApp inbox, and website leads with their notes and replies. They cannot reply to, change, annotate or export leads; opening one does not mark it read for colleagues. No billing (not even payment status), no client consent records. |
 | Billing paralegal | To be created | `billing_paralegal` | Their own email and password. See "Create the billing paralegal's account". |
+
+**The `admin` role is meant for one person**, the developer who maintains the
+portal: it alone has integrations, the monday.com board and column setup, the
+Team tab and the activity log (see "Administrator only" below). Before
+moving `office@camulaw.com` to `front_desk`, create your own administrator
+account and sign in with it; the last enabled administrator cannot be
+demoted or disabled. Moving it takes billing imports, sync, reminders and
+reminder setup away from that login too: give the front desk the single
+permissions they still need from the Team tab, or use `billing_paralegal`
+for whoever runs billing.
 
 The `front_desk` role exists for a receptionist login that should *not* have
 administrator access. It is not applied to `office@camulaw.com`. If the firm
@@ -31,7 +43,7 @@ need to sign out.
 
 | Capability | Lets the account | admin | front_desk | receptionist | billing_paralegal | staff (legacy) |
 |---|---|:-:|:-:|:-:|:-:|:-:|
-| `crm.view` | Read website leads, their notes and email replies | ✓ | ✓ |  |  | ✓ |
+| `crm.view` | Read website leads, their notes and email replies | ✓ | ✓ | ✓ |  | ✓ |
 | `crm.manage` | Reply to leads by email, change status, mark read/archived, add notes | ✓ | ✓ |  |  | ✓ |
 | `crm.export` | Download every lead as CSV | ✓ | ✓ |  |  | ✓ |
 | `whatsapp.view` | Read WhatsApp conversations, internal notes, assignments | ✓ | ✓ | ✓ | ✓ |  |
@@ -39,16 +51,27 @@ need to sign out.
 | `whatsapp.manage` | Assign conversations, add internal notes, close/reopen | ✓ | ✓ | ✓ | ✓ |  |
 | `whatsapp.contacts` | Client WhatsApp numbers and consent (opt in/out) | ✓ | ✓ |  | ✓ |  |
 | `billing.status` | Read-only invoice list: status, balance, next due date | ✓ | ✓ |  | ✓ | ✓ |
-| `billing.view` | All billing records: overview, invoice history, imports, sync runs, reminders, integration status | ✓ |  |  | ✓ | ✓ |
+| `billing.view` | All billing records: overview, invoice history, imports, sync runs, reminders | ✓ |  |  | ✓ | ✓ |
 | `billing.import` | Upload, map, approve or cancel eImmigration imports | ✓ |  |  | ✓ |  |
 | `billing.reconcile` | Link billing clients to monday.com items | ✓ |  |  | ✓ |  |
 | `billing.sync` | Preview and apply the monday.com payment-status sync | ✓ |  |  | ✓ |  |
 | `billing.reminders` | Draft, approve, cancel, retry and resolve payment reminders; client replies | ✓ |  |  | ✓ |  |
-| `billing.configure` | monday.com board mapping and connection check; reminder rules, templates, sending hours | ✓ |  |  |  |  |
+| `billing.configure` | Reminder rules, templates, sending hours | ✓ |  |  |  |  |
 | `calls.view` | See the RingCentral call log (Calls) and refresh it (docs/ringcentral-call-log.md) | ✓ | ✓ | ✓ |  |  |
 | `calls.place` | Call a number from the portal (RingCentral RingOut rings your own phone first, then the client) | ✓ | ✓ | ✓ |  |  |
 | `calls.exclude` | Mark missed calls that need no callback (verification codes, test calls, spam) so they leave the missed-call counts | ✓ | ✓ | ✓ |  |  |
+| `integrations.view` | Status of every connected service (Billing → Integrations) | ✓ |  |  |  |  |
 | `integrations.manage` | Connect, check or disconnect the firm's RingCentral account (docs/ringcentral-oauth.md) | ✓ |  |  |  |  |
+| `monday.configure` | monday.com board and column mapping, status labels, connection check | ✓ |  |  |  |  |
+| `team.manage` | The Team tab: accounts, roles, single permissions, access, sessions, passwords | ✓ |  |  |  |  |
+| `activity.view` | The activity log | ✓ |  |  |  |  |
+
+**Administrator only.** The last five rows (`ADMIN_ONLY` in
+`server/auth/capabilities.js`) come with the `admin` role and nothing else:
+no other role includes them, the Team tab and `staff.js grant` refuse to
+hand one to a single account, and a grant written straight into the
+database is ignored. Everyone else using the monday.com tab sees the sync
+and its history but not the board and column setup.
 
 `staff` is the view-only role that existed before; it keeps exactly the
 access it had. `billing.configure` is administrator-only by default: it
@@ -86,6 +109,49 @@ remembered locally, so the page never flashes Classic before your own theme
 loads. `admin/test/themes.test.js` checks that every theme defines the same
 tokens and that text, focus rings and status badges meet WCAG AA contrast.
 The server's list of allowed theme names is `server/auth/themes.js`.
+
+## The Team tab
+
+Administrators only (`team.manage`). One row per account: role (changed
+from the dropdown, with a confirmation), whether access is active, and when
+the activity log last saw them. **Manage** opens:
+
+- **Revoke access / Restore access.** Revoking signs them out at once and
+  stops sign-in; their notes, replies and history stay. Same as
+  `staff.js disable`.
+- **Reset password.** Their sessions end and you get a temporary password,
+  shown once, to give them in person.
+- **Sign out everywhere**, for a computer left signed in.
+- **Rename**: the name colleagues see.
+- **What they can do**: every permission, grouped by area, ticked where the
+  role gives it. Untick or tick to change one permission for this person
+  only; "Back to exactly what the role gives" clears those changes.
+
+From the portal you cannot change your own role, revoke your own access or
+sign yourself out everywhere, so one click can't lock the firm out; the
+last enabled administrator can't be demoted or disabled from either place.
+
+## Activity log
+
+Administrators only (`activity.view`), at **Activity** in the header.
+Every request that changes something is written to `staff_activity` as
+its response finishes (`server/activity/recorder.js`): who (email and role
+as they were then), what, which record, when, from which IP, and whether
+it went through, was **refused** (their role doesn't allow it, or a revoked
+account tried to sign in) or **failed**. Sign-ins are logged, including
+wrong passwords (with the email typed, never the password). Changes made
+with `staff.js` are logged as "command line". Reading and opening are not
+logged, except downloads (the leads CSV, import exceptions); colour theme
+changes are not logged.
+
+Details hold ids, statuses and counts only: never message or note text,
+passwords, or full phone numbers (a placed call keeps the last four
+digits). Each action's name lives in `server/activity/actions.js`;
+`server/activity.test.js` fails when a route that changes something has
+none, so new routes get a readable line. Filter by person, by
+refused/failed, by date (firm days, Central time) or by text; the address
+keeps the filters, so a filtered view can be bookmarked. Rows are never
+updated or deleted by the app.
 
 ## Running the script
 

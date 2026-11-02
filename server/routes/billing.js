@@ -403,13 +403,15 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
       mode: env.MONDAY_PROVIDER === 'api' ? 'api' : 'mock',
       writesEnabled: writesEnabled(env),
       configError: mondayError,
-      config: cfg,
+      // The mapping itself is the administrator's; everyone else only needs
+      // to know whether a board is chosen (to offer the sync).
+      config: can(_req, 'monday.configure') ? cfg : cfg && { boardId: cfg.boardId },
       lastCheck: check,
       history,
     })
   }))
 
-  router.post('/monday/check', need('billing.configure'), wrap(async (req, res) => {
+  router.post('/monday/check', need('monday.configure'), wrap(async (req, res) => {
     const provider = getMonday()
     let result
     try {
@@ -425,11 +427,11 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     res.json({ mode: provider.mode, ...result })
   }))
 
-  router.get('/monday/boards', need('billing.configure'), wrap(async (_req, res) => {
+  router.get('/monday/boards', need('monday.configure'), wrap(async (_req, res) => {
     res.json(await getMonday().listBoards())
   }))
 
-  router.get('/monday/boards/:boardId/columns', need('billing.configure'), wrap(async (req, res) => {
+  router.get('/monday/boards/:boardId/columns', need('monday.configure'), wrap(async (req, res) => {
     const provider = getMonday()
     const [columns, items] = await Promise.all([
       provider.getBoardColumns(String(req.params.boardId)),
@@ -438,7 +440,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     res.json({ columns, sampleItems: items.map((it) => ({ id: it.id, name: it.name })) })
   }))
 
-  router.put('/monday/config', need('billing.configure'), wrap(async (req, res) => {
+  router.put('/monday/config', need('monday.configure'), wrap(async (req, res) => {
     const saved = await saveMondayConfig(pool(), getMonday(), req.body || {}, { actorId: actor(req) })
     res.json(saved)
   }))
@@ -642,7 +644,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     return { ...card, state: 'connected', detail: `Authorised ${new Date(c.connectedAt).toISOString()}${c.connectedBy ? ` by ${c.connectedBy}` : ''} (${env_}). Last verified ${new Date(verified).toISOString()}.` }
   }
 
-  router.get('/integrations', need('billing.view'), wrap(async (_req, res) => {
+  router.get('/integrations', need('integrations.view'), wrap(async (_req, res) => {
     const db = pool()
     const check = (await db.query("SELECT * FROM billing_integration_checks WHERE provider = 'monday'")).rows[0]
     const lastImport = (await db.query("SELECT applied_at FROM billing_import_jobs WHERE status = 'applied' ORDER BY applied_at DESC LIMIT 1")).rows[0]

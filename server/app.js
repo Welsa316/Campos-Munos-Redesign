@@ -21,6 +21,9 @@ import { createWhatsappInboxRouter } from './routes/whatsappInbox.js'
 import { redactUrlSecrets } from './utils/redactUrl.js'
 import { createIntegrationsRouter } from './routes/integrations.js'
 import { createCallsRouter } from './routes/calls.js'
+import { createTeamRouter } from './routes/team.js'
+import { createActivityRouter } from './routes/activity.js'
+import { activityRecorder } from './activity/recorder.js'
 import {
   resolveOrigins, corsOptionsDelegate, requireTrustedOrigin, resolveClientIp,
 } from './httpSecurity.js'
@@ -90,6 +93,8 @@ export function createApp({ env = process.env, log = logger, beforeFallback } = 
     next()
   })
   app.use('/api', requireTrustedOrigin(origins))
+  // Who changed what, written as each response finishes (server/activity/).
+  app.use('/api', activityRecorder())
   app.use('/api/auth', authRoutes)
   app.use('/api/submissions', submissionRoutes)
   app.use('/api/billing', createBillingRouter({ env }))
@@ -99,6 +104,9 @@ export function createApp({ env = process.env, log = logger, beforeFallback } = 
   app.use('/api/integrations', createIntegrationsRouter({ env }))
   // RingCentral call log (read-only).
   app.use('/api/calls', createCallsRouter({ env }))
+  // Staff accounts (Team tab) and the activity log: administrators only.
+  app.use('/api/team', createTeamRouter())
+  app.use('/api/activity', createActivityRouter())
 
   // API 404s — registered before any frontend fallback so an unknown /api/*
   // path returns JSON instead of a page.

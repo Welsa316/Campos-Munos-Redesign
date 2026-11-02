@@ -83,6 +83,33 @@ export const STAFF_SCHEMA_SQL = `
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
   CREATE INDEX IF NOT EXISTS idx_wa_outbound_messages_conv ON wa_outbound_messages(conversation_id, created_at);
+
+  -- Activity log (server/activity/): every change made in the portal or with
+  -- scripts/staff.js, by whom and when, including attempts that were refused
+  -- or failed. actor_email and actor_role are copied as they were at the
+  -- time, so the row still reads right after an account is renamed, changes
+  -- role or is removed. Details hold ids, statuses and counts, never message
+  -- text, passwords or full phone numbers. Rows are never updated.
+  CREATE TABLE IF NOT EXISTS staff_activity (
+    id BIGSERIAL PRIMARY KEY,
+    actor_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
+    actor_email TEXT,
+    actor_role TEXT,
+    action TEXT NOT NULL,
+    label TEXT NOT NULL,
+    method VARCHAR(7),
+    path TEXT,
+    entity_type TEXT,
+    entity_id TEXT,
+    outcome VARCHAR(7) NOT NULL CHECK (outcome IN ('ok', 'denied', 'failed')),
+    status_code SMALLINT,
+    ip TEXT,
+    source VARCHAR(6) NOT NULL DEFAULT 'portal' CHECK (source IN ('portal', 'cli')),
+    details JSONB NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+  CREATE INDEX IF NOT EXISTS idx_staff_activity_created ON staff_activity(created_at DESC, id DESC);
+  CREATE INDEX IF NOT EXISTS idx_staff_activity_actor ON staff_activity(actor_id, id DESC);
 `
 
 export async function applyStaffSchema(db) {

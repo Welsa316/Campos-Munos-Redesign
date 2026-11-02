@@ -101,12 +101,16 @@ before(async () => {
   const submissions = (await import('./routes/submissions.js')).default
   const auth = (await import('./routes/auth.js')).default
   const { createCallsRouter } = await import('./routes/calls.js')
+  const { createTeamRouter } = await import('./routes/team.js')
+  const { createActivityRouter } = await import('./routes/activity.js')
   const app = express()
   app.use(cookieParser())
   app.use(express.json({ limit: '100kb' }))
   app.use('/api/auth', auth)
   app.use('/api/submissions', submissions)
   app.use('/api/calls', createCallsRouter({ env: {} }))
+  app.use('/api/team', createTeamRouter())
+  app.use('/api/activity', createActivityRouter())
   app.use('/api/billing', createBillingRouter({ env: { MONDAY_PROVIDER: 'mock', WHATSAPP_PROVIDER: 'mock' } }))
   app.use('/api/whatsapp', createWhatsappInboxRouter({ env: { WHATSAPP_SENDING_ENABLED: 'true' }, whatsappProvider: fakeSender('mock') }))
   // As production is today: the real sender configured, sending switched off.
@@ -194,7 +198,7 @@ test('staff roles and capabilities', { skip: SKIP }, async (t) => {
     const c = users.paraCookie
     const me = await call('GET', '/api/auth/verify', { cookie: c })
     assert.ok(!me.json.capabilities.some((x) => x.startsWith('crm.')), me.json.capabilities.join(','))
-    for (const p of ['/api/billing/overview', '/api/billing/imports', '/api/billing/reminders', '/api/billing/integrations', '/api/whatsapp/conversations']) {
+    for (const p of ['/api/billing/overview', '/api/billing/imports', '/api/billing/reminders', '/api/billing/monday', '/api/whatsapp/conversations']) {
       assert.equal((await call('GET', p, { cookie: c })).status, 200, p)
     }
     // Allowed actions reach the handler (which may then reject the body).
@@ -208,23 +212,33 @@ test('staff roles and capabilities', { skip: SKIP }, async (t) => {
       ['POST', `/api/submissions/${users.leadId}/reply`, { body: 'x' }],
       ['GET', '/api/submissions/export/csv'],
       ['PUT', '/api/billing/monday/config', {}], ['PUT', '/api/billing/reminders/settings', {}],
+      // The administrator's alone: integrations, the monday.com board and
+      // columns, the team and the activity log.
+      ['GET', '/api/billing/integrations'], ['GET', '/api/billing/monday/boards'], ['GET', '/api/billing/monday/boards/1/columns'],
+      ['POST', '/api/billing/monday/check'], ['GET', '/api/team'], ['GET', '/api/activity'],
     ]) {
       assert.equal((await call(m, p, { cookie: c, body })).status, 403, `${m} ${p}`)
     }
   })
 
-  await t.test('receptionist: WhatsApp and calls only', async () => {
+  await t.test('receptionist: WhatsApp, calls, and website leads to read', async () => {
     const c = users.recepCookie
     const me = await call('GET', '/api/auth/verify', { cookie: c })
     assert.equal(me.json.role, 'receptionist')
     assert.equal(me.json.roleLabel, 'Receptionist')
-    assert.deepEqual(me.json.capabilities, ['calls.exclude', 'calls.place', 'calls.view', 'whatsapp.manage', 'whatsapp.send', 'whatsapp.view'])
-    for (const p of ['/api/whatsapp/conversations', '/api/calls', '/api/calls/summary']) {
+    assert.deepEqual(me.json.capabilities, ['calls.exclude', 'calls.place', 'calls.view', 'crm.view', 'whatsapp.manage', 'whatsapp.send', 'whatsapp.view'])
+    for (const p of ['/api/whatsapp/conversations', '/api/calls', '/api/calls/summary', '/api/submissions', `/api/submissions/${users.leadId}`]) {
       assert.equal((await call('GET', p, { cookie: c })).status, 200, p)
     }
+    const lead = await call('GET', `/api/submissions/${users.leadId}`, { cookie: c })
+    assert.equal(lead.json.notes[0].body, 'Called, left a message', 'reads the lead with its notes')
+    // Reads only: the lead looks the same to everyone after they open it.
     for (const [m, p, body] of [
-      ['GET', '/api/submissions'], ['GET', `/api/submissions/${users.leadId}`], ['GET', '/api/submissions/export/csv'],
+      ['GET', '/api/submissions/export/csv'],
       ['POST', `/api/submissions/${users.leadId}/notes`, { body: 'x' }],
+      ['PATCH', `/api/submissions/${users.leadId}/read`, {}],
+      ['PATCH', `/api/submissions/${users.leadId}/status`, { status: 'closed' }],
+      ['POST', `/api/submissions/${users.leadId}/reply`, { body: 'x' }],
       ['GET', '/api/billing/invoices'], ['GET', '/api/billing/overview'], ['GET', '/api/billing/contacts'],
       ['PUT', '/api/billing/contacts/1', {}], ['GET', '/api/billing/integrations'],
     ]) {
