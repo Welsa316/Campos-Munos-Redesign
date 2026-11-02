@@ -94,6 +94,10 @@ export const INTEGRATIONS_SCHEMA_SQL = `
     first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
+  -- Each step of the call as RingCentral recorded it (rings, forwards,
+  -- transfers, voicemail), to show where it went. NULL: imported before
+  -- steps were kept.
+  ALTER TABLE rc_calls ADD COLUMN IF NOT EXISTS legs JSONB;
   CREATE INDEX IF NOT EXISTS idx_rc_calls_started ON rc_calls(started_at DESC);
   CREATE INDEX IF NOT EXISTS idx_rc_calls_key ON rc_calls(counterpart_key, started_at);
 
@@ -149,6 +153,9 @@ export const INTEGRATIONS_SCHEMA_SQL = `
     last_error_code TEXT,
     last_error_at TIMESTAMPTZ
   );
+  -- When the calls already imported were read again once to pick up their
+  -- steps (legs), so each one shows where it went.
+  ALTER TABLE rc_call_sync_state ADD COLUMN IF NOT EXISTS legs_backfilled_at TIMESTAMPTZ;
 `
 
 export async function applyIntegrationsSchema(db) {

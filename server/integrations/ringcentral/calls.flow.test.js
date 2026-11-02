@@ -131,7 +131,14 @@ before(async () => {
       { legs: [{ result: 'Accepted', to: { name: 'Yoletty', extensionNumber: '101' } }] }),
     rec('c2', '2026-10-30T16:00:00Z', 'Inbound', 'Missed', { phoneNumber: '+15045550123', name: 'METAIRIE LA' }),
     rec('c3', '2026-10-30T16:30:00Z', 'Outbound', 'Call connected', { phoneNumber: '+15045550123' }),
-    rec('c4', '2026-10-30T17:00:00Z', 'Inbound', 'Voicemail', { phoneNumber: '+15045550177', name: 'NEW ORLEANS LA' }),
+    rec('c4', '2026-10-30T17:00:00Z', 'Inbound', 'Voicemail', { phoneNumber: '+15045550177', name: 'NEW ORLEANS LA' }, {
+      legs: [
+        { startTime: '2026-10-30T17:00:00Z', legType: 'PstnToSip', result: 'Missed', master: true, to: firm },
+        { startTime: '2026-10-30T17:00:05Z', legType: 'Accept', result: 'Missed', to: { name: 'Yoletty', extensionNumber: '101' } },
+        { startTime: '2026-10-30T17:00:30Z', legType: 'FindMe', result: 'No Answer', to: { phoneNumber: '+15045559876' } },
+        { startTime: '2026-10-30T17:00:50Z', legType: 'Voicemail', result: 'Voicemail', to: { name: 'Ciro', extensionNumber: '102' } },
+      ],
+    }),
     rec('c5', '2026-10-30T18:00:00Z', 'Inbound', 'Missed', { phoneNumber: '+15045550199', name: 'JOSE GARCIA' }),
     rec('c6', '2026-10-30T18:30:00Z', 'Inbound', 'Accepted', { extensionNumber: '102', name: 'Paula' }),
     rec('c7', '2026-10-30T19:00:00Z', 'Inbound', 'Missed', { name: 'Anonymous' }),
@@ -277,7 +284,7 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.equal((await list(`&q=${encodeURIComponent('carmen')}`)).json.calls.length, 2, 'her missed call and the callback')
     assert.equal((await list(`&q=${encodeURIComponent('555-0101')}`)).json.calls.length, 1)
     assert.equal((await list(`&q=${encodeURIComponent('+1 (504) 555-0177')}`)).json.calls.length, 1)
-    assert.equal((await list(`&q=${encodeURIComponent('yoletty')}`)).json.calls.length, 1, 'search covers who answered')
+    assert.equal((await list(`&q=${encodeURIComponent('yoletty')}`)).json.calls.length, 2, 'search covers who answered (c1) and every extension a call rang (c4)')
     assert.equal((await list(`&q=${encodeURIComponent('100%_')}`)).json.calls.length, 0, 'LIKE wildcards are literal')
     assert.equal((await call('GET', '/api/calls?from=2026-10-31&to=2026-10-30')).status, 400)
     assert.equal((await call('GET', '/api/calls?from=nope')).status, 400)
@@ -300,6 +307,36 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     const quick = await call('POST', '/api/calls/sync')
     assert.equal(quick.json.result.status, 'skipped')
     assert.equal(rc.requests.length, 0)
+  })
+
+  await t.test('where a call went: each step kept on import, shown in order, searchable by who it reached', async () => {
+    const vm = byId((await list()).json.calls, '2026-10-30T17:00:00Z')
+    assert.deepEqual(vm.path.map((p) => [p.kind, p.name, p.extension, p.numberEnd, p.result]), [
+      ['line', firm.name ?? null, null, null, null],
+      ['rang', 'Yoletty', '101', null, 'no_answer'],
+      ['forwarded', null, null, '9876', 'no_answer'],
+      ['voicemail', 'Ciro', '102', null, 'voicemail'],
+    ])
+    assert.ok(!(await list()).text.includes('5559876'), 'a forwarded mobile number is never sent whole')
+    assert.equal(byId((await list()).json.calls, '2026-10-30T16:30:00Z').path, null, 'none for outgoing calls')
+    const ciro = (await list('&q=ciro')).json.calls
+    assert.deepEqual(ciro.map((c) => new Date(c.startedAt).toISOString()), ['2026-10-30T17:00:00.000Z'], 'a call that reached Ciro, found by his name')
+  })
+
+  await t.test('calls imported before their steps were kept are read again once, then the window is back to normal', async () => {
+    await db.query(`UPDATE rc_calls SET legs = NULL`)
+    await db.query(`UPDATE rc_call_sync_state SET legs_backfilled_at = NULL, window_to = $1`, [clock.t])
+    assert.equal(byId((await list()).json.calls, '2026-10-30T17:00:00Z').path, null)
+    rc.requests = []
+    await sync()
+    assert.equal(new Date(rc.requests[0].query.dateFrom).getTime(), clock.t.getTime() - 14 * 24 * 60 * 60 * 1000, 'the whole backfill period')
+    assert.equal(byId((await list()).json.calls, '2026-10-30T17:00:00Z').path.length, 4)
+    clock.t = new Date(clock.t.getTime() + 60 * 1000)
+    rc.requests = []
+    const state = (await db.query('SELECT window_to, legs_backfilled_at FROM rc_call_sync_state')).rows[0]
+    assert.ok(state.legs_backfilled_at)
+    await sync()
+    assert.equal(new Date(rc.requests[0].query.dateFrom).getTime(), new Date(state.window_to).getTime() - 3 * 60 * 60 * 1000, 'only once')
   })
 
   await t.test('a user without company access: falls back to their own calls and says so', async () => {
