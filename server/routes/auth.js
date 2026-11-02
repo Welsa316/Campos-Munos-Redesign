@@ -63,6 +63,8 @@ router.post(
       // unknown — so response timing doesn't reveal whether the account exists.
       const admin = result.rows[0]
       const valid = await bcrypt.compare(password, admin ? admin.password_hash : DUMMY_HASH)
+      // The activity log names the account only once the password is right.
+      if (admin && valid) req.activityActor = await loadAccount(getPool(), admin.id)
       if (!admin || !valid) {
         return res.status(401).json({ error: 'Invalid email or password' })
       }
@@ -87,7 +89,13 @@ router.post(
   }
 )
 
-router.post('/logout', (req, res) => {
+router.post('/logout', async (req, res) => {
+  // For the activity log: whose session this was, if it still is one.
+  try {
+    const decoded = jwt.verify(req.cookies?.token || '', process.env.JWT_SECRET)
+    const account = await loadAccount(getPool(), decoded.id)
+    if (account && tokenMatches(decoded, account)) req.activityActor = account
+  } catch { /* no session: nothing to attribute */ }
   const { maxAge, ...clearOptions } = cookieOptions()
   res.clearCookie('token', clearOptions)
   res.json({ ok: true })

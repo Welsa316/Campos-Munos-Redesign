@@ -44,12 +44,20 @@ export const routes = [
       { path: 'reminders', name: 'BillingReminders', meta: { capability: 'billing.view' }, component: () => import('../modules/billing/views/RemindersView.vue') },
       { path: 'contacts', name: 'BillingContacts', meta: { capability: 'whatsapp.contacts' }, component: () => import('../modules/billing/views/ContactsView.vue') },
       { path: 'monday', name: 'BillingMonday', meta: { capability: 'billing.view' }, component: () => import('../modules/billing/views/MondayView.vue') },
-      { path: 'integrations', name: 'BillingSettings', meta: { capability: 'billing.view' }, component: () => import('../modules/billing/views/IntegrationsView.vue') },
+      { path: 'integrations', name: 'BillingSettings', meta: { capability: 'integrations.view' }, component: () => import('../modules/billing/views/IntegrationsView.vue') },
     ] },
 
-  // Integrations: third-party accounts an administrator connects (RingCentral).
+  // Integrations: third-party accounts the administrator connects (RingCentral).
   { path: '/integrations', name: 'Integrations', component: () => import('../modules/integrations/IntegrationsView.vue'),
     meta: { requiresAuth: true, module: 'integrations', capability: 'integrations.manage', title: 'Integrations' } },
+
+  // Team: staff accounts, roles and access. Administrators only.
+  { path: '/team', name: 'Team', component: () => import('../modules/team/TeamView.vue'),
+    meta: { requiresAuth: true, module: 'team', capability: 'team.manage', title: 'Team' } },
+
+  // Activity log: who changed what, and when. Administrators only.
+  { path: '/activity', name: 'Activity', component: () => import('../modules/activity/ActivityView.vue'),
+    meta: { requiresAuth: true, module: 'activity', capability: 'activity.view', title: 'Activity' } },
 
   // Sales demo of the operations layer. Fabricated data only, no API calls.
   // Deliberately public within the portal (as it was under /admin) and not

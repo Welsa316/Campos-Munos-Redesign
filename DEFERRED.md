@@ -201,5 +201,15 @@ roles and the shared WhatsApp inbox (docs/staff-accounts.md):
   thread shows reminders sent to either form of a Mexican/Argentine number;
   the list's last-message preview only counts reminders sent to the exact
   number the client writes from. Cosmetic.
-- **No staff-management screen** by design for now; accounts change through
-  `server/scripts/staff.js` only.
+- ~~**No staff-management screen**~~. Done 2026-11-02: the Team tab
+  (administrators only), with an activity log of every change.
+
+## Team tab and activity log (2026-11-02)
+
+- **Activity log retention.** `staff_activity` grows without limit (rows are
+  small, and a few hundred a day is the expected volume). Add a retention
+  window only if the firm sets one; nothing deletes rows today.
+- **Reads are not logged.** Opening a lead or a conversation is not
+  recorded, only changes and downloads. If the firm wants "who looked at
+  this client", log the record-detail GETs (not the list polls, which
+  would bury everything else).

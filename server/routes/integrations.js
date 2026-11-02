@@ -99,6 +99,7 @@ export function createIntegrationsRouter({ db = null, env = process.env, fetchIm
       const q = req.query
       const str = (v) => (typeof v === 'string' ? v : undefined)
       const account = await sessionAccount(req, pool(), env)
+      if (account) req.activityActor = account
       const result = await completeAuthorization(pool(), cfg, {
         state: str(q.state),
         bindingNonce: str(req.cookies?.[BINDING_COOKIE]),
@@ -107,10 +108,12 @@ export function createIntegrationsRouter({ db = null, env = process.env, fetchIm
         error: str(q.error),
       }, deps)
       req.log?.info({ provider: 'ringcentral', outcome: result.outcome }, 'RingCentral authorization completed')
+      req.activityDetails = { outcome: result.outcome }
       return back(result.outcome)
     } catch (err) {
       if (err instanceof RingCentralFlowError) {
         req.log?.warn({ provider: 'ringcentral', outcome: err.outcome }, 'RingCentral authorization refused')
+        req.activityDetails = { outcome: err.outcome }
         return back(err.outcome)
       }
       req.log?.error({ err: { name: err?.name, code: err?.code } }, 'RingCentral callback error')
