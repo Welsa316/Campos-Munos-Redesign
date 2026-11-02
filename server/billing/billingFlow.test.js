@@ -111,7 +111,7 @@ async function importFile(buffer, name, { reportType, reportDate, expectApply = 
 }
 
 const invoiceStatus = async (id) => (await db.query('SELECT status, balance_cents, total_cents FROM billing_invoices WHERE external_invoice_id = $1', [id])).rows[0]
-const STATUS_MAP = { paid: 'Pagado', partial: 'Pago parcial', unpaid: 'Pendiente', overdue: 'Vencido', needs_review: 'Revisar', no_invoices: 'Sin facturas' }
+const STATUS_MAP = { paid: 'PAID', partial: 'Partial', unpaid: 'Not Due Yet', overdue: 'DUE', needs_review: 'ON HOLD', no_invoices: 'New client' }
 
 test('the full simulated flow', { skip: SKIP }, async (t) => {
   const summaryCsv = fs.readFileSync(join(FIX, 'invoice_summary.csv'))
@@ -234,9 +234,9 @@ test('the full simulated flow', { skip: SKIP }, async (t) => {
     const byItem = Object.fromEntries(syncJob.proposed.map((p) => [p.itemId, p]))
     // Client 0004 (item 1006): overdue, $1,000.00 owed.
     const c4 = byItem['1006'].changes
-    assert.equal(c4.find((c) => c.columnId === 'estado_pago').to, 'Vencido')
+    assert.equal(c4.find((c) => c.columnId === 'estado_pago').to, 'DUE')
     assert.equal(c4.find((c) => c.columnId === 'saldo').to, '1000.00')
-    // Client 0001 (item 1001) is already "Pagado" with 0: status/balance not re-written.
+    // Client 0001 (item 1001) is already "PAID" with 0: status/balance not re-written.
     assert.ok(!byItem['1001'].changes.some((c) => c.columnId === 'estado_pago' || c.columnId === 'saldo'))
     const touched = new Set(syncJob.proposed.flatMap((p) => p.changes.map((c) => c.columnId)))
     for (const col of touched) assert.ok(['estado_pago', 'saldo', 'ultimo_pago', 'proximo_venc', 'ultima_sync'].includes(col), col)
@@ -299,7 +299,7 @@ test('the full simulated flow', { skip: SKIP }, async (t) => {
 
     const pv = await call('POST', '/api/billing/monday/sync/preview')
     const item = pv.json.proposed.find((p) => p.itemId === '1006')
-    assert.equal(item.changes.find((c) => c.columnId === 'estado_pago').to, 'Pagado')
+    assert.equal(item.changes.find((c) => c.columnId === 'estado_pago').to, 'PAID')
     assert.equal(item.changes.find((c) => c.columnId === 'saldo').to, '0.00')
     const ap = await call('POST', `/api/billing/monday/sync/${pv.json.jobId}/apply`)
     assert.equal(ap.status, 200)

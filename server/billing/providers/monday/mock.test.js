@@ -18,7 +18,7 @@ after(() => {
 
 test('synthetic seed has the board, column types and edge-case clients', () => {
   const board = SYNTHETIC_SEED.boards[0]
-  assert.equal(board.name, 'Clientes (synthetic)')
+  assert.equal(board.name, 'Clients (synthetic)')
   const types = new Set(board.columns.map((c) => c.type))
   for (const t of ['status', 'numbers', 'date', 'text', 'phone', 'email', 'long_text']) assert.ok(types.has(t), t)
   assert.ok(board.columns.some((c) => c.title === 'Case type'))
@@ -34,7 +34,7 @@ test('read API: connection, boards, columns, paginated items', async () => {
   const p = createMockMondayProvider()
   assert.equal(p.mode, 'mock')
   assert.equal((await p.validateConnection()).ok, true)
-  assert.deepEqual(await p.listBoards(), [{ id: SYNTHETIC_BOARD_ID, name: 'Clientes (synthetic)', itemsCount: 15 }])
+  assert.deepEqual(await p.listBoards(), [{ id: SYNTHETIC_BOARD_ID, name: 'Clients (synthetic)', itemsCount: 15 }])
   const cols = await p.getBoardColumns(SYNTHETIC_BOARD_ID)
   assert.ok(cols.find((c) => c.id === 'estado_pago').settings.labels)
   const first = await p.listItems(SYNTHETIC_BOARD_ID, { limit: 5 })
@@ -50,21 +50,21 @@ test('updateItemColumns mutates the board and records exactly the written column
   let n = 0
   const p = createMockMondayProvider({ now: () => `2026-10-29T00:00:0${n++}Z` })
   const res = await p.updateItemColumns(SYNTHETIC_BOARD_ID, '1002', {
-    estado_pago: { label: 'Pagado' },
+    estado_pago: { label: 'PAID' },
     saldo: '0.00',
     ultimo_pago: { date: '2026-10-20' },
     proximo_venc: null,
   })
   assert.deepEqual(res, { ok: true, itemId: '1002' })
   const item = (await listAllItems(p, SYNTHETIC_BOARD_ID)).items.find((i) => i.id === '1002')
-  assert.equal(item.columns.estado_pago.text, 'Pagado')
+  assert.equal(item.columns.estado_pago.text, 'PAID')
   assert.equal(item.columns.saldo.text, '0.00')
   assert.deepEqual(item.columns.ultimo_pago.value, { date: '2026-10-20' })
   assert.equal(item.columns.proximo_venc.text, '')
   const log = p.getWriteLog()
   assert.deepEqual(log.map((w) => w.columnId), ['estado_pago', 'saldo', 'ultimo_pago', 'proximo_venc'])
-  assert.equal(log[0].before.text, 'Pendiente')
-  assert.equal(log[0].after.text, 'Pagado')
+  assert.equal(log[0].before.text, 'Not Due Yet')
+  assert.equal(log[0].after.text, 'PAID')
 })
 
 test('writes are atomic and validated: unknown label, missing column, missing item', async () => {

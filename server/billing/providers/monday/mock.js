@@ -5,8 +5,13 @@
 
 export const SYNTHETIC_BOARD_ID = '9000000001'
 
-const PAYMENT_LABELS = { 0: 'Pendiente', 1: 'Pagado', 2: 'Vencido', 3: 'Pago parcial', 4: 'Revisar', 5: 'Sin facturas' }
-const CASE_LABELS = { 0: 'Asilo', 1: 'DACA', 2: 'Ciudadanía', 3: 'VAWA', 4: 'Visa U' }
+// The firm's real Status labels: payment labels mixed with workflow ones,
+// which is what the sync's kept labels are for.
+const PAYMENT_LABELS = {
+  0: 'Not Due Yet', 1: 'PAID', 2: 'DUE', 3: 'Partial', 4: 'ON HOLD', 5: 'New client', 6: 'OUTSTANDING',
+  7: 'AUTOPAY', 8: 'Waiting', 9: 'COMPLETED', 10: 'STUCK', 11: 'DEPOSIT PAID',
+}
+const CASE_LABELS = { 0: 'Asylum', 1: 'DACA', 2: 'Citizenship', 3: 'VAWA', 4: 'U Visa' }
 
 const status = (labels, label) => {
   const index = Object.entries(labels).find(([, l]) => l === label)?.[0]
@@ -47,40 +52,40 @@ export const SYNTHETIC_SEED = Object.freeze({
   boards: [
     {
       id: SYNTHETIC_BOARD_ID,
-      name: 'Clientes (synthetic)',
+      name: 'Clients (synthetic)',
       columns: [
         { id: 'name', title: 'Name', type: 'name', settings: {} },
-        { id: 'estado_pago', title: 'Estado de pago', type: 'status', settings: { labels: PAYMENT_LABELS } },
-        { id: 'saldo', title: 'Saldo pendiente', type: 'numbers', settings: { unit: { symbol: '$', direction: 'left' } } },
-        { id: 'ultimo_pago', title: 'Último pago', type: 'date', settings: {} },
-        { id: 'proximo_venc', title: 'Próximo vencimiento', type: 'date', settings: {} },
-        { id: 'ultima_sync', title: 'Última sincronización', type: 'text', settings: {} },
-        { id: 'telefono', title: 'Teléfono', type: 'phone', settings: {} },
-        { id: 'correo', title: 'Correo', type: 'email', settings: {} },
-        { id: 'notas', title: 'Notas', type: 'long_text', settings: {} },
+        { id: 'estado_pago', title: 'Status', type: 'status', settings: { labels: PAYMENT_LABELS } },
+        { id: 'saldo', title: 'Balance due', type: 'numbers', settings: { unit: { symbol: '$', direction: 'left' } } },
+        { id: 'ultimo_pago', title: 'Last payment', type: 'date', settings: {} },
+        { id: 'proximo_venc', title: 'Next due date', type: 'date', settings: {} },
+        { id: 'ultima_sync', title: 'Last sync', type: 'text', settings: {} },
+        { id: 'telefono', title: 'Phone', type: 'phone', settings: {} },
+        { id: 'correo', title: 'Email', type: 'email', settings: {} },
+        { id: 'notas', title: 'Notes', type: 'long_text', settings: {} },
         { id: 'tipo_caso', title: 'Case type', type: 'status', settings: { labels: CASE_LABELS } },
         // Holds the client's eImmigration ID on some items, so matching by a
         // stable identifier can be exercised against server/fixtures/billing.
         { id: 'eim_id', title: 'eImmigration ID', type: 'text', settings: {} },
       ],
       items: [
-        client('1001', 'Ana Ficticia Núñez', { eim: 'EIM-C-0001', estado: 'Pagado', saldo: '0', ultimo: '2026-09-15', tel: '+1 555 0101', correo: 'ana.ficticia@example.com', caso: 'DACA' }),
-        client('1002', 'Bruno Inventado Ríos', { eim: 'EIM-C-0002', estado: 'Pendiente', saldo: '1500', proximo: '2026-11-01', tel: '+1 555 0102', caso: 'Asilo' }),
-        client('1003', 'Carmen Ejemplo Peña', { eim: 'EIM-C-0003', estado: 'Pago parcial', saldo: '750.5', ultimo: '2026-10-01', proximo: '2026-11-15', tel: '+1 555 0103', caso: 'VAWA', notas: 'Prefiere WhatsApp' }),
+        client('1001', 'Ana Ficticia Núñez', { eim: 'EIM-C-0001', estado: 'PAID', saldo: '0', ultimo: '2026-09-15', tel: '+1 555 0101', correo: 'ana.ficticia@example.com', caso: 'DACA' }),
+        client('1002', 'Bruno Inventado Ríos', { eim: 'EIM-C-0002', estado: 'Not Due Yet', saldo: '1500', proximo: '2026-11-01', tel: '+1 555 0102', caso: 'Asylum' }),
+        client('1003', 'Carmen Ejemplo Peña', { eim: 'EIM-C-0003', estado: 'Partial', saldo: '750.5', ultimo: '2026-10-01', proximo: '2026-11-15', tel: '+1 555 0103', caso: 'VAWA', notas: 'Prefers WhatsApp' }),
         // Same name as 1003: a different person. Matching must never merge them.
-        client('1004', 'Carmen Ejemplo Peña', { estado: 'Vencido', saldo: '320', proximo: '2026-09-30', tel: '+1 555 0104', caso: 'Ciudadanía' }),
+        client('1004', 'Carmen Ejemplo Peña', { estado: 'DUE', saldo: '320', proximo: '2026-09-30', tel: '+1 555 0104', caso: 'Citizenship' }),
         // Family member of 1003 sharing her phone number.
-        client('1005', 'Diego Ejemplo Peña', { estado: 'Pendiente', saldo: '900', tel: '+1 555 0103', caso: 'DACA' }),
-        client('1006', 'Elena Simulada Gómez', { eim: 'EIM-C-0004', tel: '+1 555 0106', correo: 'elena.simulada@example.com', caso: 'Visa U' }),
-        client('1007', 'Fabián Prueba Ibáñez', { estado: 'Revisar', saldo: '2000', caso: 'Asilo' }),
-        client('1008', 'Gabriela Ficticia Toledo', { estado: 'Pagado', saldo: '0', ultimo: '2026-08-20', sync: '2026-10-01T12:00:00.000Z', caso: 'Ciudadanía' }),
-        client('1009', 'Héctor Inventado Solís', { estado: 'Sin facturas', caso: 'DACA', correo: 'hector.inventado@example.com' }),
-        client('1010', 'Inés Ejemplo Muñoz', { estado: 'Pendiente', saldo: '450', proximo: '2026-12-01', tel: '+1 555 0110', caso: 'VAWA' }),
-        client('1011', 'Joaquín Simulado Lara', { estado: 'Vencido', saldo: '1200.75', ultimo: '2026-06-01', proximo: '2026-08-01', caso: 'Asilo' }),
-        client('1012', 'Karla Prueba Ortíz', { tel: '+1 555 0112', caso: 'Visa U' }),
+        client('1005', 'Diego Ejemplo Peña', { estado: 'Not Due Yet', saldo: '900', tel: '+1 555 0103', caso: 'DACA' }),
+        client('1006', 'Elena Simulada Gómez', { eim: 'EIM-C-0004', tel: '+1 555 0106', correo: 'elena.simulada@example.com', caso: 'U Visa' }),
+        client('1007', 'Fabián Prueba Ibáñez', { estado: 'ON HOLD', saldo: '2000', caso: 'Asylum' }),
+        client('1008', 'Gabriela Ficticia Toledo', { estado: 'PAID', saldo: '0', ultimo: '2026-08-20', sync: '2026-10-01T12:00:00.000Z', caso: 'Citizenship' }),
+        client('1009', 'Héctor Inventado Solís', { estado: 'New client', caso: 'DACA', correo: 'hector.inventado@example.com' }),
+        client('1010', 'Inés Ejemplo Muñoz', { estado: 'Not Due Yet', saldo: '450', proximo: '2026-12-01', tel: '+1 555 0110', caso: 'VAWA' }),
+        client('1011', 'Joaquín Simulado Lara', { estado: 'DUE', saldo: '1200.75', ultimo: '2026-06-01', proximo: '2026-08-01', caso: 'Asylum' }),
+        client('1012', 'Karla Prueba Ortíz', { tel: '+1 555 0112', caso: 'U Visa' }),
         // Name-only items mirroring fixture clients: never auto-linked.
         client('1013', 'Prueba Cinco', { caso: 'DACA' }),
-        client('1014', 'Ana Ejemplo', { caso: 'Asilo' }),
+        client('1014', 'Ana Ejemplo', { caso: 'Asylum' }),
         client('1015', 'Ana Ejemplo', { caso: 'VAWA' }),
       ],
     },
