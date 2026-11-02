@@ -293,6 +293,18 @@ const cards = computed(() => [
     eyebrow: 'Invoices & payments', title: 'Billing',
     description: 'Payment status, balances and reminders.',
   },
+  can('team.manage') && {
+    key: 'team', to: { name: 'Team' }, icon: 'users',
+    tile: 'bg-gray-100 text-gray-700',
+    eyebrow: 'Administrator', title: 'Team',
+    description: 'Who has access, their roles, and revoking or restoring it.',
+  },
+  can('activity.view') && {
+    key: 'activity', to: { name: 'Activity' }, icon: 'clock-rotate-left',
+    tile: 'bg-gray-100 text-gray-700',
+    eyebrow: 'Administrator', title: 'Activity',
+    description: 'Every change made in the portal, by whom and when.',
+  },
 ].filter(Boolean))
 
 // "Go to" cards size themselves to how many there are (whole class names,

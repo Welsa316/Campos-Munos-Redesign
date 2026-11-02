@@ -3,7 +3,8 @@
     <p v-if="error" role="alert" class="text-sm font-ui text-brand-red bg-red-50 rounded-lg px-4 py-3">{{ error }}</p>
 
     <section v-if="data && !data.board" class="bg-white rounded-xl ring-1 ring-gray-200 px-5 py-4 text-sm font-ui text-gray-700">
-      <template v-if="data.mondayStatus === 'not_configured'">Choose the client board on the <router-link :to="{ name: 'BillingMonday' }" class="text-brand-navy underline">monday.com</router-link> tab to start linking clients.</template>
+      <template v-if="data.mondayStatus === 'not_configured' && can('monday.configure')">Choose the client board on the <router-link :to="{ name: 'BillingMonday' }" class="text-brand-navy underline">monday.com</router-link> tab to start linking clients.</template>
+      <template v-else-if="data.mondayStatus === 'not_configured'">No monday.com client board is chosen yet. Ask the administrator to set it up; linking starts once it is.</template>
       <template v-else>monday.com could not be reached, so items cannot be listed right now. Existing links still apply.</template>
     </section>
 
@@ -85,6 +86,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useBillingApi, money } from '../api.js'
+import { can } from '../../../composables/useAuth.js'
 
 const emit = defineEmits(['counts'])
 const STATUS = {
