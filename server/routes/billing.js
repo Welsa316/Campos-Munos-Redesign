@@ -35,6 +35,7 @@ import { handleWhatsAppEvent } from '../billing/whatsappInbound.js'
 import { SUPPRESSION_REASONS, CANCEL_REASONS } from '../billing/reminderModel.js'
 import { loadRingCentralConfig } from '../integrations/ringcentral/config.js'
 import { getConnectionStatus as getRingCentralStatus } from '../integrations/ringcentral/service.js'
+import { emailCard } from '../utils/emailConfig.js'
 
 const idParam = (name) => param(name).isInt({ min: 1, max: 2147483647 }).withMessage('Invalid id')
 
@@ -687,6 +688,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
           : !waSendConfigured ? 'WHATSAPP_PROVIDER=meta but the access token or phone number id is missing'
             : whatsappSendingEnabled(env) ? 'Sending switched on. Confirm with a test message to a staff phone.' : 'Configured, but sending is switched off (WHATSAPP_SENDING_ENABLED)' },
       ringcentral,
+      emailCard(env),
     ])
   }))
 

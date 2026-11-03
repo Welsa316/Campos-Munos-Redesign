@@ -209,6 +209,28 @@ test('RingCentral OAuth flow', { skip: SKIP }, async (t) => {
     assert.equal((await call('GET', '/api/billing/integrations', { cookie: users.para.cookie })).status, 403)
   })
 
+  await t.test('Billing → Integrations: an email card says when alerts cannot be sent', async () => {
+    const saved = { RESEND_API_KEY: env.RESEND_API_KEY, ADMIN_EMAIL: env.ADMIN_EMAIL }
+    const emailCardNow = async () => {
+      const r = await call('GET', '/api/billing/integrations', { cookie: users.owner.cookie })
+      assert.equal(r.status, 200, r.text)
+      return { text: r.text, card: r.json.find((c) => c.key === 'email') }
+    }
+    try {
+      delete env.RESEND_API_KEY
+      env.ADMIN_EMAIL = 'office@camulaw.com'
+      const off = (await emailCardNow()).card
+      assert.equal(off.state, 'configuration_error')
+      assert.match(off.detail, /RESEND_API_KEY is not set/)
+      env.RESEND_API_KEY = 're_test_secretvalue123'
+      const on = await emailCardNow()
+      assert.equal(on.card.state, 'unverified')
+      assert.ok(!on.text.includes('re_test_secretvalue123'), 'the key never reaches the portal')
+    } finally {
+      for (const [k, v] of Object.entries(saved)) { if (v === undefined) delete env[k]; else env[k] = v }
+    }
+  })
+
   await t.test('authorize: RingCentral URL with state; httpOnly binding cookie scoped to the callback; only digests stored', async () => {
     const { url, state, binding, setCookie } = await start()
     assert.equal(url.origin, 'https://platform.devtest.ringcentral.com')

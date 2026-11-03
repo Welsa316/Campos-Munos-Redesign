@@ -10,6 +10,7 @@ import validate from '../middleware/validate.js'
 import { stripHtml, escapeHtml, escapeCsvField } from '../utils/sanitize.js'
 import { sendLeadConversion } from '../utils/openaiConversions.js'
 import { clientKey } from '../httpSecurity.js'
+import { emailConfigProblems } from '../utils/emailConfig.js'
 
 const router = Router()
 
@@ -136,6 +137,8 @@ router.post(
       // Notify admin via email (fire and forget)
       try {
         const adminEmail = process.env.ADMIN_EMAIL
+        const problems = emailConfigProblems()
+        if (problems.length) req.log.warn({ problems }, 'Admin notification email skipped: email is not configured')
         if (adminEmail && process.env.RESEND_API_KEY) {
           const resend = new Resend(process.env.RESEND_API_KEY)
           const subjectPrefix = source === 'chat' ? 'New chat from' : 'New inquiry from'
@@ -324,6 +327,8 @@ router.post(
       // Notify admin via email (fire and forget)
       try {
         const adminEmail = process.env.ADMIN_EMAIL
+        const problems = emailConfigProblems()
+        if (problems.length) req.log.warn({ problems }, 'Admin notification email skipped: email is not configured')
         if (adminEmail && process.env.RESEND_API_KEY) {
           const resend = new Resend(process.env.RESEND_API_KEY)
           const { error: sendError } = await resend.emails.send({
@@ -608,6 +613,8 @@ router.post(
 
       // Send email via Resend
       try {
+        const problems = emailConfigProblems()
+        if (problems.length) req.log.warn({ problems }, 'Reply email cannot be sent: email is not configured')
         const resend = new Resend(process.env.RESEND_API_KEY)
         const submittedDate = new Date(submission.created_at).toLocaleDateString('en-US', {
           year: 'numeric',

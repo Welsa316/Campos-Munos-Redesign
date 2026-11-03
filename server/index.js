@@ -11,6 +11,7 @@ import getPool from './db/pool.js'
 import { purgeExpiredUploads } from './billing/importService.js'
 import { startReminderScheduler } from './billing/scheduler.js'
 import logger from './logger.js'
+import { emailConfigProblems } from './utils/emailConfig.js'
 
 const isProduction = process.env.NODE_ENV === 'production'
 
@@ -36,6 +37,10 @@ if (isProduction) {
 for (const key of ['WHATSAPP_VERIFY_TOKEN', 'META_APP_SECRET']) {
   if (!process.env[key]) logger.warn({ key }, 'WhatsApp webhook env var not set; the webhook will refuse requests')
 }
+
+// Same for email: without these, website alerts and inbox replies stop.
+const emailProblems = emailConfigProblems()
+if (emailProblems.length) logger.warn({ problems: emailProblems }, 'Email is not configured; website alerts and inbox replies will not be sent')
 
 const PORT = process.env.PORT || 3000
 const app = createApp()
