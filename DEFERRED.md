@@ -245,37 +245,27 @@ Left for later, by name:
 - #79 / #80 / #82 / #84 type-size, tracking, z-index and radius tokens.
 
 **P2, security and backend**
-- #30 logout does not bump `token_version`.
-- #31 webhook parses the body and queries before checking the token;
-  reuse the secretBox digest helpers; lower its rate limit.
-- #32 Meta WhatsApp webhook has no rate limit.
-- #33 RingOut can dial any country; no daily cap.
-- #34 no `Cache-Control: no-store` on `/api` (Team returns one-time passwords).
-- #35 Postgres TLS unverified without `PG_CA_CERT`.
-- #36 public submission endpoints can flood the office inbox.
-- #37 `jwt.verify` does not pin the algorithm (4 places).
-- #38 token encryption key may be derived from the OAuth client secret.
-- #39 error handler shows 502–504 messages; reflects any `x-request-id`.
-- #40 reminder settings, rules and templates accept loose bodies.
-- #41 password length 200 is above bcrypt's 72-byte limit.
-- #42 a truncated call-log sync advances its window past unread pages.
-- #44 subscription delete failures swallowed; registration not serialised.
-- #46 `applySync` can stay stuck in `applying`.
-- #47 outbound WhatsApp rows can stay `pending`.
-- #48 unbounded numeric ids reach Postgres as 500s.
-- #49 RingOut has no idempotency.
-- #50 opt-out comment contradicts its SQL.
-- #51 monday link writes are not transactional; whole board per click.
-- #52 GET that writes (`ensureDefaults`), no retention on several tables,
-  invoices capped at 500, `/readyz` unthrottled, mixed error shapes.
+The rest were fixed on `fix/review-p2-server`. Left:
+- #52 no retention policy for `staff_activity`, `whatsapp_events` and
+  `billing_audit_events` (needs the firm to say how long to keep them);
+  `/api/billing/invoices` capped at 500 with no offset (needs paging in
+  the portal); error bodies still vary (`{error}` / `{error,code}` /
+  `{error,errors[]}`), folded into #59. Every API error now carries
+  `requestId`.
+- #97, server side done: each `live.parties` entry from
+  `GET /api/calls/:id/evidence` has a `partyId` unique within the call;
+  the portal still keys the timeline its own way.
+- Production env to set (warnings at boot until then): `PG_CA_CERT` or a
+  `*.railway.internal` `DATABASE_URL` (#35); `RINGCENTRAL_TOKEN_ENCRYPTION_KEY`
+  (#38; setting it means connecting RingCentral again). Optional:
+  `RINGOUT_ALLOWED_COUNTRY_CODES`, `RINGOUT_DAILY_LIMIT` (#33).
 
 **P2, portal**
-- #53 dead `callPath` / `compactLegs` / `legs` column.
-- #54 the calls list selects `rc_raw` it never sends.
-- #55 the webhook's helmet strip list will drift with helmet versions.
-- #58 unused `FadeContent.vue`; #60 scheduler copy-paste in `index.js`;
-  #61 two NANP validators; #62 dead default exports; #64 duplicated
-  live-event predicates; #65 two files named `IntegrationsView.vue`.
+- #58 unused `FadeContent.vue`; #64 portal half: `callEvidenceText.js`
+  `TYPE_LABEL` vs its inline map ("IVR menu" vs "menu") and
+  `CallDetails.vue` `ev.gaps.filter(gapText)` (the server half is fixed);
+  #65 two files named `IntegrationsView.vue`. The `rc_calls.legs` column is
+  no longer written or read; dropping it is a migration for later.
 - Accessibility: #66 toggles without `aria-pressed`; #67 placeholder and
   gray-400 contrast; #68 input border contrast; #69 meaning only in
   `title`; #70 no `aria-sort`; #71 tabs and radios without arrow keys;
