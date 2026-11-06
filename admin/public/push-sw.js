@@ -16,7 +16,7 @@
  */
 'use strict'
 
-var FALLBACK_TITLE = 'Campos Muños'
+var FALLBACK_TITLE = 'New update'
 var FALLBACK_BODY = 'Open the staff portal to see what is new.'
 // The same rule as the API's portalPath(): a path inside the portal only.
 var PORTAL_PATH = /^\/(?![/\\])[A-Za-z0-9\-._~!$&'()*+,;=:@%/?#]*$/

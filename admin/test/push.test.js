@@ -63,9 +63,9 @@ test('the worker has no fetch handler, so it can never serve or cache the portal
 
 test('a push shows its generic text with the in-portal path and tag', async () => {
   const w = loadWorker()
-  await w.fire('push', pushEvent({ title: 'Campos Muños — Callback Reminder', body: 'You have a scheduled follow-up ready to review.', url: '/calls', tag: 'callback-reminder:9' }))
+  await w.fire('push', pushEvent({ title: 'Callback reminder', body: 'You have a scheduled follow-up ready to review.', url: '/calls', tag: 'callback-reminder:9' }))
   assert.equal(w.shown.length, 1)
-  assert.equal(w.shown[0].title, 'Campos Muños — Callback Reminder')
+  assert.equal(w.shown[0].title, 'Callback reminder')
   assert.equal(w.shown[0].options.body, 'You have a scheduled follow-up ready to review.')
   assert.equal(w.shown[0].options.tag, 'callback-reminder:9')
   assert.equal(w.shown[0].options.renotify, true)
@@ -78,7 +78,7 @@ test('a malformed or empty push still shows a plain notification and never throw
     const data = bad === '{not json' ? { json: () => { throw new SyntaxError('bad') } } : pushEvent(bad).data
     await w.fire('push', { data })
     assert.equal(w.shown.length, 1, String(bad))
-    assert.equal(w.shown[0].title, 'Campos Muños')
+    assert.equal(w.shown[0].title, 'New update')
     assert.equal(w.shown[0].options.body, 'Open the staff portal to see what is new.')
     assert.equal(w.shown[0].options.data.path, '/')
     assert.equal(w.shown[0].options.tag, undefined)

@@ -33,12 +33,12 @@ import { pushConfig } from './config.js'
 export const PUSH_TTL_SECONDS = 24 * 60 * 60
 
 export const CALLBACK_REMINDER = Object.freeze({
-  title: 'Campos Muños — Callback Reminder',
+  title: 'Callback reminder',
   body: 'You have a scheduled follow-up ready to review.',
 })
 
 export const TEST_NOTIFICATION = Object.freeze({
-  title: 'Campos Muños — Test notification',
+  title: 'Test notification',
   body: 'Desktop notifications are working on this computer.',
 })
 
