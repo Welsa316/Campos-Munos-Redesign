@@ -54,7 +54,7 @@ async function loadCall(db, callId) {
 }
 
 /** Notes about this call's caller: every note on the number, or the call's own when the number was withheld. */
-export async function listCallNotes(db, { callId }) {
+export async function listCallNotes(db, { callId, accountId = null }) {
   const call = await loadCall(db, callId)
   const rows = (await db.query(
     `SELECT n.*, ${authorSql} AS author, c.id AS call_id
@@ -66,7 +66,7 @@ export async function listCallNotes(db, { callId }) {
       ORDER BY n.created_at, n.id`,
     [call.counterpart_key || '', call.call_key]
   )).rows
-  return rows.map(presentNote)
+  return rows.map((r) => ({ ...presentNote(r), mine: accountId != null && Number(r.author_id) === Number(accountId) }))
 }
 
 export async function addCallNote(db, { callId, body, accountId }) {
@@ -76,7 +76,7 @@ export async function addCallNote(db, { callId, body, accountId }) {
     `INSERT INTO call_notes (phone_key, call_key, body, author_id) VALUES ($1, $2, $3, $4) RETURNING *`,
     [call.counterpart_key || null, call.call_key, text, accountId]
   )).rows[0]
-  return presentNote({ ...r, call_id: call.id, author: null })
+  return { ...presentNote({ ...r, call_id: call.id, author: null }), mine: true }
 }
 
 /**
@@ -103,7 +103,7 @@ export async function changeCallNote(db, { noteId, body, accountId, mayDeleteAny
       } else updated = note
     }
     await client.query('COMMIT')
-    return presentNote({ ...updated, author: null, call_id: null })
+    return { ...presentNote({ ...updated, author: null, call_id: null }), mine: own }
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {})
     throw err

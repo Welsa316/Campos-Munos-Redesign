@@ -121,7 +121,8 @@ test('a note written on a call is kept with its author and time, and follows the
   // Seen from the caller's other call too, by a colleague.
   const fromOther = await call('GET', `/api/contacts/notes?callId=${ids.call1}`, { as: u.ciro })
   assert.equal(fromOther.status, 200)
-  assert.deepEqual(fromOther.json.notes.map((n) => [n.body, n.author]), [['Wants to speak to the attorney about her case.', 'Yoletty']])
+  assert.deepEqual(fromOther.json.notes.map((n) => [n.body, n.author, n.mine]), [['Wants to speak to the attorney about her case.', 'Yoletty', false]])
+  assert.equal((await call('GET', `/api/contacts/notes?callId=${ids.call1}`)).json.notes[0].mine, true, 'the author sees it as theirs')
   // Not on a different caller's call.
   assert.equal((await call('GET', `/api/contacts/notes?callId=${ids.elsewhere}`)).json.notes.length, 0)
   // A withheld number keeps its note on that call alone.

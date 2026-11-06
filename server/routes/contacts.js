@@ -78,7 +78,7 @@ export function createContactsRouter({ db = null } = {}) {
 
   router.get('/notes', any('calls.view'), wrap(async (req, res) => {
     if (!ID.test(String(req.query.callId ?? ''))) throw new ContactError('not_found', 'Call not found', 404)
-    res.json({ notes: await listCallNotes(pool(), { callId: Number(req.query.callId) }) })
+    res.json({ notes: await listCallNotes(pool(), { callId: Number(req.query.callId), accountId: req.account.id }) })
   }))
 
   router.post('/notes', any('calls.exclude'), wrap(async (req, res) => {
