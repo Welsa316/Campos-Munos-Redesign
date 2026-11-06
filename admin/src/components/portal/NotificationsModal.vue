@@ -94,7 +94,7 @@
 // server/routes/push.js). Opening it only reads state: the browser's
 // permission prompt appears only after "Enable notifications" is clicked.
 import { ref, computed, watch, nextTick } from 'vue'
-import { rawFetch, goToLogin } from '../../composables/useApi.js'
+import { useApi } from '../../composables/useApi.js'
 import { inDesktopApp, desktopNotificationState } from '../../utils/desktop.js'
 import { pushSupport, permissionState, currentSubscription, subscribeThisBrowser, blockedHelp, testSentHelp } from '../../utils/push.js'
 import FaIcon from '../FaIcon.vue'
@@ -142,16 +142,9 @@ const explanation = computed(() => ({
   desktop_blocked: 'This computer does not let the app show notifications. Allow them for Campos Muños in the computer’s notification settings.',
 }[state.value] || ''))
 
-async function api(path, method, body) {
-  const res = await rawFetch(path, { method, body: body === undefined ? undefined : JSON.stringify(body) })
-  if (res.status === 401) {
-    goToLogin()
-    throw new Error('Your session has ended. Sign in again.')
-  }
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw Object.assign(new Error(data.error || 'Something went wrong. Try again.'), { status: res.status, code: data.code })
-  return data
-}
+// The portal's apiFetch: a refusal keeps the server's code (expired,
+// not_subscribed, push_not_configured), which decides what this shows.
+const { get, post, del } = useApi()
 
 // Read where things stand. Never asks for permission.
 async function refresh() {
@@ -162,13 +155,13 @@ async function refresh() {
   const support = pushSupport()
   if (support !== 'ok') { state.value = support; return }
   try {
-    const cfg = await api('/api/push/config', 'GET')
+    const cfg = await get('/api/push/config')
     if (!cfg.configured) { state.value = 'not_configured'; return }
     publicKey = cfg.publicKey
     if (permissionState() === 'denied') { state.value = 'blocked'; return }
     const sub = await currentSubscription()
     if (!sub) { state.value = 'off'; return }
-    const st = await api('/api/push/subscriptions/status', 'POST', { endpoint: sub.endpoint })
+    const st = await post('/api/push/subscriptions/status', { endpoint: sub.endpoint })
     devices.value = st.devices
     // Subscribed in the browser but not for this account (someone else
     // turned it on here, or the push service dropped it): off until enabled.
@@ -186,7 +179,7 @@ async function enable() {
   try {
     // Permission is requested first, straight from this click.
     const sub = await subscribeThisBrowser(publicKey)
-    const res = await api('/api/push/subscriptions', 'POST', { subscription: sub.toJSON() })
+    const res = await post('/api/push/subscriptions', { subscription: sub.toJSON() })
     devices.value = res.devices
     state.value = 'on'
     notice.value = 'Notifications are on for this computer. Send a test to check they appear.'
@@ -208,7 +201,7 @@ async function turnOff() {
   try {
     const sub = await currentSubscription()
     if (sub) {
-      const res = await api('/api/push/subscriptions', 'DELETE', { endpoint: sub.endpoint })
+      const res = await del('/api/push/subscriptions', { endpoint: sub.endpoint })
       devices.value = res.devices
       await sub.unsubscribe().catch(() => {})
     }
@@ -227,7 +220,7 @@ async function sendDesktopTest() {
   notice.value = ''
   busy.value = 'test'
   try {
-    await api('/api/notifications/test', 'POST', {})
+    await post('/api/notifications/test', {})
     notice.value = 'Test sent. It should appear within about 20 seconds.'
   } catch (e) {
     error.value = e.message
@@ -243,7 +236,7 @@ async function sendTest() {
   try {
     const sub = await currentSubscription()
     if (!sub) { state.value = 'off'; throw new Error('Notifications are not turned on on this computer.') }
-    await api('/api/push/test', 'POST', { endpoint: sub.endpoint })
+    await post('/api/push/test', { endpoint: sub.endpoint })
     // Accepted by the push service; whether it shows is up to the browser and the operating system.
     notice.value = testSentHelp()
   } catch (e) {

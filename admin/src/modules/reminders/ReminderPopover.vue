@@ -177,10 +177,11 @@ async function save(allowDuplicate) {
     clash.value = null
     emit('saved', out.reminder, { created: !current.value })
   } catch (e) {
-    if (e.code === 'duplicate' && e.reminder) {
-      clash.value = { kind: 'duplicate', reminder: e.reminder, text: `${e.reminder.assignee?.id === me.value ? 'You already have' : `${e.reminder.assignee?.name || 'They'} already has`} a reminder for this, due ${formatDue(e.reminder.dueAt)}.` }
-    } else if (e.code === 'conflict' && e.reminder) {
-      fill(e.reminder)
+    if (e.code === 'duplicate' && e.data?.reminder) {
+      const r = e.data.reminder
+      clash.value = { kind: 'duplicate', reminder: r, text: `${r.assignee?.id === me.value ? 'You already have' : `${r.assignee?.name || 'They'} already has`} a reminder for this, due ${formatDue(r.dueAt)}.` }
+    } else if (e.code === 'conflict' && e.data?.reminder) {
+      fill(e.data.reminder)
       clash.value = { kind: 'conflict', text: 'Someone else changed this reminder meanwhile. It now shows their version; save again to change it.' }
     } else {
       error.value = e.message

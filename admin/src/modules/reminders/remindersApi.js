@@ -1,38 +1,20 @@
-// /api/reminders (server/routes/reminders.js). Unlike useApi, a refusal keeps
-// its code and body: a 409 carries the existing reminder (a duplicate) or
-// the current one (someone else changed it), which the popover offers.
-import { rawFetch, goToLogin } from '../../composables/useApi.js'
-import { sessionExpired } from '../../composables/appStatus.js'
+// /api/reminders (server/routes/reminders.js), through the portal's apiFetch.
+// A refusal keeps its code and body (ApiError): a 409 carries the existing
+// reminder (a duplicate) or the current one (someone else changed it) in
+// err.data.reminder, which the popover offers.
+import { useApi } from '../../composables/useApi.js'
 
-export class ReminderRequestError extends Error {
-  constructor(message, { status, code, reminder } = {}) {
-    super(message)
-    this.status = status
-    this.code = code || null
-    this.reminder = reminder || null
-  }
-}
-
-async function call(method, path, body) {
-  if (sessionExpired.value) throw new ReminderRequestError('Your session has ended. Sign in again.', { status: 401 })
-  const res = await rawFetch(`/api/reminders${path}`, { method, body: body === undefined ? undefined : JSON.stringify(body) })
-  if (res.status === 401) {
-    goToLogin()
-    throw new ReminderRequestError('Unauthorized', { status: 401 })
-  }
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new ReminderRequestError(data.error || 'Request failed', { status: res.status, code: data.code, reminder: data.reminder })
-  return data
-}
+const { get, post, patch } = useApi()
+const base = '/api/reminders'
 
 export const remindersApi = {
-  mine: () => call('GET', '/mine'),
-  forCalls: () => call('GET', '?kind=call'),
-  forLead: (id) => call('GET', `?lead=${encodeURIComponent(id)}`),
-  assignees: (kind) => call('GET', `/assignees?kind=${kind === 'submission' ? 'submission' : 'call'}`),
-  create: (body) => call('POST', '', body),
-  update: (id, body) => call('PATCH', `/${id}`, body),
-  complete: (id, version) => call('POST', `/${id}/complete`, { version }),
-  cancel: (id, version) => call('POST', `/${id}/cancel`, { version }),
-  snooze: (id, body) => call('POST', `/${id}/snooze`, body),
+  mine: () => get(`${base}/mine`),
+  forCalls: () => get(`${base}?kind=call`),
+  forLead: (id) => get(`${base}?lead=${encodeURIComponent(id)}`),
+  assignees: (kind) => get(`${base}/assignees?kind=${kind === 'submission' ? 'submission' : 'call'}`),
+  create: (body) => post(base, body),
+  update: (id, body) => patch(`${base}/${id}`, body),
+  complete: (id, version) => post(`${base}/${id}/complete`, { version }),
+  cancel: (id, version) => post(`${base}/${id}/cancel`, { version }),
+  snooze: (id, body) => post(`${base}/${id}/snooze`, body),
 }
