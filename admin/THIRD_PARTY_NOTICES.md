@@ -30,7 +30,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE
 ```
 
-## React Bits: SplitText, TiltedCard, FadeContent
+## React Bits: SplitText, TiltedCard
 
 These portal components are Vue ports of React Bits components
 (https://reactbits.dev, https://github.com/DavidHDev/react-bits), Copyright (c)
@@ -43,7 +43,6 @@ This portal is the firm's internal application and does neither.
 - `src/components/SplitText.vue`: SplitText (letter-by-letter reveal).
 - `src/components/TiltedCard.vue`: TiltedCard, without its flip, image,
   caption and overlay.
-- `src/components/FadeContent.vue`: FadeContent.
 
 ## GSAP
 

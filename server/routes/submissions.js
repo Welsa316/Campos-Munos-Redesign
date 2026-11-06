@@ -11,6 +11,7 @@ import { stripHtml, escapeHtml, escapeCsvField } from '../utils/sanitize.js'
 import { sendLeadConversion } from '../utils/openaiConversions.js'
 import { clientKey } from '../httpSecurity.js'
 import { emailConfigProblems } from '../utils/emailConfig.js'
+import { sha256Hex, digestsEqual } from '../integrations/secretBox.js'
 
 const router = Router()
 
@@ -83,10 +84,27 @@ const chatMessageLimiter = rateLimit({
   keyGenerator: clientKey,
 })
 
+// The same email and message again within this window is the same inquiry
+// (a double click, a retry, a script): answered as before, stored and emailed
+// once.
+const DUPLICATE_WINDOW_MINUTES = 10
+
+// The forms carry a hidden "website" field people never see or fill in. A
+// bot that fills every field is told it worked and nothing is stored or sent.
+const honeypot = (req, res, next) => {
+  const trap = req.body?.website
+  if (trap == null || trap === '' || (typeof trap === 'string' && !trap.trim())) return next()
+  // Warn: if a real client's browser ever fills it, this line is the only trace.
+  const domain = typeof req.body?.email === 'string' ? req.body.email.split('@')[1]?.toLowerCase().slice(0, 100) : undefined
+  req.log?.warn({ emailDomain: domain || null, source: req.body?.source === 'chat' ? 'chat' : 'form' }, 'Submission with the hidden field filled in; ignored')
+  return res.status(201).json({ created_at: new Date().toISOString() })
+}
+
 // Public — contact form submission
 router.post(
   '/',
   submitLimiter,
+  honeypot,
   body('firstName').trim().notEmpty().isLength({ max: 255 }).withMessage('First name is required (max 255 chars)'),
   body('lastName').trim().notEmpty().isLength({ max: 255 }).withMessage('Last name is required (max 255 chars)'),
   body('email').isEmail().normalizeEmail().isLength({ max: 255 }).withMessage('Valid email required'),
@@ -112,6 +130,21 @@ router.post(
       const source = req.body.source === 'chat' ? 'chat' : 'contact'
       const consultationType = req.body.consultationType || 'other'
       const location = stripHtml(req.body.location || '')
+
+      const duplicate = (await getPool().query(
+        `SELECT id, created_at, chat_token FROM submissions
+          WHERE LOWER(email) = LOWER($1) AND message = $2 AND source = $3
+            AND created_at > NOW() - make_interval(mins => $4)
+          ORDER BY id DESC LIMIT 1`,
+        [email, message, source, DUPLICATE_WINDOW_MINUTES]
+      )).rows[0]
+      if (duplicate) {
+        req.log.info({ submissionId: duplicate.id }, 'Duplicate submission; answered with the first one')
+        const again = { id: duplicate.id, created_at: duplicate.created_at }
+        if (source === 'chat' && duplicate.chat_token) again.chat_token = duplicate.chat_token
+        return res.status(201).json(again)
+      }
+
       const chatToken = source === 'chat' ? crypto.randomBytes(24).toString('base64url') : null
 
       const result = await getPool().query(
@@ -245,6 +278,20 @@ router.get('/', requireAuth, requireCapability('crm.view'), async (req, res) => 
   }
 })
 
+// Admin — how many inbox leads are unread, and since when. Polled by the
+// portal for its badge; cheaper than listing.
+router.get('/unread-count', requireAuth, requireCapability('crm.view'), async (req, res) => {
+  try {
+    const { rows } = await getPool().query(
+      'SELECT COUNT(*)::int AS count, MIN(created_at) AS oldest FROM submissions WHERE is_read = false AND is_archived = false'
+    )
+    res.json({ count: rows[0].count, oldest: rows[0].oldest ? new Date(rows[0].oldest).toISOString() : null })
+  } catch (err) {
+    req.log.error({ err }, 'Unread count error')
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
 // Admin — get single submission with replies
 router.get(
   '/:id',
@@ -321,7 +368,8 @@ router.post(
       }
 
       const submission = subResult.rows[0]
-      if (!submission.chat_token || submission.chat_token !== incomingToken) {
+      // Compared as digests so the check takes the same time however much matches.
+      if (!submission.chat_token || !digestsEqual(sha256Hex(submission.chat_token), sha256Hex(incomingToken))) {
         return res.status(403).json({ error: 'Invalid chat session' })
       }
 

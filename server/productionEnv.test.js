@@ -49,8 +49,24 @@ test('boot: missing production settings are fatal under NODE_ENV=production, a w
   assert.ok(railway.warn.some((w) => /Missing required env vars in production: DATABASE_URL/.test(w)))
   assert.ok(railway.warn.some((w) => /JWT_SECRET is too short/.test(w)))
 
-  const ok = bootEnvProblems({ NODE_ENV: 'production', JWT_SECRET: STRONG, DATABASE_URL: 'postgres://x', ADMIN_ORIGINS: 'https://admin.camulaw.com' })
+  const ok = bootEnvProblems({ NODE_ENV: 'production', JWT_SECRET: STRONG, DATABASE_URL: 'postgres://u:p@postgres.railway.internal:5432/railway', ADMIN_ORIGINS: 'https://admin.camulaw.com' })
   assert.deepEqual(ok, { fatal: [], warn: [] })
+})
+
+test('boot: production warns, never stops, on unverified Postgres TLS and a derived RingCentral key', () => {
+  const base = { NODE_ENV: 'production', JWT_SECRET: STRONG, ADMIN_ORIGINS: 'https://admin.camulaw.com' }
+  const publicDb = bootEnvProblems({ ...base, DATABASE_URL: 'postgres://u:p@roundhouse.proxy.rlwy.net:41234/railway' })
+  assert.deepEqual(publicDb.fatal, [])
+  assert.ok(publicDb.warn.some((w) => /Postgres TLS .* not verified/.test(w)), publicDb.warn.join(' | '))
+  assert.deepEqual(bootEnvProblems({ ...base, DATABASE_URL: 'postgres://u:p@roundhouse.proxy.rlwy.net:41234/railway', PG_CA_CERT: '-----BEGIN CERTIFICATE-----' }).warn, [], 'with the CA it is verified')
+  assert.deepEqual(bootEnvProblems({ ...base, NODE_ENV: 'development', DATABASE_URL: 'postgres://localhost/x' }).warn, [], 'no TLS outside production')
+
+  const db = { DATABASE_URL: 'postgres://u:p@postgres.railway.internal:5432/railway' }
+  const derived = bootEnvProblems({ ...base, ...db, RINGCENTRAL_CLIENT_SECRET: 'rc-secret' })
+  assert.deepEqual(derived.fatal, [], 'the saved connection must stay readable')
+  assert.ok(derived.warn.some((w) => /derived from RINGCENTRAL_CLIENT_SECRET/.test(w)))
+  assert.deepEqual(bootEnvProblems({ ...base, ...db, RINGCENTRAL_CLIENT_SECRET: 'rc-secret', RINGCENTRAL_TOKEN_ENCRYPTION_KEY: 'a'.repeat(64) }).warn, [])
+  assert.deepEqual(bootEnvProblems({ NODE_ENV: 'test', RINGCENTRAL_CLIENT_SECRET: 'rc-secret' }).warn, [], 'only production')
 })
 
 test('boot: a weak JWT_SECRET is reported in any environment; fatal only in production', () => {

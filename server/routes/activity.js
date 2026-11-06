@@ -41,7 +41,7 @@ export function createActivityRouter({ db = null } = {}) {
       }
       if (DAY.test(String(q.from || ''))) add(`a.created_at >= (?::date)::timestamp AT TIME ZONE '${TZ}'`, q.from)
       if (DAY.test(String(q.to || ''))) add(`a.created_at < ((?::date) + 1)::timestamp AT TIME ZONE '${TZ}'`, q.to)
-      if (/^\d+$/.test(String(q.before || ''))) add('a.id < ?', String(q.before))
+      if (/^\d{1,15}$/.test(String(q.before || ''))) add('a.id < ?', String(q.before))
 
       const { rows } = await pool().query(
         `SELECT a.*, u.display_name, u.email AS current_email

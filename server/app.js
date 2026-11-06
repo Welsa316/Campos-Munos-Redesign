@@ -31,7 +31,32 @@ import {
 import getPool from './db/pool.js'
 import logger from './logger.js'
 
-export function createApp({ env = process.env, log = logger, beforeFallback } = {}) {
+// A caller-supplied request id is kept only when it looks like an id, so a
+// header cannot put arbitrary text into our logs and error bodies.
+const REQUEST_ID = /^[\w-]{8,64}$/
+
+export function requestIdFor(req) {
+  const given = req.headers['x-request-id']
+  return typeof given === 'string' && REQUEST_ID.test(given) ? given : crypto.randomUUID()
+}
+
+// /readyz is unauthenticated. One database round trip every few seconds is
+// enough to answer it; concurrent probes share the one in flight.
+export function readinessCheck(query, { ttlMs = 5000, now = Date.now } = {}) {
+  let cached = null
+  let inFlight = null
+  return async () => {
+    if (cached && now() - cached.at < ttlMs) return cached.ok
+    if (!inFlight) {
+      inFlight = query()
+        .then(() => true, () => false)
+        .then((ok) => { cached = { ok, at: now() }; inFlight = null; return ok })
+    }
+    return inFlight
+  }
+}
+
+export function createApp({ env = process.env, log = logger, beforeFallback, readyQuery } = {}) {
   const app = express()
   app.disable('x-powered-by')
 
@@ -41,7 +66,12 @@ export function createApp({ env = process.env, log = logger, beforeFallback } = 
 
   // helmet's defaults: this app serves JSON. The site's CSP (third-party
   // scripts, video CDN) lives with the site, in site/server/app.js.
-  app.use(helmet())
+  // Not on the RingCentral webhook: RingCentral refuses an address whose
+  // answer to its check is over 1024 bytes, headers included (SUB-525),
+  // Railway adds about 150 of its own, and browser headers mean nothing to
+  // RingCentral's server.
+  const securityHeaders = helmet()
+  app.use((req, res, next) => (req.path.startsWith('/webhooks/ringcentral') ? next() : securityHeaders(req, res, next)))
 
   const origins = resolveOrigins(env)
   if (origins.conflicts.length) {
@@ -54,7 +84,7 @@ export function createApp({ env = process.env, log = logger, beforeFallback } = 
   // JSON-parse 400s) carries req.log.
   app.use(pinoHttp({
     logger: log,
-    genReqId: (req) => req.headers['x-request-id'] || crypto.randomUUID(),
+    genReqId: requestIdFor,
     customLogLevel: (req, res, err) => {
       if (err || res.statusCode >= 500) return 'error'
       if (res.statusCode >= 400) return 'warn'
@@ -81,18 +111,26 @@ export function createApp({ env = process.env, log = logger, beforeFallback } = 
   app.use(express.json({ limit: '100kb' }))
 
   app.get('/healthz', (_req, res) => res.json({ ok: true }))
+  const ready = readinessCheck(readyQuery || (() => getPool().query('SELECT 1')))
   app.get('/readyz', async (_req, res) => {
-    try {
-      await getPool().query('SELECT 1')
-      res.json({ ok: true })
-    } catch {
-      res.status(503).json({ ok: false })
-    }
+    if (await ready()) res.json({ ok: true })
+    else res.status(503).json({ ok: false })
   })
 
-  // The API is never a page anyone should find in search.
-  app.use('/api', (_req, res, next) => {
+  app.use('/api', (req, res, next) => {
+    // The API is never a page anyone should find in search, and no answer
+    // may be kept by a browser or proxy (Team returns one-time passwords).
     res.setHeader('X-Robots-Tag', 'noindex, nofollow')
+    res.setHeader('Cache-Control', 'no-store')
+    // Every error body names the request, so a screenshot of an error can
+    // be matched to its log line. Routes write { error } as before.
+    const json = res.json.bind(res)
+    res.json = (body) => {
+      if (res.statusCode >= 400 && body && typeof body === 'object' && !Array.isArray(body) && body.requestId === undefined && req.id) {
+        return json({ ...body, requestId: req.id })
+      }
+      return json(body)
+    }
     next()
   })
   app.use('/api', requireTrustedOrigin(origins))
@@ -128,8 +166,11 @@ export function addFallbackHandlers(app) {
     req.log?.error({ err }, 'Unhandled error in request')
     // Honor errors that carry a status (e.g. express.json() rejecting malformed
     // JSON → 400, or an oversized body → 413) instead of masking them as 500.
-    const status = err.status || err.statusCode || 500
-    const message = status === 500 ? 'Internal server error' : (err.message || 'Request error')
+    const raw = Number(err.status || err.statusCode)
+    const status = raw >= 400 && raw <= 599 ? raw : 500
+    // Only client errors say what went wrong; a 5xx message can carry
+    // internals (an upstream's reply, a hostname).
+    const message = status < 500 ? (err.message || 'Request error') : 'Internal server error'
     res.status(status).json({ error: message, requestId: req.id })
   })
   return app

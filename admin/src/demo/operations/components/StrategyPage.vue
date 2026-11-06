@@ -174,7 +174,7 @@
       <div class="demo-frame">
         <div class="demo-toolbar">
           <div class="demo-title">
-            <img src="/logo.png" alt="Campos Muños Law" class="h-7" />
+            <img :src="LOGO_SRC" alt="Campos Muños Law" class="h-7" />
             <span class="toolbar-divider"></span>
             <strong>Client Messages</strong>
           </div>
@@ -359,7 +359,7 @@
         </div>
 
         <div class="final-footer">
-          <img src="/logo.png" alt="Campos Muños Law" class="h-10 brightness-0 invert opacity-80" />
+          <img :src="LOGO_SRC" alt="Campos Muños Law" class="h-10 brightness-0 invert opacity-80" />
           <span>An operational transformation concept</span>
           <button type="button" @click="goTo('vision')">Back to the beginning <DemoIcon :icon="faArrowUp" /></button>
         </div>
@@ -375,6 +375,7 @@ let savedScroll = 0
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, onBeforeUnmount } from 'vue'
+import { LOGO_SRC } from '../../../data/brand.js'
 import {
   faArrowDown, faArrowRight, faArrowUp, faCheck, faChevronDown, faClock, faCodeBranch, faLayerGroup,
   faLink, faLock, faPlay, faRotateLeft, faShieldHalved, faSpinner, faUsers,

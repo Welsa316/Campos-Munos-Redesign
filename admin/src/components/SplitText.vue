@@ -12,12 +12,30 @@
 // React hooks become onMounted / watch / onBeforeUnmount, @gsap/react's
 // useGSAP becomes gsap.context, and onLetterAnimationComplete becomes the
 // @letter-animation-complete event. Honours prefers-reduced-motion.
+//
+// ScrollTrigger is fetched only for a scroll trigger ('view' and the rest):
+// Home's greeting uses trigger="load" and never needs it, so it is not in
+// Home's bundle. Registering it is also deferred to that moment, since its
+// registration reaches for window.matchMedia.
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { gsap } from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { SplitText as GSAPSplitText } from 'gsap/SplitText'
+import { settleWithin } from '../utils/settle.js'
 
-gsap.registerPlugin(ScrollTrigger, GSAPSplitText)
+gsap.registerPlugin(GSAPSplitText)
+
+let ScrollTrigger = null
+let scrollTriggerLoading = null
+function loadScrollTrigger() {
+  scrollTriggerLoading ||= import('gsap/ScrollTrigger').then((m) => {
+    ScrollTrigger = m.ScrollTrigger
+    gsap.registerPlugin(ScrollTrigger)
+  })
+  return scrollTriggerLoading
+}
+// The longest the text stays hidden waiting for web fonts; after that it is
+// split in whatever font is showing rather than staying invisible.
+const FONT_WAIT_MS = 1200
 
 const props = defineProps({
   tag: { type: String, default: 'p' },
@@ -81,6 +99,7 @@ function getEffect(effect, em) {
 const el = ref(null)
 const ready = ref(false)
 const fontsLoaded = ref(fontsAreLoaded())
+let fontsGaveUp = false
 let completedText = null
 let cleanup = null
 
@@ -102,7 +121,7 @@ function setup() {
   const p = props
   if (!node || !p.text || !fontsLoaded.value) return
   node.getBoundingClientRect()
-  if (!fontsAreLoaded()) {
+  if (!fontsGaveUp && !fontsAreLoaded()) {
     // Measuring can start a font load (a weight not used before); split once
     // it has finished, or the pieces would be measured in the fallback font.
     fontsLoaded.value = false
@@ -119,6 +138,12 @@ function setup() {
   if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
     ready.value = true
     finish()
+    return
+  }
+
+  // A scroll trigger needs the plugin first; come back once it is here.
+  if (p.trigger !== 'load' && !ScrollTrigger) {
+    loadScrollTrigger().then(() => { if (el.value === node && !cleanup) setup() }, () => { ready.value = true })
     return
   }
 
@@ -334,7 +359,7 @@ function setup() {
       node.removeEventListener('pointerleave', onLeave)
       node.removeEventListener('click', onClick)
       movers.forEach((m) => { m.style.translate = '' })
-      ScrollTrigger.getAll().forEach((st) => { if (st.trigger === node) st.kill() })
+      ScrollTrigger?.getAll().forEach((st) => { if (st.trigger === node) st.kill() })
       splitInstance.revert()
     }
   }, node)
@@ -348,12 +373,14 @@ function setup() {
 
 // Like the original's effect on fontsLoaded: every time fonts are loading,
 // wait for them once more (document.fonts.ready is a new promise each time).
+// Bounded: a stalled font request must not leave the greeting invisible.
 let waiting = false
 function waitForFonts() {
   if (fontsLoaded.value || waiting || typeof document === 'undefined' || !document.fonts) return
   waiting = true
-  document.fonts.ready.then(() => {
+  settleWithin(document.fonts.ready, FONT_WAIT_MS).then((inTime) => {
     waiting = false
+    if (!inTime) fontsGaveUp = true
     fontsLoaded.value = true
   })
 }

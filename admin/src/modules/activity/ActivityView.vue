@@ -22,8 +22,9 @@
           </div>
           <div class="col-span-2 sm:col-span-1">
             <span id="f-outcome" class="block leading-4 text-[11px] font-semibold text-gray-700">Show</span>
-            <div role="radiogroup" aria-labelledby="f-outcome" class="mt-1 flex h-[38px] rounded-lg ring-1 ring-gray-300 p-0.5 bg-white">
-              <button v-for="o in OUTCOMES" :key="o.key" type="button" role="radio" :aria-checked="filters.outcome === o.key"
+            <div role="radiogroup" aria-labelledby="f-outcome" class="mt-1 flex h-[38px] rounded-lg ring-1 ring-gray-300 p-0.5 bg-white" @keydown="rovingKeydown">
+              <button v-for="(o, i) in OUTCOMES" :key="o.key" type="button" role="radio" :aria-checked="filters.outcome === o.key"
+                :tabindex="rovingTabindex(filters.outcome === o.key, i, OUTCOMES.some((x) => x.key === filters.outcome))"
                 @click="filters.outcome = o.key; reload()"
                 :class="filters.outcome === o.key ? 'bg-brand-navy text-white' : 'text-gray-600 hover:bg-brand-surface'"
                 :title="o.key === 'problems' ? 'Only attempts that were refused or failed' : ''"
@@ -61,7 +62,7 @@
           </div>
 
           <template v-for="day in days" :key="day.key">
-            <h3 class="sticky top-0 z-[1] bg-white/95 backdrop-blur px-4 sm:px-5 py-2 border-b border-gray-100 font-ui text-[10px] uppercase tracking-[0.1em] text-gray-500 font-semibold first:rounded-t-xl">{{ day.label }}</h3>
+            <h3 class="sticky top-0 z-[1] bg-white px-4 sm:px-5 py-2 border-b border-gray-100 font-ui text-[10px] uppercase tracking-[0.1em] text-gray-500 font-semibold first:rounded-t-xl">{{ day.label }}</h3>
             <ol class="divide-y divide-gray-50">
               <li v-for="e in day.items" :key="e.id"
                 class="grid grid-cols-[4.5rem_minmax(0,1fr)] lg:grid-cols-[5.5rem_minmax(0,14rem)_minmax(0,1fr)_auto] gap-x-4 gap-y-1 px-4 sm:px-5 py-3 text-sm">
@@ -108,6 +109,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useApi, latestOnly } from '../../composables/useApi.js'
 import { statusMeta } from '../../data/leadStatuses.js'
 import PortalHeader from '../../components/portal/PortalHeader.vue'
+import { rovingKeydown, rovingTabindex } from '../../utils/roving.js'
 import FaIcon from '../../components/FaIcon.vue'
 import LoadError from '../../components/LoadError.vue'
 

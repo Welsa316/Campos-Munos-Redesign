@@ -15,7 +15,7 @@
 import {
   evaluateReminders, renderMessage, cancellationReason, sendingWindow, normalizePhone, relevantDueDate,
 } from './reminders.js'
-import { DEFAULT_RULES, DEFAULT_TEMPLATES } from './reminderModel.js'
+import { seedReminderDefaults } from './reminderModel.js'
 import { whatsappSendingEnabled } from './providers/whatsapp/index.js'
 import { fromInvoiceRow, todayInFirmTz } from './importService.js'
 import { audit } from './audit.js'
@@ -48,13 +48,19 @@ export const DEFAULT_REMINDER_SETTINGS = {
   timeZone: 'America/Chicago', days: [1, 2, 3, 4, 5], startHour: 9, endHour: 18, staleAfterDays: 10,
 }
 
+// Only the known settings, each from the given value or its default; any
+// other key in a request or an old saved row is dropped.
+const knownSettings = (value) => Object.fromEntries(
+  Object.keys(DEFAULT_REMINDER_SETTINGS).map((k) => [k, value && value[k] !== undefined ? value[k] : DEFAULT_REMINDER_SETTINGS[k]])
+)
+
 export async function getReminderSettings(db) {
   const row = (await db.query("SELECT value FROM billing_settings WHERE key = 'reminders'")).rows[0]
-  return { ...DEFAULT_REMINDER_SETTINGS, ...(row?.value || {}) }
+  return knownSettings(row?.value)
 }
 
 export async function saveReminderSettings(db, value, { actorId }) {
-  const v = { ...DEFAULT_REMINDER_SETTINGS, ...value }
+  const v = knownSettings(value && typeof value === 'object' ? value : {})
   const ok = Number.isInteger(v.startHour) && Number.isInteger(v.endHour) && v.startHour >= 0 && v.endHour <= 24 && v.startHour < v.endHour
     && Array.isArray(v.days) && v.days.every((d) => Number.isInteger(d) && d >= 0 && d <= 6)
     && Number.isInteger(v.staleAfterDays) && v.staleAfterDays >= 1 && v.staleAfterDays <= 60
@@ -99,22 +105,8 @@ export async function saveConsentPolicy(db, { firmPolicy, basis } = {}, { actorI
 
 const firmConsentOf = (policy) => (policy.firmPolicy ? { basis: policy.basis } : null)
 
-/** Seed the example rules and templates (switched off) on first use. */
-export async function ensureDefaults(db) {
-  for (const r of DEFAULT_RULES) {
-    await db.query(
-      `INSERT INTO billing_reminder_rules (key, label, trigger, days, action, template_key, enabled)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (key) DO NOTHING`,
-      [r.key, r.label, r.trigger, r.days, r.action, r.templateKey, r.enabled]
-    )
-  }
-  for (const t of DEFAULT_TEMPLATES) {
-    await db.query(
-      `INSERT INTO billing_message_templates (key, meta_name, params, languages) VALUES ($1, $2, $3, $4) ON CONFLICT (key) DO NOTHING`,
-      [t.key, t.metaName, JSON.stringify(t.params), JSON.stringify(t.languages)]
-    )
-  }
-}
+/** Seed the example rules and templates (switched off) where missing. */
+export const ensureDefaults = seedReminderDefaults
 
 export async function loadRules(db) {
   return (await db.query('SELECT * FROM billing_reminder_rules ORDER BY trigger DESC, days DESC')).rows.map((r) => ({
@@ -133,14 +125,17 @@ export async function saveRule(db, key, patch, { actorId }) {
   if (!cur) throw new ReminderError('Rule not found', 404, 'not_found')
   const days = patch.days ?? cur.days
   const enabled = patch.enabled ?? cur.enabled
+  const label = patch.label ?? cur.label
   if (!Number.isInteger(days) || days < 0 || days > 60) throw new ReminderError('Days must be between 0 and 60')
+  if (typeof enabled !== 'boolean') throw new ReminderError('Enabled must be true or false')
+  if (typeof label !== 'string' || !label.trim() || label.length > 80 || /[\r\n\t]/.test(label)) throw new ReminderError('Name: one line, up to 80 characters')
   if (cur.action === 'whatsapp' && enabled) {
     const t = (await db.query('SELECT meta_approved FROM billing_message_templates WHERE key = $1', [cur.template_key])).rows[0]
     if (!t) throw new ReminderError('This rule has no message template', 409, 'no_template')
   }
   await db.query(
     'UPDATE billing_reminder_rules SET days = $2, enabled = $3, label = $4, updated_by = $5, updated_at = NOW() WHERE key = $1',
-    [key, days, enabled, patch.label ?? cur.label, actorId]
+    [key, days, enabled, label.trim(), actorId]
   )
   await audit(db, { actorId, action: 'reminders.rule_saved', entityType: 'rule', entityId: key, details: { days, enabled } })
 }
@@ -149,17 +144,28 @@ export async function saveTemplate(db, key, patch, { actorId }) {
   const cur = (await db.query('SELECT * FROM billing_message_templates WHERE key = $1', [key])).rows[0]
   if (!cur) throw new ReminderError('Template not found', 404, 'not_found')
   const languages = patch.languages ?? cur.languages
+  const metaName = patch.metaName ?? cur.meta_name
+  const metaApproved = patch.metaApproved ?? cur.meta_approved
+  // Meta's own rules for a template name: lowercase letters, digits, underscores.
+  if (typeof metaName !== 'string' || !/^[a-z0-9_]{1,512}$/.test(metaName)) throw new ReminderError('Template name: lowercase letters, digits and underscores, as in WhatsApp Manager')
+  if (typeof metaApproved !== 'boolean') throw new ReminderError('Approved must be true or false')
+  if (!languages || typeof languages !== 'object' || Array.isArray(languages)) throw new ReminderError('Each language needs a code and a body')
   for (const [lang, v] of Object.entries(languages)) {
     if (!['es', 'en'].includes(lang) || typeof v?.body !== 'string' || typeof v?.code !== 'string') throw new ReminderError('Each language needs a code and a body')
+    if (!/^[a-z]{2,3}(_[A-Z]{2})?$/.test(v.code)) throw new ReminderError(`The ${lang} language code must look like es or en_US`)
+    // WhatsApp's limit for a template body.
+    if (!v.body.trim() || v.body.length > 1024) throw new ReminderError(`The ${lang} text must be 1 to 1024 characters`)
     const used = new Set([...v.body.matchAll(/\{\{(\d+)\}\}/g)].map((m) => Number(m[1])))
     for (let i = 1; i <= cur.params.length; i++) if (!used.has(i)) throw new ReminderError(`The ${lang} text must use {{${i}}}`)
     if ([...used].some((n) => n > cur.params.length)) throw new ReminderError(`The ${lang} text uses a placeholder that does not exist`)
   }
+  // Only the two parts of each language the sender reads.
+  const clean = Object.fromEntries(Object.entries(languages).map(([lang, v]) => [lang, { code: v.code, body: v.body }]))
   await db.query(
     `UPDATE billing_message_templates SET meta_name = $2, languages = $3, meta_approved = $4, updated_by = $5, updated_at = NOW() WHERE key = $1`,
-    [key, patch.metaName ?? cur.meta_name, JSON.stringify(languages), patch.metaApproved ?? cur.meta_approved, actorId]
+    [key, metaName, JSON.stringify(clean), metaApproved, actorId]
   )
-  await audit(db, { actorId, action: 'reminders.template_saved', entityType: 'template', entityId: key, details: { metaApproved: patch.metaApproved ?? cur.meta_approved } })
+  await audit(db, { actorId, action: 'reminders.template_saved', entityType: 'template', entityId: key, details: { metaApproved } })
 }
 
 // --- contacts ------------------------------------------------------------------------

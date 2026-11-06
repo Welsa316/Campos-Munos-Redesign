@@ -55,6 +55,14 @@
           <!-- Form - takes 7 cols -->
           <div class="lg:col-span-7 reveal-left">
             <form @submit.prevent="submitForm" class="space-y-6">
+              <!-- Left empty by people (they never see it); bots that fill every field
+                   are answered as if sent and nothing is stored (server/routes/submissions.js).
+                   Its name and label mean nothing to autofill or password managers, which
+                   would otherwise fill it in for a real client and lose their message. -->
+              <div aria-hidden="true" style="position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden;">
+                <label for="contact-cm-hp">Leave this field empty</label>
+                <input id="contact-cm-hp" v-model="form.website" type="text" name="cm_hp" tabindex="-1" autocomplete="off" data-1p-ignore data-lpignore="true" data-form-type="other" />
+              </div>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div class="form-group">
                   <label for="contact-firstName" class="form-label">{{ $t('contact.firstName') }} <span class="text-brand-red">*</span></label>
@@ -230,7 +238,7 @@ function onPhoneInput(e) {
 }
 const { t, te, locale } = useI18n()
 
-const form = ref({ firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '' })
+const form = ref({ firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '', website: '' })
 const submitted = ref(false)
 const loading = ref(false)
 const error = ref(false)
@@ -283,7 +291,7 @@ async function submitForm() {
     trackLead('form', { consultation_type: form.value.consultationType || 'other' }, { conversionEventId })
 
     submitted.value = true
-    form.value = { firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '' }
+    form.value = { firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '', website: '' }
     scheduleReset(() => { submitted.value = false })
   } catch {
     if (!errorText.value) errorText.value = t('contact.errorMessage')

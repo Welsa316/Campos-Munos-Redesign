@@ -14,8 +14,8 @@
 //
 // Deliveries are trusted only when they carry the verification token set at
 // registration (kept here as a SHA-256 digest) and name our subscription.
-import crypto from 'crypto'
 import { rcGet, rcSend, RingCentralApiError } from './api.js'
+import { sha256Hex, digestsEqual, randomToken } from '../secretBox.js'
 
 export const EVENT_FILTER = '/restapi/v1.0/account/~/telephony/sessions'
 export const WEBHOOK_PATH = '/webhooks/ringcentral'
@@ -25,7 +25,6 @@ export const RENEW_WITHIN_MS = 30 * 24 * 60 * 60 * 1000
 export const RETENTION_DAYS = 400
 const MAX_PARTIES = 30
 
-const digest = (token) => crypto.createHash('sha256').update(String(token)).digest('hex')
 const s = (v, n = 120) => (v == null || v === '' ? null : String(v).slice(0, n))
 const when = (v) => { const d = new Date(v); return Number.isNaN(d.getTime()) ? null : d }
 
@@ -93,9 +92,7 @@ export async function isTrustedDelivery(db, headers, payload) {
   const row = (await db.query(`SELECT subscription_id, token_digest FROM rc_event_subscription WHERE key = 'ringcentral'`)).rows[0]
   const token = headers['verification-token']
   if (!row?.token_digest || typeof token !== 'string' || !token) return false
-  const a = Buffer.from(digest(token), 'hex')
-  const b = Buffer.from(row.token_digest, 'hex')
-  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return false
+  if (!digestsEqual(sha256Hex(token), row.token_digest)) return false
   if (payload?.subscriptionId && row.subscription_id && String(payload.subscriptionId) !== row.subscription_id) return false
   return true
 }
@@ -152,26 +149,60 @@ async function recordError(db, code, now) {
   )
 }
 
+/** Record why RingCentral refused a subscription change, for the Integrations page. */
+export async function noteSubscriptionError(db, err, now = new Date()) {
+  await recordError(db, codeOf(err), now)
+}
+
+const REGISTER_LOCK = 'cm_rc_event_subscription'
+
 /**
  * Create the subscription (or replace ours). RingCentral validates the
  * address during this request, so the receiver must already be deployed.
+ * One registration at a time: two at once would each create a subscription
+ * and only the last would be remembered, leaving the other delivering.
  */
-export async function registerSubscription(db, config, { token, actorId = null, env = process.env, now = new Date(), deps = {} } = {}) {
+export async function registerSubscription(db, config, opts = {}) {
+  const lockClient = typeof db.totalCount === 'number' ? await db.connect() : db
+  try {
+    const got = (await lockClient.query('SELECT pg_try_advisory_lock(hashtext($1)) AS ok', [REGISTER_LOCK])).rows[0]?.ok
+    if (!got) throw new EventSubscriptionError('busy', 'The live-event subscription is already being set up. Try again in a moment.', 409)
+    try {
+      return await registerOnce(db, config, opts)
+    } finally {
+      await lockClient.query('SELECT pg_advisory_unlock(hashtext($1))', [REGISTER_LOCK]).catch(() => {})
+    }
+  } finally {
+    if (lockClient !== db) lockClient.release()
+  }
+}
+
+async function registerOnce(db, config, { token, actorId = null, env = process.env, now = new Date(), deps = {} } = {}) {
   const address = webhookAddress(config, env)
   if (!address) throw new EventSubscriptionError('no_address', 'The API has no https address for RingCentral to deliver to', 409)
   const existing = (await db.query(`SELECT subscription_id FROM rc_event_subscription WHERE key = 'ringcentral'`)).rows[0]
   if (existing?.subscription_id) {
-    try { await rcSend(config, token, 'DELETE', `/restapi/v1.0/subscription/${encodeURIComponent(existing.subscription_id)}`, undefined, deps) } catch { /* already gone */ }
+    // Only "it is already gone" is fine. Anything else leaves the old one
+    // delivering beside the new one, so stop here.
+    try {
+      await rcSend(config, token, 'DELETE', `/restapi/v1.0/subscription/${encodeURIComponent(existing.subscription_id)}`, undefined, deps)
+    } catch (err) {
+      if (!(err instanceof RingCentralApiError) || err.status !== 404) {
+        const code = codeOf(err)
+        await recordError(db, code, now)
+        throw new EventSubscriptionError(code, `RingCentral did not remove the current subscription (${code}). Try again.`, 502)
+      }
+    }
   }
   // The token is stored (as a digest) before RingCentral is asked, so its very
   // first delivery is already verifiable.
-  const verificationToken = crypto.randomBytes(24).toString('base64url')
+  const verificationToken = randomToken(24)
   await db.query(
     `INSERT INTO rc_event_subscription (key, subscription_id, address, token_digest, status, created_at, created_by)
      VALUES ('ringcentral', NULL, $1, $2, 'Pending', $3, $4)
      ON CONFLICT (key) DO UPDATE SET subscription_id = NULL, address = EXCLUDED.address, token_digest = EXCLUDED.token_digest,
             status = 'Pending', created_at = EXCLUDED.created_at, created_by = EXCLUDED.created_by, expires_at = NULL`,
-    [address, digest(verificationToken), now, actorId]
+    [address, sha256Hex(verificationToken), now, actorId]
   )
   let sub
   try {
@@ -240,9 +271,4 @@ export async function checkSubscription(db, config, { token, now = new Date(), d
 
 export async function purgeOldEvents(db, now = new Date()) {
   return (await db.query(`DELETE FROM rc_telephony_events WHERE received_at < $1::timestamptz - make_interval(days => $2)`, [now, RETENTION_DAYS])).rowCount
-}
-
-export default {
-  EVENT_FILTER, WEBHOOK_PATH, webhookAddress, storeNotification, isTrustedDelivery, loadEvents,
-  subscriptionStatus, registerSubscription, removeSubscription, checkSubscription, purgeOldEvents,
 }

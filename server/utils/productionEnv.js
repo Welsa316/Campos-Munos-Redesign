@@ -41,5 +41,19 @@ export function bootEnvProblems(env = process.env) {
     const msg = 'JWT_SECRET is too short or contains a placeholder value. Generate at least 32 random chars.'
     ;(strict ? fatal : warn).push(msg)
   }
+  // Warnings only: both work today, and changing either is a deploy decision.
+  if (strict) {
+    // db/pool.js turns TLS on in production and verifies the server only
+    // with PG_CA_CERT. Railway's private network host is not exposed, so
+    // unverified TLS there is not worth a warning on every boot.
+    if (env.DATABASE_URL && !env.PG_CA_CERT && !/\.railway\.internal(:\d+)?\//.test(env.DATABASE_URL)) {
+      warn.push('Postgres TLS is encrypted but the server certificate is not verified. Set PG_CA_CERT, or use the private network DATABASE_URL (*.railway.internal).')
+    }
+  }
+  if (production && env.RINGCENTRAL_CLIENT_SECRET && !String(env.RINGCENTRAL_TOKEN_ENCRYPTION_KEY ?? '').trim()) {
+    // Not fatal: the saved connection was encrypted with the derived key, so
+    // adding a dedicated key means connecting RingCentral again afterwards.
+    warn.push('RingCentral tokens are encrypted with a key derived from RINGCENTRAL_CLIENT_SECRET. Set RINGCENTRAL_TOKEN_ENCRYPTION_KEY (32 random bytes), then connect RingCentral again on the Integrations page.')
+  }
   return { fatal, warn }
 }

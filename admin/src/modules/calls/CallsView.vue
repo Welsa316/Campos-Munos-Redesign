@@ -3,7 +3,7 @@
     <!-- Same shell as the other sections. -->
     <header class="nav-chrome h-16 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 gap-3 z-10">
       <div class="flex items-center gap-3 sm:gap-4 min-w-0">
-        <img src="/logo.png" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
+        <img :src="LOGO_SRC" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
         <div class="w-px h-8 bg-gray-200 hidden sm:block" aria-hidden="true"></div>
         <h1 class="font-heading text-lg text-brand-navy tracking-tight">Calls</h1>
       </div>
@@ -253,7 +253,7 @@
     <!-- What just changed, with a way back. Only after the server confirmed it. -->
     <Transition name="toast">
       <div v-if="toast" role="status" aria-live="polite" @mouseenter="holdToast" @mouseleave="releaseToast" @focusin="holdToast" @focusout="releaseToast"
-        class="fixed z-[180] left-1/2 -translate-x-1/2 bottom-4 sm:bottom-6 w-[calc(100%-2rem)] max-w-md flex items-center gap-3 rounded-xl bg-gray-900 text-white px-4 py-3 shadow-xl font-ui text-[13px]">
+        class="fixed z-[180] left-1/2 -translate-x-1/2 bottom-[max(1rem,env(safe-area-inset-bottom))] sm:bottom-6 w-[calc(100%-2rem)] max-w-md flex items-center gap-3 rounded-xl bg-gray-900 text-white px-4 py-3 shadow-xl font-ui text-[13px]">
         <FaIcon name="circle-check" class="flex-shrink-0" />
         <span class="flex-1 min-w-0">{{ toast.text }}</span>
         <button v-if="toast.undo" type="button" @click="undoToast" class="min-h-9 px-2 font-semibold underline">Undo</button>
@@ -265,6 +265,8 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
+import { LOGO_SRC } from '../../data/brand.js'
+import { zoneMidnight, zoneMidnightDaysAgo } from '../../utils/firmTime.js'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../../composables/useAuth.js'
 import { useApi, latestOnly } from '../../composables/useApi.js'
@@ -390,14 +392,14 @@ const rows = computed(() => {
 })
 const visibleCalls = computed(() => rows.value.filter((r) => r.type === 'call').map((r) => r.call))
 
+// Days start at midnight in New Orleans (the page says so), not in the
+// browser's own time zone.
 function rangeBounds(key) {
-  const start = new Date()
-  start.setHours(0, 0, 0, 0)
-  const day = 24 * 60 * 60 * 1000
+  const start = zoneMidnight()
   const soon = new Date(Date.now() + 60 * 1000)
-  if (key === 'yesterday') return { from: new Date(start.getTime() - day), to: start }
-  if (key === 'week') return { from: new Date(start.getTime() - 6 * day), to: soon }
-  if (key === 'month') return { from: new Date(start.getTime() - 29 * day), to: soon }
+  if (key === 'yesterday') return { from: zoneMidnightDaysAgo(1), to: start }
+  if (key === 'week') return { from: zoneMidnightDaysAgo(6), to: soon }
+  if (key === 'month') return { from: zoneMidnightDaysAgo(29), to: soon }
   return { from: start, to: soon }
 }
 

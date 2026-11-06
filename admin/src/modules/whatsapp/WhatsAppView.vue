@@ -3,7 +3,7 @@
     <!-- Same shell as the lead inbox: white bar, logo, title, view toggle, actions. -->
     <header class="nav-chrome h-16 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 gap-3 z-10">
       <div class="flex items-center gap-3 sm:gap-4 min-w-0">
-        <img src="/logo.png" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
+        <img :src="LOGO_SRC" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
         <div class="w-px h-8 bg-gray-200 hidden sm:block" aria-hidden="true"></div>
         <h1 class="font-heading text-lg text-brand-navy tracking-tight">WhatsApp</h1>
       </div>
@@ -53,13 +53,13 @@
           <div class="flex flex-1 min-w-0 bg-brand-surface rounded-lg p-0.5" role="group" aria-label="Which conversations">
             <button v-for="v in VIEWS" :key="v.key" @click="setView(v.key)" :aria-pressed="view === v.key"
               :class="view === v.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-gray-900'"
-              class="flex-1 text-xs font-ui font-medium px-2 py-1.5 rounded-md transition-all whitespace-nowrap">{{ v.label }}</button>
+              class="flex-1 text-xs font-ui font-medium px-2 py-1.5 rounded-md transition-colors whitespace-nowrap">{{ v.label }}</button>
           </div>
           <button @click="refresh" :disabled="loadingList" class="p-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface transition-colors disabled:opacity-50" aria-label="Refresh conversations">
             <FaIcon name="arrows-rotate" :spin="loadingList" class="text-xs" />
           </button>
         </div>
-        <p v-if="conversations.length" class="px-5 pt-3 pb-1 text-[11px] font-ui text-gray-500">{{ conversations.length }} {{ conversations.length === 1 ? 'conversation' : 'conversations' }}</p>
+        <p v-if="conversations.length" class="px-5 pt-3 pb-1 text-[11px] font-ui text-gray-500 tabular-nums">{{ conversations.length }} {{ conversations.length === 1 ? 'conversation' : 'conversations' }}</p>
         <p v-if="!conversations.length" class="p-8 text-center text-sm text-gray-500 font-ui">{{ EMPTY[view] }}</p>
         <ul v-else class="flex-1 overflow-y-auto divide-y divide-gray-100">
           <li v-for="c in conversations" :key="c.id">
@@ -153,8 +153,10 @@
             <p v-if="actionError" role="alert" class="mt-2 text-xs font-ui text-brand-red">{{ actionError }}</p>
           </div>
 
-          <!-- Messages -->
-          <div ref="threadEl" class="flex-1 overflow-y-auto px-5 sm:px-6 py-5 space-y-4" aria-live="polite">
+          <!-- Messages. Not a live region (it would read the whole thread out
+               on every refresh); a client's new message is announced below. -->
+          <p class="sr-only" role="status">{{ arrivalNote }}</p>
+          <div ref="threadEl" class="flex-1 overflow-y-auto px-5 sm:px-6 py-5 space-y-4">
             <p v-if="!detail.messages.length" class="text-center text-sm text-gray-500 font-ui">No messages yet.</p>
             <div v-for="m in detail.messages" :key="m.key" :class="m.direction === 'out' ? 'flex justify-end' : ''">
               <div class="max-w-[85%] sm:max-w-[70%]">
@@ -164,7 +166,7 @@
                   <p v-if="m.body" class="text-gray-800 text-sm font-ui leading-relaxed whitespace-pre-wrap break-words">{{ m.body }}</p>
                   <p v-else class="text-gray-500 text-sm font-ui italic">{{ m.mediaType ? `Sent a ${m.mediaType} (open WhatsApp to see it)` : 'No text' }}</p>
                 </div>
-                <p :class="m.direction === 'out' ? 'text-right mr-1' : 'ml-1'" class="text-[11px] text-gray-500 font-ui mt-1.5">
+                <p :class="m.direction === 'out' ? 'text-right mr-1' : 'ml-1'" class="text-[11px] text-gray-500 font-ui mt-1.5 tabular-nums">
                   <span v-if="m.direction === 'out' && m.by">{{ m.by }} · </span>{{ fullTime(m.at) }}
                   <template v-if="m.direction === 'out'">
                     · <span :class="m.status === 'failed' ? 'text-brand-red font-semibold' : m.status === 'unknown' ? 'text-amber-800 font-semibold' : ''">{{ STATUS_LABEL[m.status] || m.status }}</span>
@@ -184,7 +186,7 @@
               <span class="flex items-center gap-2 text-xs font-ui font-semibold text-gray-700">
                 <i class="fa-solid fa-note-sticky text-brand-navy/70 text-[11px]" aria-hidden="true"></i>
                 Internal notes
-                <span v-if="detail.notes.length" class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-brand-navy/10 text-brand-navy text-[10px] font-bold">{{ detail.notes.length }}</span>
+                <span v-if="detail.notes.length" class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-brand-navy/10 text-brand-navy text-[10px] font-bold tabular-nums">{{ detail.notes.length }}</span>
               </span>
               <FaIcon :name="notesOpen ? 'chevron-up' : 'chevron-down'" class="text-[10px] text-gray-400" />
             </button>
@@ -193,7 +195,7 @@
                 <label for="wa-note" class="sr-only">Add an internal note</label>
                 <textarea id="wa-note" v-model="noteDraft" rows="2" maxlength="2000" :disabled="busy === 'note'"
                   placeholder="For colleagues only: what was agreed, who to call…"
-                  class="form-input resize-none text-sm flex-1" @keydown.enter.exact.prevent="addNote"></textarea>
+                  class="form-input resize-none text-sm flex-1" @keydown.enter.meta="(e) => { if (!isComposing(e)) { e.preventDefault(); addNote() } }" @keydown.enter.ctrl="(e) => { if (!isComposing(e)) { e.preventDefault(); addNote() } }"></textarea>
                 <button type="submit" :disabled="busy === 'note' || !noteDraft.trim()"
                   class="bg-brand-navy text-white font-ui font-medium text-xs px-4 py-2.5 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0">{{ busy === 'note' ? 'Saving…' : 'Add' }}</button>
               </form>
@@ -216,7 +218,7 @@
               <label for="wa-reply" class="sr-only">Reply on WhatsApp</label>
               <textarea id="wa-reply" v-model="draft" rows="2" maxlength="4096" :disabled="busy === 'send'"
                 :placeholder="`Reply to ${title} on WhatsApp`"
-                class="form-input resize-none text-sm flex-1" @keydown.enter.meta.prevent="send" @keydown.enter.ctrl.prevent="send"></textarea>
+                class="form-input resize-none text-sm flex-1" @keydown.enter.meta="(e) => { if (!isComposing(e)) { e.preventDefault(); send() } }" @keydown.enter.ctrl="(e) => { if (!isComposing(e)) { e.preventDefault(); send() } }"></textarea>
               <button type="submit" :disabled="busy === 'send' || !draft.trim()"
                 class="bg-brand-navy text-white font-ui font-semibold text-sm px-5 py-3 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0">
                 <FaIcon :name="busy === 'send' ? 'spinner' : 'paper-plane'" :spin="busy === 'send'" class="text-xs mr-1.5" />Send
@@ -232,6 +234,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
+import { LOGO_SRC } from '../../data/brand.js'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../../composables/useAuth.js'
 import { useApi, rawFetch, goToLogin, latestOnly } from '../../composables/useApi.js'
@@ -239,6 +242,7 @@ import { formatPhone } from '../../utils/phone.js'
 import SectionLinks from '../../components/portal/SectionLinks.vue'
 import FaIcon from '../../components/FaIcon.vue'
 import ChangePasswordModal from '../../components/messages/ChangePasswordModal.vue'
+import { toDate, isComposing } from '../../utils/text.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -284,6 +288,8 @@ const noteDraft = ref('')
 const draft = ref('')
 const sendError = ref('')
 const threadEl = ref(null)
+// "New message from …" for screen readers when the open thread gets one.
+const arrivalNote = ref('')
 const showChangePassword = ref(false)
 // One key per message being written: a retried or double-clicked send is
 // recognised by the server and goes out once.
@@ -317,7 +323,10 @@ async function loadDetail({ silent = false, scroll = false } = {}) {
   try {
     const d = await get(`/api/whatsapp/conversations/${id}`)
     if (selectedId.value !== id) return // moved on while this loaded
-    const grew = !detail.value || detail.value.id !== d.id || detail.value.messages.length !== d.messages.length
+    const sameThread = detail.value?.id === d.id
+    const grew = !detail.value || !sameThread || detail.value.messages.length !== d.messages.length
+    const last = d.messages[d.messages.length - 1]
+    if (sameThread && grew && last?.direction === 'in') arrivalNote.value = `New message from ${title.value || 'the client'}`
     detail.value = d
     if (scroll || grew) { await nextTick(); threadEl.value?.scrollTo({ top: threadEl.value.scrollHeight }) }
   } catch (err) {
@@ -336,6 +345,7 @@ function select(id) {
   }
   selectedId.value = id
   detail.value = null
+  arrivalNote.value = ''
   router.replace({ name: 'WhatsApp', params: { id } })
   loadDetail({ scroll: true })
 }
@@ -415,8 +425,8 @@ function shortDay(value) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 function relTime(value) {
-  if (!value) return ''
-  const d = new Date(value)
+  const d = toDate(value)
+  if (!d) return ''
   const now = new Date()
   if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
   const y = new Date(now); y.setDate(y.getDate() - 1)
@@ -424,7 +434,8 @@ function relTime(value) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 function fullTime(value) {
-  const d = new Date(value)
+  const d = toDate(value)
+  if (!d) return ''
   const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
   const day = relTime(value)
   return day.includes(':') ? `Today at ${time}` : `${day} at ${time}`
@@ -435,7 +446,7 @@ const POLL_INTERVAL_MS = 15000
 let timer = null
 let inFlight = false
 async function poll() {
-  if (inFlight) return
+  if (inFlight || document.hidden) return
   inFlight = true
   try { await loadList({ silent: true }); await loadDetail({ silent: true }) } finally { inFlight = false }
 }

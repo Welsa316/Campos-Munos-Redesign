@@ -3,7 +3,7 @@
     <!-- Same shell as every section. -->
     <header class="nav-chrome h-16 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 gap-3 z-10">
       <div class="flex items-center gap-3 sm:gap-4 min-w-0">
-        <img src="/logo.png" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
+        <img :src="LOGO_SRC" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
         <div class="w-px h-8 bg-gray-200 hidden sm:block" aria-hidden="true"></div>
         <h1 class="font-heading text-lg text-brand-navy tracking-tight">Home</h1>
       </div>
@@ -25,7 +25,7 @@
     <ChangePasswordModal :visible="showChangePassword" @close="showChangePassword = false" />
 
     <div class="flex-1 overflow-y-auto overflow-x-hidden">
-      <main class="min-h-full relative max-w-[1120px] mx-auto px-4 sm:px-8 pt-6 sm:pt-10 pb-10 flex flex-col gap-4 sm:gap-5 font-ui">
+      <div class="min-h-full relative max-w-[1120px] mx-auto px-4 sm:px-8 pt-6 sm:pt-10 pb-10 flex flex-col gap-4 sm:gap-5 font-ui">
         <!-- Greeting, top left, no card. The words rise in letter by letter
              (SplitText); the picture and role line settle in around them. -->
         <div class="flex items-start justify-between gap-4 px-1">
@@ -111,13 +111,16 @@
           <span class="text-xs text-gray-400" aria-hidden="true">✦</span>
           <span class="text-gray-500">Staff portal</span>
         </footer>
-      </main>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onActivated } from 'vue'
+import { LOGO_SRC } from '../data/brand.js'
+import { zoneMidnightDaysAgo } from '../utils/firmTime.js'
+import { daysAgo, toDate } from '../utils/text.js'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 import { useApi } from '../composables/useApi.js'
@@ -152,8 +155,9 @@ const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: '
 
 // --- the two summary cards ------------------------------------------------------
 
-// Same start as the Calls page's "30 days" view, so the card and the list agree.
-const monthStart = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - 29); return d })()
+// Same start as the Calls page's "30 days" view (New Orleans midnight), so
+// the card and the list agree.
+const monthStart = zoneMidnightDaysAgo(29)
 const missed = ref(null) // { connection, configured, missed: {...} }
 const unread = ref(null) // { count, oldest }
 const billing = ref(null) // /api/billing/overview, for billing accounts
@@ -166,15 +170,10 @@ const showsBillingFigures = computed(() => can('billing.view') && !can('calls.vi
 function shortDay(d) {
   const s = String(d || '')
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s)
-  const date = m && s.length <= 10 ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const date = m && s.length <= 10 ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : toDate(s)
+  return date ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'an unknown date'
 }
 
-function ago(d) {
-  const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400000)
-  if (days < 1) return 'today'
-  return days === 1 ? 'yesterday' : `${days} days ago`
-}
 
 const summaries = computed(() => {
   const out = []
@@ -216,9 +215,9 @@ const summaries = computed(() => {
       arrowTone: 'bg-glass-navy-chip text-glass-navy-ink',
       numberTone: 'text-glass-navy-ink',
       subTone: 'text-glass-navy-ink opacity-70',
-      value: !u ? '·' : u.error ? '—' : u.count >= 200 ? '200+' : u.count,
+      value: !u ? '·' : u.error ? '—' : u.count,
       sub: u?.error ? COULD_NOT_LOAD : firstName.value ? `Waiting for you, ${firstName.value}` : 'Website and chat inquiries',
-      pill: u && !u.error ? (u.count ? `Oldest from ${ago(u.oldest)}` : 'All caught up') : null,
+      pill: u && !u.error ? (u.count ? (daysAgo(u.oldest) ? `Oldest from ${daysAgo(u.oldest)}` : null) : 'All caught up') : null,
       pillTone: 'bg-glass-navy-chip text-glass-navy-ink',
     })
   }
@@ -258,7 +257,7 @@ const summaries = computed(() => {
       subTone: 'text-glass-navy-ink opacity-70',
       value: !b ? '·' : b.error ? '—' : r?.count ?? 0,
       sub: 'Payment reminders drafted by the rules',
-      pill: r?.count ? `Oldest from ${ago(r.oldest)}` : b ? 'Nothing to approve' : null,
+      pill: r?.count ? (daysAgo(r.oldest) ? `Oldest from ${daysAgo(r.oldest)}` : null) : b ? 'Nothing to approve' : null,
       pillTone: 'bg-glass-navy-chip text-glass-navy-ink',
     })
   }
@@ -342,11 +341,9 @@ function loadFigures({ quiet = false } = {}) {
       .catch(() => { missed.value = failed(missed.value) })
   }
   if (can('crm.view')) {
-    withRetry(() => get('/api/submissions?unread=true&limit=200')).then((rows) => {
-      const list = Array.isArray(rows) ? rows : []
-      // Newest first from the API: the oldest waiting is the last one.
-      unread.value = { count: list.length, oldest: list.length ? list[list.length - 1].created_at : null }
-    }).catch(() => { unread.value = failed(unread.value) })
+    withRetry(() => get('/api/submissions/unread-count'))
+      .then((d) => { unread.value = { count: Number(d?.count) || 0, oldest: d?.oldest || null } })
+      .catch(() => { unread.value = failed(unread.value) })
   }
 }
 let activations = 0

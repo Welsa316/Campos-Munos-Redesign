@@ -1,47 +1,58 @@
 <template>
   <div class="h-dvh flex flex-col bg-brand-surface overflow-hidden">
-    <!-- Top bar -->
-    <!-- Same responsive shell as the operations demo: on a phone the logo
-         drops away, and below 1280px the title and every button label
-         (icons keep their aria-labels) so the view toggle and the actions fit
-         without overlapping. -->
+    <!-- Top bar: the busiest header in the portal, so it sheds by width.
+         Phones (below 768px): the Inbox/Contacts switch moves to its own row
+         under the bar, and Alerts, Export and Password share one More menu,
+         leaving the section links and Sign Out. From 768px the switch is
+         back in the bar; from 1024px the three actions are buttons again;
+         the title shows from 1280px, button labels from 1536px. Icons keep
+         their aria-labels and tooltips throughout. -->
     <header class="nav-chrome h-16 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 gap-3 z-10">
       <div class="flex items-center gap-3 sm:gap-4 min-w-0">
-        <img src="/logo.png" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
+        <img :src="LOGO_SRC" alt="Campos Muños Law" class="hidden sm:block h-9 flex-shrink-0" />
         <div class="w-px h-8 bg-gray-200 hidden sm:block" aria-hidden="true"></div>
-        <h1 class="font-heading text-lg text-brand-navy tracking-tight hidden xl:block whitespace-nowrap">Client Messages</h1>
-        <div class="flex bg-brand-surface rounded-lg p-0.5 sm:ml-1">
+        <!-- Always in the document (announced, and focused after a move here);
+             shown from 1280px. -->
+        <h1 class="font-heading text-lg text-brand-navy tracking-tight sr-only xl:not-sr-only whitespace-nowrap">Client Messages</h1>
+        <div class="hidden md:flex bg-brand-surface rounded-lg p-0.5 xl:ml-1" role="group" aria-label="Show">
           <button
+            type="button"
             @click="changeView('inbox')"
+            :aria-pressed="viewMode === 'inbox'"
             :class="viewMode === 'inbox' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-            class="text-xs font-ui font-medium px-3 py-1.5 rounded-md transition-all"
+            class="text-xs font-ui font-medium px-3 py-1.5 rounded-md transition-colors"
           >Inbox</button>
           <button
+            type="button"
             @click="changeView('contacts')"
+            :aria-pressed="viewMode === 'contacts'"
             :class="viewMode === 'contacts' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-            class="text-xs font-ui font-medium px-3 py-1.5 rounded-md transition-all"
+            class="text-xs font-ui font-medium px-3 py-1.5 rounded-md transition-colors"
           >Contacts</button>
         </div>
-        <span v-if="viewMode === 'inbox' && unreadCount > 0" class="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-brand-red text-white text-xs font-ui font-bold">
-          {{ unreadCount }}
+        <span v-if="viewMode === 'inbox' && unreadCount > 0" class="hidden md:inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-brand-red text-white text-xs font-ui font-bold tabular-nums">
+          {{ unreadCount }}<span class="sr-only"> unread</span>
         </span>
       </div>
-      <div class="ml-auto flex items-center gap-1 sm:gap-4">
-        <!-- The busiest header: labels only on wide screens. -->
-        <SectionLinks current="messages" label-at="2xl" />
+      <div class="ml-auto flex items-center gap-1 lg:gap-2 2xl:gap-3">
+        <SectionLinks current="messages" label-at="never" />
+
+        <!-- From 1024px: the account actions as buttons. -->
         <button
           v-if="notifyPermission === 'default'"
+          type="button"
           @click="enableNotifications"
-          class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors"
+          :class="ACTION"
+          class="hidden lg:flex"
           title="Get a desktop alert when a new inquiry arrives"
           aria-label="Turn on desktop notifications"
         >
           <i class="fa-solid fa-bell text-xs" aria-hidden="true"></i>
-          <span class="hidden xl:inline">Alerts</span>
+          <span class="hidden 2xl:inline">Alerts</span>
         </button>
         <span
           v-else-if="notifyPermission === 'denied'"
-          class="hidden xl:flex items-center gap-2 px-3 py-2 text-xs text-gray-500 font-ui"
+          class="hidden 2xl:flex items-center gap-2 px-3 py-2 text-xs text-gray-500 font-ui whitespace-nowrap"
           title="Notifications are blocked for this site. Re-enable them in your browser's site settings."
         >
           <i class="fa-solid fa-bell-slash text-xs" aria-hidden="true"></i>
@@ -49,35 +60,94 @@
         </span>
         <button
           v-if="can('crm.export')"
+          type="button"
           @click="exportCsv"
           :disabled="exporting"
-          class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          :class="ACTION"
+          class="hidden lg:flex disabled:opacity-50 disabled:cursor-not-allowed"
           :title="exportFailed ? 'Export failed — try again' : 'Export CSV'"
           aria-label="Export messages as CSV"
         >
-          <i :class="exporting ? 'fa-solid fa-spinner fa-spin' : (exportFailed ? 'fa-solid fa-triangle-exclamation text-brand-red' : 'fa-solid fa-download')" class="text-xs" aria-hidden="true"></i>
-          <span class="hidden xl:inline">{{ exporting ? 'Exporting…' : (exportFailed ? 'Failed' : 'Export') }}</span>
+          <FaIcon :name="exporting ? 'spinner' : exportFailed ? 'triangle-exclamation' : 'download'" :spin="exporting" :class="exportFailed ? 'text-brand-red' : ''" class="text-xs" />
+          <span class="hidden 2xl:inline">{{ exporting ? 'Exporting…' : (exportFailed ? 'Failed' : 'Export') }}</span>
         </button>
-        <span class="text-xs text-gray-500 font-ui hidden 2xl:inline">{{ adminEmail }}</span>
+        <span class="text-xs text-gray-500 font-ui hidden min-[1720px]:inline">{{ adminEmail }}</span>
         <button
+          type="button"
           @click="showChangePassword = true"
-          class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors"
+          :class="ACTION"
+          class="hidden lg:flex"
           title="Change password"
           aria-label="Change password"
         >
           <i class="fa-solid fa-key text-xs" aria-hidden="true"></i>
-          <span class="hidden xl:inline">Password</span>
+          <span class="hidden 2xl:inline">Password</span>
         </button>
+
+        <!-- Below 1024px: the same three in one menu. -->
+        <details ref="moreMenu" class="relative lg:hidden">
+          <summary :class="ACTION" class="list-none [&::-webkit-details-marker]:hidden" aria-label="More: alerts, export, password" title="More">
+            <FaIcon :name="exporting ? 'spinner' : 'ellipsis'" :spin="exporting" class="text-xs" />
+          </summary>
+          <ul class="absolute right-0 top-full mt-2 w-60 rounded-xl bg-white ring-1 ring-gray-200 shadow-lg py-1 z-30 font-ui">
+            <li v-if="adminEmail" class="px-3 pt-2 pb-2.5 text-[11px] text-gray-500 border-b border-gray-100 truncate" :title="adminEmail">Signed in as {{ adminEmail }}</li>
+            <li v-if="notifyPermission === 'default'">
+              <button type="button" @click="closeMore(); enableNotifications()" :class="MENU_ITEM">
+                <FaIcon name="bell" class="text-xs w-4" />Turn on desktop alerts
+              </button>
+            </li>
+            <li v-else-if="notifyPermission === 'denied'" class="flex items-center gap-2.5 px-3 py-2.5 text-xs text-gray-500">
+              <FaIcon name="bell-slash" class="text-xs w-4" />Alerts are blocked in this browser
+            </li>
+            <li v-if="can('crm.export')">
+              <button type="button" @click="closeMore(); exportCsv()" :disabled="exporting" :class="MENU_ITEM" class="disabled:opacity-50">
+                <FaIcon :name="exportFailed ? 'triangle-exclamation' : 'download'" :class="exportFailed ? 'text-brand-red' : ''" class="text-xs w-4" />{{ exporting ? 'Exporting…' : exportFailed ? 'Export failed, try again' : 'Export as CSV' }}
+              </button>
+            </li>
+            <li>
+              <button type="button" @click="closeMore(); showChangePassword = true" :class="MENU_ITEM">
+                <FaIcon name="key" class="text-xs w-4" />Change password
+              </button>
+            </li>
+          </ul>
+        </details>
+
         <button
+          type="button"
           @click="handleLogout"
           aria-label="Sign out"
-          class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-gray-500 hover:text-brand-red hover:bg-red-50 text-sm font-ui font-medium transition-colors"
+          title="Sign out"
+          class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-red hover:bg-red-50 text-sm font-ui font-medium transition-colors"
         >
           <i class="fa-solid fa-arrow-right-from-bracket text-xs" aria-hidden="true"></i>
-          <span class="hidden xl:inline">Sign Out</span>
+          <span class="hidden 2xl:inline">Sign Out</span>
         </button>
       </div>
     </header>
+
+    <!-- Phones: the Inbox/Contacts switch on its own row, full width, with
+         the unread count inside Inbox. Part of the navigation chrome. -->
+    <div class="nav-chrome md:hidden flex-shrink-0 bg-white border-b border-gray-200 px-4 py-2">
+      <div class="flex bg-brand-surface rounded-lg p-0.5" role="group" aria-label="Show">
+        <button
+          type="button"
+          @click="changeView('inbox')"
+          :aria-pressed="viewMode === 'inbox'"
+          :class="viewMode === 'inbox' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
+          class="flex-1 inline-flex items-center justify-center gap-2 min-h-9 text-sm font-ui font-medium rounded-md transition-colors"
+        >
+          Inbox
+          <span v-if="unreadCount > 0" class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-brand-red text-white text-[11px] font-bold tabular-nums">{{ unreadCount }}<span class="sr-only"> unread</span></span>
+        </button>
+        <button
+          type="button"
+          @click="changeView('contacts')"
+          :aria-pressed="viewMode === 'contacts'"
+          :class="viewMode === 'contacts' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
+          class="flex-1 inline-flex items-center justify-center min-h-9 text-sm font-ui font-medium rounded-md transition-colors"
+        >Contacts</button>
+      </div>
+    </div>
 
     <ChangePasswordModal :visible="showChangePassword" @close="showChangePassword = false" />
 
@@ -87,12 +157,16 @@
       <button type="button" @click="inboxNotice = ''" class="font-semibold underline">Dismiss</button>
     </p>
 
+    <!-- Always mounted, so screen readers hear the change (a region inserted
+         with its text already in it is often not announced). -->
+    <p class="sr-only" role="status">{{ listStatus }}</p>
+
     <!-- Full-screen loading/error only when there's nothing to show yet. A manual
          refresh or view switch with data already loaded updates in place instead
          of tearing down the open conversation + reply draft. -->
     <div v-if="loadingList && submissions.length === 0" class="flex-1 flex items-center justify-center">
       <div class="text-center">
-        <i class="fa-solid fa-spinner fa-spin text-2xl text-brand-navy mb-3"></i>
+        <i class="fa-solid fa-spinner fa-spin text-2xl text-brand-navy mb-3" aria-hidden="true"></i>
         <p class="text-gray-500 text-sm font-ui">Loading messages...</p>
       </div>
     </div>
@@ -100,7 +174,7 @@
     <!-- Error state -->
     <div v-else-if="listError && submissions.length === 0" class="flex-1 flex items-center justify-center">
       <div class="text-center">
-        <i class="fa-solid fa-exclamation-triangle text-2xl text-brand-red mb-3"></i>
+        <i class="fa-solid fa-exclamation-triangle text-2xl text-brand-red mb-3" aria-hidden="true"></i>
         <p class="text-gray-500 text-sm font-ui mb-4">Failed to load messages</p>
         <button @click="fetchSubmissions" class="text-brand-navy text-sm font-ui font-medium hover:underline">
           Try again
@@ -124,7 +198,7 @@
       <!-- Detail opens over the table so the table keeps its full width -->
       <div v-if="selectedId !== null" ref="contactPanel" class="absolute inset-0 z-20 flex" role="dialog" aria-modal="true" aria-label="Contact details"
         @keydown.esc="closeDetail" @keydown.tab="trapTab(contactPanel, $event)">
-        <button class="flex-1 bg-black/20" aria-label="Close contact details" tabindex="-1" @click="closeDetail"></button>
+        <button class="flex-1 scrim-soft" aria-label="Close contact details" tabindex="-1" @click="closeDetail"></button>
         <div class="w-full max-w-2xl bg-white shadow-2xl flex flex-col">
           <SubmissionDetail
             :submission="selectedSubmission"
@@ -188,6 +262,8 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, onActivated, onDeactivated, nextTick, watchEffect } from 'vue'
+import { LOGO_SRC, NOTIFY_ICON } from '../data/brand.js'
+import { leadName } from '../utils/text.js'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 import { useApi, rawFetch, goToLogin, latestOnly } from '../composables/useApi.js'
@@ -197,6 +273,7 @@ import SubmissionDetail from '../components/messages/SubmissionDetail.vue'
 import ChangePasswordModal from '../components/messages/ChangePasswordModal.vue'
 import ContactsTable from '../components/messages/ContactsTable.vue'
 import SectionLinks from '../components/portal/SectionLinks.vue'
+import FaIcon from '../components/FaIcon.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -230,6 +307,24 @@ const listRef = ref(null)
 const notesRequestedFor = ref(null)
 
 const unreadCount = computed(() => submissions.value.filter(s => !s.is_read).length)
+
+// Header actions (whole class names, so Tailwind sees them), and the More
+// menu that holds them below 1024px: closes on a choice, outside, or Esc.
+const ACTION = 'flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors cursor-pointer'
+const MENU_ITEM = 'w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm font-ui font-medium text-gray-700 hover:bg-brand-surface hover:text-brand-navy transition-colors'
+const moreMenu = ref(null)
+const closeMore = () => { if (moreMenu.value) moreMenu.value.open = false }
+function onMoreOutside(e) { if (moreMenu.value?.open && !moreMenu.value.contains(e.target)) closeMore() }
+function onMoreKey(e) {
+  if (e.key === 'Escape' && moreMenu.value?.open) { closeMore(); moreMenu.value.querySelector('summary')?.focus() }
+}
+onMounted(() => { document.addEventListener('click', onMoreOutside); document.addEventListener('keydown', onMoreKey) })
+onUnmounted(() => { document.removeEventListener('click', onMoreOutside); document.removeEventListener('keydown', onMoreKey) })
+const listStatus = computed(() => {
+  if (submissions.value.length) return ''
+  if (loadingList.value) return 'Loading messages…'
+  return listError.value ? 'Failed to load messages.' : ''
+})
 
 // --- Live inbox -------------------------------------------------------------
 // The inbox refreshes itself so a new inquiry appears without anyone pressing
@@ -308,17 +403,17 @@ function notifyOnNewArrivals(list) {
   if (arrivals.length === 1) {
     const s = arrivals[0]
     const body = (s.message || '').trim() || 'No message provided'
-    const note = new Notification(`New inquiry — ${s.first_name} ${s.last_name}`, {
+    const note = new Notification(`New inquiry — ${leadName(s, 'no name given')}`, {
       body: body.length > 140 ? `${body.slice(0, 140)}…` : body,
-      icon: '/favicon-512.png',
+      icon: NOTIFY_ICON,
       // Same tag replaces rather than stacks if this fires twice for one message.
       tag: `cm-submission-${s.id}`,
     })
     note.onclick = () => { open(s.id); note.close() }
   } else {
     const note = new Notification(`${arrivals.length} new inquiries`, {
-      body: arrivals.map(s => `${s.first_name} ${s.last_name}`).join(', ').slice(0, 160),
-      icon: '/favicon-512.png',
+      body: arrivals.map((s) => leadName(s, 'no name given')).join(', ').slice(0, 160),
+      icon: NOTIFY_ICON,
       tag: 'cm-submissions-batch',
     })
     note.onclick = () => { open(arrivals[0].id); note.close() }
@@ -593,7 +688,9 @@ async function exportCsv() {
     a.href = url
     a.download = `submissions-${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
-    URL.revokeObjectURL(url)
+    // Revoked a moment later: Safari can abort a download whose URL is
+    // revoked in the same task as the click.
+    setTimeout(() => URL.revokeObjectURL(url), 30000)
   } catch {
     // Surface the failure on the button instead of silently doing nothing.
     exportFailed.value = true

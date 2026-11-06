@@ -9,6 +9,8 @@
 //
 // Receiving only. Nothing here calls the Graph API or sends a message.
 import { Router, raw } from 'express'
+import rateLimit from 'express-rate-limit'
+import { clientKey } from '../httpSecurity.js'
 import logger from '../logger.js'
 import whatsappEvents from '../db/whatsappEvents.js'
 import { verifyChallenge, verifySignature, extractEvents } from '../utils/whatsapp.js'
@@ -46,8 +48,19 @@ export function createWhatsappRouter({
   // Called once per newly stored event (billing: delivery receipts, client
   // replies, opt-outs). Defaults to nothing so the router stays usable alone.
   onEvent = null,
+  // Refused requests allowed per address per minute. Meta's own deliveries
+  // are answered 200 and never count, so a burst of read receipts after a
+  // round of reminders is never throttled.
+  refusedPerMinute = 300,
 } = {}) {
   const router = Router()
+
+  // Each refused POST still costs a body read and an HMAC.
+  const limiter = rateLimit({
+    windowMs: 60 * 1000, max: refusedPerMinute, skipSuccessfulRequests: true,
+    standardHeaders: false, legacyHeaders: false, keyGenerator: clientKey,
+    handler: (_req, res) => res.status(429).json({ error: 'Too many requests' }),
+  })
 
   router.get('/', (req, res) => {
     const challenge = verifyChallenge(req.query, env)
@@ -61,7 +74,7 @@ export function createWhatsappRouter({
 
   // Accept any content type: a misdeclared header must still reach the
   // signature check (and fail there) rather than fall through to a 404.
-  router.post('/', raw({ type: () => true, limit: BODY_LIMIT }), (req, res) => {
+  router.post('/', limiter, raw({ type: () => true, limit: BODY_LIMIT }), (req, res) => {
     const reqLog = req.log ?? log
     const appSecret = env.META_APP_SECRET
     if (!appSecret) {

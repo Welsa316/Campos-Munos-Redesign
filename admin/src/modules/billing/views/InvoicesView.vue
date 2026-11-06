@@ -9,7 +9,7 @@
           <div class="relative ml-auto w-full sm:w-72">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" aria-hidden="true"></i>
             <input v-model="search" type="search" placeholder="Client, invoice or client ID" aria-label="Search invoices"
-              class="w-full text-xs font-ui pl-8 pr-3 py-2 rounded-lg bg-brand-surface border border-transparent focus:border-brand-navy/30 focus:bg-white focus:outline-none text-gray-700" />
+              class="w-full text-xs font-ui pl-8 pr-3 py-2 rounded-lg bg-brand-surface border border-gray-300 focus:bg-white text-gray-700" />
           </div>
         </div>
         <div class="flex flex-wrap gap-1.5" role="group" aria-label="Filter by status">
@@ -57,12 +57,12 @@
                   {{ money(inv.balanceCents) }}
                   <span v-if="inv.balanceSource === 'computed'" class="block text-[9px] font-normal text-gray-500" title="Total minus amount paid; the report gave no balance">computed</span>
                 </td>
-                <td class="px-2 py-3 whitespace-nowrap text-gray-700">
+                <td class="px-2 py-3 whitespace-nowrap text-gray-700 tabular-nums">
                   {{ shortDate(inv.nextInstallmentDate || inv.dueDate) }}
                   <span v-if="inv.nextInstallmentDate" class="block text-[9px] text-gray-500">next installment</span>
                 </td>
                 <td class="px-2 py-3"><StatusPill :status="inv.status" /></td>
-                <td class="px-5 py-3 text-gray-500 whitespace-nowrap">
+                <td class="px-5 py-3 text-gray-500 whitespace-nowrap tabular-nums">
                   {{ shortDate(inv.lastReportDate) }}
                   <span v-if="inv.notInLatestReport" class="block text-[9px] text-amber-700 font-semibold">not in latest report</span>
                 </td>
@@ -91,7 +91,7 @@
 
     <!-- Detail panel -->
     <div v-if="selectedId" ref="panelRef" class="fixed inset-0 z-30 flex" role="dialog" aria-modal="true" aria-labelledby="inv-detail-h" @keydown.esc="close" @keydown.tab="trapTab(panelRef, $event)">
-      <button class="flex-1 bg-black/20" aria-label="Close invoice details" @click="close"></button>
+      <button class="flex-1 scrim-soft" aria-label="Close invoice details" @click="close"></button>
       <div class="w-full max-w-xl bg-white shadow-2xl flex flex-col">
         <div class="px-5 py-4 border-b border-gray-100 flex items-start gap-3">
           <div class="min-w-0 flex-1">
@@ -134,7 +134,7 @@
           <section>
             <h3 class="text-[10px] uppercase tracking-[0.1em] text-gray-500 font-semibold mb-2">monday.com</h3>
             <p v-if="!detail.mondayLinks.length" class="text-gray-500">Client not linked yet. <router-link :to="{ name: 'BillingMatching' }" class="text-brand-navy underline">Link it</router-link>.</p>
-            <ul v-else><li v-for="l in detail.mondayLinks" :key="l.external_id" class="text-gray-700">{{ l.external_label || l.external_id }} <span class="text-gray-400">({{ l.method === 'manual' ? 'linked by staff' : 'matched by eImmigration ID' }})</span></li></ul>
+            <ul v-else><li v-for="l in detail.mondayLinks" :key="l.external_id" class="text-gray-700">{{ l.external_label || l.external_id }} <span class="text-gray-500">({{ l.method === 'manual' ? 'linked by staff' : 'matched by eImmigration ID' }})</span></li></ul>
           </section>
 
           <section>
@@ -154,6 +154,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { plural } from '../../../utils/text.js'
 import { useRoute, useRouter } from 'vue-router'
 import { useBillingApi, money, shortDate } from '../api.js'
 import { can } from '../../../composables/useAuth.js'
@@ -274,7 +275,7 @@ function describeChanges(changes = []) {
   if (!changes.length) return 'Re-confirmed, no changes'
   if (changes.every((c) => c.from == null)) return 'First imported from this report'
   const shown = changes.filter((c) => FIELD_NAMES[c.field])
-  if (!shown.length) return `${changes.length} field(s) updated`
+  if (!shown.length) return `${plural(changes.length, 'field')} updated`
   return shown.map((c) => {
     const fmt = (v) => (v == null ? '—' : /Cents$/.test(c.field) ? money(v) : /Date$/.test(c.field) ? shortDate(v) : v)
     return `${FIELD_NAMES[c.field]}: ${fmt(c.from)} → ${fmt(c.to)}`

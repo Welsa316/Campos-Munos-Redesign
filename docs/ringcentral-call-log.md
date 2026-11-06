@@ -66,9 +66,16 @@ Needs the **RingOut** permission on the RingCentral app (add it, then
 **Connect again** on Integrations); without it the window says so. Calls are
 placed and billed on the extension that made the connection. Numbers that
 must never be dialled are refused before reaching RingCentral: anything
-shorter than a full number (911, 411, short codes), and North American
-premium or invalid area codes (900, 976, 0xx, 1xx). At most 30 calls per
-person per 10 minutes. The audit trail keeps the last 4 digits only.
+shorter than a full number (911, 411, short codes), invalid North American
+area codes (0xx, 1xx), and premium-rate or satellite ranges (ITU 979,
+881-883, 1-900 and 976, and the UK, German, French, Spanish and Mexican
+premium prefixes; `server/utils/phone.js`). A number outside North America
+needs its `+`. `RINGOUT_ALLOWED_COUNTRY_CODES` (e.g. `1,52,502`) limits both
+legs to those calling codes; unset, every country is allowed. At most 30
+calls per person per 10 minutes, and `RINGOUT_DAILY_LIMIT` (default 100) in
+24 hours. A second click on **Call** while the first call is still ringing
+returns that call instead of placing another. The audit trail keeps the last
+4 digits only.
 
 ## How calls arrive
 

@@ -122,5 +122,3 @@ export async function refreshTokens(config, { refreshToken }, deps = {}) {
 export async function revokeToken(config, { token }, deps = {}) {
   await postForm(config, '/restapi/oauth/revoke', { token }, deps)
 }
-
-export default { buildAuthorizeUrl, createPkcePair, exchangeCode, refreshTokens, revokeToken, RingCentralOAuthError }

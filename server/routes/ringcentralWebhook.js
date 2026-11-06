@@ -18,36 +18,31 @@ import { clientKey } from '../httpSecurity.js'
 
 const TOKEN_RE = /^[A-Za-z0-9._~+/=-]{1,256}$/
 
-// RingCentral refuses an address whose answer to its check is over 1024
-// bytes, headers included (SUB-525), and Railway adds about 150 of its own.
-// The browser-only headers helmet sets on every response mean nothing to
-// RingCentral's server, so the webhook answers without them.
-const BROWSER_HEADERS = [
-  'Content-Security-Policy', 'Cross-Origin-Opener-Policy', 'Cross-Origin-Resource-Policy', 'Cross-Origin-Embedder-Policy',
-  'Origin-Agent-Cluster', 'Referrer-Policy', 'X-DNS-Prefetch-Control', 'X-Download-Options', 'X-Frame-Options',
-  'X-Permitted-Cross-Domain-Policies', 'X-XSS-Protection',
-]
-
 // onCallEnded: what to do when a party leaves a call (default: import the call
 // log soon, so the call reaches Calls within about a minute).
 export function createRingCentralWebhookRouter({ db = null, onCallEnded = () => requestQuickSync() } = {}) {
   const router = Router()
   const pool = () => db || getPool()
 
-  // A busy office makes a few events a second; this only stops floods.
-  router.use((_req, res, next) => {
-    for (const h of BROWSER_HEADERS) res.removeHeader(h)
-    next()
-  })
-  router.use(rateLimit({ windowMs: 60 * 1000, max: 1200, standardHeaders: false, legacyHeaders: false, keyGenerator: clientKey }))
+  // Only refused requests count, so a busy office's real deliveries are
+  // never throttled while anyone guessing is held to a few a second.
+  router.use(rateLimit({
+    windowMs: 60 * 1000, max: 300, skipSuccessfulRequests: true, standardHeaders: false, legacyHeaders: false, keyGenerator: clientKey,
+    handler: (_req, res) => res.status(429).end(),
+  }))
 
-  router.post('/', express.json({ limit: '256kb' }), async (req, res) => {
+  // The address check and anything without our token are answered before
+  // the body is read or the database is asked.
+  router.post('/', (req, res, next) => {
     const validation = req.get('Validation-Token')
     if (validation !== undefined) {
       if (!TOKEN_RE.test(validation)) return res.status(400).end()
       res.set('Validation-Token', validation)
       return res.status(200).type('application/json').end()
     }
+    if (!req.get('Verification-Token')) return res.status(401).end()
+    next()
+  }, express.json({ limit: '256kb' }), async (req, res) => {
     try {
       if (!(await isTrustedDelivery(pool(), req.headers, req.body))) return res.status(401).end()
       const { stored, sessionId } = await storeNotification(pool(), req.body)

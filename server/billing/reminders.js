@@ -14,6 +14,7 @@
 
 import { TRANSITIONS, PENDING_STATES, SUPPRESSION_REASONS, CANCEL_REASONS, obligationKey } from './reminderModel.js'
 import { formatCents } from './money.js'
+import { phoneDigits } from '../utils/phone.js'
 
 /**
  * Catch-up grace. A rule's day is due − N (before_due) or due + N (after_due).
@@ -394,27 +395,9 @@ export function assertTransition(from, to) {
   return true
 }
 
-/**
- * Normalise a phone number to E.164 digits (no '+'), or null.
- * Accepts spaces, dashes, dots, parentheses and a leading '+'. A bare
- * 10-digit number gets defaultCountry ('1', the US). Rejects letters
- * (extensions), fewer than 8 or more than 15 digits, a leading 0, all-same
- * digits, and NANP numbers whose area code or exchange starts with 0 or 1.
- */
+/** E.164 digits (no '+'), or null: the server's one set of phone rules (utils/phone.js). */
 export function normalizePhone(raw, defaultCountry = '1') {
-  if (raw == null) return null
-  const s = String(raw).trim()
-  if (!/^\+?[\d\s\-().]+$/.test(s)) return null
-  const plus = s.startsWith('+')
-  let digits = s.replace(/\D/g, '')
-  if (!plus && digits.length === 10) digits = defaultCountry + digits
-  if (digits.length < 8 || digits.length > 15) return null
-  if (digits.startsWith('0')) return null
-  if (/^(\d)\1+$/.test(digits) || /^(\d)\1+$/.test(digits.slice(1))) return null
-  if (digits.length === 11 && digits.startsWith('1')) {
-    if (/[01]/.test(digits[1]) || /[01]/.test(digits[4])) return null
-  }
-  return digits
+  return phoneDigits(raw, { defaultCountry })
 }
 
 export default {

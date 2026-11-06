@@ -2,14 +2,14 @@
   <transition name="fade">
     <div v-if="visible"
       ref="overlayRef"
-      class="fixed inset-0 z-[200] flex items-center justify-center p-4"
+      class="fixed inset-0 z-[200] flex items-center justify-center dialog-frame"
       role="dialog"
       aria-modal="true"
       aria-labelledby="change-password-title"
       @keydown.esc="close"
       @keydown.tab="trapFocus"
       @click.self="close">
-      <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true"></div>
+      <div class="absolute inset-0 scrim" aria-hidden="true"></div>
 
       <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
         <div class="px-6 pt-6 pb-4 border-b border-gray-100 flex items-start justify-between">
@@ -50,18 +50,23 @@
           <p v-if="error" role="alert" aria-live="assertive" class="text-brand-red text-xs font-ui">
             <i class="fa-solid fa-circle-exclamation mr-1" aria-hidden="true"></i>{{ error }}
           </p>
-          <p v-if="success" role="status" aria-live="polite" class="text-green-600 text-xs font-ui">
-            <i class="fa-solid fa-check-circle mr-1" aria-hidden="true"></i>Password updated. You'll need to use it next time you sign in.
-          </p>
+          <div role="status">
+            <p v-if="success" class="text-green-600 text-xs font-ui">
+              <i class="fa-solid fa-check-circle mr-1" aria-hidden="true"></i>Password updated. You'll need to use it next time you sign in.
+            </p>
+          </div>
 
+          <!-- Once it is saved there is nothing left to submit: one Done button
+               takes focus (the focused submit is not disabled under the user). -->
           <div class="flex items-center gap-2 pt-2">
-            <button type="button" @click="close"
-              class="flex-1 py-2.5 rounded-lg text-gray-500 hover:text-gray-800 text-sm font-ui font-medium border border-gray-200 hover:border-gray-300 transition-colors">
-              Cancel
+            <button type="button" ref="cancelBtnRef" @click="close"
+              :class="success ? 'bg-brand-navy hover:bg-brand-navy-dark text-white font-bold border-transparent' : 'text-gray-500 hover:text-gray-800 font-medium border-gray-200 hover:border-gray-300'"
+              class="flex-1 py-2.5 rounded-lg text-sm font-ui border transition-colors">
+              {{ success ? 'Done' : 'Cancel' }}
             </button>
-            <button type="submit" :disabled="loading || success"
+            <button v-if="!success" type="submit" :disabled="loading"
               class="flex-1 py-2.5 rounded-lg bg-brand-navy hover:bg-brand-navy-dark text-white text-sm font-ui font-bold tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-              <span v-if="loading"><i class="fa-solid fa-spinner fa-spin mr-1.5 text-xs"></i>Updating…</span>
+              <span v-if="loading"><i class="fa-solid fa-spinner fa-spin mr-1.5 text-xs" aria-hidden="true"></i>Updating…</span>
               <span v-else>Update password</span>
             </button>
           </div>
@@ -86,6 +91,7 @@ const error = ref('')
 const success = ref(false)
 const overlayRef = ref(null)
 const closeBtnRef = ref(null)
+const cancelBtnRef = ref(null)
 let previouslyFocused = null
 
 watch(() => props.visible, (v) => {
@@ -163,6 +169,7 @@ async function submit() {
 
     success.value = true
     form.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
+    nextTick(() => cancelBtnRef.value?.focus())
   } catch (err) {
     error.value = err.message || 'Failed to update password'
   } finally {

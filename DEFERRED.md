@@ -228,11 +228,6 @@ Left for later, by name:
   hover" rule); these two stay until someone says whether they are the
   one signature moment or should go too.
 
-**Found while fixing (not in the review)**
-- **Inbox header at phone width.** At 375px the Inbox/Contacts switch
-  and the section icons overlap (`views/InboxView.vue` header,
-  `components/portal/SectionLinks.vue`). Present before this round.
-
 **Real refactors (each its own PR)**
 - #59 one route error wrapper instead of six copies (`routes/*.js`).
 - #4 extension: keep `last_message_*` on `wa_conversations` at ingest so
@@ -245,56 +240,26 @@ Left for later, by name:
 - #79 / #80 / #82 / #84 type-size, tracking, z-index and radius tokens.
 
 **P2, security and backend**
-- #30 logout does not bump `token_version`.
-- #31 webhook parses the body and queries before checking the token;
-  reuse the secretBox digest helpers; lower its rate limit.
-- #32 Meta WhatsApp webhook has no rate limit.
-- #33 RingOut can dial any country; no daily cap.
-- #34 no `Cache-Control: no-store` on `/api` (Team returns one-time passwords).
-- #35 Postgres TLS unverified without `PG_CA_CERT`.
-- #36 public submission endpoints can flood the office inbox.
-- #37 `jwt.verify` does not pin the algorithm (4 places).
-- #38 token encryption key may be derived from the OAuth client secret.
-- #39 error handler shows 502–504 messages; reflects any `x-request-id`.
-- #40 reminder settings, rules and templates accept loose bodies.
-- #41 password length 200 is above bcrypt's 72-byte limit.
-- #42 a truncated call-log sync advances its window past unread pages.
-- #44 subscription delete failures swallowed; registration not serialised.
-- #46 `applySync` can stay stuck in `applying`.
-- #47 outbound WhatsApp rows can stay `pending`.
-- #48 unbounded numeric ids reach Postgres as 500s.
-- #49 RingOut has no idempotency.
-- #50 opt-out comment contradicts its SQL.
-- #51 monday link writes are not transactional; whole board per click.
-- #52 GET that writes (`ensureDefaults`), no retention on several tables,
-  invoices capped at 500, `/readyz` unthrottled, mixed error shapes.
+The rest were fixed on `fix/review-p2-server`. Left:
+- #52 no retention policy for `staff_activity`, `whatsapp_events` and
+  `billing_audit_events` (needs the firm to say how long to keep them);
+  `/api/billing/invoices` capped at 500 with no offset (needs paging in
+  the portal); error bodies still vary (`{error}` / `{error,code}` /
+  `{error,errors[]}`), folded into #59. Every API error now carries
+  `requestId`.
+- Production env to set (warnings at boot until then): `PG_CA_CERT` or a
+  `*.railway.internal` `DATABASE_URL` (#35); `RINGCENTRAL_TOKEN_ENCRYPTION_KEY`
+  (#38; setting it means connecting RingCentral again). Optional:
+  `RINGOUT_ALLOWED_COUNTRY_CODES`, `RINGOUT_DAILY_LIMIT` (#33).
 
 **P2, portal**
-- #53 dead `callPath` / `compactLegs` / `legs` column.
-- #54 the calls list selects `rc_raw` it never sends.
-- #55 the webhook's helmet strip list will drift with helmet versions.
-- #58 unused `FadeContent.vue`; #60 scheduler copy-paste in `index.js`;
-  #61 two NANP validators; #62 dead default exports; #64 duplicated
-  live-event predicates; #65 two files named `IntegrationsView.vue`.
-- Accessibility: #66 toggles without `aria-pressed`; #67 placeholder and
-  gray-400 contrast; #68 input border contrast; #69 meaning only in
-  `title`; #70 no `aria-sort`; #71 tabs and radios without arrow keys;
-  #72 nested `<main>`, hidden h1 below xl, no `<nav>`, no focus on route
-  change; #73 live-region misuse; #74 alert dialogs do not take focus;
-  #75 `opacity-0` delete button.
-- UI: #76 `transition-all` x14; #77 no `text-balance`; #78 missing
-  `tabular-nums`; #81 `min-h-screen` on Login, no safe-area; #83 blur on
-  many surfaces and permanent `will-change`; #85 scrims and shadows not
-  theme-aware; #86 `--glass-hi` undefined; #87 NotFound logo invisible in
-  dark; #93 Contacts and Overview have no phone layout.
-- Performance: #88 GSAP loaded eagerly on Home; #89 16 Google Font
-  variants block rendering; #90 inputs under 16px zoom on iOS; #91 Home
-  fetches 200 rows to count; #92 SplitText waits on fonts unbounded; #94
-  652 kB avatar PNGs; #95 `/logo.png` hard-coded x10; #96 WhatsApp polls a
-  hidden tab.
-- Edge cases: #97 live timeline duplicate keys, clamped skew, no refetch,
-  unlabelled time zone; CallDialog polls after close; #98 crash on unknown
-  status keys; #99 NaN or "null" dates; #100 "(s)" x27; #101
-  `window.confirm` x8; #102 drag-drop ignores `accept`; #103 small ones
-  (revokeObjectURL, silent copy failure, filtered empty copy, Enter in
-  IME).
+The rest were fixed on `fix/review-p2-portal` (#58, #64-#78, #81, #83,
+#85-#103 and the Inbox header at phone width). Kept on purpose:
+- #88: SplitText and TiltedCard stay eager on Home. GSAP core loads there
+  anyway (RiseIn, Themes), so loading them later would only add a flash on
+  the greeting; ScrollTrigger, the part Home never used, is now fetched on
+  demand.
+- #94: the avatars are 128 px PNGs, not WebP; the picker's preview (75 px)
+  is slightly soft on a 2x screen. Revisit if anyone notices.
+- #53: the `rc_calls.legs` column is no longer written or read; dropping
+  it is a migration for later.

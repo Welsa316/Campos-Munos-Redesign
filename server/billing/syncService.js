@@ -147,7 +147,37 @@ export async function previewSync(db, provider, { actorId, env = process.env, no
   }
 }
 
-export async function applySync(db, provider, jobId, { actorId, now = new Date(), env = process.env }) {
+// An apply that has been 'applying' this long was cut off (a restart, a
+// crash): it is marked failed so it stops looking busy. A preview can only
+// be applied within PREVIEW_TTL_MINUTES of its creation.
+export const STALE_APPLYING_MINUTES = 120
+
+export async function failStaleApplies(db) {
+  return (await db.query(
+    `UPDATE billing_sync_jobs SET status = 'failed', error = 'Stopped before it finished; check the items, then preview again'
+      WHERE status = 'applying' AND created_at < NOW() - make_interval(mins => $1)`,
+    [STALE_APPLYING_MINUTES]
+  )).rowCount
+}
+
+export async function applySync(db, provider, jobId, opts) {
+  await failStaleApplies(db)
+  try {
+    return await applyClaimed(db, provider, jobId, opts)
+  } catch (err) {
+    // Whatever stopped it, the job must not stay 'applying'. Refusals above
+    // already set their own status, so only a job still applying is touched.
+    if (!(err instanceof SyncError)) {
+      await db.query(
+        `UPDATE billing_sync_jobs SET status = 'failed', error = $2 WHERE id = $1 AND status = 'applying'`,
+        [jobId, `Stopped: ${String(err?.code || err?.message || 'error').slice(0, 180)}`]
+      ).catch(() => {})
+    }
+    throw err
+  }
+}
+
+async function applyClaimed(db, provider, jobId, { actorId, now = new Date(), env = process.env }) {
   const claimed = (await db.query(
     `UPDATE billing_sync_jobs SET status = 'applying', applied_by = $2
       WHERE id = $1 AND status = 'previewed' AND created_at > NOW() - ($3 || ' minutes')::interval
@@ -203,4 +233,4 @@ export async function applySync(db, provider, jobId, { actorId, now = new Date()
   return { jobId: Number(jobId), status, dryRun, written, failed }
 }
 
-export default { getMondayConfig, saveMondayConfig, loadMatchContext, buildSummaries, previewSync, applySync }
+export default { getMondayConfig, saveMondayConfig, loadMatchContext, buildSummaries, previewSync, applySync, failStaleApplies }

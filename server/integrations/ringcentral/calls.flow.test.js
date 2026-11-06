@@ -46,7 +46,7 @@ const rc = {
   ringouts: new Map(), ringoutSeq: 0, ringoutForbidden: false, ringoutRequests: [],
   directoryRequests: [], directoryForbidden: false,
   // The live call-event subscription: what was asked for, and what RingCentral holds.
-  subscriptions: new Map(), subscriptionRequests: [], subscriptionForbidden: false, subSeq: 0,
+  subscriptions: new Map(), subscriptionRequests: [], subscriptionForbidden: false, subscriptionDeleteFails: false, subSeq: 0,
   extensions: [
     { id: 9101, extensionNumber: '101', name: 'Yoletty', type: 'User', status: 'Enabled' },
     { id: 9102, extensionNumber: '102', name: 'Ciro', type: 'User', status: 'Enabled' },
@@ -81,6 +81,7 @@ async function fakeFetch(url, init) {
     }
     const s = rc.subscriptions.get(sub[1])
     if (!s) return reply(404, { errorCode: 'SUB-100' })
+    if (init.method === 'DELETE' && rc.subscriptionDeleteFails) return reply(503, { errorCode: 'CMN-211', message: 'Service temporarily unavailable' })
     if (init.method === 'DELETE') { rc.subscriptions.delete(sub[1]); return reply(204) }
     if (sub[2]) s.expirationTime = new Date(clock.t.getTime() + 315360000 * 1000).toISOString()
     return reply(200, { id: s.id, status: s.status, expirationTime: s.expirationTime })
@@ -563,12 +564,12 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
   })
 
   await t.test('calls imported before their steps were kept are read again once, then the window is back to normal', async () => {
-    await db.query(`UPDATE rc_calls SET legs = NULL`)
+    await db.query(`UPDATE rc_calls SET rc_raw = rc_raw - 'legs'`)
     await db.query(`UPDATE rc_call_sync_state SET legs_backfilled_at = NULL, window_to = $1`, [clock.t])
     rc.requests = []
     await sync()
     assert.equal(new Date(rc.requests[0].query.dateFrom).getTime(), clock.t.getTime() - 14 * 24 * 60 * 60 * 1000, 'the whole backfill period')
-    assert.equal((await db.query(`SELECT jsonb_array_length(legs) AS n FROM rc_calls WHERE rc_record_id = 'c4'`)).rows[0].n, 4)
+    assert.equal((await db.query(`SELECT jsonb_array_length(rc_raw->'legs') AS n FROM rc_calls WHERE rc_record_id = 'c4'`)).rows[0].n, 4)
     clock.t = new Date(clock.t.getTime() + 60 * 1000)
     rc.requests = []
     const state = (await db.query('SELECT window_to, legs_backfilled_at FROM rc_call_sync_state')).rows[0]
@@ -883,6 +884,23 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.equal(ev.json.live.complete, true)
     assert.deepEqual(ev.json.live.parties.map((p) => p.states.map((x) => x.code)), [['Setup', 'Answered', 'Disconnected'], ['Answered', 'Disconnected']])
     assert.ok(!ev.text.includes('5550170'), 'no caller number in the live timeline')
+    // Each party has its own key for the portal: RingCentral's party id.
+    assert.deepEqual(ev.json.live.parties.map((p) => p.partyId), ['p-co', 'p-ivr'])
+    // A stored record where one party has no id, another id repeats and one
+    // extension is several parties: still one distinct key each, the same on
+    // every read.
+    const kept = (await db.query('SELECT classification_evidence AS e FROM rc_calls WHERE id = $1', [g.id])).rows[0].e
+    const [co, ivr] = kept.live.parties
+    const { partyId: _drop, ...noId } = co
+    const twice = { ...kept, live: { ...kept.live, parties: [{ ...noId, extensionId: '9001' }, ivr, { ...ivr }] } }
+    await db.query('UPDATE rc_calls SET classification_evidence = $2 WHERE id = $1', [g.id, JSON.stringify(twice)])
+    const keys = async () => (await call('GET', `/api/calls/${g.id}/evidence`)).json.live.parties.map((p) => p.partyId)
+    const first = await keys()
+    assert.equal(first.length, 3)
+    assert.equal(new Set(first).size, 3, first.join(','))
+    assert.ok(first.every((k) => typeof k === 'string' && k))
+    assert.deepEqual(await keys(), first, 'stable')
+    await db.query('UPDATE rc_calls SET classification_evidence = $2 WHERE id = $1', [g.id, JSON.stringify(kept)])
 
     // A hang-up imported first; its live events arrive later and the call is read again.
     const t2 = 'ts-late'
@@ -913,6 +931,34 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.equal(chk.status, 200)
     assert.ok(rc.subscriptionRequests.some((r) => r.renew), 'renewed')
     assert.ok(new Date(chk.json.expiresAt) > new Date(clock.t.getTime() + 365 * 24 * 60 * 60 * 1000))
+
+    // Replacing it when RingCentral cannot delete the current one: stopped,
+    // so two subscriptions never deliver at once.
+    rc.subscriptionDeleteFails = true
+    const blocked = await send('POST', '/api/integrations/ringcentral/events', {})
+    rc.subscriptionDeleteFails = false
+    assert.equal(blocked.status, 502, blocked.text)
+    assert.equal(rc.subscriptions.size, 1, 'no second subscription')
+    assert.equal((await db.query(`SELECT subscription_id FROM rc_event_subscription`)).rows[0].subscription_id, stored.subscription_id)
+    assert.ok((await call('GET', '/api/integrations/ringcentral/events')).json.lastErrorCode)
+
+    // Two registrations at once: the second is refused while the first runs.
+    const validate = rc.validate
+    let release
+    const held = new Promise((r) => { release = r })
+    let entered
+    const inside = new Promise((r) => { entered = r })
+    // Released by the test, or after 2 s so a broken lock fails instead of hanging.
+    rc.validate = async () => { entered(); await Promise.race([held, new Promise((r) => setTimeout(r, 2000))]); return true }
+    const firstReg = send('POST', '/api/integrations/ringcentral/events', {})
+    await inside
+    const secondReg = await send('POST', '/api/integrations/ringcentral/events', {})
+    release()
+    assert.equal(secondReg.status, 409)
+    assert.equal(secondReg.json.code, 'busy')
+    assert.equal((await firstReg).status, 200)
+    assert.equal(rc.subscriptions.size, 1)
+    rc.validate = validate
 
     // Removed: deleted in RingCentral, and deliveries are refused again.
     const rm = await send('DELETE', '/api/integrations/ringcentral/events', undefined)
@@ -1119,5 +1165,111 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.equal(r.status, 409)
     assert.equal(r.json.code, 'missing_permission')
     assert.match(r.json.error, /RingOut permission/)
+  })
+
+  await t.test('RingOut: a repeated click is the same call, whether it arrives after the answer or with it', async () => {
+    const desk = { cookie: users.desk.cookie }
+    const before = rc.ringoutRequests.length
+    const first = await send('POST', '/api/calls/ringout', { to: '(504) 555-0188' }, desk)
+    const again = await send('POST', '/api/calls/ringout', { to: '504-555-0188' }, desk)
+    assert.equal(first.status, 201)
+    assert.equal(again.json.id, first.json.id)
+    const [a, b] = await Promise.all([0, 1].map(() => send('POST', '/api/calls/ringout', { to: '(504) 555-0189' }, desk)))
+    assert.equal(a.json.id, b.json.id)
+    assert.equal(rc.ringoutRequests.length - before, 2, 'two calls reached RingCentral, not four')
+    // Once it has ended, calling the same number again is a new call.
+    await db.query(`UPDATE rc_ringouts SET phase = 'finished' WHERE id = $1`, [first.json.id])
+    assert.notEqual((await send('POST', '/api/calls/ringout', { to: '(504) 555-0188' }, desk)).json.id, first.json.id)
+  })
+
+  await t.test('RingOut: premium numbers never; other countries only when the firm allows them', async () => {
+    const desk = { cookie: users.desk.cookie }
+    const before = rc.ringoutRequests.length
+    for (const premium of ['+44 909 879 0000', '+979 1234 5678', '+881 6 1234 5678', '+49 900 1234567', '+52 900 123 4567']) {
+      assert.equal((await send('POST', '/api/calls/ringout', { to: premium }, desk)).status, 400, premium)
+    }
+    env.RINGOUT_ALLOWED_COUNTRY_CODES = '1, 52'
+    try {
+      const uk = await send('POST', '/api/calls/ringout', { to: '+44 20 7946 0958' }, desk)
+      assert.equal(uk.status, 422)
+      assert.equal(uk.json.code, 'country_not_allowed')
+      assert.equal(rc.ringoutRequests.length, before, 'nothing refused reached RingCentral')
+      assert.equal((await send('POST', '/api/calls/ringout', { to: '+52 1 55 1234 5678' }, desk)).status, 201, 'Mexico is on the list')
+      assert.equal((await send('PUT', '/api/calls/ringout/me', { phone: '+44 20 7946 0958' }, desk)).status, 422, 'nor may my own phone be elsewhere')
+    } finally {
+      delete env.RINGOUT_ALLOWED_COUNTRY_CODES
+    }
+    assert.equal((await send('POST', '/api/calls/ringout', { to: '+44 20 7946 0958' }, desk)).status, 201, 'unset: every country')
+  })
+
+  await t.test('an import cut off at its page limit goes back for the oldest calls instead of skipping them', async () => {
+    const { syncCallLog } = await import('./callLog.js')
+    const { loadRingCentralConfig } = await import('./config.js')
+    const cfg = loadRingCentralConfig(env)
+    const opts = (maxWindows) => ({ trigger: 'scheduled', deps: { fetchImpl: fakeFetch, now: () => clock.t }, sleep: async () => {}, pageDelayMs: 0, maxPages: 1, maxWindows })
+    const ids = Array.from({ length: 8 }, (_, i) => `trunc${i}`)
+    // Eight calls over the last four hours; RingCentral answers 3 a page, newest first.
+    rc.records.push(...ids.map((id, i) => rec(id, new Date(clock.t.getTime() - (i + 1) * 30 * 60 * 1000).toISOString(), 'Inbound', 'Accepted', { phoneNumber: `+150455502${10 + i}` })))
+    const stored = async () => (await db.query(`SELECT rc_record_id FROM rc_calls WHERE rc_record_id = ANY($1)`, [ids])).rows.map((r) => r.rc_record_id).sort()
+    const before = new Date(clock.t.getTime() - 5 * 60 * 60 * 1000)
+    await db.query(`UPDATE rc_call_sync_state SET window_to = $1`, [before])
+
+    const short = await syncCallLog(db, cfg, opts(2))
+    assert.equal(short.status, 'ok')
+    assert.equal(short.truncated, true)
+    // Two windows of three; the second starts again at the first one's oldest call.
+    assert.deepEqual(await stored(), ids.slice(0, 5).sort(), 'the five newest')
+    const state = (await db.query(`SELECT window_to FROM rc_call_sync_state`)).rows[0]
+    assert.equal(state.window_to.getTime(), before.getTime(), 'the window does not move past unread calls')
+
+    clock.t = new Date(clock.t.getTime() + 60 * 1000)
+    const full = await syncCallLog(db, cfg, opts(10))
+    assert.equal(full.truncated, false)
+    assert.deepEqual(await stored(), [...ids].sort(), 'the next run reads the rest')
+    assert.equal((await db.query(`SELECT window_to FROM rc_call_sync_state`)).rows[0].window_to.getTime(), clock.t.getTime())
+    rc.records = rc.records.filter((r) => !ids.includes(r.id))
+  })
+
+  await t.test('disconnecting when RingCentral will not delete the subscription: it goes ahead, and the page still shows it', async () => {
+    rc.validate = null
+    assert.equal((await send('POST', '/api/integrations/ringcentral/events', {})).status, 200)
+    rc.subscriptionDeleteFails = true
+    try {
+      const d = await send('POST', '/api/integrations/ringcentral/disconnect', {})
+      assert.equal(d.status, 200, d.text)
+      const ev = (await call('GET', '/api/integrations/ringcentral/events')).json
+      assert.equal(ev.registered, true, 'still listed, so it can be replaced after connecting again')
+      assert.ok(ev.lastErrorCode)
+    } finally {
+      rc.subscriptionDeleteFails = false
+    }
+    await connect()
+  })
+
+  await t.test('an id too long for the database is a 404, not a server error', async () => {
+    const huge = '99999999999999999999'
+    for (const [m, p] of [['GET', `/api/calls/${huge}/evidence`], ['POST', `/api/calls/${huge}/handled`], ['GET', `/api/calls/ringout/${huge}`]]) {
+      const r = m === 'GET' ? await call(m, p) : await send(m, p, {})
+      assert.equal(r.status, 404, `${m} ${p}`)
+    }
+  })
+
+  await t.test('RingOut: one person can place only so many calls in 24 hours', async () => {
+    const desk = { cookie: users.desk.cookie }
+    const placed = (await db.query(`SELECT COUNT(*)::int AS n FROM rc_ringouts WHERE placed_by = $1`, [users.desk.id])).rows[0].n
+    env.RINGOUT_DAILY_LIMIT = String(placed + 1)
+    try {
+      assert.equal((await send('POST', '/api/calls/ringout', { to: '(504) 555-0190' }, desk)).status, 201)
+      const before = rc.ringoutRequests.length
+      const over = await send('POST', '/api/calls/ringout', { to: '(504) 555-0191' }, desk)
+      assert.equal(over.status, 429)
+      assert.equal(over.json.code, 'daily_limit')
+      assert.equal(rc.ringoutRequests.length, before)
+      // Calls from more than a day ago no longer count.
+      await db.query(`UPDATE rc_ringouts SET created_at = NOW() - INTERVAL '25 hours' WHERE placed_by = $1`, [users.desk.id])
+      assert.equal((await send('POST', '/api/calls/ringout', { to: '(504) 555-0191' }, desk)).status, 201)
+    } finally {
+      delete env.RINGOUT_DAILY_LIMIT
+    }
   })
 })

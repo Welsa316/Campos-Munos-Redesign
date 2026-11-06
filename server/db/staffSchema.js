@@ -118,6 +118,14 @@ export const STAFF_SCHEMA_SQL = `
   );
   CREATE INDEX IF NOT EXISTS idx_staff_activity_created ON staff_activity(created_at DESC, id DESC);
   CREATE INDEX IF NOT EXISTS idx_staff_activity_actor ON staff_activity(actor_id, id DESC);
+
+  -- Sessions ended by signing out (server/auth/session.js), by token id.
+  -- Kept only until the token would have expired anyway.
+  CREATE TABLE IF NOT EXISTS revoked_sessions (
+    jti TEXT PRIMARY KEY,
+    expires_at TIMESTAMPTZ NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_revoked_sessions_expires ON revoked_sessions(expires_at);
 `
 
 export async function applyStaffSchema(db) {

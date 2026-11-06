@@ -87,5 +87,3 @@ export function digestsEqual(a, b) {
 }
 
 export const randomToken = (bytes = 32) => crypto.randomBytes(bytes).toString('base64url')
-
-export default { parseKey, deriveKey, keyId, createSecretBox, sha256Hex, digestsEqual, randomToken }

@@ -14,6 +14,9 @@
 //                                 status, register (or replace), remove
 //                                 (telephonyEvents.js; deliveries arrive at
 //                                 /webhooks/ringcentral)
+//   POST /ringcentral/events/check  ask RingCentral whether the subscription
+//                                 is still active and renew it if it is due;
+//                                 answers with the same status as GET
 //
 // Every route except the callback needs a portal session with
 // integrations.manage (administrators only). The callback is reached by a
@@ -23,11 +26,10 @@
 // httpSecurity.js like every cookie-authenticated write.
 import { Router } from 'express'
 import rateLimit from 'express-rate-limit'
-import jwt from 'jsonwebtoken'
 import getPool from '../db/pool.js'
 import requireAuth from '../middleware/auth.js'
 import requireCapability from '../middleware/requireCapability.js'
-import { loadAccount, tokenMatches } from '../auth/account.js'
+import { verifySession } from '../auth/session.js'
 import { clientKey, sessionCookieOptions } from '../httpSecurity.js'
 import { loadRingCentralConfig } from '../integrations/ringcentral/config.js'
 import {
@@ -36,7 +38,7 @@ import {
 } from '../integrations/ringcentral/service.js'
 import { RingCentralOAuthError } from '../integrations/ringcentral/oauth.js'
 import {
-  subscriptionStatus, registerSubscription, removeSubscription, checkSubscription, EventSubscriptionError,
+  subscriptionStatus, registerSubscription, removeSubscription, checkSubscription, noteSubscriptionError, EventSubscriptionError,
 } from '../integrations/ringcentral/telephonyEvents.js'
 
 export const BINDING_COOKIE = 'cm_rc_oauth'
@@ -47,10 +49,8 @@ async function sessionAccount(req, db, env) {
   const token = req.cookies?.token
   if (!token) return null
   try {
-    const decoded = jwt.verify(token, env.JWT_SECRET || process.env.JWT_SECRET)
-    const account = await loadAccount(db, decoded.id)
-    if (!account || account.disabled || !tokenMatches(decoded, account)) return null
-    return account
+    const session = await verifySession(db, token, env.JWT_SECRET || process.env.JWT_SECRET)
+    return session.ok ? session.account : null
   } catch {
     return null
   }
@@ -169,7 +169,18 @@ export function createIntegrationsRouter({ db = null, env = process.env, fetchIm
 
   router.post('/ringcentral/disconnect', wrap(async (req, res) => {
     // The subscription is deleted while the connection can still do it.
-    try { await removeSubscription(pool(), config(), { token: await getAccessToken(pool(), config(), deps), env, deps }) } catch { /* gone with the tokens */ }
+    // Without working tokens there is nothing to ask RingCentral with. If
+    // RingCentral refuses, the disconnect still goes ahead (it may be urgent),
+    // but the subscription stays listed with the error, so the page shows it
+    // and connecting again replaces it.
+    try {
+      await removeSubscription(pool(), config(), { token: await getAccessToken(pool(), config(), deps), env, deps })
+    } catch (err) {
+      if (!(err instanceof RingCentralNotConnectedError) && !(err instanceof RingCentralOAuthError)) {
+        req.log?.warn({ provider: 'ringcentral', code: err?.code, status: err?.status }, 'Live-event subscription not removed before disconnecting')
+        await noteSubscriptionError(pool(), err, now ? now() : new Date())
+      }
+    }
     const out = await disconnect(pool(), config(), { actorId: req.account.id }, deps)
     res.json({ ...out, ...(await getConnectionStatus(pool(), config())) })
   }))

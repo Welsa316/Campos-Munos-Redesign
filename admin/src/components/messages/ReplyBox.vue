@@ -11,7 +11,7 @@
         placeholder="Type your reply..."
         aria-label="Reply body"
         class="form-input resize-none text-sm mb-3"
-        @keydown.enter.exact.prevent="sendReply"
+        @keydown.enter.exact="(e) => { if (!isComposing(e)) { e.preventDefault(); sendReply() } }"
       ></textarea>
 
       <div class="flex items-center justify-between">
@@ -20,19 +20,20 @@
         </span>
 
         <div class="flex items-center gap-3">
-          <!-- Toast messages -->
-          <transition name="fade">
-            <span v-if="toast"
-              :role="toast.type === 'success' ? 'status' : 'alert'"
-              :aria-live="toast.type === 'success' ? 'polite' : 'assertive'"
-              :class="[
-                'text-xs font-ui',
-                toast.type === 'success' ? 'text-green-700' : 'text-amber-700'
-              ]">
-              <i :class="toast.type === 'success' ? 'fa-solid fa-check-circle' : 'fa-solid fa-exclamation-triangle'" class="mr-1" aria-hidden="true"></i>
-              {{ toast.message }}
-            </span>
-          </transition>
+          <!-- Toast messages, in a region that is always mounted so the
+               message is announced when it appears. -->
+          <span role="status" aria-live="polite">
+            <transition name="fade">
+              <span v-if="toast"
+                :class="[
+                  'text-xs font-ui',
+                  toast.type === 'success' ? 'text-green-700' : 'text-amber-700'
+                ]">
+                <FaIcon :name="toast.type === 'success' ? 'check-circle' : 'exclamation-triangle'" class="mr-1" />
+                {{ toast.message }}
+              </span>
+            </transition>
+          </span>
 
           <button
             type="submit"
@@ -40,10 +41,10 @@
             class="bg-brand-navy text-white font-ui font-medium text-sm px-5 py-2.5 rounded-xl btn-magnetic disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
           >
             <span v-if="sending">
-              <i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Sending...
+              <i class="fa-solid fa-spinner fa-spin mr-1.5" aria-hidden="true"></i>Sending...
             </span>
             <span v-else>
-              Send Reply <i class="fa-solid fa-paper-plane ml-1.5 text-xs"></i>
+              Send Reply <i class="fa-solid fa-paper-plane ml-1.5 text-xs" aria-hidden="true"></i>
             </span>
           </button>
         </div>
@@ -55,6 +56,8 @@
 <script setup>
 import { ref, onBeforeUnmount } from 'vue'
 import { useApi } from '../../composables/useApi.js'
+import FaIcon from '../FaIcon.vue'
+import { isComposing } from '../../utils/text.js'
 
 const props = defineProps({
   submissionId: { type: Number, required: true },

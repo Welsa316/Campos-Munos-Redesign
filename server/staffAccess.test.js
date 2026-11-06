@@ -360,6 +360,45 @@ test('staff roles and capabilities', { skip: SKIP }, async (t) => {
     const audit = (await db.query("SELECT action FROM billing_audit_events WHERE entity_type = 'admin_user' AND entity_id = $1 ORDER BY id", [String(p.id)])).rows.map((r) => r.action)
     assert.ok(audit.includes('staff.created') && audit.includes('staff.password_reset'), audit.join(','))
   })
+
+  await t.test('signing out ends that session only, even for a copy of its cookie', async () => {
+    const pw = 'sign-out-password-12345'
+    await db.query("UPDATE admin_users SET password_hash = $1 WHERE email = 'reception@example.test'", [await bcrypt.hash(pw, 4)])
+    const signIn = async () => {
+      const res = await fetch(`${base}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'reception@example.test', password: pw }) })
+      assert.equal(res.status, 200)
+      return res.headers.get('set-cookie').split(';')[0]
+    }
+    const desk = await signIn()
+    const phone = await signIn()
+    assert.equal((await call('GET', '/api/auth/verify', { cookie: desk })).status, 200)
+    assert.equal((await call('POST', '/api/auth/logout', { cookie: desk })).status, 200)
+    assert.equal((await call('GET', '/api/auth/verify', { cookie: desk })).status, 401, 'the signed-out token no longer works')
+    assert.equal((await call('GET', '/api/calls', { cookie: desk })).status, 401, 'nor on any other route')
+    assert.equal((await call('GET', '/api/auth/verify', { cookie: phone })).status, 200, 'the same person on another device stays signed in')
+    // A token from before session ids existed: signing out ends it too.
+    const r = (await db.query("SELECT id, token_version FROM admin_users WHERE email = 'reception@example.test'")).rows[0]
+    const legacy = `token=${jwt.sign({ id: r.id, email: 'x', tv: r.token_version }, process.env.JWT_SECRET, { expiresIn: '8h' })}`
+    assert.equal((await call('POST', '/api/auth/logout', { cookie: legacy })).status, 200)
+    assert.equal((await call('GET', '/api/auth/verify', { cookie: legacy })).status, 401)
+    users.recepCookie = await signIn()
+  })
+
+  await t.test('a session token signed with another algorithm is refused', async () => {
+    const r = (await db.query("SELECT id, token_version FROM admin_users WHERE email = 'reception@example.test'")).rows[0]
+    const forged = jwt.sign({ id: r.id, email: 'x', tv: r.token_version }, process.env.JWT_SECRET, { algorithm: 'HS512' })
+    assert.equal((await call('GET', '/api/auth/verify', { cookie: `token=${forged}` })).status, 401)
+    assert.equal((await call('GET', '/api/calls', { cookie: `token=${forged}` })).status, 401)
+  })
+
+  await t.test('a new password longer than bcrypt reads is refused', async () => {
+    const cookie = users.recepCookie
+    const res = await call('POST', '/api/auth/change-password', { cookie, body: { currentPassword: 'sign-out-password-12345', newPassword: 'a'.repeat(73) } })
+    assert.equal(res.status, 400)
+    // 36 two-byte letters are 72 bytes: still accepted.
+    const ok = await call('POST', '/api/auth/change-password', { cookie, body: { currentPassword: 'sign-out-password-12345', newPassword: 'ñ'.repeat(36) } })
+    assert.equal(ok.status, 200)
+  })
 })
 
 test('shared WhatsApp inbox', { skip: SKIP }, async (t) => {
@@ -512,5 +551,21 @@ test('shared WhatsApp inbox', { skip: SKIP }, async (t) => {
     assert.equal((await conversationFor(old, users.frontCookie))?.preview, 'Hola, escribí antes', 'the migration backfills it from history')
     migrate()
     assert.equal(await count(), before + 1, 'once')
+  })
+
+  await t.test('a reply cut off mid-send stops looking pending after ten minutes', async () => {
+    const { sweepPendingReplies } = await import('./whatsapp/inbox.js')
+    const conv = (await db.query('SELECT id FROM wa_conversations ORDER BY id LIMIT 1')).rows[0].id
+    const add = async (key, minutesAgo) => (await db.query(
+      `INSERT INTO wa_outbound_messages (conversation_id, body, idempotency_key, provider_mode, simulated, status, created_at)
+       VALUES ($1, 'Hola', $2, 'mock', true, 'pending', NOW() - make_interval(mins => $3)) RETURNING id`,
+      [conv, key, minutesAgo]
+    )).rows[0].id
+    const stale = await add('sweep-stale', 11)
+    const fresh = await add('sweep-fresh', 1)
+    assert.equal(await sweepPendingReplies(db), 1)
+    const status = async (id) => (await db.query('SELECT status FROM wa_outbound_messages WHERE id = $1', [id])).rows[0].status
+    assert.equal(await status(stale), 'unknown', 'staff are told to check WhatsApp, never resent')
+    assert.equal(await status(fresh), 'pending', 'one still being sent is left alone')
   })
 })

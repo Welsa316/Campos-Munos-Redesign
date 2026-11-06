@@ -56,6 +56,12 @@ test('targets and offsets', () => {
   assert.equal(offset(null, '2026-10-26T15:00:00Z'), '')
 })
 
+test('a step stamped before the call started keeps its sign', () => {
+  assert.equal(offset('2026-10-26T14:59:57Z', '2026-10-26T15:00:00Z'), '−3s')
+  assert.equal(offset('2026-10-26T14:58:55Z', '2026-10-26T15:00:00Z'), '−1m 05s')
+  assert.equal(offset('2026-10-26T15:00:00Z', '2026-10-26T15:00:00Z'), '+0s')
+})
+
 test('accepted at a forwarded phone reads as not confirmed, and says why', () => {
   assert.equal(statusLine({ classification: 'unknown', gaps: ['forward_answer_unconfirmed'], result: 'Accepted' }), 'Not confirmed · accepted at a phone it was forwarded to')
   assert.match(factText({ code: 'accepted_by_forwarded_phone', to: { kind: 'external', numberEnd: '9876' }, onBehalfOf: 'Yoletty' }),
@@ -92,4 +98,19 @@ test('an offer seen only in the live events reads "phone rang"', async () => {
   assert.equal(offerShort({ reason: null, live: true }), 'phone rang')
   assert.equal(offerShort({ reason: 'No Answer' }), 'no answer')
   assert.equal(offerShort({ reason: null }), 'no reason given')
+})
+
+test('the live timeline and the routing steps name an extension type the same way', async () => {
+  const { partyLabel } = await import('../src/modules/calls/callEvidenceText.js')
+  assert.equal(partyLabel({ person: false, name: 'Main menu', extension: '2', type: 'IvrMenu' }), 'Main menu (IVR menu)')
+  assert.equal(stepTarget({ kind: 'extension', name: 'Main menu', number: '2', type: 'IvrMenu' }), 'Main menu, ext. 2 (IVR menu)')
+  assert.equal(stepTarget({ kind: 'extension', name: 'Front', number: '0', type: 'CompanyExtension' }), 'Front, ext. 0 (company line)')
+  // An extension not confirmed as a person is not called one.
+  assert.equal(partyLabel({ person: null, name: 'Ciro', type: 'User' }), 'Ciro')
+})
+
+test('gap lines leave out codes that have no wording', async () => {
+  const { gapLines } = await import('../src/modules/calls/callEvidenceText.js')
+  assert.deepEqual(gapLines(['no_reason', 'made_up', 'no_legs']), [gapText('no_reason'), gapText('no_legs')])
+  assert.deepEqual(gapLines(undefined), [])
 })
