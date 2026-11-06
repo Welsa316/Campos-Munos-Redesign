@@ -30,7 +30,7 @@
     <CallDetailCard :call="detailCall" :return-to="detail.returnTo" :now="now"
       :can-call="canCall" :can-exclude="canExclude" :can-see-leads="canSeeLeads" :can-mark="detailCall ? canMark(detailCall) : false"
       :busy="Boolean(detailCall && busyId === detailCall.id)"
-      @close="closeDetail" @callback="openCall" @handled="markHandled" @reopen="reopen" @exclude="startExclude" @count-again="countAgain" />
+      @close="closeDetail" @callback="openCall" @handled="markHandled" @reopen="reopen" @exclude="startExclude" @count-again="countAgain" @open-call="openCallById" />
 
     <div ref="scroller" class="flex-1 overflow-y-auto">
       <div class="max-w-[1160px] mx-auto px-4 sm:px-6 pt-5 sm:pt-7 pb-10 space-y-4 font-ui">
@@ -250,16 +250,6 @@
       </div>
     </div>
 
-    <!-- What just changed, with a way back. Only after the server confirmed it. -->
-    <Transition name="toast">
-      <div v-if="toast" role="status" aria-live="polite" @mouseenter="holdToast" @mouseleave="releaseToast" @focusin="holdToast" @focusout="releaseToast"
-        class="fixed z-[180] left-1/2 -translate-x-1/2 bottom-[max(1rem,env(safe-area-inset-bottom))] sm:bottom-6 w-[calc(100%-2rem)] max-w-md flex items-center gap-3 rounded-xl bg-gray-900 text-white px-4 py-3 shadow-xl font-ui text-[13px]">
-        <FaIcon name="circle-check" class="flex-shrink-0" />
-        <span class="flex-1 min-w-0">{{ toast.text }}</span>
-        <button v-if="toast.undo" type="button" @click="undoToast" class="min-h-9 px-2 font-semibold underline">Undo</button>
-        <button type="button" @click="toast = null" aria-label="Dismiss" class="w-9 h-9 -mr-2 inline-flex items-center justify-center rounded-lg hover:bg-white/10"><FaIcon name="xmark" /></button>
-      </div>
-    </Transition>
   </div>
 </template>
 
@@ -279,6 +269,7 @@ import ExcludeCallDialog from './ExcludeCallDialog.vue'
 import ClearCallsDialog from './ClearCallsDialog.vue'
 import CallRow from './CallRow.vue'
 import CallDetailCard from './CallDetailCard.vue'
+import { toast } from '../../composables/useToast.js'
 import { attentionSections, handledSections, daySections, animateChange, when } from './callsInbox.js'
 
 const router = useRouter()
@@ -554,6 +545,13 @@ function openDetail(c, opener) {
   menuId.value = null
   detail.value = { id: c.id, snap: c, returnTo: document.querySelector(`[data-open="${c.id}"]`) || opener || null }
 }
+// A call picked from a contact's history: opened in place when this list has
+// it; otherwise it is in All calls under its own day.
+async function openCallById(id) {
+  const c = calls.value.find((x) => x.id === id)
+  if (c) { detail.value = { ...detail.value, id: c.id, snap: c }; return }
+  toast({ text: 'That call is not in this list. Find it under All calls.', tone: 'info' })
+}
 function closeDetail({ restore = true } = {}) {
   if (detail.value.id == null) return
   const back = restore ? detail.value.returnTo : null
@@ -651,21 +649,8 @@ async function countAgain(c) {
 }
 
 // --- toast ------------------------------------------------------------------------
-
-const toast = ref(null)
-let toastTimer = null
-function showToast(text, undo = null) {
-  toast.value = { text, undo }
-  releaseToast()
-}
-function holdToast() { clearTimeout(toastTimer) }
-function releaseToast() { clearTimeout(toastTimer); toastTimer = setTimeout(() => { toast.value = null }, 6000) }
-async function undoToast() {
-  const fn = toast.value?.undo
-  toast.value = null
-  if (!fn) return
-  try { await fn() } catch (e) { error.value = e.message }
-}
+// The portal's shared toast (SwipeToast.vue); only after the server confirmed.
+function showToast(text, undo = null) { toast({ text, undo }) }
 
 // --- live updates ---------------------------------------------------------------
 // The server imports new calls every few minutes, and within about half a
@@ -720,7 +705,7 @@ onActivated(() => {
   if (viewKey.value === before) load({ quiet: true })
 })
 onDeactivated(() => { stop(); menuId.value = null })
-onUnmounted(() => { stop(); clearTimeout(searchTimer); clearTimeout(toastTimer) })
+onUnmounted(() => { stop(); clearTimeout(searchTimer) })
 
 // --- presentation -----------------------------------------------------------------
 
@@ -836,16 +821,12 @@ async function handleLogout() {
 .drawer-enter-active, .drawer-leave-active { transition: opacity 200ms ease, transform 240ms cubic-bezier(0.22, 1, 0.36, 1); }
 .drawer-enter-from, .drawer-leave-to { opacity: 0; transform: translateY(-4px); }
 
-.toast-enter-active, .toast-leave-active { transition: opacity 220ms ease, transform 300ms cubic-bezier(0.22, 1, 0.36, 1); }
-.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(8px); }
-
 @media (prefers-reduced-motion: reduce) {
   .panel-in { animation: none; }
   .row-enter-active { transition: opacity 150ms ease; animation: none; }
   .row-enter-from { transform: none; }
   .row-move { transition: none; }
-  .drawer-enter-active, .drawer-leave-active, .toast-enter-active, .toast-leave-active { transition: opacity 150ms ease; }
+  .drawer-enter-active, .drawer-leave-active { transition: opacity 150ms ease; }
   .drawer-enter-from, .drawer-leave-to { transform: none; }
-  .toast-enter-from, .toast-leave-to { transform: none; }
 }
 </style>

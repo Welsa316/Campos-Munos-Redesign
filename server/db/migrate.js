@@ -11,6 +11,7 @@ import { applyBillingSchema } from './billingSchema.js'
 import { applyStaffSchema } from './staffSchema.js'
 import { applyIntegrationsSchema } from './integrationsSchema.js'
 import { seedReminderDefaults } from '../billing/reminderModel.js'
+import { applyContactsSchema } from './contactsSchema.js'
 
 async function migrate() {
   const pool = getPool()
@@ -174,6 +175,9 @@ async function migrate() {
     await applyStaffSchema(client)
     // OAuth connections to third parties (RingCentral). Needs admin_users.
     await applyIntegrationsSchema(client)
+    // Call notes and contact matches (db/contactsSchema.js). After the
+    // integrations schema: it relies on cm_phone_key() and rc_calls.
+    await applyContactsSchema(client)
     logger.info('Migration complete — tables created.')
   } finally {
     client.release()

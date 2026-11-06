@@ -21,6 +21,7 @@ import { createWhatsappInboxRouter } from './routes/whatsappInbox.js'
 import { redactUrlSecrets } from './utils/redactUrl.js'
 import { createIntegrationsRouter } from './routes/integrations.js'
 import { createCallsRouter } from './routes/calls.js'
+import { createContactsRouter } from './routes/contacts.js'
 import { createTeamRouter } from './routes/team.js'
 import { createActivityRouter } from './routes/activity.js'
 import { createRingCentralWebhookRouter } from './routes/ringcentralWebhook.js'
@@ -145,6 +146,7 @@ export function createApp({ env = process.env, log = logger, beforeFallback, rea
   app.use('/api/integrations', createIntegrationsRouter({ env }))
   // RingCentral call log (read-only).
   app.use('/api/calls', createCallsRouter({ env }))
+  app.use('/api/contacts', createContactsRouter())
   // Staff accounts (Team tab) and the activity log: administrators only.
   app.use('/api/team', createTeamRouter())
   app.use('/api/activity', createActivityRouter())

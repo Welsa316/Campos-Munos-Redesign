@@ -205,6 +205,20 @@
         </div>
       </div>
 
+      <!-- This person's calls and other enquiries (contacts history), by number. -->
+      <div class="border-t border-gray-100 flex-shrink-0">
+        <button type="button" @click="historyOpen = !historyOpen" :aria-expanded="historyOpen" :aria-controls="`lead-history-${submission.id}`"
+          class="w-full flex items-center justify-between px-5 py-2.5 hover:bg-brand-surface transition-colors">
+          <span class="flex items-center gap-2 text-xs font-ui font-semibold text-gray-700">
+            <FaIcon name="clock-rotate-left" class="text-brand-navy/70 text-[11px]" />Contact history
+          </span>
+          <FaIcon :name="historyOpen ? 'chevron-up' : 'chevron-down'" class="text-[10px] text-gray-400" />
+        </button>
+        <div v-if="historyOpen" :id="`lead-history-${submission.id}`" class="px-5 pb-4 max-h-80 overflow-y-auto">
+          <ContactHistory :submission-id="submission.id" />
+        </div>
+      </div>
+
       <!-- Reply box — keyed by submission so a half-typed draft never carries
            over to a different client when the admin switches messages. -->
       <ReplyBox
@@ -225,6 +239,7 @@ import { countryLabel } from '../../data/countries.js'
 import { adminLocale } from '../../utils/locale.js'
 import { formatPhone, telHref } from '../../utils/phone.js'
 import ReplyBox from './ReplyBox.vue'
+import ContactHistory from '../../modules/contacts/ContactHistory.vue'
 import FaIcon from '../FaIcon.vue'
 import { vAlertFocus } from '../../directives/alertFocus.js'
 import { toDate, isComposing } from '../../utils/text.js'
@@ -268,6 +283,8 @@ onUnmounted(() => {
 
 // --- Internal notes ---
 const notesOpen = ref(props.startWithNotesOpen)
+// Closed by default: the conversation comes first.
+const historyOpen = ref(false)
 const noteDraft = ref('')
 const savingNote = ref(false)
 // Read from the loaded submission so the background poll keeps the log current.
