@@ -14,14 +14,18 @@
       <button type="button" @click="reload" class="font-semibold underline">Reload</button>
     </template>
   </div>
-  <main id="main" tabindex="-1">
+  <main id="main" tabindex="-1" class="relative">
     <!-- The sections staff move between stay alive, so going back to one
          shows it at once while it refreshes in the background. Signing out
          empties the cache, so the next account never sees the last one's. -->
+    <!-- Changing section cross-fades: the new page fades in and settles while
+         the old one fades out over it (nothing waits, so it is no slower). -->
     <router-view v-slot="{ Component }">
-      <KeepAlive :include="isAuthenticated ? KEPT : []" :max="KEPT.length">
-        <component :is="Component" />
-      </KeepAlive>
+      <Transition name="section">
+        <KeepAlive :include="isAuthenticated ? KEPT : []" :max="KEPT.length">
+          <component :is="Component" />
+        </KeepAlive>
+      </Transition>
     </router-view>
   </main>
   <SwipeToast />
@@ -43,3 +47,15 @@ useReminderAlerts()
 
 const reload = () => window.location.reload()
 </script>
+
+<style>
+/* Section changes: ~200 ms, one curve, no movement with reduced motion. */
+.section-enter-active { transition: opacity 200ms ease-out, transform 240ms cubic-bezier(0.22, 1, 0.36, 1); }
+.section-leave-active { transition: opacity 140ms ease-in; position: absolute; inset: 0; pointer-events: none; }
+.section-enter-from { opacity: 0; transform: translateY(4px); }
+.section-leave-to { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .section-enter-active, .section-leave-active { transition: none; }
+  .section-enter-from { transform: none; }
+}
+</style>

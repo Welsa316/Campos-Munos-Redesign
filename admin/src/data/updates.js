@@ -24,7 +24,7 @@ export const SECTIONS = {
 export const UPDATES = [
   {
     id: 'my-follow-ups',
-    at: '2026-11-06T18:30:00Z',
+    at: '2026-11-06T10:13:02Z',
     section: 'everyone',
     any: ['calls.view', 'crm.view'],
     title: 'My follow-ups on Home',
@@ -36,7 +36,7 @@ export const UPDATES = [
   },
   {
     id: 'callback-reminders',
-    at: '2026-11-06T18:00:00Z',
+    at: '2026-11-06T10:11:00Z',
     section: 'calls',
     any: ['calls.exclude', 'crm.manage'],
     title: 'Callback reminders',
@@ -49,8 +49,22 @@ export const UPDATES = [
     ],
   },
   {
+    id: 'stay-signed-in',
+    at: '2026-11-06T10:09:24Z',
+    section: 'everyone',
+    any: [],
+    title: 'Stay signed in, and smoother switching between sections',
+    summary: 'On the sign-in page, tick “Keep me signed in on this computer” to stay signed in for 30 days instead of 8 hours.',
+    points: [
+      'The sign-in page remembers your email, so only the password needs typing.',
+      'Leave the box off on a shared computer. Signing out still ends it straight away.',
+      'Moving between sections now fades smoothly instead of jumping.',
+      'The Messages header no longer runs its labels over each other on wide screens.',
+    ],
+  },
+  {
     id: 'missed-call-notifications',
-    at: '2026-11-06T09:31:30Z',
+    at: '2026-11-06T09:32:51Z',
     section: 'calls',
     any: ['calls.view'],
     title: 'A notification for each new missed caller',
