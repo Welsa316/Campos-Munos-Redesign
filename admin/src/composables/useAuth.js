@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
 import { rawFetch } from './useApi.js'
+import { sessionExpired } from './appStatus.js'
 import { applyTheme, cacheTheme, DEFAULT_THEME } from '../data/themes.js'
 
 const isAuthenticated = ref(false)
@@ -101,6 +102,8 @@ export function useAuth() {
 
     applyProfile(data)
     verified = true
+    // Signed in again in the same tab: requests may run again.
+    sessionExpired.value = false
   }
 
   async function logout() {
