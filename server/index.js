@@ -111,6 +111,39 @@ schedule(sweepReplies, 2 * 60 * 1000, 5 * 60 * 1000)
 // Payment reminders: drafts + sending of approved reminders (never unapproved).
 startReminderScheduler({ pool: getPool(), env: process.env, log: logger })
 
+// Callback reminders (server/reminders/worker.js): due reminders are emailed
+// and pushed to the person they are for, once each, from this process alone
+// (no portal needs to be open). Every minute and once at boot; safe with
+// several instances. REMINDER_WORKER=false switches it off. Outside
+// production nothing is emailed unless REMINDER_EMAIL_ALLOWLIST is set
+// (development: tech@camulaw.com only), so a copy of real data can never
+// email the firm's staff from a developer's machine.
+if (process.env.REMINDER_WORKER !== 'false') {
+  const { runReminderWorker } = await import('./reminders/worker.js')
+  const { createResendMailer, emailAllowlist } = await import('./reminders/email.js')
+  let mailer = null
+  if (!emailProblems.includes('RESEND_API_KEY is not set') && !emailProblems.includes('RESEND_API_KEY is still the placeholder')) {
+    if (isProduction || emailAllowlist(process.env)) mailer = createResendMailer({ apiKey: process.env.RESEND_API_KEY, env: process.env })
+    else logger.warn('Callback reminder emails are off: set REMINDER_EMAIL_ALLOWLIST outside production')
+  }
+  let running = false
+  const runReminders = async () => {
+    if (running) return
+    running = true
+    try {
+      const r = await runReminderWorker(getPool(), { mailer, env: process.env, log: logger })
+      if (r.claimed.length || r.delivered.length || r.resolved.length) {
+        logger.info({ claimed: r.claimed.length, delivered: r.delivered.length, resolved: r.resolved.length, recovered: r.recovered }, 'Callback reminders processed')
+      }
+    } catch (err) {
+      logger.warn({ err: { name: err?.name, code: err?.code, message: err?.message } }, 'Callback reminder run failed')
+    } finally {
+      running = false
+    }
+  }
+  schedule(runReminders, 15 * 1000, 60 * 1000)
+}
+
 // RingCentral: keep an idle connection alive. Refresh tokens expire (7 days
 // by default) unless used, so refresh before that. Only in production by
 // default (a developer machine must not rotate the firm's tokens), and only
