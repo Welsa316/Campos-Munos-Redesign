@@ -17,6 +17,7 @@ import { emailConfigProblems } from './utils/emailConfig.js'
 import { pushConfig } from './push/config.js'
 import { isProductionEnv, bootEnvProblems } from './utils/productionEnv.js'
 import { notifyNewMissedCallers } from './push/missedCallAlerts.js'
+import { purgeOldNotifications } from './push/feed.js'
 
 const isProduction = isProductionEnv(process.env)
 
@@ -96,6 +97,18 @@ async function purgeOldActivity() {
   }
 }
 schedule(purgeOldActivity, 60 * 1000, 24 * 60 * 60 * 1000)
+
+// The desktop app's notification feed keeps a month (push/feed.js). Its own
+// daily timer, so the purge does not wait on a new missed caller.
+async function purgeNotificationFeed() {
+  try {
+    const r = await purgeOldNotifications(getPool())
+    if (r.rowCount) logger.info({ purged: r.rowCount }, 'Purged old desktop notifications')
+  } catch (err) {
+    logger.warn({ err: err.message }, 'Desktop notification purge failed')
+  }
+}
+schedule(purgeNotificationFeed, 90 * 1000, 24 * 60 * 60 * 1000)
 
 // Staff WhatsApp replies cut off mid-send become 'unknown' (whatsapp/inbox.js).
 async function sweepReplies() {

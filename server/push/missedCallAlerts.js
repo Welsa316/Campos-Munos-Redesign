@@ -7,7 +7,6 @@
 import { queryCalls, ATTENTION_DAYS } from '../integrations/ringcentral/callLog.js'
 import { accountsWith } from './leadAlerts.js'
 import { sendPush } from './send.js'
-import { purgeOldNotifications } from './feed.js'
 
 export const MISSED_CALL = Object.freeze({ title: 'New missed call', body: 'Someone is waiting for a call back. Open Calls to see who.' })
 export const MISSED_CALL_WINDOW_MINUTES = 120
@@ -31,6 +30,5 @@ export async function notifyNewMissedCallers(db, { now = new Date(), windowMinut
     }
     sent.push(e.id)
   }
-  await purgeOldNotifications(db)
   return sent
 }

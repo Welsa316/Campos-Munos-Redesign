@@ -39,6 +39,10 @@ const transport = {
   },
 }
 
+// What the main test server logs, to check the levels it picks.
+const logLines = []
+const captureLog = () => pino({ level: 'debug' }, { write: (line) => { logLines.push(JSON.parse(line)) } })
+
 let db, servers = [], base, bareBase, staffCli, sendPush, CALLBACK_REMINDER, portalPath
 const pw = {}
 const ids = {}
@@ -79,14 +83,14 @@ before(async () => {
 
   ;({ sendPush, CALLBACK_REMINDER, portalPath } = await import('./push/send.js'))
   const { createApp, addFallbackHandlers } = await import('./app.js')
-  const listen = async (env) => {
-    const app = addFallbackHandlers(createApp({ env: { NODE_ENV: 'test', JWT_SECRET: process.env.JWT_SECRET, ...env }, log: pino({ level: 'silent' }), pushTransport: transport }))
+  const listen = async (env, log = pino({ level: 'silent' })) => {
+    const app = addFallbackHandlers(createApp({ env: { NODE_ENV: 'test', JWT_SECRET: process.env.JWT_SECRET, ...env }, log, pushTransport: transport }))
     const server = app.listen(0)
     servers.push(server)
     await new Promise((r) => server.once('listening', r))
     return `http://127.0.0.1:${server.address().port}`
   }
-  base = await listen(PUSH_ENV)
+  base = await listen(PUSH_ENV, captureLog())
   bareBase = await listen({})
 })
 
@@ -383,6 +387,22 @@ test('the feed route serves only the signed-in account, and the test button adds
   assert.deepEqual(mine.json.items.map((i) => i.title), ['Test notification'])
   const theirs = await call('GET', `/api/notifications/feed?after=${first.json.cursor}`, { cookie: ciro })
   assert.ok(!theirs.json.items.some((i) => i.id === mine.json.items[0].id), 'not another account’s')
+  // The app keeps one cursor per account, so the feed says whose it is.
+  assert.equal(first.json.account, String(ids.a))
+  assert.equal(mine.json.account, String(ids.a))
+  assert.equal(theirs.json.account, String(ids.b))
+})
+
+test('feed polls that succeed log at debug; a signed-out poll still warns', { skip: SKIP }, async () => {
+  const yoletty = await signIn('yoletty@example.test', pw.a)
+  logLines.length = 0
+  assert.equal((await call('GET', '/api/notifications/feed', { cookie: yoletty })).status, 200)
+  assert.equal((await call('GET', '/api/notifications/feed?after=0')).status, 401)
+  assert.equal((await call('GET', '/api/auth/verify', { cookie: yoletty })).status, 200)
+  const levelOf = (status, url) => logLines.find((l) => l.res?.statusCode === status && l.req?.url.startsWith(url))?.level
+  assert.equal(levelOf(200, '/api/notifications/feed'), 20, 'debug')
+  assert.equal(levelOf(401, '/api/notifications/feed'), 40, 'warn')
+  assert.equal(levelOf(200, '/api/auth/verify'), 30, 'other successes stay at info')
 })
 
 test('a new missed caller is announced once, to people who can see Calls — not for repeat calls or old ones', { skip: SKIP }, async () => {
