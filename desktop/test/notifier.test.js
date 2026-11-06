@@ -2,7 +2,7 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const { EventEmitter } = require('node:events')
-const { createNotifier } = require('../src/notifier')
+const { createNotifier, MAX_TAGGED } = require('../src/notifier')
 
 function fakeOs() {
   const all = []
@@ -59,4 +59,15 @@ test('a stale close event from the replaced notification does not drop the new o
   notifier.show({ title: 'T', tag: 'cm-test-notification' })
   assert.equal(os.all[1].closed, true)
   assert.equal(os.visible().length, 1)
+})
+
+test('a busy day of different callers keeps at most 50 notifications in memory', () => {
+  const os = fakeOs()
+  const notifier = createNotifier({ create: os.create, onClick: () => {} })
+  for (let i = 0; i < 120; i++) notifier.show({ title: 'New missed call', tag: `missed-call:${i}` })
+  assert.equal(notifier.size, MAX_TAGGED)
+  // The newest still replace their twin.
+  notifier.show({ title: 'New missed call', body: 'again', tag: 'missed-call:119' })
+  assert.equal(os.all[119].closed, true)
+  assert.equal(notifier.size, MAX_TAGGED)
 })
