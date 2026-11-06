@@ -6,6 +6,7 @@
 //   GET  /                              every account, roles and capabilities
 //   POST /                              create (returns a one-time password)
 //   PUT  /:id/role | /:id/name
+//   PUT  /:id/extension                 { extensionId } RingCentral extension that is this person (null unlinks)
 //   PUT  /:id/capabilities/:capability  { state: grant | revoke | default }
 //   POST /:id/clear-overrides | disable | enable | sign-out | reset-password
 import { Router } from 'express'
@@ -16,6 +17,7 @@ import requireCapability from '../middleware/requireCapability.js'
 import validate from '../middleware/validate.js'
 import { CAPABILITIES, ROLES, ADMIN_ONLY } from '../auth/capabilities.js'
 import * as team from '../auth/team.js'
+import { loadDirectory } from '../integrations/ringcentral/extensionDirectory.js'
 
 const idParam = param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid id')
 
@@ -48,6 +50,11 @@ export function createTeamRouter({ db = null } = {}) {
       accounts: rows.map(team.accountJson),
       roles: Object.entries(ROLES).map(([key, r]) => ({ key, label: r.label, capabilities: r.capabilities })),
       capabilities: Object.entries(CAPABILITIES).map(([key, description]) => ({ key, description, adminOnly: ADMIN_ONLY.includes(key) })),
+      // RingCentral's people extensions, to link accounts to (empty until the
+      // call import has read the extension list).
+      extensions: (await loadDirectory(pool())).people
+        .map((p) => ({ id: p.id, number: p.number, name: p.name }))
+        .sort((a, b) => String(a.number).localeCompare(String(b.number), undefined, { numeric: true })),
     })
   }))
 
@@ -66,6 +73,10 @@ export function createTeamRouter({ db = null } = {}) {
 
   router.put('/:id/name', idParam, validate, wrap(async (req, res) => {
     res.json(team.accountJson(await team.setName(pool(), await target(req), req.body?.name, actor(req))))
+  }))
+
+  router.put('/:id/extension', idParam, validate, wrap(async (req, res) => {
+    res.json(team.accountJson(await team.setExtension(pool(), await target(req), req.body?.extensionId ?? null, actor(req))))
   }))
 
   router.put('/:id/capabilities/:capability', idParam, validate, wrap(async (req, res) => {

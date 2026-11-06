@@ -134,6 +134,11 @@ export const INTEGRATIONS_SCHEMA_SQL = `
   -- first for each person (their direct number rings their RingCentral app),
   -- and each call they placed, so its progress can be shown and cancelled.
   ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS ringout_phone TEXT;
+  -- The RingCentral extension that is this person (Team tab), so the call log
+  -- shows calls offered to "Yoletty" rather than RingCentral's own name for
+  -- the extension. One account per extension.
+  ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS rc_extension_id TEXT;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_users_rc_extension ON admin_users(rc_extension_id) WHERE rc_extension_id IS NOT NULL;
   CREATE TABLE IF NOT EXISTS rc_ringouts (
     id BIGSERIAL PRIMARY KEY,
     rc_ringout_id TEXT NOT NULL,

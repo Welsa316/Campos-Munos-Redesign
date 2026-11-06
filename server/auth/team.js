@@ -42,6 +42,8 @@ export function accountJson(row) {
     passwordUpdatedAt: row.password_updated_at ?? null,
     lastActiveAt: row.last_active_at ?? null,
     avatar: avatarFor(row),
+    // The RingCentral extension that is this person (call log names).
+    rcExtensionId: row.rc_extension_id ?? null,
   }
 }
 
@@ -146,6 +148,25 @@ export async function setName(db, row, name, actor) {
   if (n.length > 60) throw new TeamError('Name: up to 60 characters')
   const updated = (await db.query('UPDATE admin_users SET display_name = $2 WHERE id = $1 RETURNING *', [row.id, n])).rows[0]
   await auditFor(actor)(db, row, 'staff.renamed')
+  return updated
+}
+
+/**
+ * Link the account to the RingCentral extension that is this person, or
+ * unlink it (null). The extension must be in the stored extension directory;
+ * one account per extension.
+ */
+export async function setExtension(db, row, extensionId, actor) {
+  const id = extensionId == null || extensionId === '' ? null : String(extensionId).trim()
+  if (id !== null) {
+    if (!/^\d{1,20}$/.test(id)) throw new TeamError('Choose an extension from the list')
+    const ext = (await db.query('SELECT id FROM rc_extensions WHERE id = $1', [id])).rows[0]
+    if (!ext) throw new TeamError('That extension is not in RingCentral’s extension list', 404)
+    const taken = (await db.query('SELECT email FROM admin_users WHERE rc_extension_id = $1 AND id <> $2', [id, row.id])).rows[0]
+    if (taken) throw new TeamError(`That extension is already linked to ${taken.email}`, 409)
+  }
+  const updated = (await db.query('UPDATE admin_users SET rc_extension_id = $2 WHERE id = $1 RETURNING *', [row.id, id])).rows[0]
+  await auditFor(actor)(db, row, 'staff.extension_linked', { extensionId: id })
   return updated
 }
 

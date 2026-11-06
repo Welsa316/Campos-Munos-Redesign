@@ -160,6 +160,22 @@
                   <button type="button" @click="renaming = null" class="px-3 py-2 rounded-lg text-xs font-semibold text-gray-600 hover:bg-brand-surface">Cancel</button>
                 </form>
 
+                <!-- Which RingCentral extension is this person: the call log then shows their name. -->
+                <div class="flex flex-wrap items-end gap-x-3 gap-y-1">
+                  <div>
+                    <label :for="`ext-${a.id}`" class="text-[11px] font-semibold text-gray-700">RingCentral extension</label>
+                    <select :id="`ext-${a.id}`" :value="a.rcExtensionId || ''" :disabled="Boolean(busy) || !extensions.length"
+                      @change="linkExtension(a, $event.target.value)"
+                      class="mt-1 block w-64 max-w-full text-sm px-3 py-2 rounded-lg border border-gray-300 bg-white focus:border-brand-navy focus:outline-none disabled:opacity-60">
+                      <option value="">Not linked</option>
+                      <option v-for="x in extensions" :key="x.id" :value="x.id" :disabled="Boolean(linkedTo(x.id, a))">
+                        Ext. {{ x.number }} · {{ x.name }}{{ linkedTo(x.id, a) ? ` (linked to ${nameOf(linkedTo(x.id, a))})` : '' }}
+                      </option>
+                    </select>
+                  </div>
+                  <p class="text-[11px] text-gray-500 max-w-md pb-2">{{ extensions.length ? 'Calls offered to this extension show under this person’s name in Calls. RingCentral’s own name for it stays in each call’s details.' : 'The extension list appears after the next call import from RingCentral.' }}</p>
+                </div>
+
                 <div v-if="pending?.id === a.id && pending.kind !== 'role'" role="alertdialog" :aria-labelledby="`cf-${a.id}`"
                   class="rounded-lg ring-1 ring-red-200 bg-red-50 px-4 py-3 text-[13px]">
                   <p :id="`cf-${a.id}`" class="font-semibold text-gray-900">{{ CONFIRM[pending.kind].title(nameOf(a)) }}</p>
@@ -302,6 +318,7 @@ async function load() {
     accounts.value = data.accounts
     roles.value = data.roles
     capabilities.value = data.capabilities
+    extensions.value = data.extensions || []
   } catch (err) {
     error.value = `Could not load the team: ${err.message}`
   } finally {
@@ -361,6 +378,14 @@ async function toggleCap(a, c) {
 }
 
 function startRename(a) { renaming.value = a.id; nameDraft.value = a.displayName || '' }
+// RingCentral's people extensions; each can be linked to one account.
+const extensions = ref([])
+const linkedTo = (extId, self) => accounts.value.find((x) => x.id !== self.id && x.rcExtensionId === extId) || null
+async function linkExtension(a, extId) {
+  const out = await act('extension', () => put(`/api/team/${a.id}/extension`, { extensionId: extId || null }))
+  if (out) { replace(out); saved.value = extId ? `Linked ${nameOf(a)} to their RingCentral extension` : `Unlinked ${nameOf(a)} from RingCentral` }
+}
+
 async function rename(a) {
   const out = await act('name', () => put(`/api/team/${a.id}/name`, { name: nameDraft.value }))
   if (out) { replace(out); renaming.value = null; saved.value = 'Name saved' }

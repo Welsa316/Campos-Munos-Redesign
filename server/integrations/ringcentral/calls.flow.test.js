@@ -398,6 +398,30 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.equal((await list('&person=nope')).json.calls.length, 7, 'an invalid id is ignored')
   })
 
+  await t.test('a portal account linked to its extension: calls show the person’s portal name', async () => {
+    // RingCentral can name an extension something else entirely ("Office CML").
+    const ext = (await db.query(`SELECT name FROM rc_extensions WHERE id = '9101'`)).rows[0]
+    assert.equal(ext.name, 'Yoletty')
+    await db.query(`UPDATE rc_extensions SET name = 'Office CML' WHERE id = '9101'`)
+    await db.query(`UPDATE admin_users SET display_name = 'Yoletty R.', rc_extension_id = '9101' WHERE email = 'desk@example.test'`)
+    try {
+      const l = await list()
+      assert.equal(l.json.people.find((p) => p.extensionId === '9101').name, 'Yoletty R.')
+      assert.equal(l.json.people.find((p) => p.extensionId === '9101').rcName, 'Office CML')
+      const maria = byId(l.json.calls, '2026-10-30T15:00:00Z')
+      assert.equal(maria.answeredBy.name, 'Yoletty R.')
+      assert.equal(maria.answeredBy.rcName, 'Yoletty', 'RingCentral’s name as recorded on the call is kept beside it')
+      const vm = byId(l.json.calls, '2026-10-30T17:00:00Z')
+      const ev = await call('GET', `/api/calls/${vm.id}/evidence`)
+      assert.equal(ev.json.offeredTo[0].name, 'Yoletty R.')
+      assert.equal(ev.json.steps.find((x) => x.to.id === '9101').to.name, 'Yoletty R.')
+      assert.equal((await list(`&q=${encodeURIComponent('Yoletty R')}`)).json.calls.length, 3, 'found by the portal name')
+    } finally {
+      await db.query(`UPDATE rc_extensions SET name = 'Yoletty' WHERE id = '9101'`)
+      await db.query(`UPDATE admin_users SET display_name = NULL, rc_extension_id = NULL WHERE email = 'desk@example.test'`)
+    }
+  })
+
   await t.test('two records of one call count once, read together', async () => {
     rc.records.push(
       rec('d1', '2026-10-30T21:00:00Z', 'Inbound', 'Missed', { phoneNumber: '+15045550166' }, {

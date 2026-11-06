@@ -44,7 +44,9 @@ export function stepTarget(to) {
   if (!to) return '—'
   if (to.kind === 'extension') {
     const base = who({ name: to.name, extension: to.number })
-    return to.type ? `${base} (${TYPE_LABEL[to.type] || to.type})` : base
+    // Linked on the Team tab: RingCentral's own name for the extension stays visible.
+    const rc = to.rcName && to.rcName !== to.name ? `, “${to.rcName}” in RingCentral` : ''
+    return to.type ? `${base} (${TYPE_LABEL[to.type] || to.type}${rc})` : `${base}${rc}`
   }
   if (to.kind === 'external') return `Phone ending ${to.numberEnd || '····'}`
   if (to.kind === 'line') return to.name ? `${to.name} (the line dialled)` : 'The line dialled'

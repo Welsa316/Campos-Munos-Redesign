@@ -551,7 +551,12 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
       const p = `$${params.length}`
       searchSql = `(b.client_name ILIKE ${p} OR (b.lead_first || ' ' || b.lead_last) ILIKE ${p} OR b.caller_id_name ILIKE ${p}
         OR b.classification_evidence->'answeredBy'->>'name' ILIKE ${p}
-        OR EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(b.classification_evidence->'offeredTo', '[]'::jsonb)) o WHERE o->>'name' ILIKE ${p}))`
+        OR EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(b.classification_evidence->'offeredTo', '[]'::jsonb)) o WHERE o->>'name' ILIKE ${p})
+        -- The portal name of a linked account (Team tab), e.g. "Yoletty" for
+        -- an extension RingCentral calls "Office CML".
+        OR EXISTS (SELECT 1 FROM admin_users au WHERE au.rc_extension_id IS NOT NULL AND au.display_name ILIKE ${p}
+             AND (b.classification_evidence->'offeredTo' @> jsonb_build_array(jsonb_build_object('extensionId', au.rc_extension_id))
+               OR b.classification_evidence->'answeredBy'->>'extensionId' = au.rc_extension_id)))`
     }
   }
 
@@ -641,19 +646,42 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
   ])
 
   const rows = list.rows.slice(0, lim)
+  const names = await linkedNames(db)
   return {
-    calls: rows.map(present),
+    calls: rows.map((r) => present(r, names)),
     counts: counts.rows[0],
     truncated: list.rows.length > lim,
   }
 }
 
+/**
+ * RingCentral extension id → the name of the portal account linked to it on
+ * the Team tab. The stored evidence keeps RingCentral's own name; this only
+ * changes what is shown.
+ */
+export async function linkedNames(db) {
+  const rows = (await db.query(
+    `SELECT rc_extension_id, COALESCE(NULLIF(TRIM(display_name), ''), split_part(email, '@', 1)) AS name
+       FROM admin_users WHERE rc_extension_id IS NOT NULL`
+  )).rows
+  return new Map(rows.map((r) => [r.rc_extension_id, r.name]))
+}
+
+// A person on a call, with the portal name when the extension is linked and
+// RingCentral's own name kept beside it.
+const named = (p, names) => {
+  if (p?.kind === 'external') return p.onBehalfOfId && names.has(p.onBehalfOfId) ? { ...p, onBehalfOf: names.get(p.onBehalfOfId) } : p
+  if (!p || !p.extensionId || !names.has(p.extensionId)) return p
+  return { ...p, name: names.get(p.extensionId), rcName: p.name ?? null }
+}
+
 /** The people calls can be offered to (extension directory, person types only), for the filter. */
 export async function listPeople(db) {
   const d = await loadDirectory(db)
+  const names = await linkedNames(db)
   return d.people
     .filter((p) => p.status !== 'Disabled')
-    .map((p) => ({ extensionId: p.id, extension: p.number, name: p.name }))
+    .map((p) => ({ extensionId: p.id, extension: p.number, name: names.get(p.id) || p.name, rcName: p.name }))
     .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
 }
 
@@ -672,6 +700,8 @@ export async function callEvidence(db, id) {
   )).rows[0]
   if (!r) return null
   const ev = r.classification_evidence || {}
+  const names = await linkedNames(db)
+  const toNamed = (to) => (to?.kind === 'extension' && to.id && names.has(to.id) ? { ...to, name: names.get(to.id), rcName: to.name ?? null } : to)
   return {
     id: Number(r.id),
     direction: r.direction,
@@ -681,16 +711,16 @@ export async function callEvidence(db, id) {
     records: r.records,
     hasRaw: r.has_raw,
     classifierVersion: r.classifier_version,
-    answeredBy: ev.answeredBy || null,
-    offeredTo: ev.offeredTo || [],
-    notAnsweredBy: ev.notAnsweredBy || [],
-    facts: ev.facts || [],
+    answeredBy: named(ev.answeredBy || null, names),
+    offeredTo: (ev.offeredTo || []).map((p) => named(p, names)),
+    notAnsweredBy: (ev.notAnsweredBy || []).map((p) => named(p, names)),
+    facts: (ev.facts || []).map((f) => ({ ...f, to: toNamed(f.to) })),
     gaps: ev.gaps || [],
-    steps: (ev.steps || []).map(({ onBehalfOf: _drop, ...s }) => s),
+    steps: (ev.steps || []).map(({ onBehalfOf: _drop, ...s }) => ({ ...s, to: toNamed(s.to) })),
   }
 }
 
-function present(r) {
+function present(r, names = new Map()) {
   const leadName = r.lead_id ? `${r.lead_first || ''} ${r.lead_last || ''}`.trim() : null
   const callerId = r.caller_id_name && !isGenericCallerId(r.caller_id_name) ? titleCase(r.caller_id_name) : null
   let name = null
@@ -724,9 +754,9 @@ function present(r) {
     client: r.client_id ? { id: Number(r.client_id), name: r.client_name } : null,
     firm: { number: r.firm_number, name: r.firm_name, extension: r.firm_extension },
     // Only from the evidence: a person's extension (or a forwarded phone) that accepted it.
-    answeredBy: ev?.answeredBy || null,
-    offeredTo: ev?.offeredTo || [],
-    notAnsweredBy: ev?.notAnsweredBy || [],
+    answeredBy: named(ev?.answeredBy || null, names),
+    offeredTo: (ev?.offeredTo || []).map((p) => named(p, names)),
+    notAnsweredBy: (ev?.notAnsweredBy || []).map((p) => named(p, names)),
     gaps: ev?.gaps || [],
     followUp,
     // Marked as needing no callback: this call alone, or every call from its number.

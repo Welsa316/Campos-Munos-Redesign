@@ -48,6 +48,8 @@ test('targets and offsets', () => {
   assert.equal(who(yoletty), 'Yoletty, ext. 101')
   assert.equal(stepTarget({ kind: 'extension', name: 'CML', number: '1', type: 'Department' }), 'CML, ext. 1 (call queue)')
   assert.equal(stepTarget({ kind: 'extension', name: 'X', number: '7', type: null }), 'X, ext. 7')
+  assert.equal(stepTarget({ kind: 'extension', name: 'Yoletty', rcName: 'Office CML', number: '101', type: 'User' }),
+    'Yoletty, ext. 101 (person, “Office CML” in RingCentral)')
   assert.equal(stepTarget({ kind: 'external', numberEnd: '9876' }), 'Phone ending 9876')
   assert.equal(offset('2026-10-26T15:03:01Z', '2026-10-26T15:00:00Z'), '+3m 01s')
   assert.equal(offset('2026-10-26T15:00:09Z', '2026-10-26T15:00:00Z'), '+9s')
