@@ -11,6 +11,9 @@ const BACKOFF_MS = [20_000, 60_000, 120_000, 300_000]
 // The server returns at most this many items per call; a full page means
 // there is more waiting, so ask again straight away.
 const PAGE_SIZE = 50
+// Items older than this (the app was quit, the computer asleep, someone was
+// away) are not worth a notification each: one summary says how many.
+const STALE_MS = 24 * 60 * 60 * 1000
 
 function backoffDelay(failures) {
   if (failures <= 0) return NORMAL_MS
@@ -21,21 +24,46 @@ function validItem(item) {
   return !!item && typeof item === 'object' && typeof item.title === 'string' && item.title.length > 0
 }
 
+function isStale(item, now) {
+  const at = Date.parse(item.createdAt)
+  return Number.isFinite(at) && now - at > STALE_MS
+}
+
+function awaySummary(count) {
+  return {
+    title: count === 1 ? '1 notification while you were away' : `${count} notifications while you were away`,
+    body: 'Open Campos Muños to catch up.',
+    url: '/',
+    tag: 'cm-while-away',
+  }
+}
+
 /**
  * @param {object} deps
  * @param {(after: string|number|null) => Promise<{status: number, json: () => Promise<any>}>} deps.fetchFeed
- * @param {{ get: () => any, set: (cursor: any) => void }} deps.cursor
+ * @param {{ get: () => any, set: (cursor: any) => void, account?: () => string|null, switchTo?: (account: string) => void }} deps.cursor
+ *   With `account`/`switchTo`, cursors are kept per account (store.js).
  * @param {(item: object) => void} deps.notify
  * @param {(fn: Function, ms: number) => any} [deps.setTimer]
  * @param {(handle: any) => void} [deps.clearTimer]
  * @param {(state: string) => void} [deps.onState]  'ok' | 'signed-out' | 'error'
+ * @param {() => number} [deps.now]
  */
-function createPoller({ fetchFeed, cursor, notify, setTimer = setTimeout, clearTimer = clearTimeout, onState = () => {} }) {
+function createPoller({ fetchFeed, cursor, notify, setTimer = setTimeout, clearTimer = clearTimeout, onState = () => {}, now = Date.now }) {
   let timer = null
   let running = false
   let inFlight = null
   let again = false
   let failures = 0
+  let state = 'starting'
+  // Stale items counted across the pages of one catch-up, announced once.
+  let away = 0
+  let switched = false
+
+  function setState(s) {
+    state = s
+    onState(s)
+  }
 
   function schedule(ms) {
     if (timer) clearTimer(timer)
@@ -62,15 +90,16 @@ function createPoller({ fetchFeed, cursor, notify, setTimer = setTimeout, clearT
   }
 
   async function once() {
+    const sent = cursor.get() ?? null
     let res
     try {
-      res = await fetchFeed(cursor.get() ?? null)
+      res = await fetchFeed(sent)
     } catch {
       return fail()
     }
     if (res.status === 401) {
       failures = 0
-      onState('signed-out')
+      setState('signed-out')
       return SIGNED_OUT_MS
     }
     if (res.status !== 200) return fail()
@@ -83,28 +112,51 @@ function createPoller({ fetchFeed, cursor, notify, setTimer = setTimeout, clearT
     }
     if (!body || typeof body !== 'object') return fail()
 
-    const before = cursor.get() ?? null
+    // Someone else signed in: this answer was read against another person's
+    // cursor. Switch to theirs (or none) and ask again, once, straight away.
+    const account = typeof body.account === 'string' && body.account ? body.account : null
+    if (account !== null && cursor.switchTo && cursor.account() !== account) {
+      cursor.switchTo(account)
+      if ((cursor.get() ?? null) !== sent) {
+        failures = 0
+        setState('ok')
+        if (switched) return NORMAL_MS
+        switched = true
+        return 0
+      }
+    }
+    switched = false
+
+    const before = sent
     // Without a stored cursor this is the first call: take the server's
     // latest id and show nothing, so history is never replayed.
     if (before !== null && Array.isArray(body.items)) {
+      const at = now()
       for (const item of body.items) {
         if (!validItem(item)) continue
+        if (isStale(item, at)) { away += 1; continue }
         try { notify(item) } catch { /* one bad notification must not stop the rest */ }
       }
     }
     const next = body.cursor !== undefined && body.cursor !== null ? body.cursor : before
     if (next !== before) cursor.set(next)
     failures = 0
-    onState('ok')
+    setState('ok')
     // Only chase the next page when the cursor moved, so a misbehaving
     // server cannot spin this into a tight loop.
     const full = before !== null && Array.isArray(body.items) && body.items.length >= PAGE_SIZE
-    return full && next !== before ? 0 : NORMAL_MS
+    if (full && next !== before) return 0
+    if (away > 0) {
+      const count = away
+      away = 0
+      try { notify(awaySummary(count)) } catch { /* the OS refused it; nothing else to do */ }
+    }
+    return NORMAL_MS
   }
 
   function fail() {
     failures += 1
-    onState('error')
+    setState('error')
     return backoffDelay(failures)
   }
 
@@ -127,7 +179,9 @@ function createPoller({ fetchFeed, cursor, notify, setTimer = setTimeout, clearT
       return tick()
     },
     get failures() { return failures },
+    // 'starting' until the first answer, then 'ok' | 'signed-out' | 'error'.
+    get state() { return state },
   }
 }
 
-module.exports = { createPoller, backoffDelay, NORMAL_MS, SIGNED_OUT_MS, BACKOFF_MS, PAGE_SIZE }
+module.exports = { createPoller, backoffDelay, NORMAL_MS, SIGNED_OUT_MS, BACKOFF_MS, PAGE_SIZE, STALE_MS }
