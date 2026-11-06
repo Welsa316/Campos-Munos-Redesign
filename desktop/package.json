@@ -20,7 +20,7 @@
   },
   "build": {
     "appId": "com.camulaw.portal",
-    "productName": "Campos Muños",
+    "productName": "Campos Munos",
     "artifactName": "Campos-Munos-${version}-${arch}.${ext}",
     "directories": {
       "output": "dist",
@@ -42,7 +42,10 @@
       "icon": "build/icon.icns",
       "identity": "-",
       "hardenedRuntime": false,
-      "gatekeeperAssess": false
+      "gatekeeperAssess": false,
+      "extendInfo": {
+        "CFBundleDisplayName": "Campos Muños"
+      }
     },
     "dmg": {
       "title": "Campos Muños"
@@ -64,7 +67,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Campos Muños"
+      "shortcutName": "Campos Muños",
+      "uninstallDisplayName": "Campos Muños"
     },
     "publish": null
   }
