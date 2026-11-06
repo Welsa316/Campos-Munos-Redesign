@@ -23,6 +23,20 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'callback-reminders',
+    at: '2026-11-06T18:00:00Z',
+    section: 'calls',
+    any: ['calls.exclude', 'crm.manage'],
+    title: 'Callback reminders',
+    summary: 'Set a reminder to call someone back later. When it is due you get an email and, if you turned notifications on, a notification on your computer, even with the portal closed.',
+    points: [
+      'In Calls → Needs attention, open a caller’s ⋯ menu and choose Remind me, or use Remind me in their details. On a website message, Remind me is under the status.',
+      'Pick In 30 minutes, In 1 hour, Tomorrow morning (9:00 AM, the next weekday) or a date and time. The exact time shows before you save. Times are New Orleans time.',
+      'A reminder can be for you or a colleague, with a short note only staff see. The email and notification never say who the caller is: open the portal to see.',
+      'If the caller is reached first (a callback connects, or they are marked handled), the reminder closes by itself and nothing is sent.',
+    ],
+  },
+  {
     id: 'missed-call-notifications',
     at: '2026-11-06T09:31:30Z',
     section: 'calls',
