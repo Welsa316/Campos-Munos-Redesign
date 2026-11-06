@@ -14,6 +14,11 @@
           <i class="fa-solid fa-key text-xs" aria-hidden="true"></i>
           <span class="hidden lg:inline">Password</span>
         </button>
+        <button @click="showNotifications = true" aria-label="Desktop notifications" title="Desktop notifications"
+          class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors">
+          <FaIcon name="bell" class="text-xs" />
+          <span class="hidden lg:inline">Notifications</span>
+        </button>
         <button @click="handleLogout" aria-label="Sign out"
           class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-gray-500 hover:text-brand-red hover:bg-red-50 text-sm font-ui font-medium transition-colors">
           <i class="fa-solid fa-arrow-right-from-bracket text-xs" aria-hidden="true"></i>
@@ -23,6 +28,7 @@
     </header>
 
     <ChangePasswordModal :visible="showChangePassword" @close="showChangePassword = false" />
+    <NotificationsModal :visible="showNotifications" @close="showNotifications = false" />
 
     <div class="flex-1 overflow-y-auto overflow-x-hidden">
       <div class="min-h-full relative max-w-[1120px] mx-auto px-4 sm:px-8 pt-6 sm:pt-10 pb-10 flex flex-col gap-4 sm:gap-5 font-ui">
@@ -126,6 +132,7 @@ import { useAuth } from '../composables/useAuth.js'
 import { useApi } from '../composables/useApi.js'
 import SectionLinks from '../components/portal/SectionLinks.vue'
 import ChangePasswordModal from '../components/messages/ChangePasswordModal.vue'
+import NotificationsModal from '../components/portal/NotificationsModal.vue'
 import FaIcon from '../components/FaIcon.vue'
 import { money } from '../modules/billing/api.js'
 import SplitText from '../components/SplitText.vue'
@@ -140,6 +147,7 @@ const router = useRouter()
 const { adminEmail, profile, logout, can, canAny, updateProfile } = useAuth()
 const { get } = useApi()
 const showChangePassword = ref(false)
+const showNotifications = ref(false)
 const showAvatarPicker = ref(false)
 const avatarSize = typeof window !== 'undefined' && window.innerWidth >= 640 ? 64 : 56
 
