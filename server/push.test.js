@@ -274,8 +274,8 @@ test('desktop notifications', { skip: SKIP }, async (t) => {
     assert.equal(test.json.outcome, 'sent')
     await sendPush(db, { accountId: ids.a, eventKey: 'callback-reminder:45', ...CALLBACK_REMINDER, url: '/calls', tag: 'callback-reminder:45' }, { env: PUSH_ENV, transport })
     assert.equal(sent.length, 2)
-    assert.deepEqual(sent[0].payload, { title: 'Campos Muños — Test notification', body: 'Desktop notifications are working on this computer.', url: '/', tag: 'cm-test-notification' })
-    assert.deepEqual(sent[1].payload, { title: 'Campos Muños — Callback Reminder', body: 'You have a scheduled follow-up ready to review.', url: '/calls', tag: 'callback-reminder:45' })
+    assert.deepEqual(sent[0].payload, { title: 'Test notification', body: 'Desktop notifications are working on this computer.', url: '/', tag: 'cm-test-notification' })
+    assert.deepEqual(sent[1].payload, { title: 'Callback reminder', body: 'You have a scheduled follow-up ready to review.', url: '/calls', tag: 'callback-reminder:45' })
     for (const s of sent) {
       const text = JSON.stringify(s.payload)
       for (const secret of ['Ana', 'Prueba', '555', '0101', 'ana@example.test', 'caso', 'yoletty@example.test']) assert.ok(!text.includes(secret), `${secret} in ${text}`)
@@ -335,7 +335,7 @@ test('a new website lead notifies, once, the people who may read leads — with 
   assert.equal(to(subs.noLeads).length, 0, 'nor can an account with leads revoked')
   assert.equal(to(subs.desk)[0].options.TTL, 24 * 60 * 60, 'kept a day for a computer that is off')
   assert.deepEqual(to(subs.desk)[0].payload, {
-    title: 'Campos Muños — New website message',
+    title: 'New form submission',
     body: 'Someone wrote in through the website. Open Messages to read it.',
     url: `/inbox?lead=${lead}`,
     tag: `cm-submission-${lead}`,

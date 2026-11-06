@@ -7,8 +7,8 @@ import { resolveCapabilities } from '../auth/capabilities.js'
 import { sendPush } from './send.js'
 
 export const LEAD_ALERT = Object.freeze({
-  contact: { title: 'Campos Muños — New website message', body: 'Someone wrote in through the website. Open Messages to read it.' },
-  chat: { title: 'Campos Muños — New website chat', body: 'Someone started a chat on the website. Open Messages to reply.' },
+  contact: { title: 'New form submission', body: 'Someone wrote in through the website. Open Messages to read it.' },
+  chat: { title: 'New website chat', body: 'Someone started a chat on the website. Open Messages to reply.' },
 })
 
 /** Accounts with notifications on that may read website leads. */
