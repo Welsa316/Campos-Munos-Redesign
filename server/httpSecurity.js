@@ -141,7 +141,7 @@ export function resolveClientIp(env = process.env) {
 export const clientKey = (req) => req.clientIp || req.ip
 
 /** Cookie options for the staff session, shared by login/logout/rotation. */
-export function sessionCookieOptions(env = process.env) {
+export function sessionCookieOptions(env = process.env, { remember = false } = {}) {
   const isProduction = isProductionEnv(env)
   // Lax by default: portal and API are same-site, so the cookie travels, and
   // nothing cross-site can carry it. 'none' exists only for staging hosts on
@@ -152,7 +152,8 @@ export function sessionCookieOptions(env = process.env) {
     httpOnly: true,
     secure: isProduction || sameSite === 'none',
     sameSite,
-    maxAge: 8 * 60 * 60 * 1000,
+    // Matches the token: 8 hours, or 30 days when kept signed in.
+    maxAge: (remember ? 30 * 24 : 8) * 60 * 60 * 1000,
     path: '/',
   }
 }

@@ -27,12 +27,21 @@
             <label for="admin-login-password" class="form-label">Password</label>
             <input
               id="admin-login-password"
+              ref="passwordRef"
               v-model="password"
               type="password"
               required
               autocomplete="current-password"
               class="form-input"
             />
+          </div>
+
+          <!-- 30 days instead of 8 hours. Signing out still ends it at once. -->
+          <div class="flex items-start gap-3">
+            <input id="admin-login-remember" v-model="remember" type="checkbox" aria-describedby="admin-login-remember-hint" class="mt-0.5 w-4 h-4 accent-brand-navy flex-shrink-0 cursor-pointer" />
+            <label for="admin-login-remember" class="text-sm font-ui text-gray-700 leading-snug cursor-pointer select-none">Keep me signed in on this computer
+              <span id="admin-login-remember-hint" class="block text-xs text-gray-500">For 30 days. Leave it off on a shared computer.</span>
+            </label>
           </div>
 
           <transition name="fade">
@@ -62,7 +71,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { LOGO_SRC } from '../data/brand.js'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
@@ -72,8 +81,15 @@ const router = useRouter()
 const route = useRoute()
 const { login, homeRoute } = useAuth()
 
-const email = ref('')
+// The last address used to sign in here, so only the password needs typing.
+const EMAIL_KEY = 'cm-login-email'
+const readEmail = () => { try { return localStorage.getItem(EMAIL_KEY) || '' } catch { return '' } }
+const email = ref(readEmail())
 const password = ref('')
+const remember = ref(false)
+const passwordRef = ref(null)
+// The address is remembered: start in the password box.
+onMounted(() => { if (email.value) passwordRef.value?.focus() })
 const loading = ref(false)
 const errorMsg = ref('')
 
@@ -82,7 +98,8 @@ async function handleLogin() {
   errorMsg.value = ''
 
   try {
-    await login(email.value, password.value)
+    await login(email.value, password.value, { remember: remember.value })
+    try { localStorage.setItem(EMAIL_KEY, email.value.trim()) } catch { /* private window: nothing to remember */ }
     // The guard redirects again if `next` is a screen this account cannot use.
     router.push(safeNextPath(route.query.next) || homeRoute())
   } catch (err) {
