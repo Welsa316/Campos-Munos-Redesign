@@ -34,6 +34,10 @@ test('days ago never reads "NaN days ago"', () => {
   assert.equal(daysAgo('2026-11-01T09:00:00Z', now), '5 days ago')
   assert.equal(daysAgo(null, now), '')
   assert.equal(daysAgo('garbage', now), '')
+  // Days are New Orleans calendar days: 9:26 PM is yesterday at 1:28 AM.
+  assert.equal(daysAgo('2026-11-06T03:26:00Z', Date.parse('2026-11-06T07:28:00Z')), 'yesterday')
+  // ...and 1 AM is still today at 11 PM, though more than 20 hours have passed.
+  assert.equal(daysAgo('2026-11-06T07:00:00Z', Date.parse('2026-11-07T05:00:00Z')), 'today')
 })
 
 test('a status nobody mapped yet shows as itself instead of throwing', () => {

@@ -1,6 +1,8 @@
 // Small wording helpers, so a count, a date or a name never reads wrong:
 // "1 invoices", "invoice(s)", "NaN days ago", "Invalid Date", "null null".
 
+import { zoneMidnight } from './firmTime.js'
+
 /** "1 invoice", "3 invoices", "2 replies" (pass the plural when it is not +s). */
 export function plural(n, one, many = `${one}s`) {
   const count = Number(n) || 0
@@ -24,7 +26,9 @@ export function leadName(lead, fallback = 'a lead with no name') {
 export function daysAgo(value, now = Date.now()) {
   const d = toDate(value)
   if (!d) return ''
-  const days = Math.floor((now - d.getTime()) / 86400000)
+  // Calendar days in the firm's time zone, not 24-hour spans: a message from
+  // 9 PM is "yesterday" at 1 AM.
+  const days = Math.round((zoneMidnight(now) - zoneMidnight(d)) / 86400000)
   if (days < 1) return 'today'
   return days === 1 ? 'yesterday' : `${days} days ago`
 }

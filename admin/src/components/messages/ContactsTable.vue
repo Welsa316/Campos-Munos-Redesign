@@ -69,7 +69,7 @@
         {{ emptyMessage }}
       </p>
 
-      <table v-else class="w-full text-left border-collapse max-md:block">
+      <table v-else class="w-full text-left border-collapse font-ui max-md:block">
         <thead class="sticky top-0 bg-white z-10 max-md:hidden">
           <tr class="border-b border-gray-200">
             <th v-for="col in COLUMNS" :key="col.key" scope="col"
