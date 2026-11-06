@@ -45,6 +45,12 @@ export function requestIdFor(req) {
   return typeof given === 'string' && REQUEST_ID.test(given) ? given : crypto.randomUUID()
 }
 
+// The desktop app's feed poll (GET /api/notifications/feed).
+export function isFeedPoll(req) {
+  const path = String(req.originalUrl || req.url || '').split('?')[0]
+  return req.method === 'GET' && path === '/api/notifications/feed'
+}
+
 // /readyz is unauthenticated. One database round trip every few seconds is
 // enough to answer it; concurrent probes share the one in flight.
 export function readinessCheck(query, { ttlMs = 5000, now = Date.now } = {}) {
@@ -93,6 +99,8 @@ export function createApp({ env = process.env, log = logger, beforeFallback, rea
     customLogLevel: (req, res, err) => {
       if (err || res.statusCode >= 500) return 'error'
       if (res.statusCode >= 400) return 'warn'
+      // Every desktop app polls the feed every 20 seconds; its successes are noise.
+      if (isFeedPoll(req)) return 'debug'
       return 'info'
     },
     serializers: {

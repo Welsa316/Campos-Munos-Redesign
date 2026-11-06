@@ -23,6 +23,20 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'sign-out-and-desktop-app-details',
+    at: '2026-11-06T11:06:32Z',
+    section: 'everyone',
+    any: [],
+    title: 'Signing out, and a few desktop app details',
+    summary: 'If Sign out cannot reach the server (no connection), the portal now says so and keeps you signed in, so you can press it again instead of thinking you are signed out.',
+    points: [
+      'The sign-in page remembers your email only when “Keep me signed in on this computer” is ticked. Leaving it off forgets the email kept from before.',
+      'In the desktop app, clicking a notification opens its screen straight away, without reloading the portal.',
+      'In the desktop app, Notifications says Paused while the app cannot reach the server, and Blocked if the computer will not show notifications.',
+      'Billing → an import’s Exceptions (CSV) now downloads in the desktop app too.',
+    ],
+  },
+  {
     id: 'my-follow-ups',
     at: '2026-11-06T10:13:02Z',
     section: 'everyone',
@@ -56,7 +70,7 @@ export const UPDATES = [
     title: 'Stay signed in, and smoother switching between sections',
     summary: 'On the sign-in page, tick “Keep me signed in on this computer” to stay signed in for 30 days instead of 8 hours.',
     points: [
-      'The sign-in page remembers your email, so only the password needs typing.',
+      'With the box ticked, the sign-in page also remembers your email, so only the password needs typing.',
       'Leave the box off on a shared computer. Signing out still ends it straight away.',
       'Moving between sections now fades smoothly instead of jumping.',
       'The Messages header no longer runs its labels over each other on wide screens.',

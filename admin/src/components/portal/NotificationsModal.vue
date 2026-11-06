@@ -46,7 +46,7 @@
               <span v-if="busy === 'enable'" class="inline-flex items-center gap-1.5"><FaIcon name="spinner" spin class="text-xs" />Turning on…</span>
               <span v-else>Enable notifications</span>
             </button>
-            <button v-if="state === 'desktop'" type="button" @click="sendDesktopTest" :disabled="Boolean(busy)"
+            <button v-if="state.startsWith('desktop')" type="button" @click="sendDesktopTest" :disabled="Boolean(busy)"
               class="flex-1 min-w-[180px] py-2.5 rounded-lg bg-brand-navy hover:bg-brand-navy-dark text-white text-sm font-bold tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
               <span v-if="busy === 'test'" class="inline-flex items-center gap-1.5"><FaIcon name="spinner" spin class="text-xs" />Sending…</span>
               <span v-else>Send test notification</span>
@@ -95,7 +95,7 @@
 // permission prompt appears only after "Enable notifications" is clicked.
 import { ref, computed, watch, nextTick } from 'vue'
 import { rawFetch, goToLogin } from '../../composables/useApi.js'
-import { inDesktopApp } from '../../utils/desktop.js'
+import { inDesktopApp, desktopNotificationState } from '../../utils/desktop.js'
 import { pushSupport, permissionState, currentSubscription, subscribeThisBrowser, blockedHelp, testSentHelp } from '../../utils/push.js'
 import FaIcon from '../FaIcon.vue'
 
@@ -127,6 +127,8 @@ const BADGES = {
   unsupported: { label: 'Not available in this browser', icon: 'circle-info', tone: 'bg-gray-100 text-gray-700' },
   insecure: { label: 'Not available on this connection', icon: 'circle-info', tone: 'bg-gray-100 text-gray-700' },
   desktop: { label: 'On in this app', icon: 'bell', tone: 'bg-green-50 text-green-800 ring-1 ring-green-200' },
+  desktop_paused: { label: 'Paused in this app', icon: 'circle-pause', tone: 'bg-amber-50 text-amber-900 ring-1 ring-amber-200' },
+  desktop_blocked: { label: 'Blocked on this computer', icon: 'ban', tone: 'bg-red-50 text-brand-red ring-1 ring-red-200' },
 }
 const badge = computed(() => BADGES[state.value] || BADGES.loading)
 const host = () => (typeof window !== 'undefined' ? window.location.host : 'admin.camulaw.com')
@@ -135,7 +137,9 @@ const explanation = computed(() => ({
   not_configured: 'Desktop notifications are not set up on the server yet. Ask the office administrator.',
   unsupported: 'This browser cannot show desktop notifications. Use a current version of Chrome or Edge.',
   insecure: 'Desktop notifications only work when the portal is opened over https.',
-  desktop: 'This app shows notifications itself while it is running, even with its window closed. Nothing to turn on here.',
+  desktop: 'This app shows notifications itself while it is running, even with its window closed. Nothing to turn on here. If a test does not appear, check that notifications are allowed for Campos Muños in the computer’s notification settings.',
+  desktop_paused: 'The app cannot reach the server right now, so new notifications wait until it can. It keeps trying on its own.',
+  desktop_blocked: 'This computer does not let the app show notifications. Allow them for Campos Muños in the computer’s notification settings.',
 }[state.value] || ''))
 
 async function api(path, method, body) {
@@ -154,7 +158,7 @@ async function refresh() {
   error.value = ''
   state.value = 'loading'
   // The desktop app reads its notifications from the server itself.
-  if (inDesktopApp()) { state.value = 'desktop'; return }
+  if (inDesktopApp()) { state.value = await desktopNotificationState(); return }
   const support = pushSupport()
   if (support !== 'ok') { state.value = support; return }
   try {

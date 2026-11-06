@@ -924,8 +924,7 @@ const emptyText = computed(() => {
 })
 
 async function handleLogout() {
-  await logout()
-  router.push({ name: 'Login' })
+  if (await logout()) router.push({ name: 'Login' })
 }
 </script>
 

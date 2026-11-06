@@ -88,9 +88,9 @@
             <h3 id="preview-h" class="text-sm font-ui font-semibold text-gray-900">{{ job.status === 'applied' ? 'What was applied' : '2 · Review the proposed changes' }}</h3>
             <p class="text-[11px] font-ui text-gray-500 mt-0.5">{{ REPORT_TYPE_LABELS[job.report_type] || 'Type not set' }} · as of {{ job.report_date ? shortDate(job.report_date) : 'the upload date' }}</p>
           </div>
-          <a :href="exceptionsUrl" class="ml-auto inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-ui font-semibold text-brand-navy hover:bg-brand-surface">
-            <i class="fa-solid fa-download text-[10px]" aria-hidden="true"></i> Exceptions (CSV)
-          </a>
+          <button type="button" @click="downloadExceptions" :disabled="csvBusy" class="ml-auto inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-ui font-semibold hover:bg-brand-surface disabled:opacity-60" :class="csvFailed ? 'text-brand-red' : 'text-brand-navy'">
+            <i class="fa-solid fa-download text-[10px]" aria-hidden="true"></i> <span aria-live="polite">{{ csvFailed ? 'Download failed. Try again' : 'Exceptions (CSV)' }}</span>
+          </button>
         </header>
 
         <div class="p-5 grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3">
@@ -186,7 +186,7 @@ import { can } from '../../../composables/useAuth.js'
 
 // Previewing, approving and cancelling an import need billing.import.
 const canImport = can('billing.import')
-import { API_BASE } from '../../../composables/useApi.js'
+import { rawFetch, goToLogin } from '../../../composables/useApi.js'
 import StatusPill from '../components/StatusPill.vue'
 import ConfirmInline from '../../../components/ConfirmInline.vue'
 import { plural } from '../../../utils/text.js'
@@ -231,11 +231,37 @@ const rowFilter = ref('problems')
 const applied = ref(null)
 
 const id = computed(() => Number(route.params.id))
+const csvBusy = ref(false)
+const csvFailed = ref(false)
 const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 const editable = computed(() => job.value && ['uploaded', 'previewed'].includes(job.value.status))
-const exceptionsUrl = computed(() => `${API_BASE}/api/billing/imports/${id.value}/exceptions.csv`)
 const stateLabel = computed(() => ({ uploaded: 'Needs mapping', previewed: 'Awaiting approval', applied: 'Applied', cancelled: 'Cancelled', failed: 'Failed' })[job.value?.status])
 const stateTone = computed(() => ({ applied: 'text-green-700', cancelled: 'text-gray-500', failed: 'text-brand-red' })[job.value?.status] || 'text-brand-navy')
+
+// Fetched and saved as a file rather than a plain link: the desktop app keeps
+// the portal in its window and would refuse to navigate to the API's address.
+async function downloadExceptions() {
+  if (csvBusy.value) return
+  csvBusy.value = true
+  csvFailed.value = false
+  try {
+    const res = await rawFetch(`/api/billing/imports/${id.value}/exceptions.csv`)
+    if (res.status === 401) { goToLogin(); return }
+    if (!res.ok) throw new Error('Download failed')
+    const url = URL.createObjectURL(await res.blob())
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `import-${id.value}-exceptions.csv`
+    a.click()
+    // Revoked a moment later: Safari can abort a download whose URL is
+    // revoked in the same task as the click.
+    setTimeout(() => URL.revokeObjectURL(url), 30000)
+  } catch {
+    csvFailed.value = true
+  } finally {
+    csvBusy.value = false
+  }
+}
 
 const tiles = computed(() => {
   const c = job.value?.stats?.counts || {}
