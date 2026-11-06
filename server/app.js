@@ -66,7 +66,12 @@ export function createApp({ env = process.env, log = logger, beforeFallback, rea
 
   // helmet's defaults: this app serves JSON. The site's CSP (third-party
   // scripts, video CDN) lives with the site, in site/server/app.js.
-  app.use(helmet())
+  // Not on the RingCentral webhook: RingCentral refuses an address whose
+  // answer to its check is over 1024 bytes, headers included (SUB-525),
+  // Railway adds about 150 of its own, and browser headers mean nothing to
+  // RingCentral's server.
+  const securityHeaders = helmet()
+  app.use((req, res, next) => (req.path.startsWith('/webhooks/ringcentral') ? next() : securityHeaders(req, res, next)))
 
   const origins = resolveOrigins(env)
   if (origins.conflicts.length) {

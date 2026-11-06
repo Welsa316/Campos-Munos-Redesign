@@ -148,10 +148,10 @@ function memoryStore() {
 
 const silentLog = { info() {}, warn() {}, error() {}, debug() {}, child() { return silentLog } }
 
-async function startApp({ store = memoryStore(), overrides = {}, onEvent = null } = {}) {
+async function startApp({ store = memoryStore(), overrides = {}, onEvent = null, refusedPerMinute } = {}) {
   const app = express()
   // Mirror index.js: the webhook mounts BEFORE express.json so it owns its raw body.
-  app.use('/webhooks/whatsapp', createWhatsappRouter({ env: { ...env, ...overrides }, store, log: silentLog, onEvent }))
+  app.use('/webhooks/whatsapp', createWhatsappRouter({ env: { ...env, ...overrides }, store, log: silentLog, onEvent, ...(refusedPerMinute ? { refusedPerMinute } : {}) }))
   app.use(express.json())
   const server = await new Promise((resolve) => { const s = app.listen(0, () => resolve(s)) })
   const base = `http://127.0.0.1:${server.address().port}/webhooks/whatsapp`
@@ -377,5 +377,16 @@ test('a failing billing hook never loses the stored event or the 200', async () 
     assert.equal((await post(incomingMessage('wamid.HOOKFAIL'))).status, 200)
     await settle()
     assert.equal(store.stored.length, 1)
+  } finally { await close() }
+})
+
+test('refused deliveries are rate limited; signed ones never count toward it', async () => {
+  const { post, close } = await startApp({ refusedPerMinute: 5 })
+  try {
+    for (let i = 0; i < 20; i++) {
+      assert.equal((await post(incomingMessage())).status, 200, `signed delivery ${i}`)
+    }
+    for (let i = 0; i < 5; i++) assert.equal((await post(incomingMessage(), { signature: null })).status, 401)
+    assert.equal((await post(incomingMessage(), { signature: null })).status, 429, 'the sixth refusal in a minute is turned away')
   } finally { await close() }
 })

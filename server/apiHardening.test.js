@@ -58,6 +58,21 @@ test('route-level API errors carry the request id too', async () => {
   assert.deepEqual(missing, { error: 'Not found', requestId: 'route-err-0002' })
 })
 
+test('the RingCentral webhook answers without browser headers; the API keeps them', async () => {
+  const hook = await fetch(`${base}/webhooks/ringcentral`, { method: 'POST', headers: { 'Validation-Token': 'tok-123' } })
+  assert.equal(hook.status, 200)
+  assert.equal(hook.headers.get('validation-token'), 'tok-123')
+  for (const h of ['content-security-policy', 'x-frame-options', 'cross-origin-opener-policy', 'referrer-policy']) {
+    assert.equal(hook.headers.get(h), null, h)
+  }
+  // RingCentral refuses an answer over 1024 bytes; Railway adds about 150.
+  const bytes = [...hook.headers].reduce((n, [k, v]) => n + k.length + v.length + 4, 'HTTP/1.1 200 OK\r\n'.length)
+  assert.ok(bytes < 700, `${bytes} bytes of headers`)
+  const api = await fetch(`${base}/api/auth/verify`)
+  assert.match(api.headers.get('content-security-policy'), /default-src/)
+  assert.equal(api.headers.get('x-frame-options'), 'SAMEORIGIN')
+})
+
 test('/readyz asks the database at most once every few seconds', async () => {
   readyCalls = 0
   const answers = await Promise.all(Array.from({ length: 20 }, () => fetch(`${base}/readyz`)))

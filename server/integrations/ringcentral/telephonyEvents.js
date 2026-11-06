@@ -14,8 +14,8 @@
 //
 // Deliveries are trusted only when they carry the verification token set at
 // registration (kept here as a SHA-256 digest) and name our subscription.
-import crypto from 'crypto'
 import { rcGet, rcSend, RingCentralApiError } from './api.js'
+import { sha256Hex, digestsEqual, randomToken } from '../secretBox.js'
 
 export const EVENT_FILTER = '/restapi/v1.0/account/~/telephony/sessions'
 export const WEBHOOK_PATH = '/webhooks/ringcentral'
@@ -25,7 +25,6 @@ export const RENEW_WITHIN_MS = 30 * 24 * 60 * 60 * 1000
 export const RETENTION_DAYS = 400
 const MAX_PARTIES = 30
 
-const digest = (token) => crypto.createHash('sha256').update(String(token)).digest('hex')
 const s = (v, n = 120) => (v == null || v === '' ? null : String(v).slice(0, n))
 const when = (v) => { const d = new Date(v); return Number.isNaN(d.getTime()) ? null : d }
 
@@ -93,9 +92,7 @@ export async function isTrustedDelivery(db, headers, payload) {
   const row = (await db.query(`SELECT subscription_id, token_digest FROM rc_event_subscription WHERE key = 'ringcentral'`)).rows[0]
   const token = headers['verification-token']
   if (!row?.token_digest || typeof token !== 'string' || !token) return false
-  const a = Buffer.from(digest(token), 'hex')
-  const b = Buffer.from(row.token_digest, 'hex')
-  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return false
+  if (!digestsEqual(sha256Hex(token), row.token_digest)) return false
   if (payload?.subscriptionId && row.subscription_id && String(payload.subscriptionId) !== row.subscription_id) return false
   return true
 }
@@ -165,13 +162,13 @@ export async function registerSubscription(db, config, { token, actorId = null, 
   }
   // The token is stored (as a digest) before RingCentral is asked, so its very
   // first delivery is already verifiable.
-  const verificationToken = crypto.randomBytes(24).toString('base64url')
+  const verificationToken = randomToken(24)
   await db.query(
     `INSERT INTO rc_event_subscription (key, subscription_id, address, token_digest, status, created_at, created_by)
      VALUES ('ringcentral', NULL, $1, $2, 'Pending', $3, $4)
      ON CONFLICT (key) DO UPDATE SET subscription_id = NULL, address = EXCLUDED.address, token_digest = EXCLUDED.token_digest,
             status = 'Pending', created_at = EXCLUDED.created_at, created_by = EXCLUDED.created_by, expires_at = NULL`,
-    [address, digest(verificationToken), now, actorId]
+    [address, sha256Hex(verificationToken), now, actorId]
   )
   let sub
   try {
