@@ -34,6 +34,9 @@ export const UPDATES = [
       'Pick In 30 minutes, In 1 hour, Tomorrow morning (9:00 AM, the next weekday) or a date and time. The exact time shows before you save. Times are New Orleans time.',
       'A reminder can be for you or a colleague, with a short note only staff see. The email and notification never say who the caller is: open the portal to see.',
       'If the caller is reached first (a callback connects, or they are marked handled), the reminder closes by itself and nothing is sent.',
+    ],
+  },
+  {
     id: 'stay-signed-in',
     at: '2026-11-06T10:09:24Z',
     section: 'everyone',
