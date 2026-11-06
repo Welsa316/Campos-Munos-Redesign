@@ -262,6 +262,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, onActivated, onDeactivated, nextTick, watchEffect } from 'vue'
+import { inDesktopApp } from '../utils/desktop.js'
 import { LOGO_SRC, NOTIFY_ICON } from '../data/brand.js'
 import { leadName } from '../utils/text.js'
 import { useRouter, useRoute } from 'vue-router'
@@ -392,8 +393,9 @@ function notifyOnNewArrivals(list) {
 
   if (!arrivals.length) return
   if (!NOTIFY_SUPPORTED || notifyPermission.value !== 'granted') return
-  // Nothing to alert about while they're already looking at the inbox.
-  if (!document.hidden) return
+  // Nothing to alert about while they're already looking at the inbox, and
+  // the desktop app shows its own notification for each new lead.
+  if (!document.hidden || inDesktopApp()) return
 
   const open = (id) => {
     window.focus()
