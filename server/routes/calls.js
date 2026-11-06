@@ -209,7 +209,7 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
   }))
 
   router.put('/ringout/me', place, ringWrap(async (req, res) => {
-    const phone = await setMyPhone(pool(), req.account.id, typeof req.body?.phone === 'string' ? req.body.phone : null)
+    const phone = await setMyPhone(pool(), req.account.id, typeof req.body?.phone === 'string' ? req.body.phone : null, env)
     res.json({ phone })
   }))
 

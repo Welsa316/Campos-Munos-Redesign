@@ -18,6 +18,7 @@
 import { getAccessToken, maintainConnection, RingCentralNotConnectedError } from './service.js'
 import { rcGet, rcSend, RingCentralApiError } from './api.js'
 import { audit } from '../../billing/audit.js'
+import { phoneDigits, isPremiumNumber, parseCountryCodes, inCountries } from '../../utils/phone.js'
 
 const PATH = '/restapi/v1.0/account/~/extension/~/ring-out'
 
@@ -32,29 +33,35 @@ export class RingOutError extends Error {
 
 /**
  * A number someone may be called on, as E.164, or null. North American
- * numbers may be typed without the country code. Refused: anything shorter
- * than a full number (911, 411, short codes), North American premium and
- * invalid area codes (900, 976, 0xx, 1xx), and non-numbers.
+ * numbers may be typed without the country code; any other needs its '+'.
+ * Refused: anything shorter than a full number (911, 411, short codes),
+ * invalid North American area codes (0xx, 1xx), premium-rate and satellite
+ * ranges (utils/phone.js), and non-numbers.
  */
 export function normalizeDialNumber(raw) {
-  const s = String(raw ?? '').trim()
-  if (!s || s.length > 32 || !/^[+\d\s().-]+$/.test(s)) return null
-  const digits = s.replace(/\D/g, '')
-  let e164
-  if (s.startsWith('+')) e164 = `+${digits}`
-  else if (digits.length === 10) e164 = `+1${digits}`
-  else if (digits.length === 11 && digits.startsWith('1')) e164 = `+${digits}`
-  else return null
-  const d = e164.slice(1)
-  if (d.length < 8 || d.length > 15) return null
-  if (d.startsWith('1')) {
-    if (d.length !== 11) return null
-    const area = d.slice(1, 4)
-    const exchange = d.slice(4, 7)
-    if (/^[01]/.test(area) || /^[01]/.test(exchange)) return null
-    if (['900', '976'].includes(area) || exchange === '976') return null
-  }
-  return e164
+  const digits = phoneDigits(raw, { requirePlus: true })
+  if (!digits || isPremiumNumber(digits)) return null
+  return `+${digits}`
+}
+
+// RINGOUT_DAILY_LIMIT: calls one person may place in 24 hours (default 100).
+export const DEFAULT_DAILY_LIMIT = 100
+const dailyLimit = (env) => {
+  const n = Number.parseInt(env.RINGOUT_DAILY_LIMIT, 10)
+  return Number.isInteger(n) && n > 0 ? n : DEFAULT_DAILY_LIMIT
+}
+
+/**
+ * Whether the firm calls this country from the portal.
+ * RINGOUT_ALLOWED_COUNTRY_CODES: calling codes, comma-separated ("1,52,502");
+ * unset or empty means every country. Applies to both legs, since RingCentral
+ * dials the staff member's phone too.
+ */
+function assertCountryAllowed(e164, env, whose) {
+  if (inCountries(e164.slice(1), parseCountryCodes(env.RINGOUT_ALLOWED_COUNTRY_CODES))) return
+  throw new RingOutError('country_not_allowed', whose === 'you'
+    ? 'Your phone is in a country the portal does not call. Ask the administrator.'
+    : 'Calls to this country are not enabled for the portal. Ask the administrator.', 422)
 }
 
 const FAILED = new Set(['Busy', 'NoAnswer', 'Rejected', 'GenericError', 'InternationalDisabled', 'DestinationBlocked', 'NotEnoughFunds', 'NoSuchUser', 'Invalid'])
@@ -112,19 +119,57 @@ export async function getMyPhone(db, accountId) {
   return (await db.query('SELECT ringout_phone FROM admin_users WHERE id = $1', [accountId])).rows[0]?.ringout_phone || null
 }
 
-export async function setMyPhone(db, accountId, raw) {
+export async function setMyPhone(db, accountId, raw, env = process.env) {
   const phone = raw == null || raw === '' ? null : normalizeDialNumber(raw)
   if (raw && !phone) throw new RingOutError('invalid_number', 'Enter a full phone number, e.g. (504) 555-0101')
+  if (phone) assertCountryAllowed(phone, env, 'you')
   await db.query('UPDATE admin_users SET ringout_phone = $2 WHERE id = $1', [accountId, phone])
   return phone
 }
 
-export async function placeRingOut(db, config, { accountId, to: rawTo, env = process.env }, deps = {}) {
+// Calls being placed right now, by account and number: a double click
+// arriving before the first request has an answer waits for it instead of
+// placing a second call. (One API process; the 30-second check below covers
+// clicks after the first answer.)
+const placing = new Map()
+
+export async function placeRingOut(db, config, opts, deps = {}) {
+  const key = `${opts.accountId}:${normalizeDialNumber(opts.to) || String(opts.to)}`
+  const already = placing.get(key)
+  if (already) return { ...(await already), repeated: true }
+  const attempt = placeOnce(db, config, opts, deps)
+  placing.set(key, attempt)
+  try {
+    return await attempt
+  } finally {
+    placing.delete(key)
+  }
+}
+
+async function placeOnce(db, config, { accountId, to: rawTo, env = process.env }, deps = {}) {
   const to = normalizeDialNumber(rawTo)
   if (!to) throw new RingOutError('invalid_number', 'That is not a number we can call. Use a full number, e.g. (504) 555-0101.')
   const from = await getMyPhone(db, accountId)
   if (!from) throw new RingOutError('no_phone', 'Save the phone that should ring for you first.', 409)
   if (from === to) throw new RingOutError('same_number', 'The number to call is your own phone.')
+  assertCountryAllowed(to, env, 'client')
+  assertCountryAllowed(from, env, 'you')
+  const placed = (await db.query(
+    `SELECT COUNT(*)::int AS n FROM rc_ringouts WHERE placed_by = $1 AND created_at > NOW() - INTERVAL '24 hours'`,
+    [accountId]
+  )).rows[0].n
+  if (placed >= dailyLimit(env)) {
+    throw new RingOutError('daily_limit', 'You have placed the most calls allowed from the portal in 24 hours. Use your phone, or ask the administrator.', 429)
+  }
+  // A second click while the first call is still ringing you is the same call.
+  const ringing = (await db.query(
+    `SELECT id, to_number, phase FROM rc_ringouts
+      WHERE placed_by = $1 AND to_number = $2 AND phase IN ('ringing_you', 'calling_client')
+        AND created_at > NOW() - INTERVAL '30 seconds'
+      ORDER BY id DESC LIMIT 1`,
+    [accountId, to]
+  )).rows[0]
+  if (ringing) return { id: Number(ringing.id), to: ringing.to_number, phase: ringing.phase, repeated: true }
   const callerId = normalizeDialNumber(env.RINGCENTRAL_RINGOUT_CALLER_ID)
 
   let res

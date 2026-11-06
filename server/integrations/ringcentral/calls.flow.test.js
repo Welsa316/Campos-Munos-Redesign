@@ -1043,4 +1043,58 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.equal(r.json.code, 'missing_permission')
     assert.match(r.json.error, /RingOut permission/)
   })
+
+  await t.test('RingOut: a repeated click is the same call, whether it arrives after the answer or with it', async () => {
+    const desk = { cookie: users.desk.cookie }
+    const before = rc.ringoutRequests.length
+    const first = await send('POST', '/api/calls/ringout', { to: '(504) 555-0188' }, desk)
+    const again = await send('POST', '/api/calls/ringout', { to: '504-555-0188' }, desk)
+    assert.equal(first.status, 201)
+    assert.equal(again.json.id, first.json.id)
+    const [a, b] = await Promise.all([0, 1].map(() => send('POST', '/api/calls/ringout', { to: '(504) 555-0189' }, desk)))
+    assert.equal(a.json.id, b.json.id)
+    assert.equal(rc.ringoutRequests.length - before, 2, 'two calls reached RingCentral, not four')
+    // Once it has ended, calling the same number again is a new call.
+    await db.query(`UPDATE rc_ringouts SET phase = 'finished' WHERE id = $1`, [first.json.id])
+    assert.notEqual((await send('POST', '/api/calls/ringout', { to: '(504) 555-0188' }, desk)).json.id, first.json.id)
+  })
+
+  await t.test('RingOut: premium numbers never; other countries only when the firm allows them', async () => {
+    const desk = { cookie: users.desk.cookie }
+    const before = rc.ringoutRequests.length
+    for (const premium of ['+44 909 879 0000', '+979 1234 5678', '+881 6 1234 5678', '+49 900 1234567', '+52 900 123 4567']) {
+      assert.equal((await send('POST', '/api/calls/ringout', { to: premium }, desk)).status, 400, premium)
+    }
+    env.RINGOUT_ALLOWED_COUNTRY_CODES = '1, 52'
+    try {
+      const uk = await send('POST', '/api/calls/ringout', { to: '+44 20 7946 0958' }, desk)
+      assert.equal(uk.status, 422)
+      assert.equal(uk.json.code, 'country_not_allowed')
+      assert.equal(rc.ringoutRequests.length, before, 'nothing refused reached RingCentral')
+      assert.equal((await send('POST', '/api/calls/ringout', { to: '+52 1 55 1234 5678' }, desk)).status, 201, 'Mexico is on the list')
+      assert.equal((await send('PUT', '/api/calls/ringout/me', { phone: '+44 20 7946 0958' }, desk)).status, 422, 'nor may my own phone be elsewhere')
+    } finally {
+      delete env.RINGOUT_ALLOWED_COUNTRY_CODES
+    }
+    assert.equal((await send('POST', '/api/calls/ringout', { to: '+44 20 7946 0958' }, desk)).status, 201, 'unset: every country')
+  })
+
+  await t.test('RingOut: one person can place only so many calls in 24 hours', async () => {
+    const desk = { cookie: users.desk.cookie }
+    const placed = (await db.query(`SELECT COUNT(*)::int AS n FROM rc_ringouts WHERE placed_by = $1`, [users.desk.id])).rows[0].n
+    env.RINGOUT_DAILY_LIMIT = String(placed + 1)
+    try {
+      assert.equal((await send('POST', '/api/calls/ringout', { to: '(504) 555-0190' }, desk)).status, 201)
+      const before = rc.ringoutRequests.length
+      const over = await send('POST', '/api/calls/ringout', { to: '(504) 555-0191' }, desk)
+      assert.equal(over.status, 429)
+      assert.equal(over.json.code, 'daily_limit')
+      assert.equal(rc.ringoutRequests.length, before)
+      // Calls from more than a day ago no longer count.
+      await db.query(`UPDATE rc_ringouts SET created_at = NOW() - INTERVAL '25 hours' WHERE placed_by = $1`, [users.desk.id])
+      assert.equal((await send('POST', '/api/calls/ringout', { to: '(504) 555-0191' }, desk)).status, 201)
+    } finally {
+      delete env.RINGOUT_DAILY_LIMIT
+    }
+  })
 })
