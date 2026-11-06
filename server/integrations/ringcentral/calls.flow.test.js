@@ -314,6 +314,8 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     // not confirmed and never counted as missed. The withheld number (c7)
     // cannot be called back, so it is not 'not returned'; c2 was called back.
     assert.equal(byId(calls, '2026-10-30T18:00:00Z').classification, 'unknown')
+    assert.deepEqual(byId(calls, '2026-10-30T18:00:00Z').systemOnly, ['the main line'], 'what the record does show: it reached the line, and no one was rung')
+    assert.equal(byId(calls, '2026-10-30T15:00:00Z').systemOnly, null)
     assert.equal(byId(calls, '2026-10-30T19:00:00Z').classification, 'caller_hung_up')
     assert.deepEqual(r.json.counts, {
       incoming: 6, answered: 1, missed: 2, hung_up: 1, voicemail: 1, unconfirmed: 1, system: 0, outgoing: 1, not_returned: 2, excluded: 0,
