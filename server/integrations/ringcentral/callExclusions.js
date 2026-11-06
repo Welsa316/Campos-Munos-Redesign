@@ -6,7 +6,7 @@
 // number that keeps calling, such as a staff member's mobile).
 
 import crypto from 'crypto'
-import { openCallKeys } from './callLog.js'
+import { openCallKeys, unansweredInbound } from './callLog.js'
 
 export const EXCLUSION_REASONS = Object.freeze(['verification', 'staff_test', 'spam', 'other'])
 const NOTE_MAX = 200
@@ -48,12 +48,7 @@ async function loadEpisode(db, callIds) {
     [ids]
   )).rows
   if (calls.length !== ids.length) throw new CallExclusionError('not_found', 'Call not found', 404)
-  for (const call of calls) {
-    const open = call.classification ? call.classification !== 'answered' : ['missed', 'voicemail'].includes(call.outcome)
-    if (call.direction !== 'inbound' || !open || call.is_internal) {
-      throw new CallExclusionError('not_unanswered', 'Only calls nobody answered can be marked', 409)
-    }
-  }
+  if (!calls.every(unansweredInbound)) throw new CallExclusionError('not_unanswered', 'Only calls nobody answered can be marked', 409)
   // One person's calls only: a withheld number is never grouped.
   if (calls.length > 1 && (!calls[0].counterpart_key || calls.some((c) => c.counterpart_key !== calls[0].counterpart_key))) {
     throw new CallExclusionError('mixed_numbers', 'These calls are not from one number', 409)
@@ -75,10 +70,7 @@ export async function excludeCall(db, { callId, callIds = null, reason, note, sc
   if (reason === 'other' && !text) throw new CallExclusionError('note_required', 'Say why this call needs no callback')
 
   const call = await loadCall(db, callId)
-  // Anything not proven answered can be marked; before a call is classified,
-  // RingCentral's missed and voicemail results.
-  const unanswered = call.classification ? call.classification !== 'answered' : ['missed', 'voicemail'].includes(call.outcome)
-  if (call.direction !== 'inbound' || !unanswered || call.is_internal) {
+  if (!unansweredInbound(call)) {
     throw new CallExclusionError('not_unanswered', 'Only missed calls and voicemails can be marked', 409)
   }
   if (scope === 'number') {
@@ -135,8 +127,7 @@ export default { excludeCall, includeCall, markHandled, unmarkHandled, markEpiso
  */
 export async function markHandled(db, { callId, note, accountId }) {
   const call = await loadCall(db, callId)
-  const open = call.classification ? call.classification !== 'answered' : ['missed', 'voicemail'].includes(call.outcome)
-  if (call.direction !== 'inbound' || !open || call.is_internal) {
+  if (!unansweredInbound(call)) {
     throw new CallExclusionError('not_unanswered', 'Only calls nobody answered can be marked handled', 409)
   }
   const text = typeof note === 'string' ? note.trim().slice(0, NOTE_MAX) : ''

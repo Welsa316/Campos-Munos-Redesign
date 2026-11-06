@@ -519,6 +519,9 @@ export function callerLocation(name) {
 
 const titleCase = (s) => String(s).toLowerCase().replace(/(^|[\s'-])(\p{L})/gu, (_m, p, c) => p + c.toUpperCase())
 
+/** RingCentral's caller ID as a name to show ("MARIA LOPEZ" → "Maria Lopez"), or null when it is generic. */
+export const callerIdName = (raw) => (raw && !isGenericCallerId(raw) ? titleCase(raw) : null)
+
 
 // The calls query: every call with the firm's own name for the caller, its
 // follow-ups, any mark it carries, and whether it still needs someone.
@@ -644,6 +647,21 @@ export function followUpDecision(r) {
   return 'not_actionable'
 }
 
+/**
+ * May staff mark this call (handled, no callback needed, cleared)? An
+ * incoming outside call that Needs attention or the review group could list:
+ * proven unanswered (UNANSWERED_CLASSES) or with no recorded outcome
+ * ('unknown'), the same classes followUpDecision treats as open. 'system'
+ * (a blocked number, a network error) and answered calls are not. A call not
+ * classified yet falls back to RingCentral's own missed and voicemail
+ * results. `call` is an rc_calls row.
+ */
+export function unansweredInbound(call) {
+  if (call.direction !== 'inbound' || call.is_internal) return false
+  if (!call.classification) return ['missed', 'voicemail'].includes(call.outcome)
+  return UNANSWERED_CLASSES.includes(call.classification) || call.classification === 'unknown'
+}
+
 // Callback episodes: Needs attention lists one item per person waiting for a
 // call back, not one per call. The open calls from one number belong to the
 // same episode unless something closed the earlier ones in between: a
@@ -720,9 +738,8 @@ export function groupEpisodes(rows, { names = new Map(), now = new Date(), kind 
       lastCallbackAttemptAt: tries ? first.attempt_at ?? null : null,
       latestCallId: Number(last.id),
       callIds: calls.map((r) => Number(r.id)),
-      // From the first unanswered call: waiting since an earlier day, tried
-      // without connecting, or new today.
-      attentionGroup: kind === 'attention' ? (at(first) < startOfToday(now).getTime() ? 'waiting' : tries ? 'try_again' : 'new') : null,
+      // From the first unanswered call, by the same rule as each call's.
+      attentionGroup: kind === 'attention' ? attentionGroup(first, now) : null,
       offeredTo,
     }
   })
@@ -955,7 +972,8 @@ export function startOfToday(now = new Date()) {
 }
 
 // Oldest first in Needs attention: waiting since before today, then callbacks
-// tried without connecting, then today's.
+// tried without connecting (attempt_at: the latest one after the call), then
+// today's. For one call, and for an episode by its first call.
 function attentionGroup(r, now = new Date()) {
   if (new Date(r.started_at) < startOfToday(now)) return 'waiting'
   if (r.attempt_at) return 'try_again'
@@ -972,8 +990,8 @@ export const ATTENTION_DAYS = 90
  * today), and every call today. "No callback needed" marks are not counted
  * as handled.
  *
- * needsAttention and openEpisodes are the same number (open episodes);
- * openCalls is the unanswered calls behind them. review counts the quiet
+ * needsAttention is the open episodes; openCalls is the unanswered calls
+ * behind them. review counts the quiet
  * review group's episodes, which are in neither.
  */
 export async function callKpis(db, { now = new Date() } = {}) {
@@ -990,7 +1008,7 @@ export async function callKpis(db, { now = new Date() } = {}) {
     [from, new Date(now.getTime() + 60 * 1000), today]
   )).rows[0]
   return {
-    needsAttention: row.open_episodes, openEpisodes: row.open_episodes, openCalls: row.open_calls, review: row.review,
+    needsAttention: row.open_episodes, openCalls: row.open_calls, review: row.review,
     handledToday: row.handled_today, totalToday: row.total_today, since: from, today,
   }
 }
@@ -1065,7 +1083,7 @@ export async function callsStamp(db) {
 
 function present(r, names = new Map(), now = new Date()) {
   const leadName = r.lead_id ? `${r.lead_first || ''} ${r.lead_last || ''}`.trim() : null
-  const callerId = r.caller_id_name && !isGenericCallerId(r.caller_id_name) ? titleCase(r.caller_id_name) : null
+  const callerId = callerIdName(r.caller_id_name)
   let name = null
   let nameSource = null
   if (r.client_name) { name = r.client_name; nameSource = 'client' } else if (leadName) { name = leadName; nameSource = 'lead' } else if (callerId) { name = callerId; nameSource = 'caller_id' }
@@ -1113,7 +1131,6 @@ function present(r, names = new Map(), now = new Date()) {
     attentionGroup: r.needs_attention ? attentionGroup(r, now) : null,
     // No recorded outcome, and nothing since shows the person reached us.
     needsReview: Boolean(r.needs_review),
-    decision: followUpDecision(r),
     attemptAt: r.attempt_at ?? null,
     connectedFollowUp: r.connected_followup_at ? { at: r.connected_followup_at, kind: r.connected_followup_direction === 'outbound' ? 'called_back' : 'answered_later' } : null,
     handled: r.handled_at ? { at: r.handled_at, by: r.handled_by, note: r.handled_note, bulk: Boolean(r.handled_batch) } : null,

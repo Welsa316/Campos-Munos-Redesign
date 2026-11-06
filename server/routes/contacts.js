@@ -15,7 +15,8 @@
 import { Router } from 'express'
 import getPool from '../db/pool.js'
 import requireAuth from '../middleware/auth.js'
-import { can } from '../middleware/requireCapability.js'
+import { can, requireAnyCapability as any } from '../middleware/requireCapability.js'
+import { route } from '../middleware/route.js'
 import { contactHistory, contactMatches, decideMatch, listCallNotes, addCallNote, changeCallNote, ContactError } from '../contacts/contacts.js'
 
 const ID = /^\d{1,15}$/
@@ -25,17 +26,7 @@ export function createContactsRouter({ db = null } = {}) {
   const pool = () => db || getPool()
   router.use(requireAuth)
 
-  const any = (...names) => (req, res, next) =>
-    (names.some((n) => can(req, n)) ? next() : res.status(403).json({ error: 'Your account cannot perform this action', code: 'forbidden' }))
-  const wrap = (fn) => async (req, res) => {
-    try {
-      await fn(req, res)
-    } catch (err) {
-      if (err instanceof ContactError) return res.status(err.status).json({ error: err.message, code: err.code })
-      req.log?.error({ err }, 'Contacts error')
-      res.status(500).json({ error: 'Internal server error' })
-    }
-  }
+  const wrap = route('Contacts error', { errors: [ContactError] })
 
   // The number behind a call (calls.view) or a website lead (crm.view).
   async function keyFor(req, { callId, submissionId }) {

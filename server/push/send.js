@@ -1,11 +1,12 @@
 // Sending a desktop notification to one staff account's computers.
 //
-// The reminder worker (not built yet) calls, once per reminder that is due:
+// The callback reminder worker (reminders/worker.js) calls it once per
+// reminder that falls due, the missed-call and website-lead alerts once per
+// account, and the Test button for one computer:
 //
-//   import { sendPush, CALLBACK_REMINDER } from '../push/send.js'
 //   await sendPush(db, {
 //     accountId,                          // the admin_users id it is for
-//     eventKey: `callback-reminder:${reminderId}`,  // stable per reminder
+//     eventKey: `callback-reminder:${reminderId}`,  // stable per event
 //     ...CALLBACK_REMINDER,               // title and body, generic on purpose
 //     url: '/calls',                      // where clicking it opens, in the portal
 //     tag: `callback-reminder:${reminderId}`,
@@ -43,6 +44,13 @@ export const TEST_NOTIFICATION = Object.freeze({
   body: 'Desktop notifications are working on this computer.',
 })
 
+// A test is for checking a computer works, not for sending many: five in a
+// quarter of an hour per account, for browser push and the desktop feed alike.
+export const TEST_LIMIT = (name) => ({
+  name, windowMs: 15 * 60 * 1000, max: 5,
+  error: 'Too many test notifications. Wait a few minutes and try again.', code: 'too_many_tests',
+})
+
 // A path inside the portal ('/calls', '/whatsapp?x=1'); anything else
 // (another origin, '//host', a backslash trick, a script URL) becomes '/'.
 // The service worker checks again before opening anything.
@@ -53,6 +61,15 @@ export function portalPath(url) {
 }
 
 const short = (v, n) => String(v ?? '').slice(0, n)
+
+/**
+ * What a notification may carry, cut to size: the same for browser push
+ * and the desktop app's feed (push/feed.js).
+ */
+export function notificationFields({ title, body, url = '/', tag = null, eventKey = null }) {
+  const t = tag || eventKey
+  return { title: short(title, 120), body: short(body, 240), url: portalPath(url), tag: t ? short(t, 120) : null }
+}
 
 /**
  * Send one event to every computer the account turned notifications on in
@@ -103,12 +120,7 @@ export async function sendPush(db, { accountId, eventKey, title, body, url = '/'
     return { status: 'account_disabled', devices }
   }
 
-  const payload = JSON.stringify({
-    title: short(title, 120),
-    body: short(body, 240),
-    url: portalPath(url),
-    tag: short(tag || eventKey, 120),
-  })
+  const payload = JSON.stringify(notificationFields({ title, body, url, tag, eventKey }))
 
   const devices = []
   for (const s of subs) {

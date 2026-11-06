@@ -13,7 +13,6 @@ import cookieParser from 'cookie-parser'
 import pg from 'pg'
 import jwt from 'jsonwebtoken'
 import { createContactsRouter } from './routes/contacts.js'
-import { phoneKey } from './contacts/contacts.js'
 import getPool from './db/pool.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -104,12 +103,13 @@ after(async () => {
   await getPool().end().catch(() => {})
 })
 
-test('phone numbers in any format are one contact', () => {
-  assert.equal(phoneKey('(504) 555-0101'), '5045550101')
-  assert.equal(phoneKey('+1 504.555.0101'), '5045550101')
-  assert.equal(phoneKey('15045550101'), '5045550101')
-  assert.equal(phoneKey(''), '')
-  assert.equal(phoneKey('+52 55 1234 5678'), '525512345678')
+test('phone numbers in any format are one contact (cm_phone_key, the key every lookup uses)', { skip: SKIP }, async () => {
+  const key = async (raw) => (await db.query('SELECT cm_phone_key($1) AS k', [raw])).rows[0].k
+  assert.equal(await key('(504) 555-0101'), '5045550101')
+  assert.equal(await key('+1 504.555.0101'), '5045550101')
+  assert.equal(await key('15045550101'), '5045550101')
+  assert.equal(await key(''), '')
+  assert.equal(await key('+52 55 1234 5678'), '525512345678')
 })
 
 test('a note written on a call is kept with its author and time, and follows the number', { skip: SKIP }, async () => {

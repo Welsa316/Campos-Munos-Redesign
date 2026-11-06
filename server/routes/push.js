@@ -10,12 +10,13 @@
 // The endpoint travels in the body, not the URL, so it never lands in an
 // access log: it is the address anyone could push to.
 import { Router } from 'express'
-import rateLimit from 'express-rate-limit'
 import crypto from 'crypto'
 import getPool from '../db/pool.js'
 import requireAuth from '../middleware/auth.js'
+import { route } from '../middleware/route.js'
+import { accountLimiter } from '../middleware/accountLimiter.js'
 import { pushConfig } from '../push/config.js'
-import { sendPush, TEST_NOTIFICATION } from '../push/send.js'
+import { sendPush, TEST_NOTIFICATION, TEST_LIMIT } from '../push/send.js'
 import {
   isPushEndpoint, parseSubscription, saveSubscription, findOwnSubscription, removeOwnSubscription, countOwnSubscriptions,
 } from '../push/subscriptions.js'
@@ -25,25 +26,12 @@ const NOT_CONFIGURED = { error: 'Desktop notifications are not set up on the ser
 export function createPushRouter({ env = process.env, db = null, transport } = {}) {
   const router = Router()
   const pool = () => db || getPool()
-  const wrap = (fn) => async (req, res) => {
-    try {
-      await fn(req, res)
-    } catch (err) {
-      req.log?.error({ err: { name: err?.name, code: err?.code } }, 'Push route error')
-      res.status(500).json({ error: 'Internal server error' })
-    }
-  }
+  // Brief: an error here could carry a push endpoint, which must not reach the logs.
+  const wrap = route('Push route error', { brief: true })
   const endpointOf = (req) => (isPushEndpoint(req.body?.endpoint) ? req.body.endpoint : null)
 
   // A test is for checking this computer works, not for sending many.
-  const testLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 5,
-    keyGenerator: (req) => `push-test:${req.account?.id}`,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: 'Too many test notifications. Wait a few minutes and try again.', code: 'too_many_tests' },
-  })
+  const testLimiter = accountLimiter(TEST_LIMIT('push-test'))
 
   router.use(requireAuth)
 

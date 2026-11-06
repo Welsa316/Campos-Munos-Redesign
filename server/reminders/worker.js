@@ -28,6 +28,7 @@
 import { sendPush, CALLBACK_REMINDER } from '../push/send.js'
 import { renderReminderEmail, emailAllowlist, looksLikeEmail } from './email.js'
 import { targetStillOpen, targetPath, markResolved, closeResolvedReminders } from './reminders.js'
+import { inTransaction } from '../db/transaction.js'
 
 export const EMAIL_BACKOFF_MINUTES = Object.freeze([1, 5, 15, 60])
 export const MAX_EMAIL_ATTEMPTS = EMAIL_BACKOFF_MINUTES.length + 1
@@ -42,21 +43,6 @@ export const backoffAfter = (attempt) => (attempt >= 1 && attempt < MAX_EMAIL_AT
 export function overdueMinutes(env = process.env) {
   const n = Number(env.REMINDER_OVERDUE_EMAIL_MINUTES)
   return env.REMINDER_OVERDUE_EMAIL_MINUTES && Number.isFinite(n) && n > 0 ? n : null
-}
-
-async function inTransaction(db, fn) {
-  const client = await db.connect()
-  try {
-    await client.query('BEGIN')
-    const out = await fn(client)
-    await client.query('COMMIT')
-    return out
-  } catch (err) {
-    await client.query('ROLLBACK').catch(() => {})
-    throw err
-  } finally {
-    client.release()
-  }
 }
 
 /** Step 1: open reminders that are due → 'due', with their pending deliveries. Returns the ids. */

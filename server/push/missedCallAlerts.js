@@ -5,7 +5,7 @@
 // keeps a first run, or a long outage, from announcing the whole backlog.
 // Generic text only: who called is for the portal, once signed in.
 import { queryCalls, ATTENTION_DAYS } from '../integrations/ringcentral/callLog.js'
-import { accountsWith } from './leadAlerts.js'
+import { accountsWith } from '../auth/account.js'
 import { sendPush } from './send.js'
 
 export const MISSED_CALL = Object.freeze({ title: 'New missed call', body: 'Someone is waiting for a call back. Open Calls to see who.' })

@@ -11,14 +11,12 @@
 //
 // No other person's work and no counts about anyone: this is a to-do list,
 // not a report.
-import { isGenericCallerId } from '../integrations/ringcentral/callLog.js'
-import { canSeeKind } from './reminders.js'
+import { callerIdName } from '../integrations/ringcentral/callLog.js'
+import { canSeeKind, targetPath } from './reminders.js'
 import { firmWall, firmInstant } from './dueTime.js'
 
 export const WORK_QUEUE_LIMIT = 5
 const OVERDUE_MS = 5 * 60 * 1000
-
-const titleCase = (s) => String(s).toLowerCase().replace(/(^|[\s'-])(\p{L})/gu, (_m, p, c) => p + c.toUpperCase())
 
 /** Midnight that ends the firm's day containing `now`. */
 function endOfFirmDay(now) {
@@ -63,16 +61,15 @@ export async function workQueue(db, { accountId, caps, now = new Date(), limit =
   }
   const items = reminders.map((r) => {
     const call = r.target_kind === 'call'
-    const callerId = r.caller_id_name && !isGenericCallerId(r.caller_id_name) ? titleCase(r.caller_id_name) : null
     return {
       kind: call ? 'callback' : 'lead_followup',
       group: groupOf(r),
       reminderId: Number(r.id),
-      name: call ? r.call_name || callerId : r.lead_name,
+      name: call ? r.call_name || callerIdName(r.caller_id_name) : r.lead_name,
       number: call ? r.number : null,
       at: r.due_at,
       hasNote: Boolean(r.note),
-      path: call ? `/calls?call=${r.call_id}` : `/inbox?lead=${r.submission_id}`,
+      path: targetPath(r),
       leadId: call ? null : Number(r.submission_id),
     }
   })

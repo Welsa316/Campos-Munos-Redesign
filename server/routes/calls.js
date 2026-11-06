@@ -23,10 +23,11 @@
 //   POST    /api/calls/ringout          call a number (RingOut; calls.place)
 //   GET|DELETE /api/calls/ringout/:id   progress / cancel (own calls only)
 import { Router } from 'express'
-import rateLimit from 'express-rate-limit'
 import getPool from '../db/pool.js'
 import requireAuth from '../middleware/auth.js'
 import requireCapability, { can } from '../middleware/requireCapability.js'
+import { route } from '../middleware/route.js'
+import { accountLimiter } from '../middleware/accountLimiter.js'
 import { loadRingCentralConfig } from '../integrations/ringcentral/config.js'
 import { getConnectionStatus } from '../integrations/ringcentral/service.js'
 import { queryCalls, syncCallLog, getSyncState, summarizeMissed, OUTCOME_FILTERS, callEvidence, listPeople, callKpis, callsStamp, openCalls } from '../integrations/ringcentral/callLog.js'
@@ -63,114 +64,81 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
     }
   }
 
-  router.get('/', async (req, res) => {
-    try {
-      const n = clock()
-      const parse = (v, fallback) => {
-        const d = typeof v === 'string' && v ? new Date(v) : fallback
-        return Number.isNaN(d?.getTime?.()) ? null : d
-      }
-      const to = parse(req.query.to, new Date(n.getTime() + 60 * 1000))
-      const from = parse(req.query.from, new Date(n.getTime() - 7 * 24 * 60 * 60 * 1000))
-      if (!from || !to || from >= to || to - from > MAX_RANGE_MS) return res.status(400).json({ error: 'Invalid date range' })
-      const outcome = typeof req.query.outcome === 'string' && OUTCOME_FILTERS.includes(req.query.outcome) ? req.query.outcome : 'all'
-      const q = typeof req.query.q === 'string' ? req.query.q : ''
-      const businessHours = ['1', 'true'].includes(String(req.query.businessHours || ''))
-      // A RingCentral extension id (digits): calls proven offered to that person.
-      const person = typeof req.query.person === 'string' && /^\d{1,20}$/.test(req.query.person) ? req.query.person : null
-      // Independent reads run together: each costs a database round trip.
-      const withKpis = ['1', 'true'].includes(String(req.query.kpis || ''))
-      const [result, people, st, kpis, stamp] = await Promise.all([
-        queryCalls(pool(), { from, to, outcome, q, limit: req.query.limit, businessHours, person, now: n }),
-        listPeople(pool()),
-        status(req),
-        withKpis ? callKpis(pool(), { now: n }) : null,
-        callsStamp(pool()),
-      ])
-      // The vocabulary the page works with comes from here, not from copies in the page.
-      const vocabulary = { unansweredClasses: UNANSWERED_CLASSES, outcomeFilters: OUTCOME_FILTERS }
-      res.json({ ...result, people, ...vocabulary, ...(kpis ? { kpis } : {}), stamp, ...st })
-    } catch (err) {
-      req.log?.error({ err }, 'List calls error')
-      res.status(500).json({ error: 'Internal server error' })
+  router.get('/', route('List calls error')(async (req, res) => {
+    const n = clock()
+    const parse = (v, fallback) => {
+      const d = typeof v === 'string' && v ? new Date(v) : fallback
+      return Number.isNaN(d?.getTime?.()) ? null : d
     }
-  })
+    const to = parse(req.query.to, new Date(n.getTime() + 60 * 1000))
+    const from = parse(req.query.from, new Date(n.getTime() - 7 * 24 * 60 * 60 * 1000))
+    if (!from || !to || from >= to || to - from > MAX_RANGE_MS) return res.status(400).json({ error: 'Invalid date range' })
+    const outcome = typeof req.query.outcome === 'string' && OUTCOME_FILTERS.includes(req.query.outcome) ? req.query.outcome : 'all'
+    const q = typeof req.query.q === 'string' ? req.query.q : ''
+    const businessHours = ['1', 'true'].includes(String(req.query.businessHours || ''))
+    // A RingCentral extension id (digits): calls proven offered to that person.
+    const person = typeof req.query.person === 'string' && /^\d{1,20}$/.test(req.query.person) ? req.query.person : null
+    // Independent reads run together: each costs a database round trip.
+    const withKpis = ['1', 'true'].includes(String(req.query.kpis || ''))
+    const [result, people, st, kpis, stamp] = await Promise.all([
+      queryCalls(pool(), { from, to, outcome, q, limit: req.query.limit, businessHours, person, now: n }),
+      listPeople(pool()),
+      status(req),
+      withKpis ? callKpis(pool(), { now: n }) : null,
+      callsStamp(pool()),
+    ])
+    // The vocabulary the page works with comes from here, not from copies in the page.
+    const vocabulary = { unansweredClasses: UNANSWERED_CLASSES, outcomeFilters: OUTCOME_FILTERS }
+    res.json({ ...result, people, ...vocabulary, ...(kpis ? { kpis } : {}), stamp, ...st })
+  }))
 
   // Has anything on the Calls page changed? One cheap query; the page polls it
   // every few seconds and reloads the list only when the answer moves.
-  router.get('/changes', async (req, res) => {
-    try {
-      res.json({ stamp: await callsStamp(pool()) })
-    } catch (err) {
-      req.log?.error({ err }, 'Calls change check error')
-      res.status(500).json({ error: 'Internal server error' })
-    }
-  })
+  router.get('/changes', route('Calls change check error')(async (req, res) => {
+    res.json({ stamp: await callsStamp(pool()) })
+  }))
 
   // One call's evidence: every step RingCentral recorded, what each reason
   // means, who it was confirmed offered to, and why it is classified as it is.
-  router.get('/:id(\\d{1,15})/evidence', async (req, res) => {
-    try {
-      const ev = await callEvidence(pool(), Number(req.params.id))
-      if (!ev) return res.status(404).json({ error: 'Call not found' })
-      res.json(ev)
-    } catch (err) {
-      req.log?.error({ err }, 'Call evidence error')
-      res.status(500).json({ error: 'Internal server error' })
-    }
-  })
+  router.get('/:id(\\d{1,15})/evidence', route('Call evidence error')(async (req, res) => {
+    const ev = await callEvidence(pool(), Number(req.params.id))
+    if (!ev) return res.status(404).json({ error: 'Call not found' })
+    res.json(ev)
+  }))
 
   // Home dashboard: unanswered calls in business hours, last 30 days.
-  router.get('/summary', async (req, res) => {
-    try {
-      const n = clock()
-      const from = typeof req.query.from === 'string' && req.query.from ? new Date(req.query.from) : null
-      if (from && (Number.isNaN(from.getTime()) || from >= n || n - from > 31 * 24 * 60 * 60 * 1000)) return res.status(400).json({ error: 'Invalid start' })
-      const missed = await summarizeMissed(pool(), { now: n, days: 30, from })
-      res.json({ missed, ...(await status(req)) })
-    } catch (err) {
-      req.log?.error({ err }, 'Call summary error')
-      res.status(500).json({ error: 'Internal server error' })
-    }
-  })
+  router.get('/summary', route('Call summary error')(async (req, res) => {
+    const n = clock()
+    const from = typeof req.query.from === 'string' && req.query.from ? new Date(req.query.from) : null
+    if (from && (Number.isNaN(from.getTime()) || from >= n || n - from > 31 * 24 * 60 * 60 * 1000)) return res.status(400).json({ error: 'Invalid start' })
+    const missed = await summarizeMissed(pool(), { now: n, days: 30, from })
+    res.json({ missed, ...(await status(req)) })
+  }))
 
-  router.post('/sync', async (req, res) => {
-    try {
-      const cfg = config()
-      if (!cfg.configured) return res.status(409).json({ error: 'RingCentral is not set up on the server', code: 'not_configured', ...(await status(req)) })
-      const state = await getSyncState(pool())
-      const last = state.lastRunAt ? new Date(state.lastRunAt).getTime() : 0
-      let result = { status: 'skipped' }
-      if (clock().getTime() - last >= MANUAL_SYNC_MIN_INTERVAL_MS) {
-        result = await syncCallLog(pool(), cfg, {
-          trigger: 'manual', deps,
-          backfillDays: Number(env.RINGCENTRAL_CALL_BACKFILL_DAYS) || undefined,
-          retentionDays: Number(env.RINGCENTRAL_CALL_RETENTION_DAYS) || undefined,
-          ...(sleep ? { sleep } : {}), ...(pageDelayMs != null ? { pageDelayMs } : {}),
-        })
-        req.log?.info({ provider: 'ringcentral', sync: result.status, code: result.code, fetched: result.fetched, new: result.new }, 'Call log import')
-        // A new caller waiting for a call back is announced once; not waited for.
-        if (result.status === 'ok') notifyNewMissedCallers(pool(), { now: clock() }).catch((err) => req.log?.warn({ err: { name: err?.name } }, 'Missed call notifications failed'))
-      }
-      res.json({ result, ...(await status(req)) })
-    } catch (err) {
-      req.log?.error({ err }, 'Call sync error')
-      res.status(500).json({ error: 'Internal server error' })
+  router.post('/sync', route('Call sync error')(async (req, res) => {
+    const cfg = config()
+    if (!cfg.configured) return res.status(409).json({ error: 'RingCentral is not set up on the server', code: 'not_configured', ...(await status(req)) })
+    const state = await getSyncState(pool())
+    const last = state.lastRunAt ? new Date(state.lastRunAt).getTime() : 0
+    let result = { status: 'skipped' }
+    if (clock().getTime() - last >= MANUAL_SYNC_MIN_INTERVAL_MS) {
+      result = await syncCallLog(pool(), cfg, {
+        trigger: 'manual', deps,
+        backfillDays: Number(env.RINGCENTRAL_CALL_BACKFILL_DAYS) || undefined,
+        retentionDays: Number(env.RINGCENTRAL_CALL_RETENTION_DAYS) || undefined,
+        ...(sleep ? { sleep } : {}), ...(pageDelayMs != null ? { pageDelayMs } : {}),
+      })
+      req.log?.info({ provider: 'ringcentral', sync: result.status, code: result.code, fetched: result.fetched, new: result.new }, 'Call log import')
+      // A new caller waiting for a call back is announced once; not waited for.
+      if (result.status === 'ok') notifyNewMissedCallers(pool(), { now: clock() }).catch((err) => req.log?.warn({ err: { name: err?.name } }, 'Missed call notifications failed'))
     }
-  })
+    res.json({ result, ...(await status(req)) })
+  }))
 
   // --- Missed calls that need no callback (calls.exclude) ------------------------
 
   const exclude = requireCapability('calls.exclude')
-  const exclusionWrap = (fn) => async (req, res) => {
-    try {
-      await fn(req, res)
-    } catch (err) {
-      if (err instanceof CallExclusionError) return res.status(err.status).json({ error: err.message, code: err.code })
-      req.log?.error({ err }, 'Call exclusion error')
-      res.status(500).json({ error: 'Internal server error' })
-    }
-  }
+  const exclusionWrap = route('Call exclusion error', { errors: [CallExclusionError] })
 
   // Callback reminders on a caller close once their calls are dealt with
   // (the worker checks again before sending anything). Never fails the
@@ -255,23 +223,12 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
 
   const place = requireCapability('calls.place')
   // A slip that fires many calls is stopped well before it costs anything.
-  const placeLimiter = rateLimit({
-    windowMs: 10 * 60 * 1000,
-    max: 30,
-    keyGenerator: (req) => `account:${req.account?.id}`,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: 'Too many calls placed in a few minutes. Wait a moment and try again.', code: 'too_many_calls' },
+  const placeLimiter = accountLimiter({
+    name: 'ringout', windowMs: 10 * 60 * 1000, max: 30,
+    error: 'Too many calls placed in a few minutes. Wait a moment and try again.', code: 'too_many_calls',
   })
-  const ringWrap = (fn) => async (req, res) => {
-    try {
-      await fn(req, res)
-    } catch (err) {
-      if (err instanceof RingOutError) return res.status(err.status).json({ error: err.message, code: err.code })
-      req.log?.error({ err: { name: err?.name, code: err?.code } }, 'RingOut error')
-      res.status(500).json({ error: 'Internal server error' })
-    }
-  }
+  // Brief: RingCentral's errors can carry a phone number.
+  const ringWrap = route('RingOut error', { errors: [RingOutError], brief: true })
 
   router.get('/ringout/me', place, ringWrap(async (req, res) => {
     const conn = await getConnectionStatus(pool(), config())

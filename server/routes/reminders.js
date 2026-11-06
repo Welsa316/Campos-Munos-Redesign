@@ -23,6 +23,7 @@
 import { Router } from 'express'
 import getPool from '../db/pool.js'
 import requireAuth from '../middleware/auth.js'
+import { route } from '../middleware/route.js'
 import {
   ReminderError, createReminder, updateReminder, completeReminder, cancelReminder, snoozeReminder,
   listMine, listForTargets, assignableAccounts, canSeeKind, getReminder,
@@ -35,15 +36,7 @@ export function createRemindersRouter({ db = null, now } = {}) {
 
   router.use(requireAuth)
 
-  const wrap = (fn) => async (req, res) => {
-    try {
-      await fn(req, res)
-    } catch (err) {
-      if (err instanceof ReminderError) return res.status(err.status).json({ error: err.message, code: err.code, ...err.extra })
-      req.log?.error({ err }, 'Reminder error')
-      res.status(500).json({ error: 'Internal server error' })
-    }
-  }
+  const wrap = route('Reminder error', { errors: [ReminderError] })
   const forbidden = () => new ReminderError('forbidden', 'Your account cannot see these reminders', 403)
   const idOf = (v) => {
     const n = Number(v)
