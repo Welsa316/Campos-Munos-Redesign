@@ -44,6 +44,9 @@ export function describeRequest(req, res) {
   // Without an account there is nobody to attribute it to; sign-in is the
   // exception (a failed attempt is worth seeing).
   if (!actor && !def?.anonymous) return null
+  // A rate-limited or malformed attempt says nothing about anyone, and a
+  // script hammering the sign-in form would otherwise fill the log.
+  if (!actor && (res.statusCode === 429 || res.statusCode === 400)) return null
   if (!pattern.startsWith('/api/')) return null
 
   let details = {}
@@ -76,6 +79,15 @@ export async function recordActivity(db, e) {
       e.entityType ?? null, e.entityId ?? null, e.outcome ?? 'ok', e.statusCode ?? null, e.ip ?? null, e.source ?? 'portal',
       JSON.stringify(clean(e.details))]
   )
+}
+
+export const ACTIVITY_RETENTION_DAYS = 400
+
+/** Delete rows older than ACTIVITY_RETENTION_DAYS. Returns how many went. */
+export async function purgeActivity(db, now = new Date()) {
+  const cutoff = new Date(now.getTime() - ACTIVITY_RETENTION_DAYS * 24 * 60 * 60 * 1000)
+  const { rowCount } = await db.query('DELETE FROM staff_activity WHERE created_at < $1', [cutoff])
+  return rowCount
 }
 
 /** Express middleware: mount once on /api, before the routers. */

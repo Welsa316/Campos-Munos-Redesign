@@ -119,6 +119,11 @@ async function migrate() {
 
       CREATE INDEX IF NOT EXISTS idx_replies_submission_id ON replies(submission_id);
 
+      -- The portal's key for one send, so a retried request (a double click,
+      -- a timeout and a resend) stores and emails the reply once.
+      ALTER TABLE replies ADD COLUMN IF NOT EXISTS client_key UUID;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_replies_client_key ON replies(submission_id, client_key) WHERE client_key IS NOT NULL;
+
       CREATE TABLE IF NOT EXISTS chat_messages (
         id SERIAL PRIMARY KEY,
         submission_id INTEGER REFERENCES submissions(id) ON DELETE CASCADE,

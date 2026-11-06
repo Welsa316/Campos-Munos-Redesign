@@ -20,18 +20,39 @@ const router = Router()
 // account existence via timing. Computed once at boot.
 const DUMMY_HASH = bcrypt.hashSync('cm-login-timing-guard', 12)
 
+// The office signs in from one shared address, so only failures count:
+// a morning of everyone signing in must not lock the office out.
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
+  skipSuccessfulRequests: true,
   message: { error: 'Too many login attempts. Please try again in 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: clientKey,
 })
 
+// Failures against one account, from any number of addresses. Keyed on the
+// submitted email as typed (trimmed, lowercased), whether or not it exists.
+const loginEmailKey = (req) => {
+  const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : ''
+  return email ? `email:${email}` : clientKey(req)
+}
+
+const loginEmailLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  skipSuccessfulRequests: true,
+  message: { error: 'Too many login attempts. Please try again in an hour.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: loginEmailKey,
+})
+
 const passwordChangeLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
+  skipSuccessfulRequests: true,
   message: { error: 'Too many password change attempts. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -45,6 +66,7 @@ const cookieOptions = () => sessionCookieOptions(process.env)
 router.post(
   '/login',
   loginLimiter,
+  loginEmailLimiter,
   // Do NOT normalizeEmail() here: it lowercases and strips Gmail dots/+tags, but
   // the admin row is stored verbatim from ADMIN_EMAIL, so a normalized login value
   // could never match. We match case-insensitively in the query instead.

@@ -291,16 +291,49 @@ const callKeyOf = (r) => r.telephony_session_id || r.session_id || r.rc_record_i
  * reading every record of one call together and marking one of them as the
  * call (is_primary) so it counts once. `keys`: the calls to read again;
  * `all`: every stored call. Calls classified by an older version of the
- * rules are always read again.
+ * rules are always read again, unless `onlyKeys` (a live event about one
+ * call): then exactly `keys`, nothing else.
+ *
+ * The sweep goes through matching calls in batches of `batchSize` call keys
+ * (keyset on call_key), so a changed directory or new rules never load the
+ * whole call log at once. A call's records are always in the same batch.
  */
-export async function classifyStored(db, { keys = [], all = false } = {}) {
-  const directory = await loadDirectory(db)
+export async function classifyStored(db, { keys = [], all = false, onlyKeys = false, batchSize = 500 } = {}) {
+  const ctx = { directory: null }
+  if (onlyKeys) return classifyCalls(db, keys, ctx)
+  const total = { calls: 0, rows: 0 }
+  let after = null
+  for (;;) {
+    const page = (await db.query(
+      `SELECT DISTINCT call_key FROM rc_calls
+        WHERE call_key IS NOT NULL AND ($4::text IS NULL OR call_key > $4)
+          AND ($1 OR call_key = ANY($2::text[]) OR classifier_version IS DISTINCT FROM $3)
+        ORDER BY call_key LIMIT $5`,
+      [all, keys, CLASSIFIER_VERSION, after, batchSize]
+    )).rows.map((r) => r.call_key)
+    if (!page.length) break
+    const r = await classifyCalls(db, page, ctx)
+    total.calls += r.calls
+    total.rows += r.rows
+    if (page.length < batchSize) break
+    after = page[page.length - 1]
+  }
+  return total
+}
+
+// Every record of the given calls. The directory is read once per sweep, and
+// only when there is something to classify.
+async function classifyCalls(db, keys, ctx) {
+  if (!keys.length) return { calls: 0, rows: 0 }
   const rows = (await db.query(
     `SELECT id, call_key, direction, scope, rc_raw FROM rc_calls
-      WHERE call_key IN (SELECT call_key FROM rc_calls WHERE $1 OR call_key = ANY($2::text[]) OR classifier_version IS DISTINCT FROM $3)
+      WHERE call_key = ANY($1::text[])
       ORDER BY call_key, id`,
-    [all, keys, CLASSIFIER_VERSION]
+    [keys]
   )).rows
+  if (!rows.length) return { calls: 0, rows: 0 }
+  if (!ctx.directory) ctx.directory = await loadDirectory(db)
+  const directory = ctx.directory
   const groups = new Map()
   for (const r of rows) {
     if (!groups.has(r.call_key)) groups.set(r.call_key, [])

@@ -577,6 +577,39 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.equal(new Date(rc.requests[0].query.dateFrom).getTime(), new Date(state.window_to).getTime() - 3 * 60 * 60 * 1000, 'only once')
   })
 
+  await t.test('re-reading named calls only (a live event) leaves other stale calls alone; the sweep, in batches, reads them all', async () => {
+    const { classifyStored } = await import('./callLog.js')
+    const { CLASSIFIER_VERSION } = await import('./callEvidence.js')
+    const keys = ['ts-only-a', 'ts-only-b', 'ts-only-c', 'ts-only-d', 'ts-only-e']
+    const raw = JSON.stringify({ type: 'Voice', direction: 'Inbound', result: 'Missed', legs: [] })
+    // Two records of ts-only-c, so a batch boundary could split one call.
+    await db.query(`INSERT INTO rc_calls (rc_record_id, telephony_session_id, direction, started_at, outcome, classification, classifier_version, scope, rc_raw)
+      SELECT k || '-r' || n, k, 'inbound', '2026-10-29T15:00:00Z', 'missed', 'unknown', 1, CASE n WHEN 1 THEN 'account' ELSE 'extension' END, $2::jsonb
+        FROM unnest($1::text[]) AS k, generate_series(1, 2) AS n WHERE n = 1 OR k = 'ts-only-c'`, [keys, raw])
+    const versions = async () => Object.fromEntries((await db.query(
+      `SELECT call_key, MIN(classifier_version) AS v, COUNT(*) FILTER (WHERE is_primary)::int AS primaries FROM rc_calls WHERE call_key = ANY($1) GROUP BY call_key`, [keys])).rows.map((r) => [r.call_key, [r.v, r.primaries]]))
+
+    try {
+      const r = await classifyStored(db, { keys: ['ts-only-a'], onlyKeys: true })
+      assert.equal(r.calls, 1)
+      const after = await versions()
+      assert.deepEqual(after['ts-only-a'], [CLASSIFIER_VERSION, 1])
+      for (const k of keys.slice(1)) assert.equal(after[k][0], 1, `${k} is still on the old rules`)
+
+      assert.deepEqual(await classifyStored(db, { onlyKeys: true }), { calls: 0, rows: 0 }, 'no keys, nothing read')
+
+      const sweep = await classifyStored(db, { batchSize: 2 })
+      assert.equal(sweep.calls, 4)
+      assert.equal(sweep.rows, 5)
+      for (const [k, [v, primaries]] of Object.entries(await versions())) {
+        assert.equal(v, CLASSIFIER_VERSION, k)
+        assert.equal(primaries, 1, `${k} counts once`)
+      }
+    } finally {
+      await db.query('DELETE FROM rc_calls WHERE call_key = ANY($1)', [keys])
+    }
+  })
+
   await t.test('a user without company access: falls back to their own calls and says so', async () => {
     rc.accountForbidden = true
     rc.requests = []
@@ -859,6 +892,8 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     const before = byId((await list()).json.calls, '2026-10-30T22:40:00Z')
     assert.equal(before.classification, 'caller_hung_up')
     assert.equal(before.stage, null)
+    // Another call left on older rules: a live event about t2 must not read it.
+    await db.query(`UPDATE rc_calls SET classifier_version = 1 WHERE call_key = 'ts-greeting'`)
     for (const [i, code] of ['Setup', 'Disconnected'].entries()) {
       const d = party('p-q', '9001', 'Inbound', code, i + 1, i * 3)
       d.uuid = `late-${i}`; d.body.telephonySessionId = t2
@@ -870,6 +905,7 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
       after = byId((await list()).json.calls, '2026-10-30T22:40:00Z')
     }
     assert.equal(after.stage, 'before_ringing', 'read again when its events arrived')
+    assert.deepEqual((await db.query(`SELECT DISTINCT classifier_version AS v FROM rc_calls WHERE call_key = 'ts-greeting'`)).rows, [{ v: 1 }], 'only the call the event was about')
 
     // Daily check: renewed a month before it would expire.
     rc.subscriptions.get(stored.subscription_id).expirationTime = new Date(clock.t.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString()

@@ -52,6 +52,13 @@ export const STAFF_SCHEMA_SQL = `
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
   CREATE INDEX IF NOT EXISTS idx_wa_conversations_assigned ON wa_conversations(assigned_to);
+  -- New messages open their conversation as they are stored
+  -- (db/whatsappEvents.js). This catches up history stored before that.
+  -- Idempotent; one scan of the events per deploy instead of one per inbox
+  -- poll.
+  INSERT INTO wa_conversations (wa_id)
+  SELECT DISTINCT from_wa_id FROM whatsapp_events WHERE kind = 'message' AND from_wa_id IS NOT NULL
+  ON CONFLICT (wa_id) DO NOTHING;
 
   -- Internal notes: seen by staff only, never sent.
   CREATE TABLE IF NOT EXISTS wa_conversation_notes (
@@ -89,7 +96,8 @@ export const STAFF_SCHEMA_SQL = `
   -- or failed. actor_email and actor_role are copied as they were at the
   -- time, so the row still reads right after an account is renamed, changes
   -- role or is removed. Details hold ids, statuses and counts, never message
-  -- text, passwords or full phone numbers. Rows are never updated.
+  -- text, passwords or full phone numbers. Rows are never updated; they are
+  -- deleted after 400 days (purgeActivity in server/activity/recorder.js).
   CREATE TABLE IF NOT EXISTS staff_activity (
     id BIGSERIAL PRIMARY KEY,
     actor_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,

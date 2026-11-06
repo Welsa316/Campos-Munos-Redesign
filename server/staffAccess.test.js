@@ -142,12 +142,25 @@ async function call(method, path, { body, cookie } = {}) {
   return { status: res.status, json, text }
 }
 
+// A client's message, stored the way the webhook stores it.
 async function inbound(phone, text, { hoursAgo = 1, name = 'Cliente' } = {}) {
   const id = `wamid.IN.${phone}.${Math.random().toString(36).slice(2)}`
+  const { recordEvent } = await import('./db/whatsappEvents.js')
+  assert.equal(await recordEvent({
+    key: `message:${id}`, kind: 'message', messageId: id, status: null, from: phone, contactName: name, recipient: null,
+    messageType: 'text', phoneNumberId: null, displayPhoneNumber: null, wabaId: null,
+    timestamp: new Date(Date.now() - hoursAgo * 3600 * 1000), raw: { text: { body: text } },
+  }), true)
+}
+
+// The same, written straight to the table: history from before conversations
+// were created on ingest.
+async function storedBefore(phone, text) {
+  const id = `wamid.OLD.${phone}.${Math.random().toString(36).slice(2)}`
   await db.query(
     `INSERT INTO whatsapp_events (event_key, kind, wa_message_id, from_wa_id, contact_name, message_type, event_timestamp, payload)
-     VALUES ($1, 'message', $2, $3, $4, 'text', NOW() - ($5 || ' hours')::interval, $6)`,
-    [`message:${id}`, id, phone, name, String(hoursAgo), JSON.stringify({ text: { body: text } })]
+     VALUES ($1, 'message', $2, $3, 'Cliente', 'text', NOW() - INTERVAL '1 hour', $4)`,
+    [`message:${id}`, id, phone, JSON.stringify({ text: { body: text } })]
   )
 }
 
@@ -311,8 +324,7 @@ test('staff roles and capabilities', { skip: SKIP }, async (t) => {
     assert.equal((await call('GET', '/api/whatsapp/assignees', { cookie: freshCookie })).status, 401)
     assert.equal((await call('GET', '/api/auth/verify', { cookie: freshCookie })).status, 401)
     await db.query('UPDATE admin_users SET disabled_at = NULL WHERE id = $1', [fresh.id])
-    // (A fresh sign-in is not repeated here: the login limiter allows five
-    // attempts per address and this file uses all five.)
+    // (A fresh sign-in is not repeated here; a signed token proves the same.)
     const n = (await db.query("SELECT id, token_version FROM admin_users WHERE email = 'nobody@example.test'")).rows[0]
     assert.equal((await call('GET', '/api/auth/verify', { cookie: `token=${jwt.sign({ id: n.id, email: 'x', tv: n.token_version }, process.env.JWT_SECRET)}` })).status, 200, 'enabled again')
   })
@@ -479,5 +491,26 @@ test('shared WhatsApp inbox', { skip: SKIP }, async (t) => {
     assert.equal(r.json.message.status, 'failed')
     const detail = await call('GET', `/api/whatsapp/conversations/${conv.id}`, { cookie: users.paraCookie })
     assert.equal(detail.json.assignee, null)
+  })
+
+  await t.test('a conversation appears when its first message is stored; listing writes nothing; history is backfilled at boot', async () => {
+    const phone = '15045550193'
+    const count = async () => (await db.query('SELECT COUNT(*)::int AS n FROM wa_conversations')).rows[0].n
+    assert.equal(await conversationFor(phone, users.frontCookie), undefined)
+    await inbound(phone, 'Buenas tardes', { hoursAgo: 0 })
+    assert.equal((await conversationFor(phone, users.frontCookie))?.preview, 'Buenas tardes', 'listed once stored')
+
+    const old = '15045550192'
+    await storedBefore(old, 'Hola, escribí antes')
+    const before = await count()
+    for (let i = 0; i < 3; i++) assert.equal((await call('GET', '/api/whatsapp/conversations?view=open', { cookie: users.frontCookie })).status, 200)
+    assert.equal(await count(), before, 'reading the list inserts nothing')
+    assert.equal(await conversationFor(old, users.frontCookie), undefined)
+
+    migrate()
+    assert.equal(await count(), before + 1)
+    assert.equal((await conversationFor(old, users.frontCookie))?.preview, 'Hola, escribí antes', 'the migration backfills it from history')
+    migrate()
+    assert.equal(await count(), before + 1, 'once')
   })
 })
