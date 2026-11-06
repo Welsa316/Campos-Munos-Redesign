@@ -103,6 +103,9 @@
             </button>
           </div>
         </div>
+        <!-- Callback reminders on this lead (while it is not archived). -->
+        <FollowUpReminders class="mt-3" compact
+          :target="{ kind: 'submission', id: submission.id }" :can-set="canRemind && !submission.is_archived" />
         <p v-if="actionError" role="alert" class="mt-3 text-xs font-ui text-amber-700">
           <i class="fa-solid fa-triangle-exclamation mr-1" aria-hidden="true"></i>{{ actionError }}
         </p>
@@ -245,6 +248,7 @@ import { vAlertFocus } from '../../directives/alertFocus.js'
 import { toDate, isComposing } from '../../utils/text.js'
 import { LEAD_STATUSES, statusMeta } from '../../data/leadStatuses.js'
 import { can } from '../../composables/useAuth.js'
+import FollowUpReminders from '../../modules/reminders/FollowUpReminders.vue'
 
 const formatCountry = (code) => countryLabel(code, adminLocale())
 
@@ -260,6 +264,8 @@ const emit = defineEmits(['replied', 'back', 'archived', 'unread', 'setStatus', 
 const { patch, post, del } = useApi()
 // Read-only accounts (crm.view alone) see the lead but cannot change it.
 const canManage = computed(() => can('crm.manage'))
+// Callback reminders on a lead: whoever works leads, or answers the phones.
+const canRemind = computed(() => can('crm.view') && (can('crm.manage') || can('calls.exclude')))
 
 // --- Pipeline status ---
 const statusOpen = ref(false)

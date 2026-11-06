@@ -73,6 +73,16 @@ export const ACTIONS = {
     details: (req) => ({ to: last4(body(req).to) }) },
   'DELETE /api/calls/ringout/:id': { key: 'calls.cancelled', label: 'Cancelled a call from the portal', entity: 'ringout' },
 
+  // Callback reminders (on a caller or a website lead). Never the note.
+  'POST /api/reminders': { key: 'followups.set', label: 'Set a callback reminder', entity: 'followup',
+    details: (req) => ({ target: typeof body(req).target?.kind === 'string' ? body(req).target.kind : undefined, assigned: body(req).assignee != null }) },
+  'PATCH /api/reminders/:id': { key: 'followups.changed', label: 'Changed a callback reminder', entity: 'followup',
+    details: (req) => ({ time: body(req).dueAt !== undefined, assignee: body(req).assignee !== undefined, note: body(req).note !== undefined }) },
+  'POST /api/reminders/:id/complete': { key: 'followups.done', label: 'Marked a callback reminder done', entity: 'followup' },
+  'POST /api/reminders/:id/cancel': { key: 'followups.cancelled', label: 'Cancelled a callback reminder', entity: 'followup' },
+  'POST /api/reminders/:id/snooze': { key: 'followups.snoozed', label: 'Snoozed a callback reminder', entity: 'followup',
+    details: (req) => ({ minutes: Number(body(req).minutes) || undefined }) },
+
   // Integrations
   'POST /api/integrations/ringcentral/authorize': { key: 'integrations.rc_authorize', label: 'Started connecting RingCentral' },
   'GET /api/integrations/ringcentral/callback': { key: 'integrations.rc_connected', label: 'Finished connecting RingCentral' },

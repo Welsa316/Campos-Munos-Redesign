@@ -1020,23 +1020,47 @@ export async function openCalls(db, { before = new Date(), now = new Date(), rev
   }
 }
 
+/**
+ * Is the callback episode that `callId` started still waiting for someone?
+ * True while any unanswered call from the same number, from that call on, is
+ * still open (Needs attention or the review group) and belongs to the same
+ * episode: nothing closed the episode in between (a connected callback, a
+ * later answered call, or its calls marked handled, cleared or as needing no
+ * callback). The same rules as the list, so a reminder on a caller closes
+ * exactly when their row leaves Needs attention.
+ */
+export async function episodeOpen(db, callId) {
+  const first = (await db.query('SELECT started_at, counterpart_key FROM rc_calls WHERE id = $1', [callId])).rows[0]
+  if (!first || !first.counterpart_key) return false
+  const r = await db.query(
+    `${baseSql(['c.counterpart_key = $1', 'c.started_at >= $2', 'NOT c.is_internal', 'c.is_primary'])}
+     SELECT 1 FROM filtered f ${EPISODE_START_JOIN('f')}
+      WHERE (f.needs_attention OR f.needs_review) AND (ep.at IS NULL OR ep.at < $2) LIMIT 1`,
+    [first.counterpart_key, first.started_at]
+  )
+  return r.rowCount > 0
+}
+
 export async function openCallKeys(db, opts = {}) {
   return (await openCalls(db, opts)).keys
 }
 
 /**
  * A cheap fingerprint of everything the Calls page shows: it changes when a
- * call is imported or re-read, or a call is marked or unmarked. The page
- * polls this and reloads the list only when it moves.
+ * call is imported or re-read, a call is marked or unmarked, or a reminder
+ * on a caller changes. The page polls this and reloads the list only when
+ * it moves.
  */
 export async function callsStamp(db) {
   const r = (await db.query(
     `SELECT (SELECT MAX(updated_at) FROM rc_calls) AS calls,
             (SELECT COUNT(*) || ':' || COALESCE(MAX(created_at)::text, '') FROM rc_call_resolutions) AS handled,
             (SELECT COUNT(*) || ':' || COALESCE(MAX(created_at)::text, '') FROM rc_call_exclusions) AS excluded,
-            (SELECT COUNT(*) || ':' || COALESCE(MAX(created_at)::text, '') FROM rc_ignored_numbers) AS numbers`
+            (SELECT COUNT(*) || ':' || COALESCE(MAX(created_at)::text, '') FROM rc_ignored_numbers) AS numbers,
+            -- Callback reminders on callers, so a reminder someone else set shows on the row.
+            (SELECT COUNT(*) || ':' || COALESCE(MAX(updated_at)::text, '') FROM follow_up_reminders WHERE target_kind = 'call') AS reminders`
   )).rows[0]
-  return [r.calls?.toISOString?.() ?? '', r.handled, r.excluded, r.numbers].join('|')
+  return [r.calls?.toISOString?.() ?? '', r.handled, r.excluded, r.numbers, r.reminders].join('|')
 }
 
 function present(r, names = new Map(), now = new Date()) {

@@ -78,6 +78,12 @@
               <button type="button" @click="$emit('callback', call)" class="btn btn-quiet"><FaIcon name="phone" />Call</button>
             </div>
 
+            <!-- Callback reminders on this caller, while they still need a call back
+                 (or still have one open from before). -->
+            <FollowUpReminders v-if="call.direction === 'inbound' && (call.needsAttention || call.needsReview || reminders.length)"
+              :target="{ kind: 'call', id: episode?.id ?? call.id }" :reminders="reminders" :can-set="canRemind && (call.needsAttention || call.needsReview)"
+              @changed="$emit('reminders-changed')" />
+
             <!-- Callback episode: the caller's unanswered calls, each with its evidence. -->
             <EpisodeCalls v-if="episode && episode.calls.length > 1" :episode="episode" :now="now" />
 
@@ -111,6 +117,7 @@ import CallNotes from '../contacts/CallNotes.vue'
 import ContactHistory from '../contacts/ContactHistory.vue'
 import { can } from '../../composables/useAuth.js'
 import EpisodeCalls from './EpisodeCalls.vue'
+import FollowUpReminders from '../reminders/FollowUpReminders.vue'
 import { telHref } from '../../utils/phone.js'
 import { statusLine } from './callEvidenceText.js'
 import { followUpLine, followUpDetail, outboundLine, when } from './callsInbox.js'
@@ -131,8 +138,11 @@ const props = defineProps({
   busy: Boolean,
   // Opened from a caller's row in Needs attention: their episode, calls included.
   episode: { type: Object, default: null },
+  // Callback reminders on this caller (the page loads them with the list).
+  reminders: { type: Array, default: () => [] },
+  canRemind: Boolean,
 })
-const emit = defineEmits(['close', 'callback', 'handled', 'reopen', 'exclude', 'count-again', 'open-call'])
+const emit = defineEmits(['close', 'callback', 'handled', 'reopen', 'exclude', 'count-again', 'open-call', 'reminders-changed'])
 const canDeleteAnyNote = computed(() => can('team.manage'))
 const historyRef = ref(null)
 
@@ -173,7 +183,8 @@ function focusHeading() { headingRef.value?.focus({ preventScroll: true }) }
 watch(() => props.call?.id, (id) => { if (id) nextTick(focusHeading) })
 
 // Escape closes the card wherever focus is (it is the topmost layer).
-function onKey(e) { if (e.key === 'Escape' && props.call) { e.preventDefault(); e.stopImmediatePropagation(); close() } }
+// A Remind me panel inside the card closes first.
+function onKey(e) { if (e.key === 'Escape' && props.call && !e.target.closest?.('[data-reminder-popover]')) { e.preventDefault(); e.stopImmediatePropagation(); close() } }
 watch(() => Boolean(props.call), (open) => {
   if (open) document.addEventListener('keydown', onKey, true)
   else document.removeEventListener('keydown', onKey, true)
