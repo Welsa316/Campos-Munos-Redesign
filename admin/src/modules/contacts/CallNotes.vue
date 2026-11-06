@@ -2,7 +2,7 @@
   <!-- Internal notes about this caller, written from Calls. Staff only:
        never sent to the client or through any phone or email system. -->
   <div class="font-ui" data-call-notes>
-    <h3 class="label">Notes <span class="font-normal normal-case tracking-normal text-gray-500">· staff only</span></h3>
+    <h3 ref="heading" tabindex="-1" class="label focus:outline-none">Notes <span class="font-normal normal-case tracking-normal text-gray-500">· staff only</span></h3>
     <p v-if="loading" class="mt-2 text-[13px] text-gray-500"><FaIcon name="spinner" spin class="mr-1.5" />Loading…</p>
     <p v-else-if="loadError" class="mt-2 text-[13px] text-gray-600">Could not load the notes. <button type="button" class="font-semibold text-brand-navy underline" @click="load">Try again</button></p>
     <ol v-else-if="notes.length" class="mt-2 space-y-2">
@@ -12,7 +12,7 @@
           <textarea :id="`note-edit-${n.id}`" v-model="draft" rows="2" maxlength="5000" class="field" @keydown="onKey($event, () => saveEdit(n))"></textarea>
           <div class="mt-2 flex gap-2">
             <button type="button" class="btn btn-primary" :disabled="busy || !draft.trim()" @click="saveEdit(n)">{{ busy ? 'Saving…' : 'Save' }}</button>
-            <button type="button" class="btn btn-quiet" @click="editing = null">Cancel</button>
+            <button type="button" class="btn btn-quiet" @click="stopEdit(n)">Cancel</button>
           </div>
         </template>
         <template v-else>
@@ -20,10 +20,10 @@
           <p class="mt-1 flex flex-wrap items-center gap-x-2 text-[12px] text-gray-500 tabular-nums">
             <span>{{ n.author || 'A former user' }} · {{ when(n.createdAt) }}<template v-if="n.edited"> · edited</template></span>
             <template v-if="n.mine && canWrite">
-              <button type="button" class="font-semibold text-brand-navy hover:underline" @click="startEdit(n)">Edit</button>
-              <button type="button" class="font-semibold text-brand-red hover:underline" @click="confirming = n.id">Delete</button>
+              <button type="button" :data-note-edit="n.id" class="note-act text-brand-navy" :aria-label="`Edit your note from ${when(n.createdAt)}`" @click="startEdit(n)">Edit</button>
+              <button type="button" class="note-act text-brand-red" :aria-label="`Delete your note from ${when(n.createdAt)}`" @click="confirming = n.id">Delete</button>
             </template>
-            <button v-else-if="canDeleteAny" type="button" class="font-semibold text-brand-red hover:underline" @click="confirming = n.id">Delete</button>
+            <button v-else-if="canDeleteAny" type="button" class="note-act text-brand-red" :aria-label="`Delete the note by ${n.author || 'a former user'} from ${when(n.createdAt)}`" @click="confirming = n.id">Delete</button>
           </p>
           <ConfirmInline v-if="confirming === n.id" class="mt-2" title="Delete this note?" body="It is kept in the audit trail, but nobody will see it here." confirm-label="Delete note" :busy="busy" @confirm="remove(n)" @cancel="confirming = null" />
         </template>
@@ -33,7 +33,7 @@
 
     <form v-if="canWrite" class="mt-3" @submit.prevent="add">
       <label :for="`note-new-${callId}`" class="sr-only">Add a note</label>
-      <textarea :id="`note-new-${callId}`" v-model="body" rows="2" maxlength="5000" placeholder="Add a note, e.g. “Wants to speak to the attorney”" class="field" @keydown="onKey($event, add)"></textarea>
+      <textarea ref="newField" :id="`note-new-${callId}`" v-model="body" rows="2" maxlength="5000" placeholder="Add a note, e.g. “Wants to speak to the attorney”" class="field" @keydown="onKey($event, add)"></textarea>
       <div class="mt-2 flex items-center gap-2">
         <button type="submit" class="btn btn-primary" :disabled="busy || !body.trim()">{{ busy && !editing ? 'Saving…' : 'Save note' }}</button>
         <span class="text-[12px] text-gray-500 hidden sm:inline">Ctrl+Enter to save</span>
@@ -43,12 +43,12 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { useApi } from '../../composables/useApi.js'
 import { toast } from '../../composables/useToast.js'
 import FaIcon from '../../components/FaIcon.vue'
 import ConfirmInline from '../../components/ConfirmInline.vue'
-import { when as whenOf } from '../calls/callsInbox.js'
+import { when } from '../calls/callsInbox.js'
 
 const props = defineProps({
   callId: { type: Number, required: true },
@@ -66,7 +66,16 @@ const busy = ref(false)
 const editing = ref(null)
 const draft = ref('')
 const confirming = ref(null)
-const when = (d) => whenOf(d)
+const heading = ref(null)
+const newField = ref(null)
+
+// Focus follows the change, instead of dropping to the page when the
+// button that had it goes: into the field when editing starts, back to the
+// note's Edit when it ends, and to the new-note field (or the heading)
+// once a note is deleted.
+const focusLater = (find) => nextTick(() => find()?.focus({ preventScroll: true }))
+const editButton = (id) => document.querySelector(`[data-call-notes] [data-note-edit="${id}"]`)
+function stopEdit(n) { editing.value = null; focusLater(() => editButton(n.id)) }
 
 async function load() {
   loading.value = true
@@ -99,14 +108,19 @@ async function add() {
     busy.value = false
   }
 }
-function startEdit(n) { editing.value = n.id; draft.value = n.body; confirming.value = null }
+function startEdit(n) {
+  editing.value = n.id
+  draft.value = n.body
+  confirming.value = null
+  focusLater(() => document.getElementById(`note-edit-${n.id}`))
+}
 async function saveEdit(n) {
   if (!draft.value.trim() || busy.value) return
   busy.value = true
   try {
     const updated = await patch(`/api/contacts/notes/${n.id}`, { body: draft.value })
     notes.value = notes.value.map((x) => (x.id === n.id ? { ...x, ...updated, author: x.author } : x))
-    editing.value = null
+    stopEdit(n)
     toast('Note updated.')
   } catch (e) {
     toast({ text: `The note was not changed: ${e.message}`, tone: 'error' })
@@ -120,6 +134,7 @@ async function remove(n) {
     await del(`/api/contacts/notes/${n.id}`)
     notes.value = notes.value.filter((x) => x.id !== n.id)
     confirming.value = null
+    focusLater(() => newField.value || heading.value)
     toast('Note deleted.')
     emit('changed')
   } catch (e) {
@@ -140,4 +155,8 @@ async function remove(n) {
 .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
 .btn-quiet { color: var(--text-strong); box-shadow: inset 0 0 0 1px var(--border); }
 .btn-quiet:hover { background: var(--surface-hover); }
+/* Edit and Delete on a note: text links, but at least 24px tall to hit. */
+.note-act { display: inline-flex; align-items: center; min-height: 24px; padding: 0 4px; margin: 0 -4px; border-radius: 6px; font-weight: 600; }
+.note-act:hover { text-decoration: underline; }
+@media (pointer: coarse) { .note-act { min-height: 32px; } }
 </style>

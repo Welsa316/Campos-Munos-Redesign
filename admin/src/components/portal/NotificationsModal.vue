@@ -2,7 +2,7 @@
   <transition name="fade">
     <div v-if="visible"
       ref="overlayRef"
-      class="fixed inset-0 z-[200] flex items-center justify-center dialog-frame"
+      class="fixed inset-0 z-(--z-dialog) flex items-center justify-center dialog-frame"
       role="dialog"
       aria-modal="true"
       aria-labelledby="notifications-title"
@@ -19,7 +19,7 @@
             <p id="notifications-text" class="text-gray-500 text-sm mt-1">Receive callback reminders and new website messages on this computer, even when the portal tab is closed.</p>
           </div>
           <button ref="closeBtnRef" @click="close" type="button"
-            class="w-8 h-8 flex-shrink-0 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700 flex items-center justify-center transition-colors"
+            class="w-8 h-8 pointer-coarse:w-11 pointer-coarse:h-11 pointer-coarse:-mt-1.5 pointer-coarse:-mr-1.5 flex-shrink-0 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700 flex items-center justify-center transition-colors"
             aria-label="Close">
             <FaIcon name="xmark" class="text-sm" />
           </button>
@@ -267,6 +267,18 @@ watch(() => props.visible, (v) => {
     previouslyFocused = null
   }
 })
+
+// The buttons change with the state (Enable becomes Send test and Turn off,
+// a busy button is disabled). When the one that had focus goes, focus would
+// drop to the page and Escape and Tab would stop working: keep it in here,
+// on the close button.
+watch([state, busy], () => {
+  if (!props.visible) return
+  nextTick(() => {
+    const box = overlayRef.value
+    if (box && !box.contains(document.activeElement)) closeBtnRef.value?.focus()
+  })
+}, { flush: 'post' })
 
 function close() {
   emit('close')

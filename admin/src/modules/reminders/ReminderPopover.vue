@@ -34,11 +34,15 @@
       </div>
     </fieldset>
 
-    <p class="mt-2.5 flex items-center gap-2 text-[13px]" aria-live="polite">
+    <!-- Not a live region itself: "In 1 hour" moves with the clock, and
+         a region would re-read it every half minute. What is said is only
+         what follows from the person's own choice (spoken, below). -->
+    <p class="mt-2.5 flex items-center gap-2 text-[13px]">
       <FaIcon name="clock" class="text-gray-400" />
       <span v-if="problem" class="text-brand-red">{{ problem }}</span>
       <span v-else><span class="text-gray-600">Due</span> <strong class="font-semibold text-gray-900 tabular-nums">{{ formatDue(dueAt) }}</strong></span>
     </p>
+    <span class="sr-only" aria-live="polite">{{ spoken }}</span>
 
     <label class="mt-3 block">
       <span class="rp-label">For</span>
@@ -152,6 +156,11 @@ onBeforeUnmount(() => { clearInterval(tick); document.removeEventListener('point
 function onOutside(e) { if (props.floating && root.value && !root.value.contains(e.target) && !e.target.closest?.('[data-reminder-trigger]')) emit('close') }
 
 watch([choice, pickDate, pickTime, assignee], () => { error.value = '' })
+// Said once when the person changes the time, never when the clock ticks.
+const spoken = ref('')
+watch([choice, pickDate, pickTime], () => {
+  spoken.value = problem.value || `Due ${formatDue(dueAt.value)}`
+})
 
 async function save(allowDuplicate) {
   if (saving.value || problem.value) return
@@ -190,8 +199,11 @@ function editExisting() {
 
 <style scoped>
 .rp-label { display: block; margin-bottom: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); }
-.rp-input { min-height: 44px; padding: 0 10px; border-radius: 8px; background: var(--surface); color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--border); font-size: 13px; }
+/* A field's edge is how it is found: the input tokens (3:1), as in CallNotes. */
+.rp-input { min-height: 44px; padding: 0 10px; border-radius: 8px; background: var(--input-bg); color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--input-border); font-size: 13px; }
 .rp-input:focus { outline: 2px solid var(--primary-ring); outline-offset: 1px; }
+/* A phone zooms into a field under 16px when it takes focus. */
+@media (pointer: coarse) { .rp-input { font-size: 16px; } }
 /* Picked: filled, with a check-like inner ring; focus: an outline outside it. */
 .rp-picked { background: var(--surface-selected); color: var(--text-primary); box-shadow: inset 0 0 0 2px var(--primary-ring); font-weight: 600; }
 .rp-choice:has(input:focus-visible) { outline: 2px solid var(--primary-ring); outline-offset: 2px; }

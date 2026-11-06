@@ -54,7 +54,7 @@ import { useApi } from '../../composables/useApi.js'
 import { can } from '../../composables/useAuth.js'
 import { toast } from '../../composables/useToast.js'
 import FaIcon from '../../components/FaIcon.vue'
-import { when as whenOf } from '../calls/callsInbox.js'
+import { when } from '../calls/callsInbox.js'
 import { historyLine, possibleMatch, HISTORY_ICON } from './historyText.js'
 import { consultationLabel } from '../../data/consultationTypes.js'
 
@@ -74,7 +74,6 @@ const loading = ref(false)
 const loaded = ref(false)
 const error = ref(false)
 const deciding = ref(false)
-const when = (d) => whenOf(d)
 const canDecide = computed(() => can('crm.view') && (can('calls.exclude') || can('crm.manage')))
 
 const query = () => (props.callId ? `callId=${props.callId}` : `submissionId=${props.submissionId}`)

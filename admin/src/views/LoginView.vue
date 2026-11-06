@@ -39,9 +39,12 @@
           <!-- 30 days instead of 8 hours. Signing out still ends it at once. -->
           <div class="flex items-start gap-3">
             <input id="admin-login-remember" v-model="remember" type="checkbox" aria-describedby="admin-login-remember-hint" class="mt-0.5 w-4 h-4 accent-brand-navy flex-shrink-0 cursor-pointer" />
-            <label for="admin-login-remember" class="text-sm font-ui text-gray-700 leading-snug cursor-pointer select-none">Keep me signed in on this computer
-              <span id="admin-login-remember-hint" class="block text-xs text-gray-500">For 30 days. Leave it off on a shared computer.</span>
-            </label>
+            <!-- The hint is outside the label: inside it, it would be part of
+                 the checkbox's name and then read again as its description. -->
+            <div class="leading-snug">
+              <label for="admin-login-remember" class="block text-sm font-ui text-gray-700 cursor-pointer select-none">Keep me signed in on this computer</label>
+              <span id="admin-login-remember-hint" class="block text-xs font-ui text-gray-500">For 30 days. Leave it off on a shared computer.</span>
+            </div>
           </div>
 
           <transition name="fade">
