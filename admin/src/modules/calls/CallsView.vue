@@ -35,15 +35,19 @@
       <div class="max-w-[1160px] mx-auto px-4 sm:px-6 pt-5 sm:pt-7 pb-10 space-y-4 font-ui">
         <!-- The three company-wide counts. Search and filters never change them. -->
         <div class="flex flex-wrap items-center gap-x-6 gap-y-4">
-          <dl class="flex flex-wrap items-center gap-x-6 sm:gap-x-8 gap-y-3" aria-label="Today's calls">
-            <div v-for="(m, i) in metrics" :key="m.key" :class="i ? 'sm:pl-8 sm:border-l sm:border-gray-200' : ''" class="flex items-center gap-3">
-              <dd :class="m.tone" class="order-first text-[30px] sm:text-[34px] font-light leading-none tracking-tight tabular-nums">
-                <RollingNumber v-if="kpis" :value="m.value" />
-                <span v-else class="text-gray-400" aria-label="Loading">–</span>
-              </dd>
-              <dt class="text-[13px] leading-tight text-gray-600 max-w-[6.5rem]">{{ m.label }}</dt>
-            </div>
-          </dl>
+          <!-- Each count opens the list behind it. -->
+          <ul class="flex flex-wrap items-center gap-x-2 sm:gap-x-3 gap-y-2" aria-label="Today's calls">
+            <li v-for="(m, i) in metrics" :key="m.key" :class="i ? 'sm:pl-3 sm:border-l sm:border-gray-200' : ''">
+              <button type="button" @click="openMetric(m.key)" :aria-label="`${m.value} ${m.label}: show them`"
+                class="flex items-center gap-3 min-h-11 px-2.5 py-1.5 rounded-xl hover:bg-white transition-colors">
+                <span :class="m.tone" class="text-[30px] sm:text-[34px] font-light leading-none tracking-tight tabular-nums" aria-hidden="true">
+                  <RollingNumber v-if="kpis" :value="m.value" />
+                  <span v-else class="text-gray-400">–</span>
+                </span>
+                <span class="text-left text-[13px] leading-tight text-gray-600 max-w-[6.5rem]" aria-hidden="true">{{ m.label }}</span>
+              </button>
+            </li>
+          </ul>
           <div class="ml-auto flex items-center gap-2">
             <span class="hidden sm:inline-flex items-center gap-1.5 text-[12px] text-gray-500" :title="sync?.lastSuccessAt ? fullDate(sync.lastSuccessAt) : ''">
               <span v-if="live" class="w-1.5 h-1.5 rounded-full bg-green-500" aria-hidden="true"></span>{{ updatedLabel }}
@@ -111,12 +115,19 @@
                     class="min-h-10 sm:min-h-8 px-3 rounded-md text-[12px] font-semibold transition-colors">{{ r.label }}</button>
                 </div>
               </div>
-              <label v-if="tab === 'all'" class="block">
-                <span class="flabel">Outcome</span>
-                <select v-model="filter" class="fselect" data-outcome-filter>
-                  <option v-for="o in outcomeOptions" :key="o.key" :value="o.key">{{ o.label }}{{ o.count != null ? ` (${o.count})` : '' }}</option>
-                </select>
-              </label>
+              <!-- Outcomes, each with its count for the range; pressing one
+                   again goes back to every call. -->
+              <div v-if="tab === 'all'" class="basis-full" role="group" aria-labelledby="calls-outcome-label">
+                <p class="flabel" id="calls-outcome-label">Outcome</p>
+                <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-1.5 sm:gap-2" data-outcome-filter>
+                  <button v-for="o in outcomeOptions" :key="o.key" type="button" @click="setOutcome(o.key)" :aria-pressed="filter === o.key"
+                    :class="filter === o.key ? 'ring-2 ring-brand-navy bg-white' : 'ring-1 ring-gray-200 bg-white hover:ring-gray-300'"
+                    class="min-h-[64px] sm:min-h-[68px] flex flex-col justify-between rounded-xl px-2.5 sm:px-3 py-2 text-left transition-shadow">
+                    <span class="block text-[11px] sm:text-[11.5px] font-medium leading-tight text-gray-600">{{ o.label }}</span>
+                    <span :class="o.tone" class="block mt-1.5 text-[20px] sm:text-[22px] font-light leading-none tracking-tight tabular-nums">{{ o.count ?? '–' }}</span>
+                  </button>
+                </div>
+              </div>
               <!-- Calls a RingCentral step proves were offered to one person. -->
               <label v-if="people.length" class="block">
                 <span class="flabel">Offered to</span>
@@ -139,7 +150,7 @@
               <span aria-hidden="true">·</span><span>{{ scopeLabel }}</span>
               <template v-if="personRow"><span aria-hidden="true">·</span><span>offered to {{ personRow.name }}</span></template>
               <template v-if="businessHours"><span aria-hidden="true">·</span><span>business hours</span></template>
-              <span class="ml-auto">{{ tab === 'attention' ? 'Oldest first' : 'Newest first' }}</span>
+              <span class="ml-auto">{{ tab === 'attention' ? 'Oldest first' : tab === 'handled' ? 'Most recently handled first' : 'Newest first' }}</span>
             </div>
 
             <!-- One person: what happened to the calls offered to them. -->
@@ -190,7 +201,7 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 sm:px-5 py-3 border-t border-gray-100 text-[12px] text-gray-600">
-              <span>{{ tab === 'attention' ? 'Every open call stays here until a callback connects or someone marks it handled.' : 'Each call is counted once; its original outcome is kept.' }}</span>
+              <span>{{ FOOTER[tab] }}</span>
               <span class="ml-auto inline-flex items-center gap-1.5"><FaIcon name="clock" class="text-gray-400" />Times in New Orleans</span>
             </div>
           </div>
@@ -259,7 +270,7 @@ import CallDialog from './CallDialog.vue'
 import ExcludeCallDialog from './ExcludeCallDialog.vue'
 import CallRow from './CallRow.vue'
 import CallDetailCard from './CallDetailCard.vue'
-import { attentionSections, daySections, animateChange, when } from './callsInbox.js'
+import { attentionSections, handledSections, daySections, animateChange, when } from './callsInbox.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -268,6 +279,7 @@ const { get, post, del } = useApi()
 
 const TABS = [
   { key: 'attention', label: 'Needs attention' },
+  { key: 'handled', label: 'Handled' },
   { key: 'all', label: 'All calls' },
 ]
 const RANGES = [
@@ -298,7 +310,7 @@ function fromLink(q) {
   filter.value = typeof q.filter === 'string' && /^[a-z_]{1,20}$/.test(q.filter) ? q.filter : 'all'
   personFilter.value = typeof q.person === 'string' && /^\d+$/.test(q.person) ? q.person : ''
   businessHours.value = q.hours === 'business'
-  tab.value = q.tab === 'all' || q.range || q.filter || q.hours ? 'all' : 'attention'
+  tab.value = q.tab === 'handled' ? 'handled' : q.tab === 'all' || q.range || q.filter || q.hours ? 'all' : 'attention'
   filtersOpen.value = Boolean(q.filter || q.hours || q.person)
 }
 fromLink(route.query)
@@ -353,6 +365,11 @@ const rows = computed(() => {
       out.push({ type: 'group', key: `g-${s.key}`, label: s.label, hint: s.hint, count: s.calls.length })
       for (const c of s.calls) out.push({ type: 'call', key: c.id, call: c })
     }
+  } else if (tab.value === 'handled') {
+    for (const d of handledSections(calls.value, now.value)) {
+      out.push({ type: 'group', key: `h-${d.key}`, label: d.label === d.date ? `Handled ${d.label}` : `Handled ${d.label.toLowerCase()} · ${d.date}`, count: d.calls.length })
+      for (const c of d.calls) out.push({ type: 'call', key: c.id, call: c })
+    }
   } else {
     for (const d of daySections(calls.value, now.value)) {
       out.push({ type: 'group', key: `d-${d.key}`, label: d.label === d.date ? d.label : `${d.label} · ${d.date}`, count: d.calls.length })
@@ -380,10 +397,11 @@ async function load({ quiet = false } = {}) {
   const key = viewKey.value
   try {
     const params = new URLSearchParams({ kpis: '1' })
-    if (tab.value === 'attention') {
+    if (tab.value !== 'all') {
+      // Needs attention and Handled both look back ATTENTION_DAYS.
       params.set('from', new Date(Date.now() - ATTENTION_DAYS * 864e5).toISOString())
       params.set('to', new Date(Date.now() + 60 * 1000).toISOString())
-      params.set('outcome', 'attention')
+      params.set('outcome', tab.value)
       params.set('limit', '500')
     } else {
       const { from, to } = rangeBounds(range.value)
@@ -453,6 +471,14 @@ function onTabKey(e) {
   const next = e.key === 'Home' ? 0 : e.key === 'End' ? TABS.length - 1 : (i + (e.key === 'ArrowRight' ? 1 : -1) + TABS.length) % TABS.length
   setTab(TABS[next].key)
   nextTick(() => document.getElementById(`calls-tab-${TABS[next].key}`)?.focus())
+}
+function setOutcome(key) { filter.value = filter.value === key && key !== 'all' ? 'all' : key }
+function openMetric(key) {
+  if (key === 'total') {
+    setTab('all')
+    range.value = 'today'
+    filter.value = 'all'
+  } else setTab(key)
 }
 function clearNarrowing() {
   businessHours.value = false
@@ -682,33 +708,41 @@ const metrics = computed(() => [
 
 // The outcome filters (each one a count from the server for the range).
 const OUTCOMES = [
-  { key: 'all', label: 'All calls', count: (c) => (c.incoming || 0) + (c.outgoing || 0) },
-  { key: 'answered', label: 'Answered', count: (c) => c.answered },
-  { key: 'unanswered', label: 'Unanswered (any kind)', count: (c) => (c.missed || 0) + (c.hung_up || 0) + (c.ended || 0) + (c.voicemail || 0) },
-  { key: 'missed', label: 'Not answered', count: (c) => c.missed },
-  { key: 'hung_up', label: 'Caller hung up', count: (c) => c.hung_up },
-  { key: 'ended', label: 'Ended before ringing', count: (c) => c.ended },
-  { key: 'voicemail', label: 'Voicemail', count: (c) => c.voicemail },
-  { key: 'not_returned', label: 'Not called back', count: (c) => c.not_returned },
-  { key: 'outgoing', label: 'Outgoing', count: (c) => c.outgoing },
-  { key: 'unconfirmed', label: 'No outcome recorded', count: (c) => c.unconfirmed },
-  { key: 'system', label: 'Ended by the phone system', count: (c) => c.system },
-  { key: 'excluded', label: 'No callback needed', count: (c) => c.excluded },
+  { key: 'all', label: 'All calls', tone: 'text-gray-900', count: (c) => (c.incoming || 0) + (c.outgoing || 0) },
+  { key: 'answered', label: 'Answered', tone: 'text-green-700', count: (c) => c.answered },
+  { key: 'unanswered', label: 'Unanswered, any kind', tone: 'text-brand-red', count: (c) => (c.missed || 0) + (c.hung_up || 0) + (c.ended || 0) + (c.voicemail || 0) },
+  { key: 'missed', label: 'Not answered', tone: 'text-brand-red', count: (c) => c.missed },
+  { key: 'hung_up', label: 'Caller hung up', tone: 'text-orange-800', count: (c) => c.hung_up },
+  { key: 'ended', label: 'Ended before ringing', tone: 'text-orange-800', count: (c) => c.ended },
+  { key: 'voicemail', label: 'Voicemail', tone: 'text-amber-700', count: (c) => c.voicemail },
+  { key: 'not_returned', label: 'Not called back', tone: 'text-brand-red', count: (c) => c.not_returned },
+  { key: 'handled', label: 'Handled', tone: 'text-green-700', count: (c) => c.handled },
+  { key: 'outgoing', label: 'Outgoing', tone: 'text-brand-navy', count: (c) => c.outgoing },
+  { key: 'unconfirmed', label: 'No outcome recorded', tone: 'text-gray-700', count: (c) => c.unconfirmed },
+  { key: 'system', label: 'Ended by the phone system', tone: 'text-gray-700', count: (c) => c.system },
+  { key: 'excluded', label: 'No callback needed', tone: 'text-gray-700', count: (c) => c.excluded },
 ]
 const outcomeOptions = computed(() => OUTCOMES
   .filter((o) => o.key === 'all' || !outcomeFilters.value.length || outcomeFilters.value.includes(o.key))
-  .map((o) => ({ key: o.key, label: o.label, count: o.count(counts.value) ?? null })))
+  .map((o) => ({ key: o.key, label: o.label, tone: o.tone, count: o.count(counts.value) ?? null })))
 
 const listSummary = computed(() => {
   const n = visibleCalls.value.length
-  return tab.value === 'attention' ? `${n} open ${n === 1 ? 'call' : 'calls'}` : `${n} ${n === 1 ? 'call' : 'calls'}`
+  if (tab.value === 'attention') return `${n} open ${n === 1 ? 'call' : 'calls'}`
+  if (tab.value === 'handled') return `${n} handled ${n === 1 ? 'call' : 'calls'}`
+  return `${n} ${n === 1 ? 'call' : 'calls'}`
 })
 const scopeLabel = computed(() => {
-  if (tab.value === 'attention') return `last ${ATTENTION_DAYS} days`
+  if (tab.value !== 'all') return `last ${ATTENTION_DAYS} days`
   const r = RANGES.find((x) => x.key === range.value)?.label || ''
   const o = filter.value !== 'all' ? OUTCOMES.find((x) => x.key === filter.value)?.label : null
   return [r === '7 days' || r === '30 days' ? `last ${r}` : r.toLowerCase(), o ? o.toLowerCase() : null].filter(Boolean).join(' · ')
 })
+const FOOTER = {
+  attention: 'Every open call stays here until a callback connects or someone marks it handled.',
+  handled: 'Calls marked handled, or closed by a callback that connected or a later answered call. Reopen one from its ⋯ menu.',
+  all: 'Each call is counted once; its original outcome is kept.',
+}
 const caughtUp = computed(() => tab.value === 'attention' && !searched.value && !activeFilters.value && connection.value === 'connected')
 
 const fullDate = (d) => new Date(d).toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'medium', timeStyle: 'short' })
@@ -742,6 +776,7 @@ const emptyText = computed(() => {
   if (connection.value !== 'connected') return 'No calls to show yet.'
   if (searched.value) return 'No calls match that search here. Try All calls, or a different name or number.'
   if (tab.value === 'attention') return activeFilters.value ? 'No open calls match these filters.' : 'New calls that need a callback will appear here.'
+  if (tab.value === 'handled') return activeFilters.value ? 'No handled calls match these filters.' : 'Nothing has been handled in the last 90 days.'
   if (filter.value === 'excluded') return 'No calls in this range are marked as needing no callback.'
   if (filter.value !== 'all') return 'No calls of this kind in this range.'
   return sync.value?.lastSuccessAt ? 'No calls in this range.' : 'Calls appear here after the first update from RingCentral. Press Refresh to fetch them now.'

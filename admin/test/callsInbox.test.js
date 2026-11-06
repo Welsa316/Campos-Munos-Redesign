@@ -4,7 +4,7 @@
 // browser's.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { attentionSections, daySections, followUpLine, followUpDetail, dayName, dateKey, animateChange } from '../src/modules/calls/callsInbox.js'
+import { attentionSections, handledSections, daySections, followUpLine, followUpDetail, dayName, dateKey, animateChange } from '../src/modules/calls/callsInbox.js'
 
 // 11:48 AM in New Orleans on Thu Nov 5 2026.
 const NOW = Date.parse('2026-11-05T17:48:00Z')
@@ -75,4 +75,17 @@ test('only small list changes animate row by row', () => {
   assert.equal(animateChange([1, 2, 3], [1, 3]), true)
   assert.equal(animateChange([1, 2, 3], [4, 1, 2, 3]), true)
   assert.equal(animateChange([1, 2, 3], [10, 11, 12, 13, 14, 15, 16]), false)
+})
+
+test('handled is grouped by the day each call was dealt with, most recent first', () => {
+  const sections = handledSections([
+    // Came in two days ago, handled today: listed under today.
+    call({ id: 1, needsAttention: false, startedAt: '2026-11-03T15:00:00Z', handled: { at: '2026-11-05T16:00:00Z', by: 'Yoletty' } }),
+    call({ id: 2, needsAttention: false, startedAt: '2026-11-04T15:00:00Z', connectedFollowUp: { at: '2026-11-04T18:00:00Z', kind: 'called_back' } }),
+    call({ id: 3, needsAttention: false, startedAt: '2026-11-05T14:00:00Z', handled: { at: '2026-11-05T17:30:00Z', by: 'Ciro' } }),
+    // Still open, or marked as needing no callback: not handled.
+    call({ id: 4 }),
+    call({ id: 5, needsAttention: false, exclusion: { scope: 'call', reason: 'spam' } }),
+  ], NOW)
+  assert.deepEqual(sections.map((s) => [s.label, s.calls.map((c) => c.id)]), [['Today', [3, 1]], ['Yesterday', [2]]])
 })

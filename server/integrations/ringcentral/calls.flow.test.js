@@ -346,7 +346,7 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.equal(byId(calls, '2026-10-30T15:00:00Z').systemOnly, null)
     assert.equal(byId(calls, '2026-10-30T19:00:00Z').classification, 'caller_hung_up')
     assert.deepEqual(r.json.counts, {
-      incoming: 6, answered: 1, missed: 2, hung_up: 1, ended: 0, voicemail: 1, unconfirmed: 1, system: 0, outgoing: 1, not_returned: 2, excluded: 0, attention: 2,
+      incoming: 6, answered: 1, missed: 2, hung_up: 1, ended: 0, voicemail: 1, unconfirmed: 1, system: 0, outgoing: 1, not_returned: 2, excluded: 0, attention: 2, handled: 1,
     })
     assert.deepEqual(calls.map((c) => c.startedAt), [...calls.map((c) => c.startedAt)].sort().reverse(), 'newest first')
     // The page takes its vocabulary from here instead of keeping copies.
@@ -972,6 +972,12 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.equal(all.handled.note, 'Called from my mobile')
     assert.equal(all.handled.by, 'desk')
     assert.notEqual((await call('GET', '/api/calls/changes')).json.stamp, stampBefore, 'the change check moves')
+    // Handled lists what was dealt with: c8 marked handled, and c2 closed by a connected callback.
+    const dealt = async () => (await list('&outcome=handled')).json
+    const times = (r) => r.calls.map((c) => new Date(c.startedAt).toISOString()).sort()
+    let d = await dealt()
+    assert.deepEqual(times(d), ['2026-10-30T16:00:00.000Z', '2026-10-30T19:30:00.000Z'])
+    assert.equal(d.counts.handled, 2)
     // An answered call cannot be marked handled.
     const answered = byId((await list()).json.calls, '2026-10-30T15:00:00Z')
     assert.equal((await send('POST', `/api/calls/${answered.id}/handled`, {}, { cookie: users.desk.cookie })).status, 409)
@@ -979,6 +985,13 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     // Reopened: back in Needs attention.
     assert.equal((await send('DELETE', `/api/calls/${c8.id}/handled`, undefined, { cookie: users.desk.cookie })).json.removed, true)
     assert.equal((await att()).calls.length, 2)
+    d = await dealt()
+    assert.deepEqual(times(d), ['2026-10-30T16:00:00.000Z'], 'a reopened call leaves Handled')
+    // Marked as needing no callback: not counted as handled, even though it was called back.
+    const c2 = d.calls[0].id
+    assert.equal((await send('POST', `/api/calls/${c2}/exclusion`, { reason: 'spam' }, { cookie: users.desk.cookie })).status, 200)
+    assert.deepEqual(times(await dealt()), [])
+    assert.equal((await send('DELETE', `/api/calls/${c2}/exclusion`, undefined, { cookie: users.desk.cookie })).status, 200)
     await db.query(`DELETE FROM rc_calls WHERE rc_record_id = 'try-1'`)
   })
 

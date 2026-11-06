@@ -54,6 +54,31 @@ export function attentionSections(calls) {
   })).filter((g) => g.calls.length)
 }
 
+/** When a dealt-with call was dealt with: marked handled, or closed by a later connected call. */
+export const resolvedAt = (c) => c.handled?.at || c.connectedFollowUp?.at || null
+
+/**
+ * Handled, by the day each call was dealt with (not the day it came in),
+ * most recent first. Calls the server does not report as dealt with are
+ * left out, whatever the list contains.
+ */
+export function handledSections(calls, now = Date.now()) {
+  const done = calls.filter((c) => !c.exclusion && resolvedAt(c))
+    .sort((a, b) => new Date(resolvedAt(b)) - new Date(resolvedAt(a)) || b.id - a.id)
+  const out = []
+  for (const c of done) {
+    const at = resolvedAt(c)
+    const key = dateKey(at)
+    let day = out[out.length - 1]
+    if (!day || day.key !== key) {
+      day = { key, label: dayName(at, now), date: DAY.format(new Date(at)), calls: [] }
+      out.push(day)
+    }
+    day.calls.push(c)
+  }
+  return out
+}
+
 /** All calls, by day in the firm's time zone, newest first as served. */
 export function daySections(calls, now = Date.now()) {
   const out = []
