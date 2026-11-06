@@ -8,9 +8,12 @@ dotenv.config({ path: join(__dirname, '..', '.env') })
 import bcrypt from 'bcrypt'
 import getPool from './pool.js'
 import logger from '../logger.js'
+import { isProductionEnv } from '../utils/productionEnv.js'
 
 async function seed() {
-  const isProduction = process.env.NODE_ENV === 'production'
+  const isProduction = isProductionEnv(process.env)
+  // The 'changeme' admin is for a developer's machine and the tests only.
+  const localDefaults = ['development', 'test'].includes(process.env.NODE_ENV)
 
   const pool = getPool()
   const client = await pool.connect()
@@ -39,7 +42,11 @@ async function seed() {
     // Seed admin user. Store the email lowercased so it agrees with the
     // case-insensitive login lookup (LOWER(email) = LOWER($1)).
     const email = (process.env.ADMIN_EMAIL || 'admin@camulaw.com').trim().toLowerCase()
-    const password = process.env.ADMIN_INITIAL_PASSWORD || 'changeme'
+    const password = process.env.ADMIN_INITIAL_PASSWORD || (localDefaults ? 'changeme' : '')
+    if (!password) {
+      logger.fatal('FATAL: set ADMIN_INITIAL_PASSWORD for the first admin (the "changeme" default is only for NODE_ENV=development or test).')
+      process.exit(1)
+    }
     const hash = await bcrypt.hash(password, 12)
 
     await client.query(
