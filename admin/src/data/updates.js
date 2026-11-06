@@ -24,7 +24,7 @@ export const SECTIONS = {
 export const UPDATES = [
   {
     id: 'test-channel',
-    at: '2026-11-06T11:15:00Z',
+    at: '2026-11-06T11:28:20Z',
     section: 'admin',
     any: ['forms.test'],
     title: 'A test channel for the website forms',
