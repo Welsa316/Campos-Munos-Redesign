@@ -197,7 +197,7 @@ const summaries = computed(() => {
       subTone: 'text-danger-ink opacity-80',
       value: !m ? '·' : connected ? total : '—',
       sub: connected
-        ? `Last 30 days · Mon–Fri 9–5${m.missed.voicemail ? ` · ${m.missed.voicemail} went to voicemail` : ''}${m.missed.unconfirmed ? ` · ${m.missed.unconfirmed} not confirmed, not counted` : ''}`
+        ? `Last 30 days · Mon–Fri 9–5${m.missed.voicemail ? ` · ${m.missed.voicemail} went to voicemail` : ''}`
         : m ? 'RingCentral is not connected yet' : 'Last 30 days · Mon–Fri 9–5',
       pill: connected ? (notReturned ? `${notReturned} not called back` : 'All called back') : null,
       pillTone: notReturned ? 'bg-brand-red text-white' : 'bg-white/80 text-danger-ink-strong',
