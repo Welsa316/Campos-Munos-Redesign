@@ -6,13 +6,13 @@
        keeps its scroll position. -->
   <Teleport to="body">
     <Transition name="card-backdrop">
-      <div v-if="call" class="fixed inset-0 z-[190] bg-black/50" aria-hidden="true" @click="close"></div>
+      <div v-if="call" class="fixed inset-0 z-[190] scrim" aria-hidden="true" @click="close"></div>
     </Transition>
     <Transition name="card" @after-enter="focusHeading">
       <div v-if="call" class="fixed inset-x-0 bottom-0 z-[200] flex justify-center pointer-events-none sm:inset-0 sm:items-center sm:p-6"
         @keydown.tab="trapFocus">
         <section ref="cardRef" role="dialog" aria-modal="true" :aria-labelledby="`call-card-title-${call.id}`"
-          class="call-card pointer-events-auto relative w-full sm:max-w-[640px] max-h-[88dvh] sm:max-h-[min(760px,calc(100dvh-3rem))] overflow-y-auto overscroll-contain bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl ring-1 ring-gray-200 font-ui">
+          class="call-card pointer-events-auto relative w-full sm:max-w-[640px] max-h-[88dvh] sm:max-h-[min(760px,calc(100dvh-3rem))] overflow-y-auto overscroll-contain bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl ring-1 ring-gray-200 font-ui pb-[env(safe-area-inset-bottom)] sm:pb-0">
           <div class="sm:hidden mx-auto mt-2.5 h-1 w-10 rounded-full bg-gray-300" aria-hidden="true"></div>
           <header class="sticky top-0 z-10 bg-white px-5 sm:px-6 pt-4 sm:pt-5 pb-4 border-b border-gray-100 flex items-start gap-3">
             <span :class="call.exclusion ? 'bg-gray-100 text-gray-500' : look.badge"
@@ -101,7 +101,7 @@
                 class="inline-flex items-center gap-2 min-h-11 text-[13px] font-semibold text-brand-navy hover:underline">
                 <FaIcon :name="showEvidence ? 'chevron-up' : 'chevron-down'" class="text-[10px]" />What RingCentral recorded
               </button>
-              <CallDetails v-if="showEvidence" :id="`call-evidence-${call.id}`" :call-id="call.id" :start="String(call.startedAt)" class="!mt-1" />
+              <CallDetails v-if="showEvidence" :id="`call-evidence-${call.id}`" :call-id="call.id" :start="String(call.startedAt)" :reload-key="call" class="!mt-1" />
             </div>
           </div>
         </section>
@@ -120,6 +120,8 @@ import { statusLine } from './callEvidenceText.js'
 import { followUpLine, followUpDetail, outboundLine, when } from './callsInbox.js'
 import { look as lookOf, phone, durationText } from './callLook.js'
 import { exclusionLabel } from './exclusionReasons.js'
+import { toDate } from '../../utils/text.js'
+import { FIRM_TIME_ZONE } from '../../utils/firmTime.js'
 
 const props = defineProps({
   call: { type: Object, default: null },
@@ -151,7 +153,8 @@ const exclusionDetail = computed(() => {
   const parts = []
   if (e.note) parts.push(e.note)
   if (e.scope === 'number') parts.push('Every call from this number')
-  parts.push(`Marked by ${e.by || 'a former user'}, ${new Date(e.at).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' })}`)
+  const at = toDate(e.at)
+  parts.push(`Marked by ${e.by || 'a former user'}${at ? `, ${at.toLocaleDateString('en-US', { timeZone: FIRM_TIME_ZONE, month: 'short', day: 'numeric' })}` : ''}`)
   return parts.join(' · ')
 })
 const BOX = { open: 'bg-amber-50 ring-1 ring-amber-200', done: 'bg-green-50 ring-1 ring-green-200', quiet: 'bg-gray-50 ring-1 ring-gray-200' }

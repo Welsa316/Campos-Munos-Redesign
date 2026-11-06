@@ -5,7 +5,7 @@
       <div class="flex items-center justify-between mb-4">
         <h2 class="font-ui font-semibold text-gray-900 text-sm tracking-wide">
           {{ viewMode === 'archived' ? 'Archived' : 'Messages' }}
-          <span v-if="viewMode !== 'archived' && unreadCount > 0" class="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-brand-red text-white text-xs font-bold">
+          <span v-if="viewMode !== 'archived' && unreadCount > 0" class="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-brand-red text-white text-xs font-bold tabular-nums">
             {{ unreadCount }}
           </span>
         </h2>
@@ -15,30 +15,38 @@
       </div>
 
       <!-- View toggle: Inbox / Archived -->
-      <div class="flex bg-brand-surface rounded-lg p-0.5 mb-3">
+      <div class="flex bg-brand-surface rounded-lg p-0.5 mb-3" role="group" aria-label="Folder">
         <button
+          type="button"
           @click="$emit('changeView', 'inbox')"
+          :aria-pressed="viewMode === 'inbox'"
           :class="viewMode === 'inbox' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-          class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-all"
+          class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-colors"
         >Inbox</button>
         <button
+          type="button"
           @click="$emit('changeView', 'archived')"
+          :aria-pressed="viewMode === 'archived'"
           :class="viewMode === 'archived' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-          class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-all"
+          class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-colors"
         >Archived</button>
       </div>
 
       <!-- Filter toggle (only in inbox view) -->
-      <div v-if="viewMode === 'inbox'" class="flex bg-brand-surface rounded-lg p-0.5">
+      <div v-if="viewMode === 'inbox'" class="flex bg-brand-surface rounded-lg p-0.5" role="group" aria-label="Read state">
         <button
+          type="button"
           @click="filter = 'all'"
+          :aria-pressed="filter === 'all'"
           :class="filter === 'all' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-          class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-all"
+          class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-colors"
         >All</button>
         <button
+          type="button"
           @click="filter = 'unread'"
+          :aria-pressed="filter === 'unread'"
           :class="filter === 'unread' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-          class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-all"
+          class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-colors"
         >Unread</button>
       </div>
 
@@ -50,7 +58,7 @@
           type="search"
           placeholder="Search name, email or phone"
           aria-label="Search leads by name, email or phone"
-          class="w-full text-xs font-ui pl-8 pr-8 py-2 rounded-lg bg-brand-surface border border-transparent focus:border-brand-navy/30 focus:bg-white focus:outline-none text-gray-700 transition-colors"
+          class="w-full text-xs font-ui pl-8 pr-8 py-2 rounded-lg bg-brand-surface border border-gray-300 focus:bg-white text-gray-700 transition-colors"
         />
         <button v-if="search" @click="search = ''" aria-label="Clear search"
           class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-700">
@@ -62,7 +70,7 @@
       <div class="mt-3">
         <select v-model="consultationFilter"
           aria-label="Filter by consultation type"
-          class="w-full text-xs font-ui font-medium px-3 py-2 rounded-lg bg-brand-surface border border-transparent focus:border-brand-navy/30 focus:bg-white focus:outline-none text-gray-700 transition-colors">
+          class="w-full text-xs font-ui font-medium px-3 py-2 rounded-lg bg-brand-surface border border-gray-300 focus:bg-white text-gray-700 transition-colors">
           <option value="">All consultation types</option>
           <option v-for="key in CONSULTATION_KEYS" :key="key" :value="key">
             {{ consultationLabel(key) }}
@@ -72,20 +80,23 @@
 
       <!-- Pipeline at a glance: counts come from what's loaded, and clicking
            one narrows the list to that stage. -->
-      <div class="mt-3 flex flex-wrap gap-1.5">
+      <div class="mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Status">
         <button
+          type="button"
           @click="statusFilter = ''"
+          :aria-pressed="statusFilter === ''"
           :class="statusFilter === '' ? 'bg-brand-navy text-white ring-brand-navy' : 'bg-brand-surface text-gray-600 ring-transparent hover:text-gray-900'"
-          class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap transition-colors"
+          class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap tabular-nums transition-colors"
         >All {{ props.submissions.length }}</button>
         <button
           v-for="st in LEAD_STATUSES"
           :key="st.key"
+          type="button"
           @click="statusFilter = statusFilter === st.key ? '' : st.key"
           :title="st.hint"
           :aria-pressed="statusFilter === st.key"
           :class="statusFilter === st.key ? 'bg-brand-navy text-white ring-brand-navy' : `${st.pill} hover:brightness-95`"
-          class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap transition-colors"
+          class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap tabular-nums transition-colors"
         >{{ st.label }} {{ statusCounts[st.key] || 0 }}</button>
       </div>
     </div>
@@ -93,9 +104,9 @@
     <!-- List -->
     <div class="flex-1 overflow-y-auto">
       <div v-if="filteredSubmissions.length === 0" class="p-6 text-center">
-        <i :class="viewMode === 'archived' ? 'fa-solid fa-archive' : 'fa-solid fa-inbox'" class="text-3xl text-gray-300 mb-3"></i>
+        <i :class="viewMode === 'archived' ? 'fa-solid fa-archive' : 'fa-solid fa-inbox'" class="text-3xl text-gray-300 mb-3" aria-hidden="true"></i>
         <p class="text-gray-500 text-sm font-ui">
-          {{ viewMode === 'archived' ? 'No archived messages' : (filter === 'unread' ? 'No unread messages' : 'No messages yet') }}
+          {{ emptyMessage }}
         </p>
       </div>
 
@@ -108,7 +119,9 @@
         ]"
       >
       <button
+        type="button"
         @click="$emit('select', sub.id)"
+        :aria-current="sub.id === selectedId ? 'true' : undefined"
         class="w-full text-left px-5 pt-4 pb-2"
       >
         <div class="flex items-start gap-3">
@@ -119,10 +132,11 @@
           <div class="flex-1 min-w-0">
             <div class="flex items-baseline justify-between gap-2 mb-1">
               <span :class="['font-ui text-sm truncate flex items-center gap-1.5', sub.is_read ? 'text-gray-700' : 'text-gray-900 font-semibold']">
-                <i v-if="sub.source === 'chat'" class="fa-solid fa-comment-dots text-brand-navy/60 text-[10px] flex-shrink-0" title="Chat session"></i>
+                <i v-if="sub.source === 'chat'" class="fa-solid fa-comment-dots text-brand-navy/60 text-[10px] flex-shrink-0" title="Chat session" aria-hidden="true"></i>
+                <span v-if="sub.source === 'chat'" class="sr-only">Chat session: </span>
                 <span class="truncate">{{ sub.first_name }} {{ sub.last_name }}</span>
               </span>
-              <span class="text-xs text-gray-500 font-ui flex-shrink-0">
+              <span class="text-xs text-gray-500 font-ui flex-shrink-0 tabular-nums">
                 {{ relativeTime(sub.created_at) }}
               </span>
             </div>
@@ -150,7 +164,7 @@
             @click.stop="openStatusFor = openStatusFor === sub.id ? null : sub.id"
             :disabled="!canManage"
             :aria-expanded="openStatusFor === sub.id"
-            :aria-label="`Change status for ${sub.first_name} ${sub.last_name}, currently ${statusMeta(sub.status).label}`"
+            :aria-label="`Change status for ${leadName(sub)}, currently ${statusMeta(sub.status).label}`"
             :class="statusMeta(sub.status).pill"
             class="inline-flex items-center gap-1.5 text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap transition-transform active:scale-95"
           >
@@ -179,8 +193,8 @@
 
         <button
           @click="$emit('openNotes', sub.id)"
-          :aria-label="`Notes for ${sub.first_name} ${sub.last_name}`"
-          :title="sub.note_count ? `${sub.note_count} note(s)` : 'Add a note'"
+          :aria-label="`Notes for ${leadName(sub)}`"
+          :title="sub.note_count ? plural(sub.note_count, 'note') : 'Add a note'"
           :class="sub.note_count ? 'text-brand-navy' : 'text-gray-500 hover:text-gray-600'"
           class="inline-flex items-center gap-1 text-[11px] font-ui font-semibold px-2 py-1 rounded-full hover:bg-brand-surface transition-colors"
         >
@@ -205,6 +219,7 @@ import { countryLabel } from '../../data/countries.js'
 import { adminLocale } from '../../utils/locale.js'
 import { LEAD_STATUSES, statusMeta } from '../../data/leadStatuses.js'
 import { can } from '../../composables/useAuth.js'
+import { leadName, plural } from '../../utils/text.js'
 
 // Status is shown to everyone who can read leads, changed only with crm.manage.
 const canManage = computed(() => can('crm.manage'))
@@ -265,6 +280,14 @@ onUnmounted(() => {
 const formatCountry = (code) => countryLabel(code, adminLocale())
 
 const unreadCount = computed(() => props.submissions.filter(s => !s.is_read).length)
+
+// Nothing to show because nothing exists, or because the filters hide it.
+const filtering = computed(() => Boolean(search.value.trim() || consultationFilter.value || statusFilter.value))
+const emptyMessage = computed(() => {
+  if (filtering.value && props.submissions.length) return 'No messages match these filters.'
+  if (props.viewMode === 'archived') return 'No archived messages'
+  return filter.value === 'unread' ? 'No unread messages' : 'No messages yet'
+})
 
 const filteredSubmissions = computed(() => {
   let list = props.submissions

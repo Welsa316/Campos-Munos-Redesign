@@ -1,10 +1,10 @@
 <template>
   <!-- Call a number with RingCentral RingOut: your phone rings first, then the client. -->
   <transition name="fade">
-    <div v-if="visible" ref="overlayRef" class="fixed inset-0 z-[200] flex items-center justify-center p-4"
+    <div v-if="visible" ref="overlayRef" class="fixed inset-0 z-[200] flex items-center justify-center dialog-frame"
       role="dialog" aria-modal="true" aria-labelledby="call-dialog-title"
       @keydown.esc="close" @keydown.tab="trapFocus" @click.self="close">
-      <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true"></div>
+      <div class="absolute inset-0 scrim" aria-hidden="true"></div>
 
       <div class="relative w-full max-w-[420px] bg-white rounded-3xl shadow-2xl overflow-hidden font-ui">
         <div class="px-6 pt-6 pb-2 flex items-start justify-between">
@@ -85,7 +85,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
-import { useApi, rawFetch, goToLogin } from '../../composables/useApi.js'
+import { useApi, rawFetch, goToLogin, latestOnly } from '../../composables/useApi.js'
 import { formatPhone } from '../../utils/phone.js'
 import FaIcon from '../../components/FaIcon.vue'
 
@@ -201,7 +201,10 @@ async function place() {
   busy.value = 'call'
   error.value = ''
   try {
-    call.value = await post('/api/calls/ringout', { to: to.value })
+    const placed = await post('/api/calls/ringout', { to: to.value })
+    // Closed while RingCentral was accepting it: nothing more to show or follow.
+    if (!props.visible) return
+    call.value = placed
     pollUntil = Date.now() + 3 * 60 * 1000
     schedulePoll()
   } catch (e) {
@@ -213,17 +216,24 @@ async function place() {
 }
 
 // Follow the call until it connects, ends or fails (at most three minutes).
+// A check still in flight when the dialog closes, resets or cancels is
+// dropped when it lands: it must not repaint the call or start polling again.
+const latestCheck = latestOnly()
 function schedulePoll() {
   stopPolling()
   if (!call.value || !['ringing_you', 'calling_client'].includes(call.value.phase) || Date.now() > pollUntil) return
+  const id = call.value.id
   pollTimer = setTimeout(async () => {
+    pollTimer = null
     try {
-      call.value = await get(`/api/calls/ringout/${call.value.id}`)
+      const r = await latestCheck(() => get(`/api/calls/ringout/${id}`))
+      if (!r.current) return
+      call.value = r.value
     } catch { /* keep the last state; try again */ }
     schedulePoll()
   }, 1500)
 }
-function stopPolling() { clearTimeout(pollTimer); pollTimer = null }
+function stopPolling() { latestCheck.cancel(); clearTimeout(pollTimer); pollTimer = null }
 onUnmounted(stopPolling)
 
 async function cancel() {

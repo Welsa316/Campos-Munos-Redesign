@@ -1,9 +1,9 @@
 <template>
-  <div class="min-h-screen bg-brand-surface flex items-center justify-center px-6">
+  <div class="min-h-dvh bg-brand-surface flex items-center justify-center px-6">
     <div class="w-full max-w-md">
       <!-- Logo -->
       <div class="text-center mb-10">
-        <img src="/logo.png" alt="Campos Muños Law" class="h-16 mx-auto mb-6" />
+        <img :src="LOGO_SRC" alt="Campos Muños Law" class="logo-on-page h-16 mx-auto mb-6" />
         <h1 class="font-heading text-2xl text-brand-navy">Admin Portal</h1>
       </div>
 
@@ -47,7 +47,7 @@
             class="w-full bg-brand-navy text-white font-ui font-semibold tracking-wider text-sm py-4 rounded-xl btn-magnetic disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span v-if="loading">
-              <i class="fa-solid fa-spinner fa-spin mr-2"></i>Signing in...
+              <i class="fa-solid fa-spinner fa-spin mr-2" aria-hidden="true"></i>Signing in...
             </span>
             <span v-else>Sign In</span>
           </button>
@@ -63,6 +63,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { LOGO_SRC } from '../data/brand.js'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 import { safeNextPath } from '../utils/safeNext.js'

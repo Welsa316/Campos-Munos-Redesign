@@ -44,7 +44,7 @@ export const routes = [
       { path: 'reminders', name: 'BillingReminders', meta: { capability: 'billing.view' }, component: () => import('../modules/billing/views/RemindersView.vue') },
       { path: 'contacts', name: 'BillingContacts', meta: { capability: 'whatsapp.contacts' }, component: () => import('../modules/billing/views/ContactsView.vue') },
       { path: 'monday', name: 'BillingMonday', meta: { capability: 'billing.view' }, component: () => import('../modules/billing/views/MondayView.vue') },
-      { path: 'integrations', name: 'BillingSettings', meta: { capability: 'integrations.view' }, component: () => import('../modules/billing/views/IntegrationsView.vue') },
+      { path: 'integrations', name: 'BillingSettings', meta: { capability: 'integrations.view' }, component: () => import('../modules/billing/views/IntegrationStatusView.vue') },
     ] },
 
   // Integrations: third-party accounts the administrator connects (RingCentral).

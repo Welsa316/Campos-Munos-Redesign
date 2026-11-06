@@ -22,6 +22,18 @@ test('a superseded load that fails is ignored; the current one’s failure still
   await assert.rejects(latest(later(1, 'down', true)), /down/)
 })
 
+test('cancel drops what is in flight, so a late answer after closing changes nothing', async () => {
+  const latest = latestOnly()
+  const inFlight = latest(later(10, 'ringing'))
+  latest.cancel()
+  assert.deepEqual(await inFlight, { current: false })
+  // A failure that lands after cancel is dropped too, and later loads work again.
+  const failing = latest(later(10, 'down', true))
+  latest.cancel()
+  assert.deepEqual(await failing, { current: false })
+  assert.deepEqual(await latest(later(1, 'next call')), { current: true, value: 'next call' })
+})
+
 test('separate lists do not interfere', async () => {
   const calls = latestOnly()
   const inbox = latestOnly()

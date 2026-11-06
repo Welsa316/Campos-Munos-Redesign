@@ -19,7 +19,7 @@
           @click="methodFilter = opt.key"
           :aria-pressed="methodFilter === opt.key"
           :class="methodFilter === opt.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-          class="flex-1 text-[11px] font-ui font-medium py-1.5 rounded-md transition-all whitespace-nowrap"
+          class="flex-1 text-[11px] font-ui font-medium py-1.5 rounded-md transition-colors whitespace-nowrap"
         >{{ opt.label }}</button>
       </div>
 

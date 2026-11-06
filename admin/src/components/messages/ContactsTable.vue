@@ -8,23 +8,25 @@
       <div class="flex flex-wrap items-center gap-3 mb-3">
         <h2 class="font-ui font-semibold text-gray-900 text-sm tracking-wide">
           {{ archivedView ? 'Archived' : 'Contacts' }}
-          <span class="ml-1 text-gray-500 font-normal">{{ filtered.length }} of {{ contacts.length }}<template v-if="total != null && total > contacts.length"> loaded, {{ total }} in all</template></span>
+          <span class="ml-1 text-gray-500 font-normal tabular-nums">{{ filtered.length }} of {{ contacts.length }}<template v-if="total != null && total > contacts.length"> loaded, {{ total }} in all</template></span>
         </h2>
 
         <!-- Archived leads are a separate book, not a sub-set of the live one:
              mixing them in made a closed lead look like work still to do. -->
-        <div class="flex bg-brand-surface rounded-lg p-0.5">
+        <div class="flex bg-brand-surface rounded-lg p-0.5" role="group" aria-label="Show">
           <button
+            type="button"
             @click="$emit('changeArchived', false)"
             :aria-pressed="!archivedView"
             :class="!archivedView ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-            class="text-xs font-ui font-medium px-3 py-1.5 rounded-md whitespace-nowrap transition-all"
+            class="text-xs font-ui font-medium px-3 py-1.5 rounded-md whitespace-nowrap transition-colors"
           >Active</button>
           <button
+            type="button"
             @click="$emit('changeArchived', true)"
             :aria-pressed="archivedView"
             :class="archivedView ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-            class="text-xs font-ui font-medium px-3 py-1.5 rounded-md whitespace-nowrap transition-all"
+            class="text-xs font-ui font-medium px-3 py-1.5 rounded-md whitespace-nowrap transition-colors"
           >Archived</button>
         </div>
 
@@ -35,25 +37,28 @@
             type="search"
             placeholder="Search name, email or phone"
             aria-label="Search contacts"
-            class="w-full text-xs font-ui pl-8 pr-3 py-2 rounded-lg bg-brand-surface border border-transparent focus:border-brand-navy/30 focus:bg-white focus:outline-none text-gray-700 transition-colors"
+            class="w-full text-xs font-ui pl-8 pr-3 py-2 rounded-lg bg-brand-surface border border-gray-300 focus:bg-white text-gray-700 transition-colors"
           />
         </div>
       </div>
 
-      <div class="flex flex-wrap gap-1.5">
+      <div class="flex flex-wrap gap-1.5" role="group" aria-label="Status">
         <button
+          type="button"
           @click="statusFilter = ''"
+          :aria-pressed="statusFilter === ''"
           :class="statusFilter === '' ? 'bg-brand-navy text-white ring-brand-navy' : 'bg-brand-surface text-gray-600 ring-transparent hover:text-gray-900'"
-          class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap transition-colors"
+          class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap tabular-nums transition-colors"
         >All {{ contacts.length }}</button>
         <button
           v-for="st in LEAD_STATUSES"
           :key="st.key"
+          type="button"
           @click="statusFilter = statusFilter === st.key ? '' : st.key"
           :title="st.hint"
           :aria-pressed="statusFilter === st.key"
           :class="statusFilter === st.key ? 'bg-brand-navy text-white ring-brand-navy' : `${st.pill} hover:brightness-95`"
-          class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap transition-colors"
+          class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap tabular-nums transition-colors"
         >{{ st.label }} {{ counts[st.key] || 0 }}</button>
       </div>
     </div>
@@ -64,12 +69,13 @@
         {{ emptyMessage }}
       </p>
 
-      <table v-else class="w-full text-left border-collapse">
-        <thead class="sticky top-0 bg-white z-10">
+      <table v-else class="w-full text-left border-collapse max-md:block">
+        <thead class="sticky top-0 bg-white z-10 max-md:hidden">
           <tr class="border-b border-gray-200">
             <th v-for="col in COLUMNS" :key="col.key" scope="col"
+              :aria-sort="col.sortable ? (sortKey === col.key ? (sortAsc ? 'ascending' : 'descending') : 'none') : undefined"
               class="px-4 py-2.5 text-[10px] font-ui font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">
-              <button v-if="col.sortable" @click="toggleSort(col.key)" class="inline-flex items-center gap-1 hover:text-gray-800">
+              <button v-if="col.sortable" type="button" @click="toggleSort(col.key)" class="inline-flex items-center gap-1 hover:text-gray-800">
                 {{ col.label }}
                 <i v-if="sortKey === col.key" :class="sortAsc ? 'fa-chevron-up' : 'fa-chevron-down'" class="fa-solid text-[8px]" aria-hidden="true"></i>
               </button>
@@ -77,32 +83,32 @@
             </th>
           </tr>
         </thead>
-        <tbody>
+        <tbody class="max-md:block">
           <tr
             v-for="c in filtered"
             :key="c.id"
             @click="$emit('select', c.id)"
-            class="border-b border-gray-50 hover:bg-brand-surface/60 cursor-pointer transition-colors"
+            class="border-b border-gray-50 hover:bg-brand-surface/60 cursor-pointer transition-colors max-md:grid max-md:grid-cols-[minmax(0,1fr)_auto] max-md:gap-x-3 max-md:gap-y-1.5 max-md:px-4 max-md:py-3"
           >
-            <td class="px-4 py-3 align-top">
+            <td class="px-4 py-3 align-top max-md:p-0 max-md:col-start-1 max-md:row-start-1">
               <!-- The name opens the lead from the keyboard too; the row click is a mouse convenience. -->
-              <button type="button" @click.stop="$emit('select', c.id)" class="font-ui text-sm text-gray-900 font-medium whitespace-nowrap text-left hover:underline">{{ c.first_name }} {{ c.last_name }}</button>
-              <span v-if="!c.is_read" class="ml-2 inline-block w-1.5 h-1.5 rounded-full bg-brand-red align-middle" title="Unread"><span class="sr-only">Unread</span></span>
+              <button type="button" @click.stop="$emit('select', c.id)" class="font-ui text-sm text-gray-900 font-medium md:whitespace-nowrap text-left hover:underline">{{ c.first_name }} {{ c.last_name }}</button>
+              <span v-if="!c.is_read" class="ml-2 inline-block w-1.5 h-1.5 rounded-full bg-brand-red align-middle" title="Unread" aria-hidden="true"></span><span v-if="!c.is_read" class="sr-only">Unread</span>
             </td>
-            <td class="px-4 py-3 align-top whitespace-nowrap">
+            <td class="px-4 py-3 align-top whitespace-nowrap max-md:p-0 max-md:col-span-2 max-md:row-start-2 max-md:flex max-md:flex-wrap max-md:gap-x-3 max-md:min-w-0">
               <a :href="telHref(c.phone)" @click.stop class="block text-xs text-brand-navy hover:underline">{{ formatPhone(c.phone) }}</a>
-              <a :href="'mailto:' + c.email" @click.stop class="block text-[11px] text-gray-500 hover:underline truncate max-w-[200px]">{{ c.email }}</a>
+              <a :href="'mailto:' + c.email" @click.stop class="block text-[11px] text-gray-500 hover:underline truncate max-w-[200px] max-md:max-w-full max-md:min-w-0">{{ c.email }}</a>
             </td>
-            <td class="px-4 py-3 align-top">
-              <span class="text-[11px] font-ui text-gray-600 whitespace-nowrap">{{ consultationLabel(c.consultation_type) }}</span>
+            <td class="px-4 py-3 align-top max-md:p-0 max-md:col-start-1 max-md:row-start-3">
+              <span class="text-[11px] font-ui text-gray-600 md:whitespace-nowrap">{{ consultationLabel(c.consultation_type) }}</span>
             </td>
-            <td class="px-4 py-3 align-top">
+            <td class="px-4 py-3 align-top max-md:p-0 max-md:col-start-2 max-md:row-start-1 max-md:justify-self-end">
               <!-- Status is editable straight from the table -->
               <div class="relative inline-block">
                 <button
                   @click.stop="openStatusFor = openStatusFor === c.id ? null : c.id"
                 :disabled="!canManage"
-                  :aria-label="`Change status for ${c.first_name} ${c.last_name}, currently ${statusMeta(c.status).label}`"
+                  :aria-label="`Change status for ${leadName(c)}, currently ${statusMeta(c.status).label}`"
                   :class="statusMeta(c.status).pill"
                   class="inline-flex items-center gap-1.5 text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap transition-transform active:scale-95"
                 >
@@ -111,7 +117,7 @@
                   <i v-if="canManage" class="fa-solid fa-chevron-down text-[8px] opacity-60" aria-hidden="true"></i>
                 </button>
                 <div v-if="openStatusFor === c.id"
-                  class="absolute left-0 top-full mt-1 z-30 w-52 bg-white rounded-xl shadow-lg ring-1 ring-gray-200 py-1 text-left">
+                  class="absolute left-0 max-md:left-auto max-md:right-0 top-full mt-1 z-30 w-52 bg-white rounded-xl shadow-lg ring-1 ring-gray-200 py-1 text-left">
                   <button
                     v-for="st in LEAD_STATUSES"
                     :key="st.key"
@@ -128,11 +134,11 @@
                 </div>
               </div>
             </td>
-            <td class="px-4 py-3 align-top max-w-[280px]">
+            <td class="px-4 py-3 align-top max-w-[280px] max-md:p-0 max-md:col-span-2 max-md:row-start-4 max-md:max-w-none">
               <p v-if="c.latest_note" class="text-[11px] text-gray-600 font-ui leading-snug line-clamp-2">{{ c.latest_note }}</p>
-              <p v-else class="text-[11px] text-gray-300 font-ui italic">—</p>
+              <p v-else class="text-[11px] text-gray-500 font-ui max-md:hidden"><span aria-hidden="true">—</span><span class="sr-only">No note</span></p>
             </td>
-            <td class="px-4 py-3 align-top text-[11px] text-gray-500 font-ui whitespace-nowrap">
+            <td class="px-4 py-3 align-top text-[11px] text-gray-500 font-ui whitespace-nowrap tabular-nums max-md:p-0 max-md:col-start-2 max-md:row-start-3 max-md:text-right">
               {{ shortDate(c.created_at) }}
             </td>
           </tr>
@@ -156,6 +162,7 @@ import { can } from '../../composables/useAuth.js'
 // Status is shown to everyone who can read leads, changed only with crm.manage.
 const canManage = computed(() => can('crm.manage'))
 import { formatPhone, telHref } from '../../utils/phone.js'
+import { leadName } from '../../utils/text.js'
 
 const props = defineProps({
   contacts: { type: Array, default: () => [] },

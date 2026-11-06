@@ -1,6 +1,7 @@
 <template>
   <!-- The portal's other sections, as the same quiet header links each
        section has always used; only the ones this account may open. -->
+  <nav aria-label="Portal sections" class="flex items-center gap-1 lg:gap-2">
   <router-link v-for="s in visible" :key="s.key" :to="s.to"
     :class="[LINK, s.admin && adminLinks.length > 1 ? 'hidden lg:flex' : '']"
     :aria-label="s.label" :title="s.label">
@@ -24,6 +25,7 @@
       </li>
     </ul>
   </details>
+  </nav>
 </template>
 
 <script setup>
@@ -39,7 +41,8 @@ const props = defineProps({
 })
 
 // Whole class names, so Tailwind sees them.
-const LABEL_AT = { sm: 'hidden sm:inline', lg: 'hidden lg:inline', xl: 'hidden xl:inline', '2xl': 'hidden 2xl:inline' }
+// 'never': icon and tooltip only (the Inbox header has no room for labels).
+const LABEL_AT = { sm: 'hidden sm:inline', lg: 'hidden lg:inline', xl: 'hidden xl:inline', '2xl': 'hidden 2xl:inline', never: 'sr-only' }
 const LINK = 'flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors'
 
 const SECTIONS = [

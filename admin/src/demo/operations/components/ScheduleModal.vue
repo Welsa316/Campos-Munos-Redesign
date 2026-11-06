@@ -59,7 +59,7 @@
                 @click="mode = m"
                 :aria-pressed="mode === m"
                 :class="mode === m ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-                class="flex-1 text-xs font-ui font-medium py-2 rounded-md transition-all">{{ m }}</button>
+                class="flex-1 text-xs font-ui font-medium py-2 rounded-md transition-colors">{{ m }}</button>
             </div>
           </fieldset>
 

@@ -19,9 +19,9 @@
       <div v-if="ev.classification" class="mt-3 grid gap-4 lg:grid-cols-2">
         <div>
           <h4 class="font-ui text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-600">Evidence</h4>
-          <ul v-if="ev.facts.length || ev.gaps.length" class="mt-1.5 space-y-1 list-disc pl-4 marker:text-gray-400">
+          <ul v-if="ev.facts.length || gaps.length" class="mt-1.5 space-y-1 list-disc pl-4 marker:text-gray-400">
             <li v-for="(f, i) in ev.facts" :key="`f${i}`">{{ factText(f) }}</li>
-            <li v-for="g in ev.gaps.filter(gapText)" :key="g" class="text-gray-600">{{ gapText(g) }}</li>
+            <li v-for="g in gaps" :key="g" class="text-gray-600">{{ g }}</li>
           </ul>
           <p v-else class="mt-1.5 text-gray-600">Nothing RingCentral documents settles how this call ended.</p>
         </div>
@@ -45,7 +45,7 @@
           <span class="normal-case tracking-normal font-normal">({{ ev.live.events }} events from RingCentral{{ ev.live.complete ? ', followed to the end' : ', not all seen to the end' }})</span>
         </h4>
         <ul class="mt-1.5 space-y-1.5" data-live-timeline>
-          <li v-for="p in ev.live.parties" :key="p.extensionId || p.name" class="rounded-md bg-white ring-1 ring-gray-200 px-3 py-2">
+          <li v-for="(p, i) in ev.live.parties" :key="p.partyId ?? `party-${i}`" class="rounded-md bg-white ring-1 ring-gray-200 px-3 py-2">
             <p class="flex flex-wrap items-baseline justify-between gap-x-3">
               <span class="font-medium text-gray-900">{{ partyLabel(p) }}<span v-if="p.rcName && p.rcName !== p.name" class="text-gray-500"> · “{{ p.rcName }}” in RingCentral</span></span>
               <span v-if="p.person && p.rang" class="text-gray-700">rang {{ offset(p.rang.from, start) }}<template v-if="p.rang.seconds != null"> for {{ p.rang.seconds }}s</template></span>
@@ -110,29 +110,43 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useApi } from '../../composables/useApi.js'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useApi, latestOnly } from '../../composables/useApi.js'
 import FaIcon from '../../components/FaIcon.vue'
-import { CLASS_LABEL, CLASS_EXPLAINED, gapText, who, stepTarget, offerShort, factText, offset, stateText, partyLabel } from './callEvidenceText.js'
+import { CLASS_LABEL, CLASS_EXPLAINED, gapLines, who, stepTarget, offerShort, factText, offset, stateText, partyLabel } from './callEvidenceText.js'
 
 const props = defineProps({
   callId: { type: Number, required: true },
   start: { type: String, required: true },
   id: { type: String, required: true },
+  // Changes whenever the call list is re-read (the call object itself): the
+  // open evidence is re-read with it, so live events that arrived since show.
+  reloadKey: { type: [Object, String, Number], default: null },
 })
 
 const { get } = useApi()
 const ev = ref(null)
 const loading = ref(true)
 const error = ref('')
+const gaps = computed(() => gapLines(ev.value?.gaps))
 
-onMounted(async () => {
+// Only the newest answer paints (a re-read can overlap the first load).
+const latest = latestOnly()
+async function load({ quiet = false } = {}) {
+  if (!quiet) { loading.value = true; error.value = '' }
   try {
-    ev.value = await get(`/api/calls/${props.callId}/evidence`)
+    const r = await latest(() => get(`/api/calls/${props.callId}/evidence`))
+    if (!r.current) return
+    ev.value = r.value
+    error.value = ''
   } catch (e) {
-    error.value = e.message || 'Could not load this call’s details.'
+    // A failed background re-read keeps what is on screen.
+    if (!quiet || !ev.value) error.value = e.message || 'Could not load this call’s details.'
   } finally {
-    loading.value = false
+    if (!quiet) loading.value = false
   }
-})
+}
+onMounted(() => load())
+watch(() => props.callId, () => { ev.value = null; load() })
+watch(() => props.reloadKey, () => { if (!loading.value) load({ quiet: true }) })
 </script>

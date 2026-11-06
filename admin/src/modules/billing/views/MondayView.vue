@@ -119,23 +119,26 @@
             </li>
           </ul>
           <details v-if="skippedCount" class="text-xs font-ui text-gray-600">
-            <summary class="cursor-pointer">{{ skippedCount }} field(s) not synced, with reasons</summary>
+            <summary class="cursor-pointer">{{ plural(skippedCount, 'field') }} not synced, with reasons</summary>
             <ul class="mt-2 space-y-0.5">
               <li v-for="(s, i) in skippedList" :key="i">{{ s.itemName }} · {{ s.field }}: {{ SKIP_REASONS[s.reason] || s.reason }}</li>
             </ul>
           </details>
           <div v-if="changed.length" class="flex flex-wrap items-center gap-3 pt-1">
-            <button @click="apply" :disabled="Boolean(busy)"
+            <button @click="confirmingApply = true" :disabled="Boolean(busy)" :aria-expanded="confirmingApply"
               class="px-4 py-2 rounded-lg text-sm font-ui font-semibold text-white disabled:opacity-50"
               :class="plan.dryRun ? 'bg-amber-600 hover:bg-amber-700' : 'bg-brand-navy hover:bg-brand-navy-dark'">
               <FaIcon v-if="busy === 'apply'" name="spinner" spin class="text-xs mr-1" />
-              {{ plan.providerMode === 'mock' ? `Apply to the simulated board (${changed.length})` : plan.dryRun ? 'Run as dry run (writes off)' : `Write ${changed.length} item(s) to monday.com` }}
+              {{ plan.providerMode === 'mock' ? `Apply to the simulated board (${changed.length})` : plan.dryRun ? 'Run as dry run (writes off)' : `Write ${plural(changed.length, 'item')} to monday.com` }}
             </button>
             <span class="text-[11px] font-ui text-gray-500">This preview expires in an hour.</span>
+            <ConfirmInline v-if="confirmingApply" class="basis-full" :title="applyQuestion" :busy="Boolean(busy)"
+              :confirm-label="plan.providerMode === 'mock' ? 'Apply' : plan.dryRun ? 'Run dry run' : 'Write to monday.com'" tone="navy"
+              @confirm="apply" @cancel="confirmingApply = false" />
           </div>
           <p v-if="result" role="status" class="text-sm font-ui rounded-lg px-4 py-3" :class="result.failed ? 'bg-red-50 text-brand-red' : 'bg-green-50 text-green-800'">
             <template v-if="result.dryRun">Dry run complete: nothing was written.</template>
-            <template v-else>{{ result.written }} item(s) updated<span v-if="result.failed">, {{ result.failed }} failed</span>.</template>
+            <template v-else>{{ plural(result.written, 'item') }} updated<span v-if="result.failed">, {{ result.failed }} failed</span>.</template>
           </p>
         </div>
 
@@ -162,6 +165,8 @@ import FaIcon from '../../../components/FaIcon.vue'
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useBillingApi, shortDate } from '../api.js'
 import { can } from '../../../composables/useAuth.js'
+import ConfirmInline from '../../../components/ConfirmInline.vue'
+import { plural } from '../../../utils/text.js'
 
 // The board mapping is the administrator's setup; running the sync is
 // day-to-day work.
@@ -298,11 +303,12 @@ async function preview() {
   try { plan.value = await api.syncPreview() } catch (err) { error.value = err.message } finally { busy.value = '' }
 }
 
+const confirmingApply = ref(false)
+const applyQuestion = computed(() => (plan.value?.providerMode === 'mock'
+  ? 'Apply these changes to the simulated board?'
+  : plan.value?.dryRun ? 'Run a dry run? Nothing will be written.' : `Write ${plural(changed.value.length, 'item')} to monday.com?`))
 async function apply() {
-  const msg = plan.value.providerMode === 'mock'
-    ? 'Apply these changes to the simulated board?'
-    : plan.value.dryRun ? 'Run a dry run? Nothing will be written.' : `Write ${changed.value.length} item(s) to monday.com?`
-  if (!window.confirm(msg)) return
+  confirmingApply.value = false
   busy.value = 'apply'
   error.value = ''
   try {

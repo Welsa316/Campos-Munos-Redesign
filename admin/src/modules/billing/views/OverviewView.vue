@@ -41,7 +41,8 @@
             <p class="text-[11px] font-ui text-gray-500 mt-0.5">Next due date per open invoice (next installment when on a plan)</p>
           </header>
           <p v-if="!data.upcoming.length" class="px-5 py-8 text-sm font-ui text-gray-500 text-center">Nothing coming due.</p>
-          <table v-else class="w-full text-xs font-ui">
+          <div v-else class="overflow-x-auto">
+          <table class="w-full text-xs font-ui">
             <thead>
               <tr class="text-[10px] uppercase tracking-[0.1em] text-gray-500">
                 <th scope="col" class="text-left font-semibold px-5 py-2">Due</th>
@@ -59,6 +60,7 @@
               </tr>
             </tbody>
           </table>
+          </div>
         </section>
 
         <div class="space-y-5">

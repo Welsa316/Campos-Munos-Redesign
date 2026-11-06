@@ -32,6 +32,8 @@ const GAP_TEXT = {
   system_accepted: 'A queue or menu accepted the call, so it may have been passed to someone this record does not show.',
 }
 export const gapText = (g) => GAP_TEXT[g] || null
+/** The gaps worth a sentence, in order (codes with no wording are left out). */
+export const gapLines = (gaps) => (gaps || []).map(gapText).filter(Boolean)
 
 /** "Yoletty, ext. 101" */
 export function who(p) {
@@ -57,10 +59,11 @@ export function stepTarget(to) {
   return to.name || '—'
 }
 
-// RingCentral extension types, in the words its admin portal uses.
+// RingCentral extension types, in the words its admin portal uses. The
+// routing steps and the live timeline both read them from here.
 const TYPE_LABEL = {
   User: 'person', DigitalUser: 'person', VirtualUser: 'person', FlexibleUser: 'person',
-  Department: 'call queue', IvrMenu: 'IVR menu', Announcement: 'announcement', Voicemail: 'voicemail box',
+  Department: 'call queue', IvrMenu: 'IVR menu', Announcement: 'announcement', Voicemail: 'voicemail box', CompanyExtension: 'company line',
   SharedLinesGroup: 'shared lines', PagingOnly: 'paging', ParkLocation: 'park location', Limited: 'common phone',
   ApplicationExtension: 'app', Site: 'site', Bot: 'bot', FaxUser: 'fax', ProxyAdmin: 'admin', DelegatedLinesGroup: 'delegated lines',
 }
@@ -109,13 +112,19 @@ export function factText(f) {
 }
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
 
-/** Seconds from the call's start, for the routing sequence. */
+/**
+ * Seconds from the call's start, for the routing sequence. Signed: a step
+ * stamped before the start (two clocks a little apart) shows as "−2s"
+ * rather than being folded into "+0s".
+ */
 export function offset(at, start) {
   const a = Date.parse(at)
   const b = Date.parse(start)
   if (Number.isNaN(a) || Number.isNaN(b)) return ''
-  const s = Math.max(0, Math.round((a - b) / 1000))
-  return s < 60 ? `+${s}s` : `+${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`
+  const signed = Math.round((a - b) / 1000)
+  const s = Math.abs(signed)
+  const sign = signed < 0 ? '−' : '+'
+  return s < 60 ? `${sign}${s}s` : `${sign}${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`
 }
 
 // RingCentral's live states, in plain words ("Proceeding": "The call is being
@@ -131,7 +140,8 @@ export const stateText = (code, party = null) => (code === 'Answered' && party &
 /** One party in the live timeline: "Yoletty, ext. 101" or "CML call queue". */
 export function partyLabel(p) {
   if (p.person) return who({ name: p.name, extension: p.extension })
-  const type = { Department: 'call queue', IvrMenu: 'menu', Voicemail: 'voicemail box', CompanyExtension: 'company line' }[p.type]
+  // A party not confirmed as a person is never labelled as one.
+  const type = TYPE_LABEL[p.type] === 'person' ? null : TYPE_LABEL[p.type]
   if (p.name || p.extension) return `${p.name || `ext. ${p.extension}`}${type ? ` (${type})` : ''}`
   return 'The firm’s line'
 }

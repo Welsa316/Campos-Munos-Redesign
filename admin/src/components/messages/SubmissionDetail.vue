@@ -3,7 +3,7 @@
     <!-- Empty state -->
     <div v-if="!submission" class="flex-1 flex items-center justify-center">
       <div class="text-center">
-        <i class="fa-solid fa-envelope-open text-4xl text-gray-200 mb-4"></i>
+        <i class="fa-solid fa-envelope-open text-4xl text-gray-200 mb-4" aria-hidden="true"></i>
         <p class="text-gray-500 font-ui text-sm">Select a message to view</p>
       </div>
     </div>
@@ -16,21 +16,21 @@
             <div class="flex flex-wrap items-center gap-2 mb-1">
               <h2 class="font-heading text-2xl text-gray-900 break-words min-w-0">{{ submission.first_name }} {{ submission.last_name }}</h2>
               <span v-if="submission.source === 'chat'" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-navy/10 text-brand-navy text-[10px] font-ui font-semibold uppercase tracking-wider">
-                <i class="fa-solid fa-comment-dots text-[10px]"></i>
+                <i class="fa-solid fa-comment-dots text-[10px]" aria-hidden="true"></i>
                 Chat
               </span>
             </div>
             <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-ui">
               <a :href="'mailto:' + submission.email" class="text-brand-navy hover:text-brand-navy-light transition-colors break-all">
-                <i class="fa-solid fa-envelope mr-1.5 text-xs"></i>{{ submission.email }}
+                <i class="fa-solid fa-envelope mr-1.5 text-xs" aria-hidden="true"></i>{{ submission.email }}
               </a>
               <a :href="telHref(submission.phone)" class="text-brand-navy hover:text-brand-navy-light transition-colors">
-                <i class="fa-solid fa-phone mr-1.5 text-xs"></i>{{ formatPhone(submission.phone) }}
+                <i class="fa-solid fa-phone mr-1.5 text-xs" aria-hidden="true"></i>{{ formatPhone(submission.phone) }}
               </a>
             </div>
             <div class="flex flex-wrap items-center gap-3 text-xs font-ui mt-2">
               <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-navy/10 text-brand-navy font-semibold uppercase tracking-wider">
-                <i class="fa-solid fa-briefcase text-[10px]"></i>
+                <i class="fa-solid fa-briefcase text-[10px]" aria-hidden="true"></i>
                 {{ consultationLabel(submission.consultation_type) }}
               </span>
               <span v-if="submission.location" class="inline-flex items-center gap-1.5 text-gray-500">
@@ -73,7 +73,7 @@
           </div>
           <div class="flex items-center gap-2">
             <span v-if="!submission.is_read" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-red/10 text-brand-red text-xs font-ui font-medium">
-              <span class="w-1.5 h-1.5 rounded-full bg-brand-red"></span>
+              <span class="w-1.5 h-1.5 rounded-full bg-brand-red" aria-hidden="true"></span>
               Unread
             </span>
             <button
@@ -145,7 +145,7 @@
           <span class="flex items-center gap-2 text-xs font-ui font-semibold text-gray-700">
             <i class="fa-solid fa-note-sticky text-brand-navy/70 text-[11px]" aria-hidden="true"></i>
             Internal notes
-            <span v-if="notes.length" class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-brand-navy/10 text-brand-navy text-[10px] font-bold">
+            <span v-if="notes.length" class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-brand-navy/10 text-brand-navy text-[10px] font-bold tabular-nums">
               {{ notes.length }}
             </span>
           </span>
@@ -163,7 +163,7 @@
               :disabled="savingNote"
               placeholder="Log a call, a voicemail, what they need…"
               class="form-input resize-none text-sm flex-1"
-              @keydown.enter.exact.prevent="addNote"
+              @keydown.enter.exact="(e) => { if (!isComposing(e)) { e.preventDefault(); addNote() } }"
             ></textarea>
             <button
               type="submit"
@@ -176,20 +176,30 @@
             No notes yet. Anything logged here stays internal.
           </p>
           <ul v-else class="space-y-2 max-h-48 overflow-y-auto">
-            <li v-for="note in notes" :key="note.id" class="group bg-brand-surface rounded-lg px-3 py-2 flex items-start gap-2">
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-800 font-ui leading-relaxed whitespace-pre-wrap break-words">{{ note.body }}</p>
-                <p class="text-[10px] text-gray-500 font-ui mt-1"><span v-if="note.author_name">{{ note.author_name }} · </span>{{ formatDate(note.created_at) }}</p>
+            <li v-for="note in notes" :key="note.id" class="group bg-brand-surface rounded-lg px-3 py-2">
+              <div class="flex items-start gap-2">
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs text-gray-800 font-ui leading-relaxed whitespace-pre-wrap break-words">{{ note.body }}</p>
+                  <p class="text-[10px] text-gray-500 font-ui mt-1"><span v-if="note.author_name">{{ note.author_name }} · </span>{{ formatDate(note.created_at) }}</p>
+                </div>
+                <!-- Shown on hover with a mouse; always shown on touch, which has no hover. -->
+                <button
+                  v-if="canManage"
+                  type="button"
+                  @click="confirmingNoteId = note.id"
+                  :aria-expanded="confirmingNoteId === note.id"
+                  :disabled="deletingNoteId === note.id"
+                  :aria-label="`Delete note from ${formatDate(note.created_at)}`"
+                  class="flex-shrink-0 p-1.5 rounded-md text-gray-500 hover:text-brand-red hover:bg-brand-red/10 transition-[opacity,color,background-color] pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 focus-visible:opacity-100 disabled:opacity-40"
+                >
+                  <FaIcon :name="deletingNoteId === note.id ? 'spinner' : 'trash'" :spin="deletingNoteId === note.id" class="text-[10px]" />
+                </button>
               </div>
-              <button
-                v-if="canManage"
-                @click="removeNote(note)"
-                :disabled="deletingNoteId === note.id"
-                :aria-label="`Delete note from ${formatDate(note.created_at)}`"
-                class="flex-shrink-0 p-1.5 rounded-md text-gray-400 hover:text-brand-red hover:bg-brand-red/10 focus-visible:opacity-100 opacity-0 group-hover:opacity-100 transition-all disabled:opacity-40"
-              >
-                <i :class="deletingNoteId === note.id ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-trash'" class="text-[10px]" aria-hidden="true"></i>
-              </button>
+              <div v-if="confirmingNoteId === note.id" role="alertdialog" :aria-labelledby="`note-del-${note.id}`" v-alert-focus class="mt-2 flex flex-wrap items-center gap-2" @keydown.esc.stop="confirmingNoteId = null">
+                <p :id="`note-del-${note.id}`" class="text-[11px] font-ui text-gray-700 flex-1 min-w-[10rem]">Delete this note? This cannot be undone.</p>
+                <button type="button" @click="removeNote(note)" class="px-2.5 py-1 rounded-md bg-brand-red text-white text-[11px] font-ui font-semibold hover:bg-brand-red-light">Delete</button>
+                <button type="button" data-autofocus @click="confirmingNoteId = null" class="px-2.5 py-1 rounded-md text-[11px] font-ui font-semibold text-gray-600 hover:bg-white">Keep</button>
+              </div>
             </li>
           </ul>
         </div>
@@ -215,6 +225,9 @@ import { countryLabel } from '../../data/countries.js'
 import { adminLocale } from '../../utils/locale.js'
 import { formatPhone, telHref } from '../../utils/phone.js'
 import ReplyBox from './ReplyBox.vue'
+import FaIcon from '../FaIcon.vue'
+import { vAlertFocus } from '../../directives/alertFocus.js'
+import { toDate, isComposing } from '../../utils/text.js'
 import { LEAD_STATUSES, statusMeta } from '../../data/leadStatuses.js'
 import { can } from '../../composables/useAuth.js'
 
@@ -264,6 +277,7 @@ watch(() => props.submission?.id, () => {
   // A different lead is on screen — never carry a half-typed note across.
   noteDraft.value = ''
   savingNote.value = false
+  confirmingNoteId.value = null
   statusOpen.value = false
   notesOpen.value = props.startWithNotesOpen
 })
@@ -271,10 +285,13 @@ watch(() => props.startWithNotesOpen, (open) => { if (open) notesOpen.value = tr
 
 const deletingNoteId = ref(null)
 
+// A note is a deliberate record, so deleting one asks first, inline (focus
+// moves to the question and back to the trash button: vAlertFocus).
+const confirmingNoteId = ref(null)
+
 async function removeNote(note) {
   if (deletingNoteId.value || !props.submission) return
-  // A note is a deliberate record, so confirm before it disappears.
-  if (!window.confirm('Delete this note? This cannot be undone.')) return
+  confirmingNoteId.value = null
   deletingNoteId.value = note.id
   try {
     await del(`/api/submissions/${props.submission.id}/notes/${note.id}`)
@@ -377,7 +394,8 @@ async function toggleArchive() {
 }
 
 function formatDate(dateStr) {
-  const d = new Date(dateStr)
+  const d = toDate(dateStr)
+  if (!d) return ''
   const now = new Date()
   const isToday = d.toDateString() === now.toDateString()
 

@@ -22,7 +22,8 @@ const UI = 3
 const PAIRS = [
   ['text-primary', ['surface', 'surface-elevated', 'app-bg', 'content-bg', 'surface-subtle', 'surface-hover', 'surface-selected', 'input-bg'], TEXT],
   ['text-secondary', ['surface', 'surface-elevated', 'app-bg', 'content-bg', 'surface-subtle', 'surface-hover', 'input-bg'], TEXT],
-  ['text-muted', ['surface', 'app-bg', 'content-bg', 'surface-subtle'], TEXT],
+  // Muted text is also every field's placeholder (on input-bg).
+  ['text-muted', ['surface', 'app-bg', 'content-bg', 'surface-subtle', 'input-bg'], TEXT],
   ['text-link', ['surface', 'app-bg', 'content-bg', 'surface-subtle', 'primary-soft'], TEXT],
   ['text-on-primary', ['primary', 'primary-hover', 'success-solid', 'warning-solid', 'danger-solid', 'danger-solid-hover', 'info-solid', 'inverse-bg'], TEXT],
   ['text-on-sidebar', ['sidebar-bg', 'sidebar-hover', 'sidebar-active'], TEXT],
@@ -35,6 +36,8 @@ const PAIRS = [
   ['info', ['info-soft', 'surface'], TEXT],
   ['neutral', ['neutral-soft', 'surface'], TEXT],
   ['focus-ring', ['surface', 'app-bg'], UI],
+  // A field's edge is how it is found (WCAG 1.4.11), wherever it sits.
+  ['input-border', ['surface', 'input-bg', 'app-bg', 'content-bg', 'surface-subtle'], UI],
   ['primary-ring', ['surface', 'app-bg'], UI],
   ['icon-active', ['surface'], UI],
   ['icon-primary', ['surface', 'app-bg'], UI],
@@ -62,6 +65,27 @@ test('WCAG AA for every pairing the portal uses, in every theme', () => {
         const ratio = contrast(a, b)
         if (ratio < min) failures.push(`${t.key}: ${fg} ${a} on ${bg} ${b} = ${ratio.toFixed(2)} (needs ${min})`)
       }
+    }
+  }
+  assert.deepEqual(failures, [])
+})
+
+// rgb(r g b / a) over an opaque #rrggbb, as the browser blends it.
+function over(rgba, base) {
+  const m = /^rgb\((\d+) (\d+) (\d+) \/ ([\d.]+)\)$/.exec(rgba)
+  assert.ok(m, `scrim must be rgb(r g b / a): ${rgba}`)
+  const a = Number(m[4])
+  const bg = [1, 3, 5].map((i) => parseInt(base.slice(i, i + 2), 16))
+  return '#' + [1, 2, 3].map((k, i) => Math.round(Number(m[k]) * a + bg[i] * (1 - a)).toString(16).padStart(2, '0')).join('')
+}
+
+test('a scrim visibly dims the panels behind a dialog or slide-over, light and dark', () => {
+  const failures = []
+  for (const t of THEMES) {
+    for (const name of ['scrim', 'scrim-soft']) {
+      const dimmed = over(t.tokens[name], t.tokens.surface)
+      const ratio = contrast(t.tokens.surface, dimmed)
+      if (ratio < 1.25) failures.push(`${t.key}: ${name} over surface ${t.tokens.surface} = ${ratio.toFixed(2)} (needs 1.25)`)
     }
   }
   assert.deepEqual(failures, [])

@@ -3,7 +3,7 @@
     <!-- Top bar: same shell as the production Client Messages dashboard -->
     <header class="h-16 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 z-10 gap-3">
       <div class="flex items-center gap-3 sm:gap-4 min-w-0">
-        <img src="/logo.png" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
+        <img :src="LOGO_SRC" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
         <div class="w-px h-8 bg-gray-200 hidden sm:block" aria-hidden="true"></div>
         <h1 class="font-heading text-lg text-brand-navy tracking-tight hidden md:block whitespace-nowrap">Client Messages</h1>
         <div class="flex bg-brand-surface rounded-lg p-0.5" role="tablist" aria-label="Demo views">
@@ -12,7 +12,7 @@
             :aria-selected="state.view === tab.key"
             @click="actions.setView(tab.key)"
             :class="state.view === tab.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-            class="text-xs font-ui font-medium px-3 py-1.5 rounded-md transition-all whitespace-nowrap">
+            class="text-xs font-ui font-medium px-3 py-1.5 rounded-md transition-colors whitespace-nowrap">
             <span class="sm:hidden">{{ tab.short }}</span><span class="hidden sm:inline">{{ tab.label }}</span>
           </button>
         </div>
@@ -80,6 +80,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { LOGO_SRC } from '../data/brand.js'
 import { faFlask, faListCheck, faRotateLeft, faCircleInfo, faArrowRight } from '@fortawesome/free-solid-svg-icons'
 import DemoIcon from '../demo/operations/components/DemoIcon.vue'
 import DemoDashboard from '../demo/operations/components/DemoDashboard.vue'

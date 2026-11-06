@@ -148,7 +148,10 @@ onMounted(() => {
       shade.style.opacity = (clamp(p.shadow, 0, 1) * (0.6 + 0.4 * state.lift)).toFixed(3)
     }
 
-    if (busy && visible) raf = requestAnimationFrame(frame)
+    // A compositor layer only while it moves (will-change in the CSS).
+    const moving = busy && visible
+    if (moving !== figure.hasAttribute('data-moving')) figure.toggleAttribute('data-moving', moving)
+    if (moving) raf = requestAnimationFrame(frame)
   }
 
   const wake = () => {
@@ -228,9 +231,10 @@ onBeforeUnmount(() => cleanup?.())
   filter: blur(20px);
   opacity: 0;
   pointer-events: none;
-  will-change: transform, opacity;
 }
-.tilted-card__body { position: relative; height: 100%; will-change: transform; }
+.tilted-card__body { position: relative; height: 100%; }
+.tilted-card[data-moving] .tilted-card__shadow { will-change: transform, opacity; }
+.tilted-card[data-moving] .tilted-card__body { will-change: transform; }
 .tilted-card__face {
   position: relative;
   height: 100%;
