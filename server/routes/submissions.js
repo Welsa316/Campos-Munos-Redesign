@@ -212,17 +212,30 @@ router.get('/', requireAuth, requireCapability('crm.view'), async (req, res) => 
       conditions.push(`s.status = $${params.length}`)
     }
 
+    const where = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : ''
+    const filterParams = [...params]
+
     const limit = Math.min(parseInt(req.query.limit, 10) || 100, 200)
     const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0)
     params.push(limit, offset)
     const limitClause = ` LIMIT $${params.length - 1} OFFSET $${params.length}`
 
-    const where = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : ''
     const query = `SELECT s.id, s.first_name, s.last_name, s.email, s.phone, s.message, s.is_read,
         s.is_archived, s.source, s.consultation_type, s.location, s.status, s.created_at,
         (SELECT COUNT(*) FROM lead_notes n WHERE n.submission_id = s.id)::int AS note_count,
         (SELECT n.body FROM lead_notes n WHERE n.submission_id = s.id ORDER BY n.created_at DESC LIMIT 1) AS latest_note
       FROM submissions s${where} ORDER BY s.created_at DESC${limitClause}`
+
+    // withTotal=1: { rows, total }, total counting every lead the filters
+    // match, so the inbox can say how many there are beyond this page.
+    // Without it, the bare array the Dashboard and other callers expect.
+    if (req.query.withTotal === '1') {
+      const [result, count] = await Promise.all([
+        getPool().query(query, params),
+        getPool().query(`SELECT COUNT(*)::int AS total FROM submissions s${where}`, filterParams),
+      ])
+      return res.json({ rows: result.rows, total: count.rows[0].total })
+    }
 
     const result = await getPool().query(query, params)
     res.json(result.rows)

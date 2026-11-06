@@ -152,3 +152,31 @@ test('a key is per lead, a reply without a key is sent every time, and a bad key
   assert.equal(emails.length, sentBefore, 'nothing sent for a refused request')
   assert.equal((await repliesTo(a)).length, 3)
 })
+
+// --- the list: a total for the inbox ---------------------------------------------
+
+test('the list with withTotal=1: the same rows, plus a total that ignores limit and offset', { skip: SKIP }, async () => {
+  await db.query('TRUNCATE submissions RESTART IDENTITY CASCADE')
+  const day = 24 * 60 * 60 * 1000
+  for (let i = 0; i < 7; i++) await lead(`Lead${i}`, { createdAt: new Date(Date.now() - i * day) })
+  await lead('Archivada', { archived: true })
+  await db.query("UPDATE submissions SET status = 'contacted' WHERE first_name IN ('Lead1', 'Lead2')")
+
+  const bare = await call('GET', '/api/submissions?limit=3&offset=2')
+  assert.ok(Array.isArray(bare.json), 'without withTotal: a bare array, as before')
+  assert.deepEqual(bare.json.map((s) => s.first_name), ['Lead2', 'Lead3', 'Lead4'])
+
+  const page = await call('GET', '/api/submissions?limit=3&offset=2&withTotal=1')
+  assert.equal(page.status, 200)
+  assert.deepEqual(page.json.rows, bare.json, 'the same rows')
+  assert.equal(page.json.total, 7, 'every inbox lead, not the page')
+
+  const filtered = await call('GET', '/api/submissions?status=contacted&limit=1&withTotal=1')
+  assert.deepEqual(filtered.json.rows.map((s) => s.first_name), ['Lead1'])
+  assert.equal(filtered.json.total, 2, 'the same filters')
+
+  assert.equal((await call('GET', '/api/submissions?archived=true&withTotal=1')).json.total, 1)
+  assert.equal((await call('GET', '/api/submissions?scope=all&limit=2&withTotal=1')).json.total, 8)
+  const past = await call('GET', '/api/submissions?offset=50&withTotal=1')
+  assert.deepEqual(past.json, { rows: [], total: 7 }, 'past the end: no rows, the total still known')
+})
