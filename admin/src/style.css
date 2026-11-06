@@ -38,6 +38,20 @@
     text-decoration: none;
   }
 
+  /* Tailwind 4 gives buttons the default arrow; everything clickable shows
+     the hand, and a disabled control says so. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  select:not(:disabled),
+  label:has(> input[type="checkbox"]:not(:disabled)),
+  label:has(> input[type="radio"]:not(:disabled)) {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+
   ::selection {
     background-color: var(--primary);
     color: var(--text-on-primary);
@@ -45,19 +59,18 @@
 }
 
 .btn-magnetic {
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
+/* Hover changes the button in place; nothing rises. */
 .btn-magnetic:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 40px -8px color-mix(in srgb, var(--primary) 30%, transparent);
-}
-.btn-magnetic:active {
-  transform: translateY(0);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
 }
 
-.fade-enter-active { transition: all 0.4s ease; }
-.fade-leave-active { transition: all 0.2s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(8px); }
+.fade-enter-active { transition: opacity 0.15s ease; }
+.fade-leave-active { transition: opacity 0.12s ease; }
+/* Opacity only: these wrap full-screen dialogs, and the dimmed backdrop
+   must fade in place rather than slide. */
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 
 .form-group {
   display: flex;
@@ -86,7 +99,8 @@
 .form-input:focus {
   outline: none;
   border-color: var(--primary-ring);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 22%, transparent);
+  /* Solid: the ring is the focus indicator and must be seen (3:1). */
+  box-shadow: 0 0 0 2px var(--focus-ring);
   background: var(--input-bg);
 }
 .form-input::placeholder {
@@ -98,10 +112,14 @@
   outline-offset: 2px;
   border-radius: 4px;
 }
+/* Fields, checkboxes and radios show the same ring. This sits outside
+   Tailwind's layers, so it wins over a per-input focus:outline-none and its
+   faint 10% rings, which nobody could see. */
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: none;
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
 }
 
 @media (prefers-reduced-motion: reduce) {

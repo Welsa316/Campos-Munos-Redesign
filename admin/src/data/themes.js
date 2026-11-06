@@ -174,6 +174,9 @@ export function applyTheme(key) {
   root.setAttribute('data-theme', theme.key)
   // Native form controls and scrollbars follow too.
   root.style.colorScheme = theme.scheme
+  root.style.backgroundColor = theme.tokens['app-bg']
+  // What public/theme-boot.js paints first on the next load, before this runs.
+  try { localStorage.setItem('cm-theme-paint', JSON.stringify({ bg: theme.tokens['app-bg'], scheme: theme.scheme })) } catch { /* private mode */ }
 }
 
 /**

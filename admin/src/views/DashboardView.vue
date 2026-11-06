@@ -33,7 +33,7 @@
             <RiseIn :duration="0.7" :distance="10">
               <button type="button" @click="showAvatarPicker = true" title="Change your picture" aria-label="Change your picture"
                 class="group relative flex-shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-navy">
-                <UserAvatar :avatar="profile.avatar" :size="avatarSize" label="Your picture" class="ring-4 ring-white shadow-sm transition-transform group-hover:scale-105" />
+                <UserAvatar :avatar="profile.avatar" :size="avatarSize" label="Your picture" class="ring-4 ring-white shadow-sm" />
                 <span class="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-white shadow ring-1 ring-black/5 text-gray-700 inline-flex items-center justify-center">
                   <FaIcon name="pen" class="text-[10px]" />
                 </span>
@@ -87,11 +87,11 @@
              four standard, five or more compact (a short last row stretches). -->
         <RiseIn v-if="cards.length" :delay="0.35" :stagger="0.1" class="flex flex-wrap gap-3 sm:gap-4">
           <TiltedCard v-for="card in cards" :key="card.key" :class="cardBasis" class="grow min-w-0"
-            :radius="24" :rotate-amplitude="cardSize === 'lg' ? 6 : 9" :scale-on-hover="cardSize === 'lg' ? 1.02 : 1.03" :glare="0.45" :shadow="0.3" :perspective="cardSize === 'lg' ? 1200 : 900">
+            :radius="24" :rotate-amplitude="cardSize === 'lg' ? 6 : 9" :scale-on-hover="1" :glare="0.45" :shadow="0.3" :perspective="cardSize === 'lg' ? 1200 : 900">
           <router-link :to="card.to" :class="SIZE[cardSize].card"
             class="group glass rounded-3xl h-full flex flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy">
             <div class="flex items-start justify-between">
-              <span :class="[card.tile, SIZE[cardSize].tile]" class="flex items-center justify-center transition-transform group-hover:scale-105">
+              <span :class="[card.tile, SIZE[cardSize].tile]" class="flex items-center justify-center">
                 <FaIcon :name="card.icon" :class="SIZE[cardSize].icon" />
               </span>
               <span class="w-8 h-8 rounded-full border border-gray-200 text-gray-500 inline-flex items-center justify-center group-hover:bg-gray-900 group-hover:text-white group-hover:border-gray-900 transition-colors">

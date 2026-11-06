@@ -5,7 +5,7 @@
   <div ref="rootRef" class="relative">
     <button ref="tileRef" type="button" class="theme-folder group flex flex-col items-center gap-1.5 rounded-2xl focus-visible:outline-none"
       :aria-expanded="open" aria-controls="theme-folder-panel" aria-haspopup="dialog" @click="toggle">
-      <span ref="tileFaceRef" class="glass w-[52px] h-[52px] rounded-[16px] grid grid-cols-2 gap-[3px] p-[7px] transition-transform duration-200 group-hover:scale-[1.06] group-active:scale-95">
+      <span ref="tileFaceRef" class="glass w-[52px] h-[52px] rounded-[16px] grid grid-cols-2 gap-[3px] p-[7px] transition-colors duration-200">
         <!-- Four tiny swatches of the palettes on offer, with the palette mark. -->
         <span v-for="t in THEMES.slice(0, 3)" :key="t.key" class="rounded-[5px]" :style="{ background: t.tokens['sidebar-bg'] }"></span>
         <span class="rounded-[5px] bg-white/80 flex items-center justify-center text-brand-navy"><FaIcon name="palette" class="text-[11px]" /></span>
@@ -32,9 +32,9 @@
           :aria-pressed="current === t.key" :tabindex="focusIndex === i ? 0 : -1"
           @click="choose(t.key)" @focus="focusIndex = i"
           :class="current === t.key ? 'ring-2 ring-brand-navy' : 'ring-1 ring-gray-900/10 hover:ring-gray-900/25'"
-          class="theme-option group/opt text-left rounded-[18px] bg-white/70 p-2 transition-[box-shadow,transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-white/90 hover:shadow-[0_10px_24px_-14px_rgba(22,28,45,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy">
+          class="theme-option group/opt text-left rounded-[18px] bg-white/70 p-2 transition-[box-shadow,background-color] duration-200 hover:bg-white/90 hover:ring-1 hover:ring-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy">
           <!-- Miniature dashboard: rail, greeting, the two summary cards, the section cards. -->
-          <span class="block h-[84px] rounded-[12px] overflow-hidden flex transition-transform duration-300 group-hover/opt:scale-[1.02]"
+          <span class="block h-[84px] rounded-[12px] overflow-hidden flex"
             :style="{ background: t.tokens['app-bg'], boxShadow: `inset 0 0 0 1px ${t.tokens.border}` }" aria-hidden="true">
             <span class="w-[20%] h-full flex flex-col items-center gap-[5px] pt-2.5" :style="{ background: t.tokens['sidebar-bg'] }">
               <span class="w-2.5 h-2.5 rounded-full bg-white/80"></span>

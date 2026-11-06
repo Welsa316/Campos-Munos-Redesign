@@ -200,7 +200,7 @@
               <p v-if="!detail.notes.length" class="text-xs text-gray-500 font-ui">No notes yet. Notes are never sent to the client.</p>
               <ul v-else class="space-y-2 max-h-48 overflow-y-auto">
                 <li v-for="n in detail.notes" :key="n.id" class="bg-brand-surface rounded-lg px-3 py-2">
-                  <p class="text-xs text-gray-800 font-ui leading-relaxed whitespace-pre-wrap">{{ n.body }}</p>
+                  <p class="text-xs text-gray-800 font-ui leading-relaxed whitespace-pre-wrap break-words">{{ n.body }}</p>
                   <p class="text-[10px] text-gray-500 font-ui mt-1">{{ n.author || 'Staff' }} · {{ fullTime(n.at) }}</p>
                 </li>
               </ul>

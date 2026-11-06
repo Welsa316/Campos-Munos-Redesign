@@ -27,7 +27,7 @@
           <p class="mt-4 text-[17px] font-semibold text-gray-900">{{ phaseLook.title }}</p>
           <p class="mt-1 text-[13px] text-gray-600">{{ phaseLook.text }}</p>
           <p class="mt-3 text-[13px] text-gray-500 tabular-nums">{{ name ? `${name} · ` : '' }}{{ phone(call.to) }}</p>
-          <div class="mt-6 flex justify-center gap-2">
+          <div class="mt-6 flex justify-center gap-2" data-phase-actions>
             <button v-if="inProgress" type="button" @click="cancel" :disabled="Boolean(busy)"
               class="px-5 py-2.5 rounded-full bg-brand-red text-white text-[13px] font-semibold hover:bg-brand-red-light disabled:opacity-50">
               {{ call.phase === 'connected' ? 'Hang up' : 'Cancel call' }}
@@ -161,11 +161,22 @@ watch(() => props.visible, async (v) => {
   nextTick(() => (toRef.value || closeBtnRef.value)?.focus())
 })
 
+// The dialog swaps its content (the form, then the call's progress, then the
+// form again): focus follows into the new content, or it would fall to the
+// page behind and Esc and the Tab trap would stop working.
+function focusContent() {
+  nextTick(() => {
+    const action = overlayRef.value?.querySelector('[data-phase-actions] button:not([disabled])')
+    ;(action || toRef.value || closeBtnRef.value)?.focus()
+  })
+}
+
 function reset() {
   stopPolling()
   call.value = null
   error.value = ''
   busy.value = null
+  focusContent()
 }
 
 async function saveMine() {
@@ -178,6 +189,7 @@ async function saveMine() {
     if (!res.ok) throw new Error(data.error || 'Could not save the number')
     myPhone.value = data.phone
     editingMine.value = false
+    focusContent()
   } catch (e) {
     error.value = e.message
   } finally {
@@ -196,6 +208,7 @@ async function place() {
     error.value = e.message
   } finally {
     busy.value = null
+    focusContent()
   }
 }
 
@@ -222,6 +235,7 @@ async function cancel() {
   } finally {
     busy.value = null
     stopPolling()
+    focusContent()
   }
 }
 
