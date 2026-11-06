@@ -117,7 +117,7 @@
             Where consent is taken (kept with every reminder)
             <input v-model="consent.basis" maxlength="200" class="text-xs font-normal px-3 py-1.5 rounded-lg border border-gray-300 focus:border-brand-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy" />
           </label>
-          <button @click="saveConsent" :disabled="Boolean(busy) || !consentChanged" class="min-h-11 sm:min-h-0 px-3 py-1.5 rounded-lg bg-brand-navy text-white text-xs font-ui font-semibold hover:bg-brand-navy-dark disabled:opacity-50">Save</button>
+          <button @click="saveConsent()" :disabled="Boolean(busy) || !consentChanged" class="min-h-11 sm:min-h-0 px-3 py-1.5 rounded-lg bg-brand-navy text-white text-xs font-ui font-semibold hover:bg-brand-navy-dark disabled:opacity-50">Save</button>
         </div>
         <ConfirmInline v-if="confirmingPolicyOff" title="Turn the firm policy off?" body="Reminders waiting for clients without a recorded opt-in are cancelled."
           confirm-label="Turn it off" :busy="Boolean(busy)" @confirm="saveConsent({ confirmed: true })" @cancel="confirmingPolicyOff = false" />
