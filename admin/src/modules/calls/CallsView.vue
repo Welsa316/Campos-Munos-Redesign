@@ -74,10 +74,12 @@
           <span class="text-gray-500 basis-full sm:basis-auto">Only calls where a RingCentral step shows the call offered to their extension.</span>
         </p>
 
-        <p v-if="businessHours || filter === 'unanswered' || filter === 'excluded'" class="flex flex-wrap items-center gap-2 text-xs font-ui text-gray-700">
+        <p v-if="businessHours || ['unanswered', 'excluded', 'unconfirmed', 'system'].includes(filter)" class="flex flex-wrap items-center gap-2 text-xs font-ui text-gray-700">
           <span class="text-gray-500">Showing</span>
           <span v-if="filter === 'unanswered'" class="px-2.5 py-1 rounded-full bg-white ring-1 ring-gray-200 font-semibold">Unanswered (not answered, caller hung up, ended before ringing, voicemail)</span>
           <span v-if="filter === 'excluded'" class="px-2.5 py-1 rounded-full bg-white ring-1 ring-gray-200 font-semibold">Marked as no callback needed</span>
+          <span v-if="filter === 'unconfirmed'" class="px-2.5 py-1 rounded-full bg-white ring-1 ring-gray-200 font-semibold">No outcome recorded (not counted)</span>
+          <span v-if="filter === 'system'" class="px-2.5 py-1 rounded-full bg-white ring-1 ring-gray-200 font-semibold">Ended by the phone system</span>
           <span v-if="businessHours" class="px-2.5 py-1 rounded-full bg-white ring-1 ring-gray-200 font-semibold">Business hours · Mon–Fri 9–5</span>
           <button type="button" @click="clearNarrowing" class="font-semibold text-brand-navy underline">Show all</button>
         </p>
@@ -92,7 +94,7 @@
         <p v-if="error" role="alert" class="text-sm font-ui text-brand-red bg-red-50 rounded-lg px-4 py-3">{{ error }}</p>
 
         <!-- Counts; each one filters the list -->
-        <div class="grid grid-cols-3 min-[480px]:grid-cols-5 lg:grid-cols-9 gap-1.5 sm:gap-2">
+        <div class="grid grid-cols-4 lg:grid-cols-8 gap-1.5 sm:gap-2">
           <button v-for="tile in tiles" :key="tile.key" type="button" @click="setFilter(tile.key)"
             :aria-pressed="filter === tile.key"
             :class="filter === tile.key ? 'ring-2 ring-brand-navy' : 'ring-1 ring-gray-200 hover:ring-gray-300'"
@@ -104,6 +106,11 @@
         <p v-if="counts.system && filter !== 'system'" class="-mt-1 text-xs font-ui text-gray-600">
           {{ counts.system }} {{ counts.system === 1 ? 'call was' : 'calls were' }} ended by the phone system (a blocked number or a refused call) and {{ counts.system === 1 ? 'needs' : 'need' }} no callback.
           <button type="button" @click="setFilter('system')" class="font-semibold text-brand-navy underline">Show {{ counts.system === 1 ? 'it' : 'them' }}</button>
+        </p>
+        <!-- Calls RingCentral recorded no outcome for: not counted, nothing to do. -->
+        <p v-if="counts.unconfirmed && filter !== 'unconfirmed'" class="-mt-1 text-xs font-ui text-gray-600">
+          {{ counts.unconfirmed }} {{ counts.unconfirmed === 1 ? 'call has' : 'calls have' }} no outcome recorded by RingCentral. {{ counts.unconfirmed === 1 ? 'It is' : 'They are' }} not counted as missed or against anyone, and {{ counts.unconfirmed === 1 ? 'needs' : 'need' }} nothing from you.
+          <button type="button" @click="setFilter('unconfirmed')" class="font-semibold text-brand-navy underline">Show {{ counts.unconfirmed === 1 ? 'it' : 'them' }}</button>
         </p>
         <p v-if="counts.excluded && filter !== 'excluded'" class="-mt-1 text-xs font-ui text-gray-600">
           {{ counts.excluded }} {{ counts.excluded === 1 ? 'call was' : 'calls were' }} marked as needing no callback and {{ counts.excluded === 1 ? 'is' : 'are' }} left out of these counts.
@@ -394,7 +401,6 @@ const tiles = computed(() => [
   { key: 'hung_up', label: 'Caller hung up', count: counts.value.hung_up || 0, tone: 'text-orange-800' },
   { key: 'ended', label: 'Ended before ringing', count: counts.value.ended || 0, tone: 'text-orange-800' },
   { key: 'voicemail', label: 'Voicemail', count: counts.value.voicemail || 0, tone: 'text-amber-700' },
-  { key: 'unconfirmed', label: 'Not confirmed', count: counts.value.unconfirmed || 0, tone: 'text-gray-700' },
   { key: 'not_returned', label: 'Not called back', count: counts.value.not_returned || 0, tone: 'text-brand-red' },
   { key: 'outgoing', label: 'Outgoing', count: counts.value.outgoing || 0, tone: 'text-brand-navy' },
 ])
@@ -432,8 +438,9 @@ function rowStatus(c) {
 const UNANSWERED = ['not_answered', 'caller_hung_up', 'ended_before_ringing', 'voicemail']
 const isUnanswered = (c) => c.direction === 'inbound' && UNANSWERED.includes(c.classification)
 // Anything not proven answered can be marked as needing no callback.
-// A call the phone system ended (a blocked number) needs no callback anyway.
-const canMark = (c) => c.direction === 'inbound' && !['answered', 'system'].includes(c.classification)
+// Only calls counted as missed can be marked: a blocked number, or a call
+// with no recorded outcome, is in no count and needs nothing.
+const canMark = (c) => c.direction === 'inbound' && !['answered', 'system', 'unknown'].includes(c.classification)
 const needsCallback = (c) => isUnanswered(c) && !c.followUp && c.number && !c.exclusion
 function followUpText(f) {
   const when = timeOrDate(f.at)
