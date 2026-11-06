@@ -24,8 +24,13 @@ function originOf(value, fallback) {
   return u.origin
 }
 
-/** Portal and API origins from env; local testing overrides both. */
-function resolveConfig(env = process.env) {
+/**
+ * Portal and API origins. Running from source, CM_PORTAL_URL / CM_API_URL
+ * point the app at a local server; an installed app ignores them, so nothing
+ * that can set the environment can aim it at another site.
+ */
+function resolveConfig(env = process.env, { allowOverrides = true } = {}) {
+  if (!allowOverrides) return { portalOrigin: DEFAULT_PORTAL, apiOrigin: DEFAULT_API }
   return {
     portalOrigin: originOf(env.CM_PORTAL_URL, DEFAULT_PORTAL),
     apiOrigin: originOf(env.CM_API_URL, DEFAULT_API),
