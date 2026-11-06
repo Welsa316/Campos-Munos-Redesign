@@ -496,13 +496,16 @@ function closeDetail() {
 // Tab stays inside, Esc closes, and focus returns to the name that opened it.
 const contactPanel = ref(null)
 let contactOpener = null
-watch(selectedId, async (id, was) => {
-  if (viewMode.value !== 'contacts') return
-  if (id !== null && was === null) {
-    contactOpener = rememberFocus()
-    await nextTick()
-    contactPanel.value?.querySelector('button:not([tabindex="-1"]), a[href]')?.focus()
-  }
+watch(selectedId, (id, was) => {
+  if (viewMode.value === 'contacts' && id !== null && was === null) contactOpener = rememberFocus()
+})
+// The lead's controls exist once it has loaded: move focus in then, unless
+// she is already working inside the panel.
+watch(selectedSubmission, async (sub) => {
+  if (viewMode.value !== 'contacts' || !sub) return
+  await nextTick()
+  const panel = contactPanel.value
+  if (panel && !panel.contains(document.activeElement)) panel.querySelector('button:not([tabindex="-1"]), a[href]')?.focus()
 })
 
 // The notes button in the list opens the lead with its log already expanded.
