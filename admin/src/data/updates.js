@@ -23,6 +23,21 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'review-fixes-2026-11',
+    at: '2026-11-06T17:33:28Z',
+    section: 'everyone',
+    any: [],
+    title: 'Small fixes you may notice',
+    summary: 'A few things in the portal now work the way you would expect.',
+    points: [
+      'Messages like “Reminder set” or “Note saved” that pop up while a caller’s details are open can now be clicked, so Undo and the close button work.',
+      'The dot on Updates that says something is new now shows in every colour theme.',
+      'If you mark a caller as handled and then press Undo, the reminder you had set for them comes back too.',
+      'The date, time, person and note boxes in a reminder have clearer edges, and no longer zoom in on a phone.',
+      'If Sign out cannot reach the server, you stay on the page and the portal says so, instead of looking signed out when you are not.',
+    ],
+  },
+  {
     id: 'test-channel',
     at: '2026-11-06T11:28:20Z',
     section: 'admin',

@@ -43,9 +43,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onActivated, onDeactivated, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onActivated } from 'vue'
 import FaIcon from '../../components/FaIcon.vue'
 import { useApi, latestOnly } from '../../composables/useApi.js'
+import { useVisiblePoll } from '../../composables/useVisiblePoll.js'
 import { workItemText } from './workQueueText.js'
 
 const { get } = useApi()
@@ -77,23 +78,10 @@ async function load() {
 }
 
 // Refreshed every minute while Home is showing, and on coming back to it.
-let timer = null
-const onVisible = () => { if (document.visibilityState === 'visible') load() }
-function start() {
-  stop()
-  timer = setInterval(() => { if (document.visibilityState === 'visible') load() }, 60 * 1000)
-  document.addEventListener('visibilitychange', onVisible)
-}
-function stop() {
-  clearInterval(timer)
-  timer = null
-  document.removeEventListener('visibilitychange', onVisible)
-}
+const poll = useVisiblePoll(load, 60 * 1000)
 let activations = 0
-onMounted(() => { load(); start() })
-onActivated(() => { if (activations++) { load(); start() } })
-onDeactivated(stop)
-onBeforeUnmount(stop)
+onMounted(() => poll.start({ now: true }))
+onActivated(() => { if (activations++) poll.start({ now: true }) })
 
 const TILE = { overdue: 'bg-amber-100 text-amber-900', due: 'bg-amber-50 text-amber-800', quiet: 'bg-gray-100 text-gray-700' }
 const WHEN = { overdue: 'text-amber-800 font-semibold', due: 'text-amber-800', quiet: 'text-gray-600' }

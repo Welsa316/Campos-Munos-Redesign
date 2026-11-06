@@ -2,7 +2,7 @@
   <!-- Choose a profile picture: a 3D animal or an emoji, on a colour. -->
   <transition name="fade">
     <div v-if="visible" ref="overlayRef"
-      class="fixed inset-0 z-[200] flex items-center justify-center dialog-frame"
+      class="fixed inset-0 z-(--z-dialog) flex items-center justify-center dialog-frame"
       role="dialog" aria-modal="true" aria-labelledby="avatar-picker-title"
       @keydown.esc="close" @keydown.tab="trapFocus" @click.self="close">
       <div class="absolute inset-0 scrim" aria-hidden="true"></div>

@@ -1,9 +1,8 @@
 // Home's "My follow-ups" rows in words (GET /api/work-queue). Pure, tested in
 // admin/test/workQueue.test.js.
-import { formatDue, formatTime, toInputs } from './dueChoices.js'
+import { formatDue, formatTime } from './dueChoices.js'
+import { sameFirmDay } from '../../utils/firmTime.js'
 import { phone } from '../calls/callLook.js'
-
-const sameFirmDay = (a, b) => toInputs(a).date === toInputs(b).date
 
 function when(item, now) {
   const at = new Date(item.at)

@@ -8,10 +8,10 @@ import { useAuth } from '../../composables/useAuth.js'
 const cache = new Map()
 
 export function loadAssignees(kind) {
-  const k = `${useAuth().adminEmail.value}|${kind === 'submission' ? 'submission' : 'call'}`
-  kind = kind === 'submission' ? 'submission' : 'call'
+  const which = kind === 'submission' ? 'submission' : 'call'
+  const k = `${useAuth().adminEmail.value}|${which}`
   if (!cache.has(k)) {
-    const p = remindersApi.assignees(kind).catch((err) => { cache.delete(k); throw err })
+    const p = remindersApi.assignees(which).catch((err) => { cache.delete(k); throw err })
     cache.set(k, p)
   }
   return cache.get(k)

@@ -6,6 +6,7 @@
 // api.camulaw.com are the same *site*, so the browser sends it, while a page on
 // any other site cannot ride on it.
 import { sessionExpired } from './appStatus.js'
+import { createApiFetch, jsonBody } from '../utils/apiRequest.js'
 
 export const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '')
 
@@ -45,33 +46,26 @@ export function loginHref() {
 }
 
 export { latestOnly } from '../utils/latestOnly.js'
+export { ApiError } from '../utils/apiRequest.js'
+
+/**
+ * Every portal request. A refusal throws an ApiError carrying status, the
+ * server's code and its body (utils/apiRequest.js); once the session has
+ * ended nothing more is sent.
+ */
+export const apiFetch = createApiFetch({ send: rawFetch, isEnded: () => sessionExpired.value, onEnded: () => goToLogin() })
+
+const api = {
+  get: (path) => apiFetch(path),
+  post: (path, body) => apiFetch(path, { method: 'POST', body: JSON.stringify(body) }),
+  patch: (path, body) => apiFetch(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined }),
+  put: (path, body) => apiFetch(path, { method: 'PUT', body: JSON.stringify(body ?? {}) }),
+  // A DELETE may carry a body (turning off push names the endpoint).
+  del: (path, body) => apiFetch(path, { method: 'DELETE', body: jsonBody(body) }),
+}
 
 export function useApi() {
-  async function apiFetch(path, options = {}) {
-    if (sessionExpired.value) throw new Error('Your session has ended. Sign in again.')
-    const res = await rawFetch(path, options)
-
-    if (res.status === 401) {
-      goToLogin()
-      throw new Error('Unauthorized')
-    }
-
-    const data = await res.json().catch(() => ({}))
-
-    if (!res.ok) {
-      throw new Error(data.error || 'Request failed')
-    }
-
-    return data
-  }
-
-  return {
-    get: (path) => apiFetch(path),
-    post: (path, body) => apiFetch(path, { method: 'POST', body: JSON.stringify(body) }),
-    patch: (path, body) => apiFetch(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined }),
-    put: (path, body) => apiFetch(path, { method: 'PUT', body: JSON.stringify(body ?? {}) }),
-    del: (path) => apiFetch(path, { method: 'DELETE' }),
-  }
+  return api
 }
 
 export { goToLogin }

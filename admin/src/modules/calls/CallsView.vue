@@ -1,29 +1,6 @@
 <template>
   <div class="h-dvh flex flex-col bg-brand-surface overflow-hidden">
-    <!-- Same shell as the other sections. -->
-    <header class="nav-chrome h-16 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 gap-3 z-10">
-      <div class="flex items-center gap-3 sm:gap-4 min-w-0">
-        <img :src="LOGO_SRC" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
-        <div class="w-px h-8 bg-gray-200 hidden sm:block" aria-hidden="true"></div>
-        <h1 class="font-heading text-lg text-brand-navy tracking-tight">Calls</h1>
-      </div>
-      <div class="ml-auto flex items-center gap-1 sm:gap-3">
-        <SectionLinks current="calls" />
-        <span class="text-xs text-gray-500 font-ui hidden lg:inline">{{ adminEmail }}</span>
-        <button @click="showChangePassword = true" aria-label="Change password" title="Change password"
-          class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors">
-          <i class="fa-solid fa-key text-xs" aria-hidden="true"></i>
-          <span class="hidden lg:inline">Password</span>
-        </button>
-        <button @click="handleLogout" aria-label="Sign out"
-          class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-gray-500 hover:text-brand-red hover:bg-red-50 text-sm font-ui font-medium transition-colors">
-          <i class="fa-solid fa-arrow-right-from-bracket text-xs" aria-hidden="true"></i>
-          <span class="hidden sm:inline">Sign Out</span>
-        </button>
-      </div>
-    </header>
-
-    <ChangePasswordModal :visible="showChangePassword" @close="showChangePassword = false" />
+    <PortalHeader title="Calls" current="calls" label-at="xl" actions-label-at="lg" show-email :notifications="false" />
     <CallDialog :visible="dialog.open" :number="dialog.number" :name="dialog.name" @close="dialog.open = false" />
     <ExcludeCallDialog :call="excluding" @close="excluding = null" @saved="afterExclude" />
     <ClearCallsDialog :open="clearing" @close="clearing = false" @cleared="afterClear" />
@@ -264,13 +241,12 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
-import { LOGO_SRC } from '../../data/brand.js'
 import { zoneMidnight, zoneMidnightDaysAgo } from '../../utils/firmTime.js'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../../composables/useAuth.js'
 import { useApi, latestOnly } from '../../composables/useApi.js'
-import SectionLinks from '../../components/portal/SectionLinks.vue'
-import ChangePasswordModal from '../../components/messages/ChangePasswordModal.vue'
+import PortalHeader from '../../components/portal/PortalHeader.vue'
+import { useVisiblePoll } from '../../composables/useVisiblePoll.js'
 import FaIcon from '../../components/FaIcon.vue'
 import RollingNumber from '../../components/RollingNumber.vue'
 import CallDialog from './CallDialog.vue'
@@ -286,7 +262,7 @@ import { dueLine } from '../reminders/dueChoices.js'
 
 const router = useRouter()
 const route = useRoute()
-const { adminEmail, logout, can } = useAuth()
+const { can } = useAuth()
 const { get, post, del } = useApi()
 
 const TABS = [
@@ -355,7 +331,6 @@ const loading = ref(false)
 const refreshing = ref(null)
 const error = ref('')
 const now = ref(Date.now())
-const showChangePassword = ref(false)
 const canSeeLeads = computed(() => can('crm.view'))
 // RingOut (calls.place): your own phone rings first, then the client.
 const canCall = computed(() => can('calls.place') && connection.value === 'connected')
@@ -687,7 +662,7 @@ async function afterExclude() {
   const c = excluding.value
   excluding.value = null
   await load({ quiet: true })
-  if (c) showToast(`${c.name || 'The call'} marked as needing no callback.`)
+  if (c) toast(`${c.name || 'The call'} marked as needing no callback.`)
   if (excludedFrom) focusAfter(excludedFrom.id, excludedFrom.index)
 }
 
@@ -697,9 +672,12 @@ async function afterClear(out) {
   // The button that opened the dialog goes with the list; the tab keeps focus.
   nextTick(() => document.getElementById(`calls-tab-${tab.value}`)?.focus())
   if (!out?.cleared) return
-  showToast(`${out.cleared} ${out.cleared === 1 ? 'call' : 'calls'} cleared from Needs attention.`, async () => {
-    await del(`/api/calls/handled/bulk/${out.batch}`)
-    await load({ quiet: true })
+  toast({
+    text: `${out.cleared} ${out.cleared === 1 ? 'call' : 'calls'} cleared from Needs attention.`,
+    undo: async () => {
+      await del(`/api/calls/handled/bulk/${out.batch}`)
+      await load({ quiet: true })
+    },
   })
 }
 
@@ -718,21 +696,27 @@ async function markHandled(c, episode = null) {
       await load({ quiet: true })
       const marked = out.callIds || []
       const name = c.name || 'The caller'
-      showToast(`${name} marked handled${marked.length > 1 ? ` (${marked.length} calls)` : ''}.`, marked.length ? async () => {
-        await post('/api/calls/episodes/reopen', { callIds: marked })
-        await load({ quiet: true })
-        focusAfter(c.id, index)
-      } : null)
+      toast({
+        text: `${name} marked handled${marked.length > 1 ? ` (${marked.length} calls)` : ''}.`,
+        undo: marked.length ? async () => {
+          await post('/api/calls/episodes/reopen', { callIds: marked })
+          await load({ quiet: true })
+          focusAfter(c.id, index)
+        } : null,
+      })
       focusAfter(c.id, index)
       return
     }
     await post(`/api/calls/${c.id}/handled`, {})
     closeDetail({ restore: false })
     await load({ quiet: true })
-    showToast(`${c.name || 'The call'} marked handled.`, async () => {
-      await del(`/api/calls/${c.id}/handled`)
-      await load({ quiet: true })
-      focusAfter(c.id, index)
+    toast({
+      text: `${c.name || 'The call'} marked handled.`,
+      undo: async () => {
+        await del(`/api/calls/${c.id}/handled`)
+        await load({ quiet: true })
+        focusAfter(c.id, index)
+      },
     })
     focusAfter(c.id, index)
   } catch (e) {
@@ -750,7 +734,7 @@ async function reopen(c) {
   try {
     await del(`/api/calls/${c.id}/handled`)
     await load({ quiet: true })
-    showToast(`${c.name || 'The call'} is open again.`)
+    toast(`${c.name || 'The call'} is open again.`)
   } catch (e) {
     error.value = e.message
   } finally {
@@ -766,7 +750,7 @@ async function countAgain(c) {
   try {
     await del(`/api/calls/${c.id}/exclusion`)
     await load({ quiet: true })
-    showToast(`${c.name || 'The call'} is counted again.`)
+    toast(`${c.name || 'The call'} is counted again.`)
     focusAfter(c.id, indexOf(c.id))
   } catch (e) {
     error.value = e.message
@@ -775,10 +759,6 @@ async function countAgain(c) {
   }
 }
 
-// --- toast ------------------------------------------------------------------------
-// The portal's shared toast (SwipeToast.vue); only after the server confirmed.
-function showToast(text, undo = null) { toast({ text, undo }) }
-
 // --- live updates ---------------------------------------------------------------
 // The server imports new calls every few minutes, and within about half a
 // minute of a call ending once RingCentral's live events are registered.
@@ -786,33 +766,26 @@ function showToast(text, undo = null) { toast({ text, undo }) }
 // and reloads the list only when it did.
 
 const POLL_MS = 10 * 1000
-let poll = null
 let tick = null
-let checking = false
 const live = computed(() => connection.value === 'connected' && Boolean(stamp.value))
 async function checkChanges() {
-  if (checking || document.visibilityState !== 'visible' || loading.value) return
-  checking = true
-  try {
-    const r = await get('/api/calls/changes')
-    if (r?.stamp && r.stamp !== stamp.value) await load({ quiet: true })
-  } catch { /* the next check tries again */ } finally {
-    checking = false
-  }
+  if (loading.value) return
+  const r = await get('/api/calls/changes')
+  if (r?.stamp && r.stamp !== stamp.value) await load({ quiet: true })
 }
-function onVisible() { if (document.visibilityState === 'visible') { now.value = Date.now(); checkChanges() } }
+// Visible tab only; coming back moves the clock and checks at once.
+const poll = useVisiblePoll(checkChanges, POLL_MS, { onShow: () => { now.value = Date.now() } })
 function start() {
   stop()
-  poll = setInterval(checkChanges, POLL_MS)
+  poll.start()
   tick = setInterval(() => { now.value = Date.now() }, 30 * 1000)
-  document.addEventListener('visibilitychange', onVisible)
   document.addEventListener('pointerdown', onDocPointer)
   document.addEventListener('keydown', onDocKey)
 }
 function stop() {
-  clearInterval(poll); clearInterval(tick)
-  poll = tick = null
-  document.removeEventListener('visibilitychange', onVisible)
+  poll.stop()
+  clearInterval(tick)
+  tick = null
   document.removeEventListener('pointerdown', onDocPointer)
   document.removeEventListener('keydown', onDocKey)
 }
@@ -923,9 +896,6 @@ const emptyText = computed(() => {
   return sync.value?.lastSuccessAt ? 'No calls in this range.' : 'Calls appear here after the first update from RingCentral. Press Refresh to fetch them now.'
 })
 
-async function handleLogout() {
-  if (await logout()) router.push({ name: 'Login' })
-}
 </script>
 
 <style scoped>

@@ -28,3 +28,14 @@ export function historyLine(e, label = (k) => k) {
 export const possibleMatch = (e) => e.type === 'submission' && e.match === 'possible'
 
 export const HISTORY_ICON = { call: 'phone', submission: 'inbox', reply: 'envelope', lead_note: 'note-sticky', call_note: 'note-sticky' }
+
+/**
+ * The query for the next older page of a history. The server's `next` is
+ * an opaque cursor (events sharing a time are not skipped); an API without
+ * it gets the older before=<last event's time>.
+ */
+export function olderPageParam(next, events) {
+  if (typeof next === 'string' && next) return `&cursor=${encodeURIComponent(next)}`
+  const last = events?.[events.length - 1]
+  return last?.at ? `&before=${encodeURIComponent(last.at)}` : ''
+}

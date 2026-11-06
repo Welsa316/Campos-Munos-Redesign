@@ -3,27 +3,9 @@
 // page. "Tomorrow morning" is 9:00 AM on the next business day (Monday to
 // Friday), the same rule as the server (server/reminders/dueTime.js), so
 // the time shown before saving is the time saved.
-import { FIRM_TIME_ZONE } from '../../utils/firmTime.js'
+import { FIRM_TIME_ZONE, firmWall as wall, firmInstant, sameFirmDay } from '../../utils/firmTime.js'
 
 export const MORNING_HOUR = 9
-
-const PARTS = new Intl.DateTimeFormat('en-US', {
-  timeZone: FIRM_TIME_ZONE, hourCycle: 'h23',
-  year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
-})
-const wall = (t) => Object.fromEntries(PARTS.formatToParts(new Date(t)).filter((x) => x.type !== 'literal').map((x) => [x.type, Number(x.value)]))
-function offsetAt(t) {
-  const p = wall(t)
-  return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - Math.floor(t / 1000) * 1000
-}
-
-/** The instant New Orleans' wall clock reads y-mo-d h:mi. */
-export function firmInstant(y, mo, d, h = 0, mi = 0) {
-  const local = Date.UTC(y, mo - 1, d, h, mi)
-  let guess = local - offsetAt(local)
-  guess = local - offsetAt(guess)
-  return new Date(guess)
-}
 
 /** 9:00 AM New Orleans time on the first business day after the one containing `now`. */
 export function nextBusinessMorning(now = Date.now()) {
@@ -42,9 +24,7 @@ const WEEKDAY = new Intl.DateTimeFormat('en-US', { timeZone: FIRM_TIME_ZONE, wee
 export function dueChoices(now = Date.now()) {
   const t = new Date(now).getTime()
   const morning = nextBusinessMorning(t)
-  const tomorrow = wall(t + 864e5)
-  const m = wall(morning.getTime())
-  const isTomorrow = m.year === tomorrow.year && m.month === tomorrow.month && m.day === tomorrow.day
+  const isTomorrow = sameFirmDay(morning, t + 864e5)
   return [
     { key: 'in_30', label: 'In 30 minutes', at: new Date(t + 30 * 60 * 1000) },
     { key: 'in_60', label: 'In 1 hour', at: new Date(t + 60 * 60 * 1000) },
@@ -96,7 +76,7 @@ export function dueLine(r, now = Date.now()) {
   if (r.status === 'due' || t <= now) {
     const mins = Math.round((now - t) / 60000)
     if (mins < 5) return 'Due now'
-    const sameDay = toInputs(t).date === toInputs(now).date
+    const sameDay = sameFirmDay(t, now)
     return `Overdue since ${sameDay ? formatTime(t) : formatDue(t)}`
   }
   return formatDue(t)

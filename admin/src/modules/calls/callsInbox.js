@@ -7,17 +7,16 @@
 // only says what is left to do about it.
 
 import { who } from './callEvidenceText.js'
-import { FIRM_TIME_ZONE } from '../../utils/firmTime.js'
+import { FIRM_TIME_ZONE, firmDateKey } from '../../utils/firmTime.js'
 
 export const TIME_ZONE = FIRM_TIME_ZONE
 
 const fmt = (opts) => new Intl.DateTimeFormat('en-US', { timeZone: TIME_ZONE, ...opts })
-const KEY = new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' })
 const TIME = fmt({ hour: 'numeric', minute: '2-digit' })
 const DAY = fmt({ weekday: 'short', month: 'short', day: 'numeric' })
 
 /** "2026-11-05" in the firm's time zone. */
-export const dateKey = (d) => KEY.format(new Date(d))
+export const dateKey = firmDateKey
 export const timeOf = (d) => TIME.format(new Date(d))
 
 /** "Today", "Yesterday", or "Tue, Nov 3", in the firm's time zone. */
@@ -40,20 +39,6 @@ export const GROUPS = [
   { key: 'try_again', label: 'Try again', hint: 'a callback did not connect' },
   { key: 'new', label: 'New today', hint: '' },
 ]
-
-/**
- * Needs attention as the page lists it: one section per group that has
- * calls, newest first inside each. Calls the server no longer marks as
- * needing attention are left out, whatever the list contains.
- */
-export function attentionSections(calls) {
-  const open = calls.filter((c) => c.needsAttention)
-  return GROUPS.map((g) => ({
-    ...g,
-    calls: open.filter((c) => (c.attentionGroup || 'new') === g.key)
-      .sort((a, b) => new Date(b.startedAt) - new Date(a.startedAt) || b.id - a.id),
-  })).filter((g) => g.calls.length)
-}
 
 // --- callback episodes -------------------------------------------------------------
 // Needs attention lists one item per person waiting for a call back (the

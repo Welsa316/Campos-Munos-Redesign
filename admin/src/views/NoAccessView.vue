@@ -15,12 +15,10 @@
 <script setup>
 import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
+import { signOutAndLeave } from '../utils/signOut.js'
 
 const router = useRouter()
 const { adminEmail, logout } = useAuth()
 
-async function signOut() {
-  await logout()
-  router.push({ name: 'Login' })
-}
+const signOut = () => signOutAndLeave(logout, router)
 </script>

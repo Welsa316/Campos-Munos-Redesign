@@ -19,6 +19,18 @@
   --font-ui: "Inter", system-ui, sans-serif;
 }
 
+/* The stacking order of everything that floats over a page, in one place
+   (used as z-(--z-toast) and so on). Toasts sit above dialogs, because a
+   toast fired from inside one (Reminder set, Note saved, an error) must be
+   seen and its Undo or Dismiss clicked while the dialog is still open. */
+:root {
+  --z-scrim: 190;
+  --z-dialog: 200;
+  --z-toast: 210;
+  --z-banner: 250;
+  --z-skip: 300;
+}
+
 @layer base {
   body {
     margin: 0;
@@ -305,6 +317,16 @@ textarea {
 .nav-chrome .hover\:text-brand-red:hover { color: var(--sidebar-danger); }
 .nav-chrome .border-brand-navy { border-color: var(--icon-sidebar-active); }
 .nav-chrome [aria-current="page"] { color: var(--text-on-sidebar); }
+/* The Updates "new" dot and tag (SectionLinks). On the page they take the
+   primary colour; on the navigation, whose background is the sidebar
+   colour, the primary would vanish (Classic's primary is its sidebar), so
+   they take the active-icon colour with a gap ring of the bar itself.
+   Pinned at 3:1 against the bar and its hover in every theme by
+   test/themes.test.js. */
+.updates-dot { background-color: var(--primary); box-shadow: 0 0 0 2px var(--surface); }
+.nav-chrome .updates-dot { background-color: var(--icon-sidebar-active); box-shadow: 0 0 0 2px var(--sidebar-bg); }
+.updates-tag { background-color: var(--primary); color: var(--text-on-primary); }
+.nav-chrome .updates-tag { background-color: var(--sidebar-active); color: var(--text-on-sidebar); }
 /* The firm's navy logo turns light on the navigation colour, and on the page
    itself in a dark theme (sign-in, not found). */
 .nav-chrome img[src$="logo.png"] { filter: brightness(0) invert(1); opacity: 0.92; }

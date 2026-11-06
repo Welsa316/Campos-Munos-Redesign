@@ -3,6 +3,9 @@
 // uses meets WCAG AA (4.5:1 text, 3:1 focus rings and active indicators).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'fs'
+import { join, dirname } from 'path'
+import { fileURLToPath } from 'url'
 import { THEMES, TOKEN_NAMES, DEFAULT_THEME } from '../src/data/themes.js'
 
 const hex = (v) => /^#[0-9a-f]{6}$/i.test(v)
@@ -66,6 +69,37 @@ test('WCAG AA for every pairing the portal uses, in every theme', () => {
         if (ratio < min) failures.push(`${t.key}: ${fg} ${a} on ${bg} ${b} = ${ratio.toFixed(2)} (needs ${min})`)
       }
     }
+  }
+  assert.deepEqual(failures, [])
+})
+
+// The Updates "new" dot and tag sit on the header, whose background is the
+// sidebar colour. Read the colours style.css actually gives them there and
+// measure them in every theme (the dot once used the primary, which is
+// Classic's sidebar colour: 1.00:1, invisible).
+test('the Updates dot and New tag show on the header in every theme', () => {
+  const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'style.css'), 'utf8')
+  const rule = (sel) => {
+    const m = new RegExp(`${sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([^}]*)\\}`).exec(css)
+    assert.ok(m, `${sel} is styled`)
+    return (prop) => {
+      const v = new RegExp(`(?:^|;)\\s*${prop}:\\s*var\\(--([\\w-]+)\\)`).exec(m[1])
+      assert.ok(v, `${sel} sets ${prop} from a token`)
+      return v[1]
+    }
+  }
+  const dot = rule('.nav-chrome .updates-dot')('background-color')
+  const tag = rule('.nav-chrome .updates-tag')
+  const tagBg = tag('background-color')
+  const tagText = tag('color')
+  const failures = []
+  for (const t of THEMES) {
+    for (const bar of ['sidebar-bg', 'sidebar-hover']) {
+      const r = contrast(t.tokens[dot], t.tokens[bar])
+      if (r < 3) failures.push(`${t.key}: dot ${dot} on ${bar} = ${r.toFixed(2)}`)
+    }
+    const r = contrast(t.tokens[tagText], t.tokens[tagBg])
+    if (r < 4.5) failures.push(`${t.key}: New text ${tagText} on ${tagBg} = ${r.toFixed(2)}`)
   }
   assert.deepEqual(failures, [])
 })

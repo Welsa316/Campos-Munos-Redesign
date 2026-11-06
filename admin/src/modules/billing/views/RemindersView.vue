@@ -191,7 +191,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useApi, rawFetch, goToLogin, latestOnly } from '../../../composables/useApi.js'
+import { useApi, latestOnly } from '../../../composables/useApi.js'
 import { can } from '../../../composables/useAuth.js'
 
 // Acting on reminders and changing their setup are separate capabilities.
@@ -232,14 +232,7 @@ const EMPTY = {
 }
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-const { get, post } = useApi()
-const put = async (path, body) => {
-  const res = await rawFetch(path, { method: 'PUT', body: JSON.stringify(body) })
-  if (res.status === 401) { goToLogin(); throw new Error('Unauthorized') }
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error || 'Request failed')
-  return data
-}
+const { get, post, put } = useApi()
 
 const view = ref('drafts')
 const data = ref(null)

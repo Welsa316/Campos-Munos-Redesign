@@ -96,20 +96,13 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useApi, rawFetch, goToLogin } from '../../../composables/useApi.js'
+import { useApi } from '../../../composables/useApi.js'
 import { money, shortDate } from '../api.js'
 import { can } from '../../../composables/useAuth.js'
 import ConfirmInline from '../../../components/ConfirmInline.vue'
 import { plural } from '../../../utils/text.js'
 
-const { get, post } = useApi()
-const put = async (path, body) => {
-  const res = await rawFetch(path, { method: 'PUT', body: JSON.stringify(body) })
-  if (res.status === 401) { goToLogin(); throw new Error('Unauthorized') }
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error || 'Request failed')
-  return data
-}
+const { get, post, put } = useApi()
 
 const rows = ref([])
 const edits = reactive({})

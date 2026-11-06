@@ -1,7 +1,7 @@
 <template>
   <!-- Mark a missed call as needing no callback: it leaves the missed counts but stays in the log. -->
   <transition name="fade">
-    <div v-if="call" ref="overlayRef" class="fixed inset-0 z-[200] flex items-center justify-center dialog-frame"
+    <div v-if="call" ref="overlayRef" class="fixed inset-0 z-(--z-dialog) flex items-center justify-center dialog-frame"
       role="dialog" aria-modal="true" aria-labelledby="exclude-dialog-title"
       @keydown.esc="close" @keydown.tab="trapFocus" @click.self="close">
       <div class="absolute inset-0 scrim" aria-hidden="true"></div>

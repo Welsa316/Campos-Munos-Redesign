@@ -1,9 +1,10 @@
 // Whether the portal is running inside the Campos Muños desktop app (its
 // preload sets window.campos.desktop). The app shows notifications itself,
 // from GET /api/notifications/feed, so the page must not show its own too.
-export const inDesktopApp = (w = typeof window !== 'undefined' ? window : undefined) => w?.campos?.desktop === true
+import { isPortalPath } from './portalPath.js'
 
-const inPortalPath = (p) => typeof p === 'string' && p.length <= 500 && p.startsWith('/') && !p.startsWith('//') && !p.includes('\\')
+export const inDesktopApp =(w = typeof window !== 'undefined' ? window : undefined) => w?.campos?.desktop === true
+
 
 /**
  * A notification clicked in the desktop app opens its screen in place, through
@@ -13,7 +14,7 @@ const inPortalPath = (p) => typeof p === 'string' && p.length <= 500 && p.starts
 export function listenForDesktopNavigation(router, w = typeof window !== 'undefined' ? window : undefined) {
   if (!inDesktopApp(w) || typeof w.campos.onNavigate !== 'function') return false
   w.campos.onNavigate((path) => {
-    if (inPortalPath(path)) router.push(path).catch(() => {})
+    if (isPortalPath(path)) router.push(path).catch(() => {})
   })
   return true
 }

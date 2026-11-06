@@ -275,6 +275,8 @@ import ChangePasswordModal from '../components/messages/ChangePasswordModal.vue'
 import ContactsTable from '../components/messages/ContactsTable.vue'
 import SectionLinks from '../components/portal/SectionLinks.vue'
 import FaIcon from '../components/FaIcon.vue'
+import { signOutAndLeave } from '../utils/signOut.js'
+import { useVisiblePoll } from '../composables/useVisiblePoll.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -333,35 +335,14 @@ const listStatus = computed(() => {
 // Railway service, and polling survives restarts, redeploys and multiple
 // instances with no reconnect logic to get wrong.
 const POLL_INTERVAL_MS = 15000
-let pollTimer = null
-let inFlight = false
-
-async function pollNow() {
-  if (inFlight) return // never stack requests
-  inFlight = true
-  try {
-    await fetchSubmissions({ silent: true })
-    await refreshSelected({ silent: true })
-  } finally {
-    inFlight = false
-  }
-}
-
-function startPolling() {
-  stopPolling()
-  pollTimer = setInterval(pollNow, POLL_INTERVAL_MS)
-}
-function stopPolling() {
-  if (pollTimer) clearInterval(pollTimer)
-  pollTimer = null
-}
-
 // Polling deliberately continues while the tab is in the background — that is
 // exactly when a desktop notification is worth sending. Returning to the tab
-// just triggers an immediate check so it feels instant.
-function onVisibilityChange() {
-  if (!document.hidden) pollNow()
-}
+// just triggers an immediate check so it feels instant. Never two at once.
+const poll = useVisiblePoll(async () => {
+  await fetchSubmissions({ silent: true })
+  await refreshSelected({ silent: true })
+}, POLL_INTERVAL_MS, { whileHidden: true })
+const pollNow = () => poll.tick()
 
 // --- Desktop notifications --------------------------------------------------
 // Browsers only allow requesting permission from a real user gesture, so this is
@@ -440,13 +421,11 @@ function openLinkedLead() {
   }
 }
 function listen() {
-  startPolling()
-  document.addEventListener('visibilitychange', onVisibilityChange)
+  poll.start()
   window.addEventListener('focus', pollNow)
 }
 function unlisten() {
-  stopPolling()
-  document.removeEventListener('visibilitychange', onVisibilityChange)
+  poll.stop()
   window.removeEventListener('focus', pollNow)
 }
 
@@ -703,8 +682,5 @@ async function exportCsv() {
   }
 }
 
-async function handleLogout() {
-  await logout()
-  router.push({ name: 'Login' })
-}
+const handleLogout = () => signOutAndLeave(logout, router)
 </script>

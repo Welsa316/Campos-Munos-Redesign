@@ -2,7 +2,7 @@
   <!-- The callback reminders on one caller or lead: when, for whom, the
        note, and Edit / Done / Cancel; Remind me adds one. Each change waits
        for the server before the list shows it. -->
-  <section v-if="!compact || canSet || list.length" :aria-labelledby="`${uid}-h`" class="font-ui">
+  <section v-if="!compact || canSet || list.length" ref="box" :aria-labelledby="`${uid}-h`" class="font-ui">
     <div class="flex items-center gap-2">
       <h3 :id="`${uid}-h`" :class="compact && !list.length && !form ? 'sr-only' : 'fr-label flex-1'">Reminders</h3>
       <button v-if="canSet && !form" type="button" data-reminder-trigger @click="openForm(null)" ref="addBtn"
@@ -23,7 +23,7 @@
               <p v-if="deliveryText(r)" class="mt-1 text-[12px]" :class="deliveryProblem(r) ? 'text-brand-red' : 'text-gray-500'">{{ deliveryText(r) }}</p>
             </div>
             <div v-if="canSet" class="flex items-center gap-1.5">
-              <button type="button" @click="openForm(r)" class="fr-btn fr-quiet" :aria-label="`Change the reminder due ${dueLine(r, now)}`"><FaIcon name="pen" />Edit</button>
+              <button type="button" @click="openForm(r)" :data-reminder-edit="r.id" class="fr-btn fr-quiet" :aria-label="`Change the reminder due ${dueLine(r, now)}`"><FaIcon name="pen" />Edit</button>
               <button type="button" @click="finish(r, 'complete')" :disabled="busyId === r.id" class="fr-btn fr-quiet" :aria-label="`Mark the reminder due ${dueLine(r, now)} done`"><FaIcon name="check" />Done</button>
               <button type="button" @click="finish(r, 'cancel')" :disabled="busyId === r.id" class="fr-btn fr-quiet" :aria-label="`Cancel the reminder due ${dueLine(r, now)}`"><FaIcon name="xmark" />Cancel</button>
             </div>
@@ -61,6 +61,7 @@ const props = defineProps({
 const emit = defineEmits(['changed'])
 const uid = `fr-${useId()}`
 const addBtn = ref(null)
+const box = ref(null)
 
 const own = ref([])
 const loading = ref(false)
@@ -95,15 +96,26 @@ onMounted(() => {
 onBeforeUnmount(() => clearInterval(tick))
 
 function openForm(r) { error.value = ''; form.value = { reminder: r } }
+// When the form closes, focus goes back to what opened it: the row's Edit
+// for a reminder being changed, Remind me for a new one (or when that row
+// is gone).
+function focusBack(id) {
+  nextTick(() => {
+    const row = id != null ? box.value?.querySelector(`[data-reminder-edit="${id}"]`) : null
+    ;(row || addBtn.value)?.focus({ preventScroll: true })
+  })
+}
 function closeForm() {
+  const id = form.value?.reminder?.id
   form.value = null
-  nextTick(() => addBtn.value?.focus())
+  focusBack(id)
 }
 async function afterSave(r, { created }) {
+  const id = form.value?.reminder?.id
   form.value = null
   toast({ text: created ? `Reminder set for ${formatWhen(r)}.` : `Reminder changed to ${formatWhen(r)}.` })
   await refresh()
-  nextTick(() => addBtn.value?.focus())
+  focusBack(id)
 }
 const formatWhen = (r) => dueLine(r, Date.now()).replace(/^Due now$/, 'now')
 
@@ -115,6 +127,8 @@ async function finish(r, how) {
     await (how === 'complete' ? remindersApi.complete(r.id, r.version) : remindersApi.cancel(r.id, r.version))
     toast({ text: how === 'complete' ? 'Reminder done.' : 'Reminder cancelled.' })
     await refresh()
+    // Its row went, with the button that had focus.
+    focusBack(null)
   } catch (e) {
     error.value = e.code === 'conflict' ? 'Someone else changed this reminder meanwhile. Check it and try again.' : e.message
     await refresh()

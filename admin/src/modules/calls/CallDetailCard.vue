@@ -6,10 +6,10 @@
        keeps its scroll position. -->
   <Teleport to="body">
     <Transition name="card-backdrop">
-      <div v-if="call" class="fixed inset-0 z-[190] scrim" aria-hidden="true" @click="close"></div>
+      <div v-if="call" class="fixed inset-0 z-(--z-scrim) scrim" aria-hidden="true" @click="close"></div>
     </Transition>
     <Transition name="card" @after-enter="focusHeading">
-      <div v-if="call" class="fixed inset-x-0 bottom-0 z-[200] flex justify-center pointer-events-none sm:inset-0 sm:items-center sm:p-6"
+      <div v-if="call" class="fixed inset-x-0 bottom-0 z-(--z-dialog) flex justify-center pointer-events-none sm:inset-0 sm:items-center sm:p-6"
         @keydown.tab="trapFocus">
         <section ref="cardRef" role="dialog" aria-modal="true" :aria-labelledby="`call-card-title-${call.id}`"
           class="call-card pointer-events-auto relative w-full sm:max-w-[640px] max-h-[88dvh] sm:max-h-[min(760px,calc(100dvh-3rem))] overflow-y-auto overscroll-contain bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl ring-1 ring-gray-200 font-ui pb-[env(safe-area-inset-bottom)] sm:pb-0">

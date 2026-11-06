@@ -1,29 +1,6 @@
 <template>
   <div class="h-dvh flex flex-col bg-brand-surface overflow-hidden">
-    <!-- Same shell as the other sections: white bar, logo, title, actions. -->
-    <header class="nav-chrome h-16 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 gap-3 z-10">
-      <div class="flex items-center gap-3 sm:gap-4 min-w-0">
-        <img :src="LOGO_SRC" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
-        <div class="w-px h-8 bg-gray-200 hidden sm:block" aria-hidden="true"></div>
-        <h1 class="font-heading text-lg text-brand-navy tracking-tight">Integrations</h1>
-      </div>
-      <div class="ml-auto flex items-center gap-1 sm:gap-3">
-        <SectionLinks current="integrations" />
-        <span class="text-xs text-gray-500 font-ui hidden lg:inline">{{ adminEmail }}</span>
-        <button @click="showChangePassword = true" aria-label="Change password" title="Change password"
-          class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors">
-          <i class="fa-solid fa-key text-xs" aria-hidden="true"></i>
-          <span class="hidden lg:inline">Password</span>
-        </button>
-        <button @click="handleLogout" aria-label="Sign out"
-          class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-gray-500 hover:text-brand-red hover:bg-red-50 text-sm font-ui font-medium transition-colors">
-          <i class="fa-solid fa-arrow-right-from-bracket text-xs" aria-hidden="true"></i>
-          <span class="hidden sm:inline">Sign Out</span>
-        </button>
-      </div>
-    </header>
-
-    <ChangePasswordModal :visible="showChangePassword" @close="showChangePassword = false" />
+    <PortalHeader title="Integrations" current="integrations" label-at="xl" actions-label-at="lg" show-email :notifications="false" />
 
     <div class="flex-1 overflow-y-auto">
       <div class="max-w-[880px] mx-auto px-4 sm:px-6 py-6 space-y-5">
@@ -169,19 +146,15 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { LOGO_SRC } from '../../data/brand.js'
 import { useRoute, useRouter } from 'vue-router'
-import { useAuth } from '../../composables/useAuth.js'
 import { useApi } from '../../composables/useApi.js'
-import SectionLinks from '../../components/portal/SectionLinks.vue'
-import ChangePasswordModal from '../../components/messages/ChangePasswordModal.vue'
+import PortalHeader from '../../components/portal/PortalHeader.vue'
 import FaIcon from '../../components/FaIcon.vue'
 import { vAlertFocus } from '../../directives/alertFocus.js'
 import { inDesktopApp } from '../../utils/desktop.js'
 
 const route = useRoute()
 const router = useRouter()
-const { adminEmail, logout } = useAuth()
 const { get, post, del } = useApi()
 const desktop = inDesktopApp()
 
@@ -191,7 +164,6 @@ const busy = ref(null) // which action is running; null when idle (an empty stri
 const error = ref('')
 const banner = ref(null)
 const confirmDisconnect = ref(false)
-const showChangePassword = ref(false)
 
 const conn = computed(() => data.value?.connection || null)
 
@@ -311,9 +283,6 @@ async function disconnectNow() {
   }
 }
 
-async function handleLogout() {
-  if (await logout()) router.push({ name: 'Login' })
-}
 
 onMounted(async () => {
   const outcome = typeof route.query.ringcentral === 'string' ? route.query.ringcentral : null

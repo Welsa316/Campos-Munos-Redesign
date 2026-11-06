@@ -1,29 +1,6 @@
 <template>
   <div class="h-dvh flex flex-col bg-brand-surface overflow-hidden">
-    <!-- Same shell as the lead inbox: white bar, logo, title, view toggle, actions. -->
-    <header class="nav-chrome h-16 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 gap-3 z-10">
-      <div class="flex items-center gap-3 sm:gap-4 min-w-0">
-        <img :src="LOGO_SRC" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
-        <div class="w-px h-8 bg-gray-200 hidden sm:block" aria-hidden="true"></div>
-        <h1 class="font-heading text-lg text-brand-navy tracking-tight">WhatsApp</h1>
-      </div>
-      <div class="ml-auto flex items-center gap-1 sm:gap-3">
-        <SectionLinks current="whatsapp" />
-        <span class="text-xs text-gray-500 font-ui hidden lg:inline">{{ adminEmail }}</span>
-        <button @click="showChangePassword = true" aria-label="Change password" title="Change password"
-          class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors">
-          <i class="fa-solid fa-key text-xs" aria-hidden="true"></i>
-          <span class="hidden lg:inline">Password</span>
-        </button>
-        <button @click="handleLogout" aria-label="Sign out"
-          class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-gray-500 hover:text-brand-red hover:bg-red-50 text-sm font-ui font-medium transition-colors">
-          <i class="fa-solid fa-arrow-right-from-bracket text-xs" aria-hidden="true"></i>
-          <span class="hidden sm:inline">Sign Out</span>
-        </button>
-      </div>
-    </header>
-
-    <ChangePasswordModal :visible="showChangePassword" @close="showChangePassword = false" />
+    <PortalHeader title="WhatsApp" current="whatsapp" label-at="xl" actions-label-at="lg" show-email :notifications="false" />
 
     <!-- What sending means right now, before anyone types. -->
     <p v-if="status && !status.sendingEnabled" class="flex-shrink-0 px-4 sm:px-6 py-2 text-xs font-ui text-amber-900 bg-amber-50 border-b border-amber-100">
@@ -234,27 +211,19 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
-import { LOGO_SRC } from '../../data/brand.js'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../../composables/useAuth.js'
-import { useApi, rawFetch, goToLogin, latestOnly } from '../../composables/useApi.js'
+import { useApi, latestOnly } from '../../composables/useApi.js'
 import { formatPhone } from '../../utils/phone.js'
-import SectionLinks from '../../components/portal/SectionLinks.vue'
+import PortalHeader from '../../components/portal/PortalHeader.vue'
+import { useVisiblePoll } from '../../composables/useVisiblePoll.js'
 import FaIcon from '../../components/FaIcon.vue'
-import ChangePasswordModal from '../../components/messages/ChangePasswordModal.vue'
 import { toDate, isComposing } from '../../utils/text.js'
 
 const route = useRoute()
 const router = useRouter()
-const { adminEmail, logout, can } = useAuth()
-const { get, post } = useApi()
-const put = async (path, body) => {
-  const res = await rawFetch(path, { method: 'PUT', body: JSON.stringify(body) })
-  if (res.status === 401) { goToLogin(); throw new Error('Unauthorized') }
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error || 'Request failed')
-  return data
-}
+const { can } = useAuth()
+const { get, post, put } = useApi()
 
 const VIEWS = [
   { key: 'open', label: 'Open' },
@@ -290,7 +259,6 @@ const sendError = ref('')
 const threadEl = ref(null)
 // "New message from …" for screen readers when the open thread gets one.
 const arrivalNote = ref('')
-const showChangePassword = ref(false)
 // One key per message being written: a retried or double-clicked send is
 // recognised by the server and goes out once.
 let clientKey = crypto.randomUUID()
@@ -443,14 +411,7 @@ function fullTime(value) {
 
 // --- live updates: same polling as the lead inbox -------------------------------
 const POLL_INTERVAL_MS = 15000
-let timer = null
-let inFlight = false
-async function poll() {
-  if (inFlight || document.hidden) return
-  inFlight = true
-  try { await loadList({ silent: true }); await loadDetail({ silent: true }) } finally { inFlight = false }
-}
-const onVisible = () => { if (!document.hidden) poll() }
+const poll = useVisiblePoll(async () => { await loadList({ silent: true }); await loadDetail({ silent: true }) }, POLL_INTERVAL_MS)
 
 watch(() => route.params.id, (id) => {
   // Kept alive: leaving for another section is not closing the thread.
@@ -463,16 +424,8 @@ const active = ref(true)
 const setTitle = () => { document.title = `${title.value ? title.value + ' · ' : ''}WhatsApp | Campos Muños Law` }
 watch(title, () => { if (active.value) setTitle() }, { immediate: true })
 
-function listen() {
-  unlisten()
-  timer = setInterval(poll, POLL_INTERVAL_MS)
-  document.addEventListener('visibilitychange', onVisible)
-}
-function unlisten() {
-  clearInterval(timer)
-  timer = null
-  document.removeEventListener('visibilitychange', onVisible)
-}
+const listen = () => poll.start()
+const unlisten = () => poll.stop()
 
 onMounted(async () => {
   get('/api/whatsapp/status').then((s) => { status.value = s }).catch(() => {})
@@ -492,13 +445,9 @@ onActivated(() => {
   const n = route.params.id ? Number(route.params.id) : null
   if (n !== selectedId.value) { if (n) select(n); else closeThread() }
   listen()
-  poll()
+  poll.tick()
 })
 onDeactivated(() => { active.value = false; unlisten() })
 onUnmounted(unlisten)
 
-async function handleLogout() {
-  await logout()
-  router.push({ name: 'Login' })
-}
 </script>
