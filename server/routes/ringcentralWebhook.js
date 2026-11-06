@@ -50,7 +50,7 @@ export function createRingCentralWebhookRouter({ db = null } = {}) {
       const { stored, sessionId } = await storeNotification(pool(), req.body)
       res.status(200).type('application/json').end()
       if (stored && sessionId) {
-        classifyStored(pool(), { keys: [sessionId] }).catch((err) => req.log?.warn({ err: { name: err?.name, code: err?.code } }, 'Call re-read after live event failed'))
+        classifyStored(pool(), { keys: [sessionId], onlyKeys: true }).catch((err) => req.log?.warn({ err: { name: err?.name, code: err?.code } }, 'Call re-read after live event failed'))
       }
     } catch (err) {
       req.log?.error({ err }, 'RingCentral webhook error')
