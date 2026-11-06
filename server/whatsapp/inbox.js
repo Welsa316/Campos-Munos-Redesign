@@ -44,18 +44,6 @@ const INBOUND_TEXT_SQL = `COALESCE(e.payload->'text'->>'body', e.payload->'butto
 const AT_SQL = 'COALESCE(e.event_timestamp, e.received_at)'
 const NAME_SQL = (alias) => `COALESCE(NULLIF(TRIM(${alias}.display_name), ''), split_part(${alias}.email, '@', 1))`
 
-/**
- * Every number that has written to the firm gets a conversation row. Cheap
- * and idempotent, so it runs before each list instead of on the webhook path.
- */
-export async function syncConversations(db) {
-  await db.query(
-    `INSERT INTO wa_conversations (wa_id)
-     SELECT DISTINCT from_wa_id FROM whatsapp_events WHERE kind = 'message' AND from_wa_id IS NOT NULL
-     ON CONFLICT (wa_id) DO NOTHING`
-  )
-}
-
 const VIEWS = {
   open: "c.status = 'open'",
   mine: "c.status = 'open' AND c.assigned_to = $1",
@@ -63,8 +51,9 @@ const VIEWS = {
   closed: "c.status = 'closed'",
 }
 
+// Every number that has written to the firm has a conversation row, created
+// when its first message is stored (db/whatsappEvents.js). Listing only reads.
 export async function listConversations(db, { view = 'open', accountId }) {
-  await syncConversations(db)
   const where = VIEWS[view] || VIEWS.open
   const { rows } = await db.query(
     `WITH timeline AS (
@@ -361,4 +350,4 @@ export async function setStatus(db, conversationId, status, { account }) {
   await audit(db, { actorId: account.id, action: `whatsapp.${status}`, entityType: 'conversation', entityId: conversationId })
 }
 
-export default { listConversations, getConversation, sendReply, addNote, assign, setStatus, listAssignees, replyBlocker, syncConversations }
+export default { listConversations, getConversation, sendReply, addNote, assign, setStatus, listAssignees, replyBlocker }

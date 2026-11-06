@@ -274,3 +274,19 @@ test('activity log and team management', { skip: SKIP }, async (t) => {
     assert.equal(r[0].actor_email, 'yoletty@example.test')
   })
 })
+
+test('rows older than 400 days are purged; newer ones stay', { skip: SKIP }, async () => {
+  const { purgeActivity } = await import('./activity/recorder.js')
+  const now = new Date('2026-06-01T12:00:00Z')
+  const day = 24 * 60 * 60 * 1000
+  const insert = (label, ageDays) => db.query(
+    "INSERT INTO staff_activity (action, label, outcome, created_at) VALUES ('purge.check', $1, 'ok', $2)",
+    [label, new Date(now.getTime() - ageDays * day)])
+  await insert('old', 401)
+  await insert('older', 900)
+  await insert('kept', 399)
+  await insert('recent', 1)
+  assert.equal(await purgeActivity(db, now), 2)
+  const left = (await db.query("SELECT label FROM staff_activity WHERE action = 'purge.check' ORDER BY label")).rows.map((r) => r.label)
+  assert.deepEqual(left, ['kept', 'recent'])
+})

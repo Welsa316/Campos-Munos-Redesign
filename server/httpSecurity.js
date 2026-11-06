@@ -17,6 +17,7 @@
 //      "fire and forget" POST, which CORS alone cannot.
 import net from 'net'
 import { safeEqual } from './utils/whatsapp.js'
+import { isProductionEnv } from './utils/productionEnv.js'
 
 export const CLIENT_IP_HEADER = 'x-cm-client-ip'
 export const PROXY_SECRET_HEADER = 'x-cm-proxy-secret'
@@ -35,8 +36,9 @@ export function parseOrigins(value) {
  *   ADMIN_ORIGINS  — credentialed (portal). FRONTEND_URL is folded in, which
  *                    keeps the current single-origin configuration working.
  *   PUBLIC_ORIGINS — website origins, CORS without credentials.
- * In development with nothing configured, any origin is allowed with
- * credentials, as before.
+ * With NODE_ENV=development and nothing configured, any origin is allowed
+ * with credentials. Not for an unset NODE_ENV: that is how a misconfigured
+ * server looks, and it must not fall open.
  */
 export function resolveOrigins(env = process.env) {
   const pub = parseOrigins(env.PUBLIC_ORIGINS)
@@ -47,8 +49,7 @@ export function resolveOrigins(env = process.env) {
   // hand every script on the public site the staff session.
   const conflicts = wanted.filter((o) => pub.includes(o))
   const admin = wanted.filter((o) => !pub.includes(o))
-  const isProduction = env.NODE_ENV === 'production'
-  const openDev = !isProduction && admin.length === 0 && pub.length === 0
+  const openDev = env.NODE_ENV === 'development' && !isProductionEnv(env) && admin.length === 0 && pub.length === 0
   return { admin, public: pub, openDev, conflicts }
 }
 
@@ -141,7 +142,7 @@ export const clientKey = (req) => req.clientIp || req.ip
 
 /** Cookie options for the staff session, shared by login/logout/rotation. */
 export function sessionCookieOptions(env = process.env) {
-  const isProduction = env.NODE_ENV === 'production'
+  const isProduction = isProductionEnv(env)
   // Lax by default: portal and API are same-site, so the cookie travels, and
   // nothing cross-site can carry it. 'none' exists only for staging hosts on
   // *.up.railway.app, which is a public suffix (portal and API there are
