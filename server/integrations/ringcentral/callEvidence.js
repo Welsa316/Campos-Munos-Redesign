@@ -267,7 +267,6 @@ export function classifyCall(records, { direction, directory = null, events = nu
   const notAnsweredBy = attempts.filter((s) => isPerson(s) && NOT_ANSWERED_REASONS.has(s.reason))
   // Someone is charged with not answering only when the call is proven not
   // answered by anyone; on a call the evidence cannot settle, nobody is.
-  const PROVEN_UNANSWERED = ['not_answered', 'caller_hung_up', 'ended_before_ringing', 'voicemail']
   // Live events: whose phones were being offered the call, and whether any
   // person answered on one. "Seen to the end" is what lets the absence of a
   // ring mean something: every party observed had ended.
@@ -280,7 +279,7 @@ export function classifyCall(records, { direction, directory = null, events = nu
   }
   const done = (classification, extra = {}) => ({
     ...out, live, classification, facts, steps, offeredTo, gaps: [...gaps],
-    notAnsweredBy: PROVEN_UNANSWERED.includes(classification) ? dedupePeople(notAnsweredBy) : [],
+    notAnsweredBy: UNANSWERED_CLASSES.includes(classification) ? dedupePeople(notAnsweredBy) : [],
     ...extra,
   })
 

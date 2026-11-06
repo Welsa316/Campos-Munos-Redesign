@@ -215,7 +215,7 @@ import CallDialog from './CallDialog.vue'
 import ExcludeCallDialog from './ExcludeCallDialog.vue'
 import { exclusionLabel } from './exclusionReasons.js'
 import CallDetails from './CallDetails.vue'
-import { statusLine as inboundStatus } from './callEvidenceText.js'
+import { statusLine as inboundStatus, CLASS_LABEL } from './callEvidenceText.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -232,8 +232,13 @@ const RANGES = [
 // The Home card opens /calls?range=month&filter=unanswered&hours=business.
 const q0 = route.query
 const range = ref(['today', 'yesterday', 'week', 'month'].includes(q0.range) ? q0.range : 'today')
-const FILTERS = ['all', 'answered', 'missed', 'hung_up', 'ended', 'voicemail', 'unconfirmed', 'system', 'unanswered', 'outgoing', 'not_returned', 'excluded']
-const filter = ref(FILTERS.includes(q0.filter) ? q0.filter : 'all')
+// The filters and the unanswered set come from the API with each list
+// (server: OUTCOME_FILTERS, UNANSWERED_CLASSES), so the page never keeps its
+// own copy to fall out of step. An unknown filter in a link is reset once
+// the first answer says which ones exist.
+const outcomeFilters = ref([])
+const unansweredClasses = ref([])
+const filter = ref(typeof q0.filter === 'string' && /^[a-z_]{1,20}$/.test(q0.filter) ? q0.filter : 'all')
 // Calls offered to one person (a RingCentral extension id), and who can be picked.
 const personFilter = ref(typeof q0.person === 'string' && /^\d+$/.test(q0.person) ? q0.person : '')
 const people = ref([])
@@ -332,6 +337,11 @@ async function load({ quiet = false } = {}) {
     const data = r.value
     calls.value = data.calls
     people.value = data.people || []
+    if (Array.isArray(data.outcomeFilters)) {
+      outcomeFilters.value = data.outcomeFilters
+      if (!data.outcomeFilters.includes(filter.value)) filter.value = 'all'
+    }
+    if (Array.isArray(data.unansweredClasses)) unansweredClasses.value = data.unansweredClasses
     counts.value = data.counts || {}
     truncated.value = data.truncated
     applyStatus(data)
@@ -404,13 +414,13 @@ const tiles = computed(() => [
 ])
 
 const LOOK = {
-  answered: { icon: 'phone', label: 'Answered', badge: 'bg-green-100 text-green-700', text: 'text-gray-700' },
-  not_answered: { icon: 'phone-slash', label: 'Not answered', badge: 'bg-red-100 text-brand-red', text: 'text-brand-red' },
-  caller_hung_up: { icon: 'phone-slash', label: 'Caller hung up', badge: 'bg-orange-100 text-orange-800', text: 'text-orange-800' },
-  ended_before_ringing: { icon: 'phone-slash', label: 'Ended before anyone was rung', badge: 'bg-orange-100 text-orange-800', text: 'text-orange-800' },
-  voicemail: { icon: 'voicemail', label: 'Voicemail', badge: 'bg-amber-100 text-amber-700', text: 'text-amber-800' },
-  system: { icon: 'ban', label: 'Handled by the phone system', badge: 'bg-gray-100 text-gray-600', text: 'text-gray-600' },
-  unknown: { icon: 'circle-question', label: 'Not confirmed', badge: 'bg-gray-100 text-gray-600', text: 'text-gray-700' },
+  answered: { icon: 'phone', label: CLASS_LABEL.answered, badge: 'bg-green-100 text-green-700', text: 'text-gray-700' },
+  not_answered: { icon: 'phone-slash', label: CLASS_LABEL.not_answered, badge: 'bg-red-100 text-brand-red', text: 'text-brand-red' },
+  caller_hung_up: { icon: 'phone-slash', label: CLASS_LABEL.caller_hung_up, badge: 'bg-orange-100 text-orange-800', text: 'text-orange-800' },
+  ended_before_ringing: { icon: 'phone-slash', label: CLASS_LABEL.ended_before_ringing, badge: 'bg-orange-100 text-orange-800', text: 'text-orange-800' },
+  voicemail: { icon: 'voicemail', label: CLASS_LABEL.voicemail, badge: 'bg-amber-100 text-amber-700', text: 'text-amber-800' },
+  system: { icon: 'ban', label: CLASS_LABEL.system, badge: 'bg-gray-100 text-gray-600', text: 'text-gray-600' },
+  unknown: { icon: 'circle-question', label: CLASS_LABEL.unknown, badge: 'bg-gray-100 text-gray-600', text: 'text-gray-700' },
   connected: { icon: 'arrow-turn-up', label: 'Outgoing', badge: 'bg-brand-navy/10 text-brand-navy', text: 'text-gray-700' },
   no_answer: { icon: 'arrow-turn-up', label: 'Outgoing, no answer', badge: 'bg-gray-100 text-gray-500', text: 'text-gray-600' },
   other: { icon: 'phone', label: 'Other', badge: 'bg-gray-100 text-gray-500', text: 'text-gray-600' },
@@ -433,8 +443,7 @@ function rowStatus(c) {
   return inboundStatus(c)
 }
 // Proven not answered by anyone: these need a callback.
-const UNANSWERED = ['not_answered', 'caller_hung_up', 'ended_before_ringing', 'voicemail']
-const isUnanswered = (c) => c.direction === 'inbound' && UNANSWERED.includes(c.classification)
+const isUnanswered = (c) => c.direction === 'inbound' && unansweredClasses.value.includes(c.classification)
 // Anything not proven answered can be marked as needing no callback.
 // A call the phone system ended (a blocked number) needs no callback anyway.
 const canMark = (c) => c.direction === 'inbound' && !['answered', 'system'].includes(c.classification)

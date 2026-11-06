@@ -349,6 +349,9 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
       incoming: 6, answered: 1, missed: 2, hung_up: 1, ended: 0, voicemail: 1, unconfirmed: 1, system: 0, outgoing: 1, not_returned: 2, excluded: 0,
     })
     assert.deepEqual(calls.map((c) => c.startedAt), [...calls.map((c) => c.startedAt)].sort().reverse(), 'newest first')
+    // The page takes its vocabulary from here instead of keeping copies.
+    assert.deepEqual(r.json.unansweredClasses, ['not_answered', 'caller_hung_up', 'ended_before_ringing', 'voicemail'])
+    assert.ok(r.json.outcomeFilters.includes('unconfirmed') && r.json.outcomeFilters.includes('not_returned'))
   })
 
   await t.test('filters and search', async () => {

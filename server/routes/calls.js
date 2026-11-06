@@ -20,6 +20,7 @@ import requireCapability, { can } from '../middleware/requireCapability.js'
 import { loadRingCentralConfig } from '../integrations/ringcentral/config.js'
 import { getConnectionStatus } from '../integrations/ringcentral/service.js'
 import { queryCalls, syncCallLog, getSyncState, summarizeMissed, OUTCOME_FILTERS, callEvidence, listPeople } from '../integrations/ringcentral/callLog.js'
+import { UNANSWERED_CLASSES } from '../integrations/ringcentral/callEvidence.js'
 import { excludeCall, includeCall, CallExclusionError } from '../integrations/ringcentral/callExclusions.js'
 import { placeRingOut, ringOutStatus, cancelRingOut, getMyPhone, setMyPhone, RingOutError } from '../integrations/ringcentral/ringout.js'
 
@@ -66,7 +67,9 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
       // A RingCentral extension id (digits): calls proven offered to that person.
       const person = typeof req.query.person === 'string' && /^\d{1,20}$/.test(req.query.person) ? req.query.person : null
       const result = await queryCalls(pool(), { from, to, outcome, q, limit: req.query.limit, businessHours, person })
-      res.json({ ...result, people: await listPeople(pool()), ...(await status(req)) })
+      // The vocabulary the page works with comes from here, not from copies in the page.
+      const vocabulary = { unansweredClasses: UNANSWERED_CLASSES, outcomeFilters: OUTCOME_FILTERS }
+      res.json({ ...result, people: await listPeople(pool()), ...vocabulary, ...(await status(req)) })
     } catch (err) {
       req.log?.error({ err }, 'List calls error')
       res.status(500).json({ error: 'Internal server error' })
