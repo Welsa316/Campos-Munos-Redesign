@@ -43,11 +43,39 @@ function isPortalUrl(url, portalOrigin) {
   return !!u && u.origin === portalOrigin
 }
 
+// Hosts on this computer or the office network. A link in the portal has no
+// business sending the browser there, where it could reach a router's admin
+// page or a local service.
+function isPrivateHost(hostname) {
+  const h = hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '')
+  if (h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h.endsWith('.internal') || h.endsWith('.home.arpa')) return true
+  const v4 = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(h)
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])]
+    return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127)
+  }
+  if (h.includes(':')) {
+    // ::1, unspecified, link-local fe80::/10, unique-local fc00::/7, and IPv4-mapped ::ffff:a.b.c.d
+    if (h === '::1' || h === '::') return true
+    if (/^fe[89ab]/.test(h) || /^f[cd]/.test(h)) return true
+    if (h.startsWith('::ffff:')) return true
+  }
+  return false
+}
+
+// mailto: may carry attachments that some mail apps honour ("attach=" a
+// file from this computer to a message the user then sends).
+const MAILTO_DROP = new Set(['attach', 'attachment', 'file'])
+
 /** The URL if it is safe to open with the OS handler, else null. */
 function externalUrl(url) {
   const u = parse(url)
   if (!u || !EXTERNAL_SCHEMES.has(u.protocol)) return null
-  if (u.protocol === 'https:' && !u.hostname) return null
+  if (u.protocol === 'https:' && (!u.hostname || isPrivateHost(u.hostname))) return null
+  if (u.protocol === 'mailto:' && u.search) {
+    const kept = [...new URLSearchParams(u.search)].filter(([k]) => !MAILTO_DROP.has(k.toLowerCase()))
+    u.search = kept.length ? new URLSearchParams(kept).toString() : ''
+  }
   return u.href
 }
 
@@ -62,7 +90,8 @@ function portalPathUrl(path, portalOrigin) {
   // URL parsing strips tabs and newlines, which could turn "/\t/x" into "//x".
   if (/[\u0000-\u001f\u007f]/.test(path)) return null
   const u = parse(portalOrigin + path)
-  if (!u || u.origin !== portalOrigin) return null
+  // "/./" + "/x" and the like only collapse to "//x" once parsed.
+  if (!u || u.origin !== portalOrigin || u.pathname.startsWith('//')) return null
   return u.href
 }
 
