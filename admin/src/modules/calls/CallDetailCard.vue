@@ -120,6 +120,8 @@ import { statusLine } from './callEvidenceText.js'
 import { followUpLine, followUpDetail, outboundLine, when } from './callsInbox.js'
 import { look as lookOf, phone, durationText } from './callLook.js'
 import { exclusionLabel } from './exclusionReasons.js'
+import { toDate } from '../../utils/text.js'
+import { FIRM_TIME_ZONE } from '../../utils/firmTime.js'
 
 const props = defineProps({
   call: { type: Object, default: null },
@@ -151,7 +153,8 @@ const exclusionDetail = computed(() => {
   const parts = []
   if (e.note) parts.push(e.note)
   if (e.scope === 'number') parts.push('Every call from this number')
-  parts.push(`Marked by ${e.by || 'a former user'}, ${new Date(e.at).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' })}`)
+  const at = toDate(e.at)
+  parts.push(`Marked by ${e.by || 'a former user'}${at ? `, ${at.toLocaleDateString('en-US', { timeZone: FIRM_TIME_ZONE, month: 'short', day: 'numeric' })}` : ''}`)
   return parts.join(' · ')
 })
 const BOX = { open: 'bg-amber-50 ring-1 ring-amber-200', done: 'bg-green-50 ring-1 ring-green-200', quiet: 'bg-gray-50 ring-1 ring-gray-200' }
