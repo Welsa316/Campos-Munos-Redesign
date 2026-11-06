@@ -54,7 +54,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
       monday = createMondayProvider(env)
     } catch (err) {
       mondayError = err.message
-      throw Object.assign(new SyncError(`monday.com is misconfigured: ${err.message}`, 503, 'monday_config'), {})
+      throw new SyncError(`monday.com is misconfigured: ${err.message}`, 503, 'monday_config')
     }
     return monday
   }

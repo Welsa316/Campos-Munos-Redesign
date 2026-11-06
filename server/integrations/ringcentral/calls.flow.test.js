@@ -564,12 +564,12 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
   })
 
   await t.test('calls imported before their steps were kept are read again once, then the window is back to normal', async () => {
-    await db.query(`UPDATE rc_calls SET legs = NULL`)
+    await db.query(`UPDATE rc_calls SET rc_raw = rc_raw - 'legs'`)
     await db.query(`UPDATE rc_call_sync_state SET legs_backfilled_at = NULL, window_to = $1`, [clock.t])
     rc.requests = []
     await sync()
     assert.equal(new Date(rc.requests[0].query.dateFrom).getTime(), clock.t.getTime() - 14 * 24 * 60 * 60 * 1000, 'the whole backfill period')
-    assert.equal((await db.query(`SELECT jsonb_array_length(legs) AS n FROM rc_calls WHERE rc_record_id = 'c4'`)).rows[0].n, 4)
+    assert.equal((await db.query(`SELECT jsonb_array_length(rc_raw->'legs') AS n FROM rc_calls WHERE rc_record_id = 'c4'`)).rows[0].n, 4)
     clock.t = new Date(clock.t.getTime() + 60 * 1000)
     rc.requests = []
     const state = (await db.query('SELECT window_to, legs_backfilled_at FROM rc_call_sync_state')).rows[0]

@@ -272,8 +272,3 @@ export async function checkSubscription(db, config, { token, now = new Date(), d
 export async function purgeOldEvents(db, now = new Date()) {
   return (await db.query(`DELETE FROM rc_telephony_events WHERE received_at < $1::timestamptz - make_interval(days => $2)`, [now, RETENTION_DAYS])).rowCount
 }
-
-export default {
-  EVENT_FILTER, WEBHOOK_PATH, webhookAddress, storeNotification, isTrustedDelivery, loadEvents,
-  subscriptionStatus, registerSubscription, removeSubscription, checkSubscription, purgeOldEvents, noteSubscriptionError,
-}

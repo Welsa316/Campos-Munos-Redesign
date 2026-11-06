@@ -235,5 +235,3 @@ export async function cancelRingOut(db, config, { id, accountId }, deps = {}) {
   await audit(db, { actorId: accountId, action: 'calls.ringout_cancelled', entityType: 'ringout', entityId: row.id, details: {} })
   return { id: Number(row.id), to: row.to_number, phase: 'cancelled' }
 }
-
-export default { normalizeDialNumber, ringOutPhase, placeRingOut, ringOutStatus, cancelRingOut, getMyPhone, setMyPhone }
