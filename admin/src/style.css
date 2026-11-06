@@ -32,6 +32,10 @@
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
   }
+  /* Headings break into even lines rather than leaving one word alone. */
+  h1, h2, h3, h4 {
+    text-wrap: balance;
+  }
 
   a {
     color: inherit;
@@ -89,12 +93,12 @@
   width: 100%;
   padding: 1rem 1.25rem;
   background: var(--input-bg);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--input-border);
   border-radius: 0.75rem;
   color: var(--text-primary);
   font-family: var(--font-ui);
   font-size: 1rem;
-  transition: all 0.3s;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
 .form-input:focus {
   outline: none;
@@ -130,6 +134,40 @@ select:focus-visible {
 #main:focus,
 [data-route-focus]:focus {
   outline: none;
+}
+
+/* A field's edge is how it is found, so it must be seen (3:1, the
+   input-border token). Fields draw it with the grey border classes; inside a
+   field those greys point at the token. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+select,
+textarea {
+  --color-gray-200: var(--input-border);
+  --color-gray-300: var(--input-border);
+}
+
+/* Phones zoom into any field set under 16px when it takes focus. Wherever
+   the pointer is a finger, fields are 16px; desktop keeps its compact sizes. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Behind a dialog and behind a slide-over panel (tokens, so a dark theme
+   gets a scrim it can see). */
+.scrim { background-color: var(--scrim); }
+.scrim-soft { background-color: var(--scrim-soft); }
+
+/* Full-screen dialogs keep clear of a phone's notch and home bar. */
+.dialog-frame {
+  padding:
+    max(1rem, env(safe-area-inset-top))
+    max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom))
+    max(1rem, env(safe-area-inset-left));
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -267,8 +305,15 @@ select:focus-visible {
 .nav-chrome .hover\:text-brand-red:hover { color: var(--sidebar-danger); }
 .nav-chrome .border-brand-navy { border-color: var(--icon-sidebar-active); }
 .nav-chrome [aria-current="page"] { color: var(--text-on-sidebar); }
-/* The firm's navy logo turns light on the navigation colour. */
+/* The firm's navy logo turns light on the navigation colour, and on the page
+   itself in a dark theme (sign-in, not found). */
 .nav-chrome img[src$="logo.png"] { filter: brightness(0) invert(1); opacity: 0.92; }
+[data-scheme="dark"] .logo-on-page { filter: brightness(0) invert(1); opacity: 0.92; }
+
+/* 4. A shadow on a near-black page is invisible: in a dark theme, menus and
+   dialogs lift by surface (a step lighter) and a hairline instead. */
+[data-scheme="dark"] :is(.shadow-lg, .shadow-xl, .shadow-2xl) { --tw-shadow: 0 0 0 1px var(--border-strong); }
+[data-scheme="dark"] .bg-white:is(.shadow-lg, .shadow-xl, .shadow-2xl) { background-color: var(--surface-elevated); }
 
 @layer components {
 /* Changing theme cross-fades colours only (never layout), ~220 ms. Only
@@ -279,10 +324,12 @@ select:focus-visible {
 }
 
 /* ---------------------------------------------------------------------------
-   Liquid glass (Home cards): a translucent panel of the theme's surface that
-   blurs what lies behind it, with a bright top edge and a soft sheen;
-   .glass-interactive adds a light that follows the pointer. With reduced
-   transparency the panel turns solid.
+   Liquid glass (Home cards): a translucent panel of the theme's surface with
+   a bright top edge and a soft sheen; .glass-interactive adds a light that
+   follows the pointer. The cards sit on a flat page, where a backdrop blur
+   shows nothing and costs a lot (up to eight large surfaces), so only
+   .glass-float, which floats over other content (the Themes panel), blurs.
+   With reduced transparency the panel turns solid.
    --------------------------------------------------------------------------- */
 .glass {
   --glass-fill: var(--surface);
@@ -290,12 +337,14 @@ select:focus-visible {
   background:
     linear-gradient(160deg, var(--glass-sheen) 0%, transparent 42%),
     color-mix(in srgb, var(--glass-fill) var(--glass-amount), transparent);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid var(--glass-edge);
   box-shadow:
     inset 0 1px 0 var(--glass-edge),
     0 12px 32px -14px var(--shadow-color);
+}
+.glass-float {
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
 }
 .glass-rose { --glass-fill: var(--error-soft); --glass-amount: 88%; }
 .glass-navy { --glass-fill: var(--sidebar-bg); --glass-amount: 92%; border-color: color-mix(in srgb, var(--text-on-sidebar) 18%, transparent); }
@@ -312,6 +361,6 @@ select:focus-visible {
   pointer-events: none;
 }
 @media (prefers-reduced-transparency: reduce) {
-  .glass { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--glass-fill); }
+  .glass, .glass-float { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--glass-fill); }
 }
 }

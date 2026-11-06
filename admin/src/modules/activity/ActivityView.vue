@@ -62,7 +62,7 @@
           </div>
 
           <template v-for="day in days" :key="day.key">
-            <h3 class="sticky top-0 z-[1] bg-white/95 backdrop-blur px-4 sm:px-5 py-2 border-b border-gray-100 font-ui text-[10px] uppercase tracking-[0.1em] text-gray-500 font-semibold first:rounded-t-xl">{{ day.label }}</h3>
+            <h3 class="sticky top-0 z-[1] bg-white px-4 sm:px-5 py-2 border-b border-gray-100 font-ui text-[10px] uppercase tracking-[0.1em] text-gray-500 font-semibold first:rounded-t-xl">{{ day.label }}</h3>
             <ol class="divide-y divide-gray-50">
               <li v-for="e in day.items" :key="e.id"
                 class="grid grid-cols-[4.5rem_minmax(0,1fr)] lg:grid-cols-[5.5rem_minmax(0,14rem)_minmax(0,1fr)_auto] gap-x-4 gap-y-1 px-4 sm:px-5 py-3 text-sm">

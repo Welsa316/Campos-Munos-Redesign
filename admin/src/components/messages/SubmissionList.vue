@@ -5,7 +5,7 @@
       <div class="flex items-center justify-between mb-4">
         <h2 class="font-ui font-semibold text-gray-900 text-sm tracking-wide">
           {{ viewMode === 'archived' ? 'Archived' : 'Messages' }}
-          <span v-if="viewMode !== 'archived' && unreadCount > 0" class="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-brand-red text-white text-xs font-bold">
+          <span v-if="viewMode !== 'archived' && unreadCount > 0" class="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-brand-red text-white text-xs font-bold tabular-nums">
             {{ unreadCount }}
           </span>
         </h2>
@@ -21,14 +21,14 @@
           @click="$emit('changeView', 'inbox')"
           :aria-pressed="viewMode === 'inbox'"
           :class="viewMode === 'inbox' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-          class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-all"
+          class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-colors"
         >Inbox</button>
         <button
           type="button"
           @click="$emit('changeView', 'archived')"
           :aria-pressed="viewMode === 'archived'"
           :class="viewMode === 'archived' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-          class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-all"
+          class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-colors"
         >Archived</button>
       </div>
 
@@ -39,14 +39,14 @@
           @click="filter = 'all'"
           :aria-pressed="filter === 'all'"
           :class="filter === 'all' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-          class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-all"
+          class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-colors"
         >All</button>
         <button
           type="button"
           @click="filter = 'unread'"
           :aria-pressed="filter === 'unread'"
           :class="filter === 'unread' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-          class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-all"
+          class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-colors"
         >Unread</button>
       </div>
 
@@ -58,7 +58,7 @@
           type="search"
           placeholder="Search name, email or phone"
           aria-label="Search leads by name, email or phone"
-          class="w-full text-xs font-ui pl-8 pr-8 py-2 rounded-lg bg-brand-surface border border-transparent focus:border-brand-navy/30 focus:bg-white focus:outline-none text-gray-700 transition-colors"
+          class="w-full text-xs font-ui pl-8 pr-8 py-2 rounded-lg bg-brand-surface border border-gray-300 focus:bg-white text-gray-700 transition-colors"
         />
         <button v-if="search" @click="search = ''" aria-label="Clear search"
           class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-700">
@@ -70,7 +70,7 @@
       <div class="mt-3">
         <select v-model="consultationFilter"
           aria-label="Filter by consultation type"
-          class="w-full text-xs font-ui font-medium px-3 py-2 rounded-lg bg-brand-surface border border-transparent focus:border-brand-navy/30 focus:bg-white focus:outline-none text-gray-700 transition-colors">
+          class="w-full text-xs font-ui font-medium px-3 py-2 rounded-lg bg-brand-surface border border-gray-300 focus:bg-white text-gray-700 transition-colors">
           <option value="">All consultation types</option>
           <option v-for="key in CONSULTATION_KEYS" :key="key" :value="key">
             {{ consultationLabel(key) }}
@@ -86,7 +86,7 @@
           @click="statusFilter = ''"
           :aria-pressed="statusFilter === ''"
           :class="statusFilter === '' ? 'bg-brand-navy text-white ring-brand-navy' : 'bg-brand-surface text-gray-600 ring-transparent hover:text-gray-900'"
-          class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap transition-colors"
+          class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap tabular-nums transition-colors"
         >All {{ props.submissions.length }}</button>
         <button
           v-for="st in LEAD_STATUSES"
@@ -96,7 +96,7 @@
           :title="st.hint"
           :aria-pressed="statusFilter === st.key"
           :class="statusFilter === st.key ? 'bg-brand-navy text-white ring-brand-navy' : `${st.pill} hover:brightness-95`"
-          class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap transition-colors"
+          class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap tabular-nums transition-colors"
         >{{ st.label }} {{ statusCounts[st.key] || 0 }}</button>
       </div>
     </div>
@@ -136,7 +136,7 @@
                 <span v-if="sub.source === 'chat'" class="sr-only">Chat session: </span>
                 <span class="truncate">{{ sub.first_name }} {{ sub.last_name }}</span>
               </span>
-              <span class="text-xs text-gray-500 font-ui flex-shrink-0">
+              <span class="text-xs text-gray-500 font-ui flex-shrink-0 tabular-nums">
                 {{ relativeTime(sub.created_at) }}
               </span>
             </div>

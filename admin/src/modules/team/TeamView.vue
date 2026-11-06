@@ -97,7 +97,7 @@
                 <span class="hidden lg:block"><AccessChip :account="a" /></span>
 
                 <p class="col-span-2 lg:col-span-1 text-xs text-gray-600">
-                  <template v-if="a.lastActiveAt"><span class="lg:hidden text-gray-500">Last active </span><span :title="fullTime(a.lastActiveAt)">{{ relative(a.lastActiveAt) }}</span></template>
+                  <template v-if="a.lastActiveAt"><span class="lg:hidden text-gray-500">Last active </span><span :title="fullTime(a.lastActiveAt)" class="tabular-nums">{{ relative(a.lastActiveAt) }}</span></template>
                   <template v-else><span title="Nothing in the activity log yet (the log started with this release)">No activity yet</span></template>
                 </p>
 

@@ -14,7 +14,7 @@
     </button>
 
     <div v-if="open" id="theme-folder-panel" ref="panelRef" role="dialog" aria-modal="false" aria-labelledby="theme-folder-title"
-      class="theme-panel glass absolute right-0 top-0 z-40 w-[min(600px,calc(100vw-2rem))] rounded-[26px] p-4 sm:p-5 font-ui"
+      class="theme-panel glass glass-float absolute right-0 top-0 z-40 w-[min(600px,calc(100vw-2rem))] rounded-[26px] p-4 sm:p-5 font-ui"
       @keydown.esc.stop.prevent="close(true)" @focusout="onFocusOut">
       <div ref="headRef" class="flex items-start justify-between gap-3 mb-3.5 px-1">
         <div>
@@ -37,10 +37,9 @@
           <span class="block h-[84px] rounded-[12px] overflow-hidden flex"
             :style="{ background: t.tokens['app-bg'], boxShadow: `inset 0 0 0 1px ${t.tokens.border}` }" aria-hidden="true">
             <span class="w-[20%] h-full flex flex-col items-center gap-[5px] pt-2.5" :style="{ background: t.tokens['sidebar-bg'] }">
-              <span class="w-2.5 h-2.5 rounded-full bg-white/80"></span>
-              <span class="w-3.5 h-[3px] rounded-full bg-white/35"></span>
-              <span class="w-3.5 h-[3px] rounded-full bg-white/35"></span>
-              <span class="w-3.5 h-[3px] rounded-full bg-white/35"></span>
+              <!-- Literal white: bg-white would become the current theme's surface. -->
+              <span class="w-2.5 h-2.5 rounded-full" style="background: rgb(255 255 255 / 0.8)"></span>
+              <span v-for="n in 3" :key="n" class="w-3.5 h-[3px] rounded-full" style="background: rgb(255 255 255 / 0.35)"></span>
             </span>
             <span class="flex-1 p-2 flex flex-col gap-[5px] min-w-0">
               <span class="h-[5px] w-[55%] rounded-full" :style="{ background: t.tokens['text-primary'], opacity: 0.75 }"></span>
@@ -225,5 +224,5 @@ onBeforeUnmount(() => {
 <style>
 /* The panel is more opaque than the cards so its text reads over anything. */
 .theme-panel.glass.is-moving { -webkit-backdrop-filter: none; backdrop-filter: none; --glass-amount: 96%; }
-.theme-panel.glass { --glass-fill: var(--surface-elevated); --glass-amount: 90%; box-shadow: inset 0 1px 0 var(--glass-hi), 0 24px 60px -24px var(--shadow-color), 0 2px 8px var(--shadow-color); }
+.theme-panel.glass { --glass-fill: var(--surface-elevated); --glass-amount: 90%; box-shadow: inset 0 1px 0 var(--glass-edge), 0 24px 60px -24px var(--shadow-color), 0 2px 8px var(--shadow-color); }
 </style>

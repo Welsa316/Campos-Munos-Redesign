@@ -3,7 +3,7 @@
     <!-- Same shell as the lead inbox: white bar, logo, title, view toggle, actions. -->
     <header class="nav-chrome h-16 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 gap-3 z-10">
       <div class="flex items-center gap-3 sm:gap-4 min-w-0">
-        <img src="/logo.png" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
+        <img :src="LOGO_SRC" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
         <div class="w-px h-8 bg-gray-200 hidden sm:block" aria-hidden="true"></div>
         <h1 class="font-heading text-lg text-brand-navy tracking-tight">WhatsApp</h1>
       </div>
@@ -53,13 +53,13 @@
           <div class="flex flex-1 min-w-0 bg-brand-surface rounded-lg p-0.5" role="group" aria-label="Which conversations">
             <button v-for="v in VIEWS" :key="v.key" @click="setView(v.key)" :aria-pressed="view === v.key"
               :class="view === v.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-gray-900'"
-              class="flex-1 text-xs font-ui font-medium px-2 py-1.5 rounded-md transition-all whitespace-nowrap">{{ v.label }}</button>
+              class="flex-1 text-xs font-ui font-medium px-2 py-1.5 rounded-md transition-colors whitespace-nowrap">{{ v.label }}</button>
           </div>
           <button @click="refresh" :disabled="loadingList" class="p-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface transition-colors disabled:opacity-50" aria-label="Refresh conversations">
             <FaIcon name="arrows-rotate" :spin="loadingList" class="text-xs" />
           </button>
         </div>
-        <p v-if="conversations.length" class="px-5 pt-3 pb-1 text-[11px] font-ui text-gray-500">{{ conversations.length }} {{ conversations.length === 1 ? 'conversation' : 'conversations' }}</p>
+        <p v-if="conversations.length" class="px-5 pt-3 pb-1 text-[11px] font-ui text-gray-500 tabular-nums">{{ conversations.length }} {{ conversations.length === 1 ? 'conversation' : 'conversations' }}</p>
         <p v-if="!conversations.length" class="p-8 text-center text-sm text-gray-500 font-ui">{{ EMPTY[view] }}</p>
         <ul v-else class="flex-1 overflow-y-auto divide-y divide-gray-100">
           <li v-for="c in conversations" :key="c.id">
@@ -166,7 +166,7 @@
                   <p v-if="m.body" class="text-gray-800 text-sm font-ui leading-relaxed whitespace-pre-wrap break-words">{{ m.body }}</p>
                   <p v-else class="text-gray-500 text-sm font-ui italic">{{ m.mediaType ? `Sent a ${m.mediaType} (open WhatsApp to see it)` : 'No text' }}</p>
                 </div>
-                <p :class="m.direction === 'out' ? 'text-right mr-1' : 'ml-1'" class="text-[11px] text-gray-500 font-ui mt-1.5">
+                <p :class="m.direction === 'out' ? 'text-right mr-1' : 'ml-1'" class="text-[11px] text-gray-500 font-ui mt-1.5 tabular-nums">
                   <span v-if="m.direction === 'out' && m.by">{{ m.by }} · </span>{{ fullTime(m.at) }}
                   <template v-if="m.direction === 'out'">
                     · <span :class="m.status === 'failed' ? 'text-brand-red font-semibold' : m.status === 'unknown' ? 'text-amber-800 font-semibold' : ''">{{ STATUS_LABEL[m.status] || m.status }}</span>
@@ -186,7 +186,7 @@
               <span class="flex items-center gap-2 text-xs font-ui font-semibold text-gray-700">
                 <i class="fa-solid fa-note-sticky text-brand-navy/70 text-[11px]" aria-hidden="true"></i>
                 Internal notes
-                <span v-if="detail.notes.length" class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-brand-navy/10 text-brand-navy text-[10px] font-bold">{{ detail.notes.length }}</span>
+                <span v-if="detail.notes.length" class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-brand-navy/10 text-brand-navy text-[10px] font-bold tabular-nums">{{ detail.notes.length }}</span>
               </span>
               <FaIcon :name="notesOpen ? 'chevron-up' : 'chevron-down'" class="text-[10px] text-gray-400" />
             </button>
@@ -234,6 +234,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
+import { LOGO_SRC } from '../../data/brand.js'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../../composables/useAuth.js'
 import { useApi, rawFetch, goToLogin, latestOnly } from '../../composables/useApi.js'

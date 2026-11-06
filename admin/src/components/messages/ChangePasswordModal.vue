@@ -2,14 +2,14 @@
   <transition name="fade">
     <div v-if="visible"
       ref="overlayRef"
-      class="fixed inset-0 z-[200] flex items-center justify-center p-4"
+      class="fixed inset-0 z-[200] flex items-center justify-center dialog-frame"
       role="dialog"
       aria-modal="true"
       aria-labelledby="change-password-title"
       @keydown.esc="close"
       @keydown.tab="trapFocus"
       @click.self="close">
-      <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true"></div>
+      <div class="absolute inset-0 scrim" aria-hidden="true"></div>
 
       <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
         <div class="px-6 pt-6 pb-4 border-b border-gray-100 flex items-start justify-between">

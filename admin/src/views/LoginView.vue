@@ -1,9 +1,9 @@
 <template>
-  <div class="min-h-screen bg-brand-surface flex items-center justify-center px-6">
+  <div class="min-h-dvh bg-brand-surface flex items-center justify-center px-6">
     <div class="w-full max-w-md">
       <!-- Logo -->
       <div class="text-center mb-10">
-        <img src="/logo.png" alt="Campos Muños Law" class="h-16 mx-auto mb-6" />
+        <img :src="LOGO_SRC" alt="Campos Muños Law" class="logo-on-page h-16 mx-auto mb-6" />
         <h1 class="font-heading text-2xl text-brand-navy">Admin Portal</h1>
       </div>
 
@@ -63,6 +63,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { LOGO_SRC } from '../data/brand.js'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 import { safeNextPath } from '../utils/safeNext.js'

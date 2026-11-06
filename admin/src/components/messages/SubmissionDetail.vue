@@ -145,7 +145,7 @@
           <span class="flex items-center gap-2 text-xs font-ui font-semibold text-gray-700">
             <i class="fa-solid fa-note-sticky text-brand-navy/70 text-[11px]" aria-hidden="true"></i>
             Internal notes
-            <span v-if="notes.length" class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-brand-navy/10 text-brand-navy text-[10px] font-bold">
+            <span v-if="notes.length" class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-brand-navy/10 text-brand-navy text-[10px] font-bold tabular-nums">
               {{ notes.length }}
             </span>
           </span>

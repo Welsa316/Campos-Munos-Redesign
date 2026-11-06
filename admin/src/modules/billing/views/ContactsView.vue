@@ -20,7 +20,7 @@
           <div class="relative w-full sm:w-72">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" aria-hidden="true"></i>
             <input v-model="search" type="search" placeholder="Client name or ID" aria-label="Search clients"
-              class="w-full text-xs font-ui pl-8 pr-3 py-2 rounded-lg bg-brand-surface border border-transparent focus:border-brand-navy/30 focus:bg-white focus:outline-none" />
+              class="w-full text-xs font-ui pl-8 pr-3 py-2 rounded-lg bg-brand-surface border border-gray-300 focus:bg-white" />
           </div>
           <label v-if="canSeeOwed" class="inline-flex items-center gap-2 text-xs font-ui text-gray-700 ml-auto">
             <input type="checkbox" v-model="owingOnly" class="rounded border-gray-300" /> Only clients who owe money

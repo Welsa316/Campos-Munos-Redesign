@@ -1,10 +1,10 @@
 <template>
   <!-- Mark a missed call as needing no callback: it leaves the missed counts but stays in the log. -->
   <transition name="fade">
-    <div v-if="call" ref="overlayRef" class="fixed inset-0 z-[200] flex items-center justify-center p-4"
+    <div v-if="call" ref="overlayRef" class="fixed inset-0 z-[200] flex items-center justify-center dialog-frame"
       role="dialog" aria-modal="true" aria-labelledby="exclude-dialog-title"
       @keydown.esc="close" @keydown.tab="trapFocus" @click.self="close">
-      <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true"></div>
+      <div class="absolute inset-0 scrim" aria-hidden="true"></div>
 
       <form @submit.prevent="save" class="relative w-full max-w-[440px] max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white rounded-3xl shadow-2xl font-ui">
         <div class="px-6 pt-6 pb-1 flex items-start justify-between gap-3">

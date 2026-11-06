@@ -7,7 +7,7 @@
          without overlapping. -->
     <header class="nav-chrome h-16 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 gap-3 z-10">
       <div class="flex items-center gap-3 sm:gap-4 min-w-0">
-        <img src="/logo.png" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
+        <img :src="LOGO_SRC" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
         <div class="w-px h-8 bg-gray-200 hidden sm:block" aria-hidden="true"></div>
         <!-- Always in the document (announced, and focused after a move here);
              shown from 1280px. -->
@@ -18,17 +18,17 @@
             @click="changeView('inbox')"
             :aria-pressed="viewMode === 'inbox'"
             :class="viewMode === 'inbox' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-            class="text-xs font-ui font-medium px-3 py-1.5 rounded-md transition-all"
+            class="text-xs font-ui font-medium px-3 py-1.5 rounded-md transition-colors"
           >Inbox</button>
           <button
             type="button"
             @click="changeView('contacts')"
             :aria-pressed="viewMode === 'contacts'"
             :class="viewMode === 'contacts' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-            class="text-xs font-ui font-medium px-3 py-1.5 rounded-md transition-all"
+            class="text-xs font-ui font-medium px-3 py-1.5 rounded-md transition-colors"
           >Contacts</button>
         </div>
-        <span v-if="viewMode === 'inbox' && unreadCount > 0" class="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-brand-red text-white text-xs font-ui font-bold">
+        <span v-if="viewMode === 'inbox' && unreadCount > 0" class="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-brand-red text-white text-xs font-ui font-bold tabular-nums">
           {{ unreadCount }}
         </span>
       </div>
@@ -134,7 +134,7 @@
       <!-- Detail opens over the table so the table keeps its full width -->
       <div v-if="selectedId !== null" ref="contactPanel" class="absolute inset-0 z-20 flex" role="dialog" aria-modal="true" aria-label="Contact details"
         @keydown.esc="closeDetail" @keydown.tab="trapTab(contactPanel, $event)">
-        <button class="flex-1 bg-black/20" aria-label="Close contact details" tabindex="-1" @click="closeDetail"></button>
+        <button class="flex-1 scrim-soft" aria-label="Close contact details" tabindex="-1" @click="closeDetail"></button>
         <div class="w-full max-w-2xl bg-white shadow-2xl flex flex-col">
           <SubmissionDetail
             :submission="selectedSubmission"
@@ -198,6 +198,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, onActivated, onDeactivated, nextTick, watchEffect } from 'vue'
+import { LOGO_SRC, NOTIFY_ICON } from '../data/brand.js'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 import { useApi, rawFetch, goToLogin, latestOnly } from '../composables/useApi.js'
@@ -325,7 +326,7 @@ function notifyOnNewArrivals(list) {
     const body = (s.message || '').trim() || 'No message provided'
     const note = new Notification(`New inquiry — ${s.first_name} ${s.last_name}`, {
       body: body.length > 140 ? `${body.slice(0, 140)}…` : body,
-      icon: '/favicon-512.png',
+      icon: NOTIFY_ICON,
       // Same tag replaces rather than stacks if this fires twice for one message.
       tag: `cm-submission-${s.id}`,
     })
@@ -333,7 +334,7 @@ function notifyOnNewArrivals(list) {
   } else {
     const note = new Notification(`${arrivals.length} new inquiries`, {
       body: arrivals.map(s => `${s.first_name} ${s.last_name}`).join(', ').slice(0, 160),
-      icon: '/favicon-512.png',
+      icon: NOTIFY_ICON,
       tag: 'cm-submissions-batch',
     })
     note.onclick = () => { open(arrivals[0].id); note.close() }
