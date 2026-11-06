@@ -64,6 +64,7 @@ import {
   faBan,
   faCopy,
   faTerminal,
+  faCircleQuestion,
 } from '@fortawesome/free-solid-svg-icons'
 
 export const ICONS = [
@@ -73,7 +74,7 @@ export const ICONS = [
   faInbox, faKey, faLocationDot, faMagnifyingGlass, faNoteSticky, faPaperPlane, faPhone,
   faRotateRight, faSpinner, faTrash, faTriangleExclamation, faXmark,
   faArrowsRotate, faCircleCheck, faCircleInfo, faPlug, faPen, faPalette, faHouse, faPhoneSlash, faPhoneVolume, faVoicemail, faArrowTurnUp, faArrowRight, faEnvelopeOpenText, faCirclePause, faComments, faFlask, faLock, faRotateLeft, faUser,
-  faUsers, faClockRotateLeft, faUserPlus, faBan, faCopy, faTerminal,
+  faUsers, faClockRotateLeft, faUserPlus, faBan, faCopy, faTerminal, faCircleQuestion,
 ]
 
 library.add(...ICONS)

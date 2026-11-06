@@ -43,6 +43,14 @@
             <input v-model="search" type="search" placeholder="Search name or number"
               class="w-full pl-8 pr-3 py-2 rounded-lg bg-white ring-1 ring-gray-200 focus:ring-2 focus:ring-brand-navy/40 outline-none text-sm font-ui" />
           </label>
+          <!-- Calls a RingCentral step proves were offered to one person. -->
+          <label v-if="people.length" class="inline-flex items-center gap-2 text-xs font-ui text-gray-600">
+            <span>Offered to</span>
+            <select v-model="personFilter" class="py-2 pl-2.5 pr-7 rounded-lg bg-white ring-1 ring-gray-200 focus:ring-2 focus:ring-brand-navy/40 outline-none text-sm text-gray-900" data-person-filter>
+              <option value="">Anyone</option>
+              <option v-for="p in people" :key="p.extensionId" :value="p.extensionId">{{ p.name }}{{ p.extension ? ` · ext. ${p.extension}` : '' }}</option>
+            </select>
+          </label>
           <div class="ml-auto flex items-center gap-2">
             <button v-if="canCall" type="button" @click="openCall()"
               class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-ui font-semibold">
@@ -57,9 +65,18 @@
         </div>
 
         <!-- A narrower view opened from elsewhere (the Home card) -->
+        <!-- One person: what happened to the calls offered to them. -->
+        <p v-if="personRow" class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] font-ui text-gray-700 bg-white rounded-lg ring-1 ring-gray-200 px-4 py-2.5" data-person-summary>
+          <span class="font-semibold text-gray-900">{{ personRow.name }}</span>
+          <span>{{ counts.incoming || 0 }} offered</span>
+          <span class="text-green-700">{{ counts.person_answered || 0 }} answered by them</span>
+          <span class="text-brand-red">{{ counts.person_not_answered || 0 }} not answered by them</span>
+          <span class="text-gray-500 basis-full sm:basis-auto">Only calls where a RingCentral step shows the call offered to their extension.</span>
+        </p>
+
         <p v-if="businessHours || filter === 'unanswered' || filter === 'excluded'" class="flex flex-wrap items-center gap-2 text-xs font-ui text-gray-700">
           <span class="text-gray-500">Showing</span>
-          <span v-if="filter === 'unanswered'" class="px-2.5 py-1 rounded-full bg-white ring-1 ring-gray-200 font-semibold">Unanswered (missed + voicemail)</span>
+          <span v-if="filter === 'unanswered'" class="px-2.5 py-1 rounded-full bg-white ring-1 ring-gray-200 font-semibold">Unanswered (not answered, caller hung up, voicemail)</span>
           <span v-if="filter === 'excluded'" class="px-2.5 py-1 rounded-full bg-white ring-1 ring-gray-200 font-semibold">Marked as no callback needed</span>
           <span v-if="businessHours" class="px-2.5 py-1 rounded-full bg-white ring-1 ring-gray-200 font-semibold">Business hours · Mon–Fri 9–5</span>
           <button type="button" @click="clearNarrowing" class="font-semibold text-brand-navy underline">Show all</button>
@@ -75,15 +92,19 @@
         <p v-if="error" role="alert" class="text-sm font-ui text-brand-red bg-red-50 rounded-lg px-4 py-3">{{ error }}</p>
 
         <!-- Counts; each one filters the list -->
-        <div class="grid grid-cols-3 sm:grid-cols-6 gap-2">
+        <div class="grid grid-cols-4 lg:grid-cols-8 gap-1.5 sm:gap-2">
           <button v-for="tile in tiles" :key="tile.key" type="button" @click="setFilter(tile.key)"
             :aria-pressed="filter === tile.key"
             :class="filter === tile.key ? 'ring-2 ring-brand-navy' : 'ring-1 ring-gray-200 hover:ring-gray-300'"
-            class="bg-white rounded-xl px-3 py-2.5 text-left transition-shadow">
-            <p class="text-[11px] font-ui font-medium text-gray-600 truncate">{{ tile.label }}</p>
-            <p :class="tile.tone" class="font-ui text-2xl font-light tabular-nums leading-tight mt-0.5">{{ tile.count }}</p>
+            class="bg-white rounded-xl px-2.5 sm:px-3 py-2 sm:py-2.5 text-left transition-shadow">
+            <p class="text-[11px] font-ui font-medium text-gray-600 leading-tight min-h-[2.5em] sm:min-h-0 sm:truncate">{{ tile.label }}</p>
+            <p :class="tile.tone" class="font-ui text-xl sm:text-2xl font-light tabular-nums leading-tight mt-0.5">{{ tile.count }}</p>
           </button>
         </div>
+        <p v-if="counts.system && filter !== 'system'" class="-mt-1 text-xs font-ui text-gray-600">
+          {{ counts.system }} {{ counts.system === 1 ? 'call was' : 'calls were' }} ended by the phone system (a blocked number or a refused call) and {{ counts.system === 1 ? 'needs' : 'need' }} no callback.
+          <button type="button" @click="setFilter('system')" class="font-semibold text-brand-navy underline">Show {{ counts.system === 1 ? 'it' : 'them' }}</button>
+        </p>
         <p v-if="counts.excluded && filter !== 'excluded'" class="-mt-1 text-xs font-ui text-gray-600">
           {{ counts.excluded }} {{ counts.excluded === 1 ? 'call was' : 'calls were' }} marked as needing no callback and {{ counts.excluded === 1 ? 'is' : 'are' }} left out of these counts.
           <button type="button" @click="setFilter('excluded')" class="font-semibold text-brand-navy underline">Show {{ counts.excluded === 1 ? 'it' : 'them' }}</button>
@@ -130,19 +151,12 @@
                   <span v-if="!c.name && c.callerLocation" class="text-gray-500"> · {{ c.callerLocation }}</span>
                 </p>
                 <p class="text-[13px] font-ui mt-1" :class="c.exclusion ? 'text-gray-600' : look(c).text">
-                  {{ statusLine(c) }}
-                  <template v-if="isMissedIncoming(c)">
+                  {{ rowStatus(c) }}
+                  <template v-if="isUnanswered(c)">
                     <span v-if="c.followUp" class="text-green-700"> · {{ followUpText(c.followUp) }}</span>
                     <span v-else-if="c.number && !c.exclusion" class="text-brand-red font-semibold"> · Not called back</span>
                   </template>
                 </p>
-                <!-- Where the call went, from RingCentral's own record of each step. -->
-                <ol v-if="showPath(c)" class="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] font-ui text-gray-600" :aria-label="`Where the call went, ${c.path.length} steps`" data-call-path>
-                  <li v-for="(s, i) in c.path" :key="i" class="inline-flex items-center gap-1.5">
-                    <span v-if="i > 0" aria-hidden="true" class="text-gray-500">→</span>
-                    <span>{{ stepLabel(s) }}<span v-if="stepResult(s)" :class="s.result === 'answered' ? 'text-green-700' : 'text-gray-500'"> · {{ stepResult(s) }}</span></span>
-                  </li>
-                </ol>
                 <!-- Marked as needing no callback: out of the missed counts, still in the log. -->
                 <div v-if="c.exclusion" class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-ui">
                   <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-semibold">
@@ -152,12 +166,19 @@
                   <button v-if="canExclude" type="button" @click="countAgain(c)" :disabled="countingAgain === c.id" :data-count-again="c.id"
                     class="inline-flex items-center min-h-11 -my-2 sm:min-h-0 sm:my-0 text-left font-semibold text-brand-navy underline disabled:opacity-50">{{ c.exclusion.scope === 'number' ? 'Count this number again' : 'Count it again' }}</button>
                 </div>
-                <button v-else-if="canExclude && isMissedIncoming(c)" type="button" @click="excluding = c" :data-exclude="c.id"
-                  class="mt-1 inline-flex items-center min-h-11 -my-2 sm:min-h-0 sm:my-0 text-[12px] font-ui font-semibold text-gray-600 hover:text-brand-navy underline decoration-gray-300 underline-offset-2">No callback needed</button>
                 <!-- Only when the caller dialled an extension directly; calls to the main line all look alike. -->
-                <p v-if="!showPath(c) && c.direction === 'inbound' && c.firm.extension" class="text-[11px] font-ui text-gray-500 mt-0.5">
+                <p v-if="c.direction === 'inbound' && !c.offeredTo.length && c.firm.extension" class="text-[11px] font-ui text-gray-500 mt-0.5">
                   Dialled {{ person({ name: c.firm.name, extension: c.firm.extension }) }}
                 </p>
+                <div v-if="c.direction === 'inbound'" class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <button v-if="!c.exclusion && canExclude && canMark(c)" type="button" @click="excluding = c" :data-exclude="c.id"
+                    class="inline-flex items-center min-h-11 -my-2 sm:min-h-0 sm:my-0 text-[12px] font-ui font-semibold text-gray-600 hover:text-brand-navy underline decoration-gray-300 underline-offset-2">No callback needed</button>
+                  <button type="button" @click="toggleDetails(c.id)" :aria-expanded="openDetails.has(c.id)" :aria-controls="`call-details-${c.id}`"
+                    :data-details="c.id"
+                    class="inline-flex items-center gap-1.5 min-h-11 -my-2 sm:min-h-0 sm:my-0 text-[12px] font-ui font-semibold text-brand-navy hover:underline">
+                    <FaIcon :name="openDetails.has(c.id) ? 'chevron-up' : 'chevron-down'" class="text-[10px]" />{{ openDetails.has(c.id) ? 'Hide details' : 'Details and evidence' }}
+                  </button>
+                </div>
               </div>
 
               <div class="text-right flex flex-col items-end">
@@ -170,6 +191,7 @@
                   <FaIcon name="phone" />{{ needsCallback(c) ? 'Call back' : 'Call' }}
                 </button>
               </div>
+              <CallDetails v-if="openDetails.has(c.id)" :id="`call-details-${c.id}`" :call-id="c.id" :start="String(c.startedAt)" class="col-span-3" />
             </li>
           </ul>
         </section>
@@ -192,6 +214,8 @@ import FaIcon from '../../components/FaIcon.vue'
 import CallDialog from './CallDialog.vue'
 import ExcludeCallDialog from './ExcludeCallDialog.vue'
 import { exclusionLabel } from './exclusionReasons.js'
+import CallDetails from './CallDetails.vue'
+import { statusLine as inboundStatus } from './callEvidenceText.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -208,7 +232,20 @@ const RANGES = [
 // The Home card opens /calls?range=month&filter=unanswered&hours=business.
 const q0 = route.query
 const range = ref(['today', 'yesterday', 'week', 'month'].includes(q0.range) ? q0.range : 'today')
-const filter = ref(['all', 'answered', 'missed', 'voicemail', 'unanswered', 'outgoing', 'not_returned', 'excluded'].includes(q0.filter) ? q0.filter : 'all')
+const FILTERS = ['all', 'answered', 'missed', 'hung_up', 'voicemail', 'unconfirmed', 'system', 'unanswered', 'outgoing', 'not_returned', 'excluded']
+const filter = ref(FILTERS.includes(q0.filter) ? q0.filter : 'all')
+// Calls offered to one person (a RingCentral extension id), and who can be picked.
+const personFilter = ref(typeof q0.person === 'string' && /^\d+$/.test(q0.person) ? q0.person : '')
+const people = ref([])
+const personRow = computed(() => people.value.find((p) => p.extensionId === personFilter.value) || null)
+// Rows whose evidence is open.
+const openDetails = ref(new Set())
+function toggleDetails(id) {
+  const next = new Set(openDetails.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  openDetails.value = next
+}
 const businessHours = ref(q0.hours === 'business')
 const search = ref('')
 const calls = ref([])
@@ -287,8 +324,10 @@ async function load({ quiet = false } = {}) {
     const params = new URLSearchParams({ from: from.toISOString(), to: to.toISOString(), outcome: filter.value })
     if (search.value.trim()) params.set('q', search.value.trim())
     if (businessHours.value) params.set('businessHours', '1')
+    if (personFilter.value) params.set('person', personFilter.value)
     const data = await get(`/api/calls?${params}`)
     calls.value = data.calls
+    people.value = data.people || []
     counts.value = data.counts || {}
     truncated.value = data.truncated
     applyStatus(data)
@@ -324,10 +363,11 @@ function setRange(key) { range.value = key }
 function clearNarrowing() {
   businessHours.value = false
   filter.value = 'all'
+  personFilter.value = ''
   router.replace({ query: {} })
 }
 function setFilter(key) { filter.value = filter.value === key && key !== 'all' ? 'all' : key }
-watch([range, filter, businessHours], () => load())
+watch([range, filter, businessHours, personFilter], () => load())
 let searchTimer = null
 watch(search, () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => load({ quiet: true }), 300) })
 
@@ -345,24 +385,31 @@ onUnmounted(() => { clearInterval(poll); clearTimeout(searchTimer) })
 
 // --- presentation -----------------------------------------------------------------
 
+// Incoming calls by what the evidence proves (callEvidence.js on the
+// server). "Not confirmed" is never counted as missed.
 const tiles = computed(() => [
   { key: 'all', label: 'All calls', count: (counts.value.incoming || 0) + (counts.value.outgoing || 0), tone: 'text-gray-900' },
   { key: 'answered', label: 'Answered', count: counts.value.answered || 0, tone: 'text-green-700' },
-  { key: 'missed', label: 'Missed', count: counts.value.missed || 0, tone: 'text-brand-red' },
+  { key: 'missed', label: 'Not answered', count: counts.value.missed || 0, tone: 'text-brand-red' },
+  { key: 'hung_up', label: 'Caller hung up', count: counts.value.hung_up || 0, tone: 'text-orange-800' },
   { key: 'voicemail', label: 'Voicemail', count: counts.value.voicemail || 0, tone: 'text-amber-700' },
+  { key: 'unconfirmed', label: 'Not confirmed', count: counts.value.unconfirmed || 0, tone: 'text-gray-700' },
   { key: 'not_returned', label: 'Not called back', count: counts.value.not_returned || 0, tone: 'text-brand-red' },
   { key: 'outgoing', label: 'Outgoing', count: counts.value.outgoing || 0, tone: 'text-brand-navy' },
 ])
 
 const LOOK = {
   answered: { icon: 'phone', label: 'Answered', badge: 'bg-green-100 text-green-700', text: 'text-gray-700' },
-  missed: { icon: 'phone-slash', label: 'Missed', badge: 'bg-red-100 text-brand-red', text: 'text-brand-red' },
+  not_answered: { icon: 'phone-slash', label: 'Not answered', badge: 'bg-red-100 text-brand-red', text: 'text-brand-red' },
+  caller_hung_up: { icon: 'phone-slash', label: 'Caller hung up', badge: 'bg-orange-100 text-orange-800', text: 'text-orange-800' },
   voicemail: { icon: 'voicemail', label: 'Voicemail', badge: 'bg-amber-100 text-amber-700', text: 'text-amber-800' },
+  system: { icon: 'ban', label: 'Handled by the phone system', badge: 'bg-gray-100 text-gray-600', text: 'text-gray-600' },
+  unknown: { icon: 'circle-question', label: 'Not confirmed', badge: 'bg-gray-100 text-gray-600', text: 'text-gray-700' },
   connected: { icon: 'arrow-turn-up', label: 'Outgoing', badge: 'bg-brand-navy/10 text-brand-navy', text: 'text-gray-700' },
   no_answer: { icon: 'arrow-turn-up', label: 'Outgoing, no answer', badge: 'bg-gray-100 text-gray-500', text: 'text-gray-600' },
   other: { icon: 'phone', label: 'Other', badge: 'bg-gray-100 text-gray-500', text: 'text-gray-600' },
 }
-const look = (c) => LOOK[c.outcome] || LOOK.other
+const look = (c) => (c.direction === 'inbound' ? LOOK[c.classification] || LOOK.unknown : LOOK[c.outcome] || LOOK.other)
 
 // "+15045550101" → "(504) 555-0101"; other countries keep their + form.
 function phone(n) {
@@ -371,38 +418,21 @@ function phone(n) {
 }
 
 const person = (p) => (p ? [p.name, p.extension ? `ext. ${p.extension}` : null].filter(Boolean).join(', ') : '')
-function statusLine(c) {
+function rowStatus(c) {
   if (c.direction === 'outbound') {
     const by = person({ name: c.firm.name, extension: c.firm.extension })
     const what = c.outcome === 'connected' ? 'Outgoing call' : c.outcome === 'no_answer' ? 'Outgoing call, no answer' : `Outgoing call (${c.result || 'other'})`
     return by ? `${what} · by ${by}` : what
   }
-  if (c.outcome === 'answered') return c.answeredBy ? `Answered by ${person(c.answeredBy)}` : 'Answered'
-  if (c.outcome === 'missed') return 'Missed call'
-  if (c.outcome === 'voicemail') return 'Left a voicemail'
-  return c.result || 'Call'
+  return inboundStatus(c)
 }
-// The path is shown when it says more than the status line: a missed call
-// (whose phones it rang), or one that went through more than one place. A
-// call answered straight away already reads "Answered by ...".
-function showPath(c) {
-  const hops = (c.path || []).filter((s) => s.kind !== 'line')
-  return hops.length > 1 || (hops.length === 1 && c.outcome !== 'answered')
-}
-function stepLabel(s) {
-  if (s.kind === 'line') return `Called ${s.number ? phone(s.number) : s.name || 'the firm'}`
-  const who = person(s) || (s.numberEnd ? `number ending ${s.numberEnd}` : 'another phone')
-  if (s.kind === 'forwarded') return `Forwarded to ${who}`
-  if (s.kind === 'transferred') return `Transferred to ${who}`
-  if (s.kind === 'voicemail') return `Went to voicemail (${who})`
-  return `Rang ${who}`
-}
-function stepResult(s) {
-  if (s.kind === 'voicemail' || s.kind === 'line') return ''
-  return { answered: 'answered', no_answer: 'no answer', busy: 'busy' }[s.result] || ''
-}
-const isMissedIncoming = (c) => c.direction === 'inbound' && (c.outcome === 'missed' || c.outcome === 'voicemail')
-const needsCallback = (c) => isMissedIncoming(c) && !c.followUp && c.number && !c.exclusion
+// Proven not answered by anyone: these need a callback.
+const UNANSWERED = ['not_answered', 'caller_hung_up', 'voicemail']
+const isUnanswered = (c) => c.direction === 'inbound' && UNANSWERED.includes(c.classification)
+// Anything not proven answered can be marked as needing no callback.
+// A call the phone system ended (a blocked number) needs no callback anyway.
+const canMark = (c) => c.direction === 'inbound' && !['answered', 'system'].includes(c.classification)
+const needsCallback = (c) => isUnanswered(c) && !c.followUp && c.number && !c.exclusion
 function followUpText(f) {
   const when = timeOrDate(f.at)
   return f.kind === 'called_back' ? `Called back ${when}` : f.kind === 'call_back_attempt' ? `Tried calling back ${when}` : `Reached later ${when}`
@@ -463,6 +493,7 @@ const notice = computed(() => {
   if (connection.value === 'needs_reauth') return { icon: 'triangle-exclamation', tone: 'text-amber-900 bg-amber-50', text: ERRORS.needs_reauth, link: true }
   const code = sync.value?.lastErrorCode
   if (code) return { icon: 'triangle-exclamation', tone: 'text-amber-900 bg-amber-50', text: ERRORS[code] || `The last update from RingCentral failed (${code}). It will try again shortly.`, link: ['missing_permission', 'needs_reauth', 'encryption_key_mismatch', 'environment_mismatch'].includes(code) }
+  if (sync.value?.directoryErrorCode) return { icon: 'triangle-exclamation', tone: 'text-amber-900 bg-amber-50', text: sync.value.directoryErrorCode === 'missing_permission' ? 'RingCentral did not allow reading the extension list (the Read Accounts permission), so calls cannot be confirmed as answered or missed by a person. They show as not confirmed until it can be read.' : 'The extension list could not be read from RingCentral at the last update. It will try again.', link: sync.value.directoryErrorCode === 'missing_permission' }
   if (sync.value?.scope === 'extension') return { icon: 'circle-info', tone: 'text-sky-900 bg-sky-50', text: 'Showing only the calls of the RingCentral user who connected. To see every call to the firm, connect again signed in as a RingCentral administrator.', link: true }
   return null
 })
