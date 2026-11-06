@@ -24,12 +24,14 @@
       </KeepAlive>
     </router-view>
   </main>
+  <SwipeToast />
 </template>
 
 <script setup>
 import { sessionExpired, renderError } from './composables/appStatus.js'
 import { loginHref } from './composables/useApi.js'
 import { useAuth } from './composables/useAuth.js'
+import SwipeToast from './components/SwipeToast.vue'
 
 // Each refreshes itself when shown again (onActivated) and stops polling
 // while hidden (onDeactivated).
