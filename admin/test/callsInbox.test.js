@@ -89,3 +89,11 @@ test('handled is grouped by the day each call was dealt with, most recent first'
   ], NOW)
   assert.deepEqual(sections.map((s) => [s.label, s.calls.map((c) => c.id)]), [['Today', [3, 1]], ['Yesterday', [2]]])
 })
+
+test('a call cleared with the rest of the list says so, not that someone dealt with it', () => {
+  const c = call({ needsAttention: false, handled: { at: '2026-11-05T17:10:00Z', by: 'Walid', note: 'Missed before voicemail routing was set up', bulk: true } })
+  assert.deepEqual(followUpLine(c, NOW), { tone: 'done', text: 'Cleared from the list by Walid · 11:10 AM' })
+  assert.match(followUpDetail(c, NOW), /Cleared from Needs attention with the rest of the list/)
+  assert.match(followUpDetail(c, NOW), /Missed before voicemail routing was set up/)
+  assert.doesNotMatch(followUpDetail(c, NOW), /^Marked handled/)
+})

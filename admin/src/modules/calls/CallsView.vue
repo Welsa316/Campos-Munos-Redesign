@@ -26,6 +26,7 @@
     <ChangePasswordModal :visible="showChangePassword" @close="showChangePassword = false" />
     <CallDialog :visible="dialog.open" :number="dialog.number" :name="dialog.name" @close="dialog.open = false" />
     <ExcludeCallDialog :call="excluding" @close="excluding = null" @saved="afterExclude" />
+    <ClearCallsDialog :open="clearing" @close="clearing = false" @cleared="afterClear" />
     <CallDetailCard :call="detailCall" :return-to="detail.returnTo" :now="now"
       :can-call="canCall" :can-exclude="canExclude" :can-see-leads="canSeeLeads" :can-mark="detailCall ? canMark(detailCall) : false"
       :busy="Boolean(detailCall && busyId === detailCall.id)"
@@ -151,6 +152,11 @@
               <template v-if="personRow"><span aria-hidden="true">·</span><span>offered to {{ personRow.name }}</span></template>
               <template v-if="businessHours"><span aria-hidden="true">·</span><span>business hours</span></template>
               <span class="ml-auto">{{ tab === 'attention' ? 'Oldest first' : tab === 'handled' ? 'Most recently handled first' : 'Newest first' }}</span>
+              <!-- Administrators: empty the list in one go (after fixing the phone system's routing, say). -->
+              <button v-if="tab === 'attention' && canClear && visibleCalls.length" type="button" @click="clearing = true" data-clear-list
+                class="inline-flex items-center gap-1.5 min-h-9 -my-1.5 px-2.5 rounded-lg font-semibold text-brand-navy hover:bg-gray-50">
+                <FaIcon name="check" />Clear the list…
+              </button>
             </div>
 
             <!-- One person: what happened to the calls offered to them. -->
@@ -268,6 +274,7 @@ import FaIcon from '../../components/FaIcon.vue'
 import RollingNumber from '../../components/RollingNumber.vue'
 import CallDialog from './CallDialog.vue'
 import ExcludeCallDialog from './ExcludeCallDialog.vue'
+import ClearCallsDialog from './ClearCallsDialog.vue'
 import CallRow from './CallRow.vue'
 import CallDetailCard from './CallDetailCard.vue'
 import { attentionSections, handledSections, daySections, animateChange, when } from './callsInbox.js'
@@ -340,6 +347,9 @@ const canCall = computed(() => can('calls.place') && connection.value === 'conne
 const canRefresh = computed(() => configured.value && connection.value === 'connected')
 // Marking calls handled or as needing no callback (calls.exclude).
 const canExclude = computed(() => can('calls.exclude'))
+// Clearing the whole list at once (calls.clear, administrators).
+const canClear = computed(() => can('calls.clear'))
+const clearing = ref(false)
 // Only calls counted as missed can be marked as needing no callback: a
 // blocked number, or a call with no recorded outcome, is in no count.
 const canMark = (c) => c.direction === 'inbound' && !['answered', 'system', 'unknown'].includes(c.classification)
@@ -568,6 +578,18 @@ async function afterExclude() {
   await load({ quiet: true })
   if (c) showToast(`${c.name || 'The call'} marked as needing no callback.`)
   if (excludedFrom) focusAfter(excludedFrom.id, excludedFrom.index)
+}
+
+async function afterClear(out) {
+  clearing.value = false
+  await load({ quiet: true })
+  // The button that opened the dialog goes with the list; the tab keeps focus.
+  nextTick(() => document.getElementById(`calls-tab-${tab.value}`)?.focus())
+  if (!out?.cleared) return
+  showToast(`${out.cleared} ${out.cleared === 1 ? 'call' : 'calls'} cleared from Needs attention.`, async () => {
+    await del(`/api/calls/handled/bulk/${out.batch}`)
+    await load({ quiet: true })
+  })
 }
 
 async function markHandled(c) {
