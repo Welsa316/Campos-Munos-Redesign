@@ -179,8 +179,10 @@ export function classifyCall(records, { direction, directory = null } = {}) {
   // attempt ended; an Accepted attempt wins over another one to the same person.
   // A leg their voicemail took (it carries the message) does not show their
   // phone was offered the call.
+  // Nor does an attempt that failed to reach a device (an offline desk
+  // phone: No Digital Line, or a network error).
   const offeredTo = []
-  for (const s of attempts.filter((x) => isPerson(x) && !x.voicemailMessage)) {
+  for (const s of attempts.filter((x) => isPerson(x) && !x.voicemailMessage && !SYSTEM_REASONS.has(x.reason))) {
     const entry = { extensionId: s.to.id, extension: s.to.number, name: s.to.name, reason: s.reason, at: s.at }
     const prev = offeredTo.find((o) => (o.extensionId && o.extensionId === entry.extensionId) || (!o.extensionId && o.extension === entry.extension))
     if (!prev) offeredTo.push(entry)
@@ -204,7 +206,7 @@ export function classifyCall(records, { direction, directory = null } = {}) {
     const s = byPerson[byPerson.length - 1]
     fact('accepted', s)
     const answeredBy = s.to.kind === 'external'
-      ? { kind: 'external', numberEnd: s.to.numberEnd, onBehalfOf: (s.onBehalfOf && directory?.byId?.get(s.onBehalfOf)?.name) || null }
+      ? { kind: 'external', numberEnd: s.to.numberEnd, onBehalfOfId: s.onBehalfOf || null, onBehalfOf: (s.onBehalfOf && directory?.byId?.get(s.onBehalfOf)?.name) || null }
       : { kind: 'extension', extensionId: s.to.id, extension: s.to.number, name: s.to.name }
     return done('answered', { answeredBy })
   }

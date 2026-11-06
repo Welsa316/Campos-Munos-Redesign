@@ -210,7 +210,7 @@ test('forwarded to a phone outside the firm that accepted: answered there, only 
     leg(25, { phoneNumber: '+15045559876' }, 'Accepted', { legType: 'FindMe', extension: { id: '9101' } }),
   ]))
   assert.equal(c.classification, 'answered')
-  assert.deepEqual(c.answeredBy, { kind: 'external', numberEnd: '9876', onBehalfOf: 'Yoletty' })
+  assert.deepEqual(c.answeredBy, { kind: 'external', numberEnd: '9876', onBehalfOfId: '9101', onBehalfOf: 'Yoletty' })
   assert.ok(!JSON.stringify(c).includes('5559876'))
 })
 
@@ -249,4 +249,25 @@ test('stored record keeps every field but links, recordings and billing', () => 
   assert.deepEqual(raw.delegate, { id: 'd1', name: 'Front desk' })
   assert.deepEqual(raw.legs[0].message, { type: 'VoiceMail' })
   assert.equal(raw.legs[0].reasonDescription, 'Picked up')
+})
+
+test('a desk phone that was offline is not an offer: only the app that rang counts', () => {
+  const c = classify(record([
+    leg(0, LINE, null, { legType: 'PstnToSip', master: true }),
+    leg(4, CIRO, 'No Digital Line', { legType: 'PstnToSip', result: 'IP Phone Offline' }),
+    leg(4, YOLETTY, 'No Answer', { legType: 'PstnToSip' }),
+  ]))
+  assert.equal(c.classification, 'not_answered')
+  assert.deepEqual(c.offeredTo.map((o) => o.name), ['Yoletty'])
+  assert.deepEqual(c.notAnsweredBy.map((p) => p.name), ['Yoletty'])
+})
+
+test('a queue-only record (the call never reached anyone) is never charged to a person', () => {
+  const c = classify(record([
+    leg(0, LINE, null, { legType: 'PstnToSip', master: true, result: 'Missed', duration: 181 }),
+    leg(0, QUEUE, null, { legType: 'PstnToSip', result: 'Missed', duration: 181 }),
+  ], { result: 'Missed', duration: 181 }))
+  assert.equal(c.classification, 'unknown')
+  assert.deepEqual(c.offeredTo, [])
+  assert.deepEqual(c.notAnsweredBy, [])
 })
