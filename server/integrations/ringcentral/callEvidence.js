@@ -21,7 +21,7 @@
 // Anything else is 'unknown', with the reason why.
 import { REASON_MEANING } from './reasonMeanings.js'
 
-export const CLASSIFIER_VERSION = 3
+export const CLASSIFIER_VERSION = 4
 
 const MAX_LEGS = 60
 const DROP_KEYS = new Set(['recording', 'billing', 'uri', 'contentUri'])
@@ -158,6 +158,67 @@ const isPerson = (s) => s.to.kind === 'extension' && s.to.person === true
 const isUnsure = (s) => s.to.kind === 'extension' && s.to.person === null
 const brief = (s) => ({ level: s.level, at: s.at, legType: s.legType, result: s.result, reason: s.reason, reasonMeaning: s.reasonMeaning, to: s.to })
 
+// --- live call events (telephonyEvents.js) ---------------------------------------
+
+const ENDED = new Set(['Disconnected', 'Gone'])
+
+/**
+ * What RingCentral's live events show for one call: each party (a phone,
+ * queue or greeting taking part), its states in order, and, for people,
+ * when their phone was being offered the call ("Proceeding": "The call is
+ * being forwarded to an endpoint") and whether it was answered on it
+ * ("Answered": "answered on a target endpoint and media is established").
+ *
+ * `complete` means every party seen has ended (Disconnected or Gone), so the
+ * call was observed to its end. Deliveries can arrive out of order; they
+ * are read by sequence.
+ */
+export function readLive(events, directory) {
+  const list = (Array.isArray(events) ? events : []).filter((e) => e && e.id)
+  if (!list.length) return null
+  const ordered = list.map((e, i) => ({ e, i }))
+    .sort((a, b) => ((a.e.sequence ?? Infinity) - (b.e.sequence ?? Infinity)) || ((Date.parse(a.e.at) || 0) - (Date.parse(b.e.at) || 0)) || a.i - b.i)
+    .map((x) => x.e)
+  const parties = new Map()
+  for (const e of ordered) {
+    if (!parties.has(e.id)) {
+      const known = e.extensionId ? directory?.byId?.get(String(e.extensionId)) : null
+      parties.set(e.id, {
+        partyId: e.id,
+        extensionId: e.extensionId ? String(e.extensionId) : null,
+        extension: known?.number ?? null,
+        name: known?.name ?? e.to?.name ?? null,
+        type: known?.type ?? null,
+        person: known ? PERSON_TYPES.includes(known.type) : e.extensionId ? null : false,
+        direction: e.direction ?? null,
+        states: [],
+      })
+    }
+    const p = parties.get(e.id)
+    if (e.direction) p.direction = e.direction
+    const last = p.states[p.states.length - 1]
+    if (last && last.code === e.status?.code && last.reason === (e.status?.reason ?? null)) continue
+    p.states.push({ code: e.status?.code ?? null, reason: e.status?.reason ?? null, at: e.at ?? null, missedCall: e.missedCall ?? null })
+  }
+  const out = []
+  for (const p of parties.values()) {
+    const at = (code) => p.states.find((x) => x.code === code)?.at ?? null
+    const rangFrom = at('Proceeding')
+    const next = rangFrom ? p.states.find((x) => x.at && x.at > rangFrom && x.code !== 'Proceeding')?.at ?? null : null
+    out.push({
+      ...p,
+      rang: rangFrom ? { from: rangFrom, to: next, seconds: next ? Math.max(0, Math.round((Date.parse(next) - Date.parse(rangFrom)) / 1000)) : null } : null,
+      // Answered on a phone RingCentral rang (the party facing the endpoint, "Inbound" in RingCentral's terms).
+      answered: p.direction === 'Inbound' && p.states.some((x) => x.code === 'Answered'),
+      voicemail: p.states.some((x) => x.code === 'VoiceMail'),
+      missedCall: p.states.some((x) => x.missedCall === true),
+      ended: p.states.some((x) => ENDED.has(x.code)),
+      endedAt: [...p.states].reverse().find((x) => ENDED.has(x.code))?.at ?? null,
+    })
+  }
+  return { events: list.length, complete: out.every((p) => p.ended), parties: out }
+}
+
 /**
  * Classify one call from every RingCentral record of it (the records that
  * share its telephony session) and the extension directory
@@ -167,7 +228,7 @@ const brief = (s) => ({ level: s.level, at: s.at, legType: s.legType, result: s.
  * gaps, steps, rcResults, recordCount, version }. classification is null for
  * outgoing calls (they keep RingCentral's result).
  */
-export function classifyCall(records, { direction, directory = null } = {}) {
+export function classifyCall(records, { direction, directory = null, events = null } = {}) {
   const raws = (Array.isArray(records) ? records : []).filter((r) => r && typeof r === 'object')
   const out = {
     version: CLASSIFIER_VERSION,
@@ -176,7 +237,8 @@ export function classifyCall(records, { direction, directory = null } = {}) {
     classification: null, answeredBy: null, offeredTo: [], notAnsweredBy: [], facts: [], gaps: [], steps: [],
   }
   if (direction !== 'inbound') return out
-  if (!raws.length) return { ...out, classification: 'unknown', gaps: ['no_record'] }
+  const live = readLive(events, directory)
+  if (!raws.length) return { ...out, live, classification: 'unknown', gaps: ['no_record'] }
 
   const steps = readSteps(raws, directory)
   const legs = steps.filter((s) => s.level === 'leg')
@@ -205,9 +267,19 @@ export function classifyCall(records, { direction, directory = null } = {}) {
   const notAnsweredBy = attempts.filter((s) => isPerson(s) && NOT_ANSWERED_REASONS.has(s.reason))
   // Someone is charged with not answering only when the call is proven not
   // answered by anyone; on a call the evidence cannot settle, nobody is.
-  const PROVEN_UNANSWERED = ['not_answered', 'caller_hung_up', 'voicemail']
+  const PROVEN_UNANSWERED = ['not_answered', 'caller_hung_up', 'ended_before_ringing', 'voicemail']
+  // Live events: whose phones were being offered the call, and whether any
+  // person answered on one. "Seen to the end" is what lets the absence of a
+  // ring mean something: every party observed had ended.
+  const livePeople = live ? live.parties.filter((p) => p.person === true) : []
+  const liveRang = livePeople.filter((p) => p.rang)
+  const liveAnswered = livePeople.filter((p) => p.answered && !p.voicemail)
+  const seenToEnd = Boolean(live?.complete)
+  for (const p of liveRang) {
+    if (!offeredTo.some((o) => o.extensionId === p.extensionId)) offeredTo.push({ extensionId: p.extensionId, extension: p.extension, name: p.name, reason: null, at: p.rang.from, live: true })
+  }
   const done = (classification, extra = {}) => ({
-    ...out, classification, facts, steps, offeredTo, gaps: [...gaps],
+    ...out, live, classification, facts, steps, offeredTo, gaps: [...gaps],
     notAnsweredBy: PROVEN_UNANSWERED.includes(classification) ? dedupePeople(notAnsweredBy) : [],
     ...extra,
   })
@@ -223,6 +295,11 @@ export function classifyCall(records, { direction, directory = null } = {}) {
     const s = byPerson[byPerson.length - 1]
     fact('accepted', s)
     return done('answered', { answeredBy: { kind: 'extension', extensionId: s.to.id, extension: s.to.number, name: s.to.name } })
+  }
+  if (liveAnswered.length) {
+    const p = liveAnswered[liveAnswered.length - 1]
+    facts.push({ code: 'answered_live', level: 'live', at: p.states.find((x) => x.code === 'Answered')?.at ?? null, to: { kind: 'extension', id: p.extensionId, number: p.extension, name: p.name, type: p.type, person: true } })
+    return done('answered', { answeredBy: { kind: 'extension', extensionId: p.extensionId, extension: p.extension, name: p.name } })
   }
   // An extension the directory cannot place accepted it. It may have been a
   // person, so nothing below can be concluded.
@@ -252,8 +329,10 @@ export function classifyCall(records, { direction, directory = null } = {}) {
   // "Stopped": "This attempt was stopped because the call was answered by
   // another phone". With no answer recorded anywhere, that contradicts both a
   // hang-up and "nobody answered", so neither is concluded.
+  // Seen live to the end with no person answering, a Stopped attempt did not
+  // mean someone else answered.
   const stopped = attempts.filter((s) => s.reason === 'Stopped')
-  if (stopped.length) {
+  if (stopped.length && !seenToEnd) {
     for (const s of stopped) fact('stopped_ambiguous', s)
     return done('unknown')
   }
@@ -264,14 +343,17 @@ export function classifyCall(records, { direction, directory = null } = {}) {
   if (hangUps.length) {
     for (const s of notAnsweredBy) fact('not_answered_by', s)
     for (const s of hangUps) fact('caller_hung_up', s)
-    if (!offeredTo.length) gaps.add('alerting_unknown')
-    return done('caller_hung_up')
+    // When the call was seen live to its end, whether anyone was rung first is known.
+    let stage = null
+    if (seenToEnd) stage = liveRang.length ? 'while_ringing' : !offeredTo.length ? 'before_ringing' : null
+    if (!offeredTo.length && stage !== 'before_ringing') gaps.add('alerting_unknown')
+    return done('caller_hung_up', { stage })
   }
 
   // 4. Offered to a person whose leg says it was not answered (or was busy),
   //    and nothing else took the call: a queue or menu that accepted it may
   //    have passed it to someone the log does not show.
-  if (notAnsweredBy.length && !bySystem.length) {
+  if (notAnsweredBy.length && (!bySystem.length || (seenToEnd && !liveAnswered.length))) {
     for (const s of notAnsweredBy) fact('not_answered_by', s)
     return done('not_answered')
   }
@@ -279,6 +361,16 @@ export function classifyCall(records, { direction, directory = null } = {}) {
     for (const s of notAnsweredBy) fact('not_answered_by', s)
     gaps.add('system_accepted')
     return done('unknown')
+  }
+
+  // Seen live to its end, no person's phone was ever offered it, and no step
+  // in the call log reached a person: it ended at the phone system (a
+  // greeting, a menu, a queue nobody could take) before anyone was rung.
+  // Who ended it, the caller or the system, is not stated.
+  const personLegs = attempts.filter((x) => x.to.kind === 'extension' && x.to.person !== false)
+  if (seenToEnd && !liveRang.length && !livePeople.some((p) => p.answered) && !personLegs.length && !offeredTo.length) {
+    facts.push({ code: 'ended_before_ringing', level: 'live', at: live.parties.map((p) => p.endedAt).filter(Boolean).sort().pop() ?? null, events: live.events })
+    return done('ended_before_ringing')
   }
 
   // 5. The phone system ended it (block list, account not accepting calls, a
@@ -335,10 +427,10 @@ export function systemOnlyPlaces(evidence) {
   return places.length ? places : null
 }
 
-export const CLASSIFICATIONS = Object.freeze(['answered', 'not_answered', 'caller_hung_up', 'voicemail', 'system', 'unknown'])
+export const CLASSIFICATIONS = Object.freeze(['answered', 'not_answered', 'caller_hung_up', 'ended_before_ringing', 'voicemail', 'system', 'unknown'])
 // Proven not answered by anyone: these are the missed calls that need a
 // callback. 'unknown' is never counted as missed (nothing proves it was), and
 // 'system' (a blocked number, a network error) needs no callback.
-export const UNANSWERED_CLASSES = Object.freeze(['not_answered', 'caller_hung_up', 'voicemail'])
+export const UNANSWERED_CLASSES = Object.freeze(['not_answered', 'caller_hung_up', 'ended_before_ringing', 'voicemail'])
 
 export default { sanitizeRecord, classifyCall, CLASSIFIER_VERSION, PERSON_TYPES, CLASSIFICATIONS, UNANSWERED_CLASSES }

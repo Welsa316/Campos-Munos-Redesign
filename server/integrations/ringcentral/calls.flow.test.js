@@ -45,6 +45,8 @@ const rc = {
   accountForbidden: false, extensionForbidden: false, rateLimitOnce: false, unauthorizedOnce: false, delayMs: 0, gate: null, onRequest: null,
   ringouts: new Map(), ringoutSeq: 0, ringoutForbidden: false, ringoutRequests: [],
   directoryRequests: [], directoryForbidden: false,
+  // The live call-event subscription: what was asked for, and what RingCentral holds.
+  subscriptions: new Map(), subscriptionRequests: [], subscriptionForbidden: false, subSeq: 0,
   extensions: [
     { id: 9101, extensionNumber: '101', name: 'Yoletty', type: 'User', status: 'Enabled' },
     { id: 9102, extensionNumber: '102', name: 'Ciro', type: 'User', status: 'Enabled' },
@@ -60,6 +62,28 @@ async function fakeFetch(url, init) {
     rc.issued++
     rc.refresh.add(`RT-${rc.issued}`)
     return reply(200, { access_token: `AT-${rc.issued}`, refresh_token: `RT-${rc.issued}`, expires_in: 3600, refresh_token_expires_in: 604800, owner_id: '1' })
+  }
+  // Subscriptions (live call events): create, read, renew, delete.
+  const sub = /^\/restapi\/v1\.0\/subscription(?:\/([^/]+))?(\/renew)?$/.exec(u.pathname)
+  if (sub) {
+    const body = init.body ? JSON.parse(init.body) : null
+    rc.subscriptionRequests.push({ method: init.method, id: sub[1] || null, renew: Boolean(sub[2]), body })
+    if (!/^Bearer AT-\d+$/.test(init.headers.Authorization)) return reply(401, { errorCode: 'OAU-149' })
+    if (rc.subscriptionForbidden) return reply(403, { errorCode: 'CMN-408', errors: [{ errorCode: 'CMN-408', permissionName: 'CallControl' }] })
+    if (init.method === 'POST' && !sub[1]) {
+      // RingCentral checks the address first: our receiver must echo the token.
+      const check = await rc.validate?.(body.deliveryMode.address)
+      if (rc.validate && !check) return reply(400, { errorCode: 'SUB-525', message: 'WebHook server response is invalid' })
+      const id = `sub-${++rc.subSeq}`
+      const s = { id, status: 'Active', eventFilters: body.eventFilters, expirationTime: new Date(clock.t.getTime() + body.expiresIn * 1000).toISOString(), token: body.deliveryMode.verificationToken }
+      rc.subscriptions.set(id, s)
+      return reply(200, { id: s.id, status: s.status, expirationTime: s.expirationTime, eventFilters: s.eventFilters })
+    }
+    const s = rc.subscriptions.get(sub[1])
+    if (!s) return reply(404, { errorCode: 'SUB-100' })
+    if (init.method === 'DELETE') { rc.subscriptions.delete(sub[1]); return reply(204) }
+    if (sub[2]) s.expirationTime = new Date(clock.t.getTime() + 315360000 * 1000).toISOString()
+    return reply(200, { id: s.id, status: s.status, expirationTime: s.expirationTime })
   }
   // The extension directory (who is a person): read once a day, kept apart
   // from the call log requests the other tests count.
@@ -171,9 +195,13 @@ before(async () => {
   const cookieParser = (await import('cookie-parser')).default
   const { addFallbackHandlers } = await import('../../app.js')
   const { createCallsRouter } = await import('../../routes/calls.js')
+  const { createIntegrationsRouter } = await import('../../routes/integrations.js')
+  const { createRingCentralWebhookRouter } = await import('../../routes/ringcentralWebhook.js')
   const app = express()
+  app.use('/webhooks/ringcentral', createRingCentralWebhookRouter({ db }))
   app.use(cookieParser())
   app.use(express.json())
+  app.use('/api/integrations', createIntegrationsRouter({ env, fetchImpl: fakeFetch, now: () => clock.t, db }))
   app.use('/api/calls', createCallsRouter({ env, fetchImpl: fakeFetch, now: () => clock.t, sleep: async (ms) => { sleeps.push(ms) }, pageDelayMs: 5 }))
   addFallbackHandlers(app)
   server = app.listen(0)
@@ -318,7 +346,7 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.equal(byId(calls, '2026-10-30T15:00:00Z').systemOnly, null)
     assert.equal(byId(calls, '2026-10-30T19:00:00Z').classification, 'caller_hung_up')
     assert.deepEqual(r.json.counts, {
-      incoming: 6, answered: 1, missed: 2, hung_up: 1, voicemail: 1, unconfirmed: 1, system: 0, outgoing: 1, not_returned: 2, excluded: 0,
+      incoming: 6, answered: 1, missed: 2, hung_up: 1, ended: 0, voicemail: 1, unconfirmed: 1, system: 0, outgoing: 1, not_returned: 2, excluded: 0,
     })
     assert.deepEqual(calls.map((c) => c.startedAt), [...calls.map((c) => c.startedAt)].sort().reverse(), 'newest first')
   })
@@ -748,6 +776,124 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     await db.query(`INSERT INTO rc_calls (rc_record_id, direction, started_at, outcome, scope) VALUES ('ancient', 'inbound', '2025-01-01T00:00:00Z', 'missed', 'account')`)
     await sync()
     assert.equal((await db.query(`SELECT 1 FROM rc_calls WHERE rc_record_id = 'ancient'`)).rowCount, 0)
+  })
+
+  await t.test('live call events: register, handshake, only our deliveries, and the evidence shows on the call', async () => {
+    const crypto = await import('crypto')
+    const hook = async (headers, body) => {
+      const r = await fetch(base + '/webhooks/ringcentral', { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body ?? {}) })
+      return { status: r.status, headers: r.headers, text: await r.text() }
+    }
+    // RingCentral's address check: the token echoed, a 200, JSON, nothing in the body.
+    const v = await hook({ 'Validation-Token': 'abc-123' })
+    assert.equal(v.status, 200)
+    assert.equal(v.headers.get('validation-token'), 'abc-123')
+    assert.match(v.headers.get('content-type'), /application\/json/)
+    assert.equal(v.text, '')
+    // Nothing registered yet: no delivery is accepted.
+    assert.equal((await hook({ 'Verification-Token': 'guess' }, { uuid: 'u0', body: {} })).status, 401)
+
+    // Only an administrator registers.
+    assert.equal((await send('POST', '/api/integrations/ringcentral/events', {}, { cookie: users.desk.cookie })).status, 403)
+    // RingCentral validates the address while the subscription is created.
+    rc.validate = async (address) => {
+      assert.equal(address, 'https://api.camulaw.com/webhooks/ringcentral')
+      return (await hook({ 'Validation-Token': 'tok-1' })).headers.get('validation-token') === 'tok-1'
+    }
+    const reg = await send('POST', '/api/integrations/ringcentral/events', {})
+    assert.equal(reg.status, 200, reg.text)
+    assert.equal(reg.json.registered, true)
+    assert.equal(reg.json.status, 'Active')
+    assert.equal(reg.json.address, 'https://api.camulaw.com/webhooks/ringcentral')
+    const asked = rc.subscriptionRequests.at(-1).body
+    assert.deepEqual(asked.eventFilters, ['/restapi/v1.0/account/~/telephony/sessions'])
+    assert.equal(asked.deliveryMode.transportType, 'WebHook')
+    assert.equal(asked.expiresIn, 315360000)
+    const token = asked.deliveryMode.verificationToken
+    assert.ok(token.length >= 24)
+    assert.ok(!reg.text.includes(token), 'the token never comes back to the portal')
+    const stored = (await db.query(`SELECT token_digest, subscription_id FROM rc_event_subscription`)).rows[0]
+    assert.equal(stored.token_digest, crypto.createHash('sha256').update(token).digest('hex'), 'only its digest is kept')
+
+    // An after-hours call that got only the greeting, and its live events.
+    const tsid = 'ts-greeting'
+    const party = (id, extensionId, direction, code, seq, sec, extra = {}) => ({
+      uuid: `n-${id}-${seq}`, event: '/restapi/v1.0/account/1/telephony/sessions', subscriptionId: stored.subscription_id,
+      body: { sequence: seq, telephonySessionId: tsid, sessionId: 's-greeting', eventTime: new Date(Date.parse('2026-10-30T22:30:00Z') + sec * 1000).toISOString(),
+        parties: [{ id, extensionId, direction, status: { code }, to: { phoneNumber: '+15049106508', name: 'Campos Muños Law' }, from: { phoneNumber: '+15045550170' }, ...extra }] },
+    })
+    const deliveries = [
+      party('p-co', null, 'Outbound', 'Setup', 1, 0), party('p-co', null, 'Outbound', 'Answered', 2, 0),
+      party('p-ivr', '9001', 'Inbound', 'Answered', 3, 1), party('p-ivr', '9001', 'Inbound', 'Disconnected', 4, 6), party('p-co', null, 'Outbound', 'Disconnected', 5, 6),
+    ]
+    assert.equal((await hook({ 'Verification-Token': 'wrong' }, deliveries[0])).status, 401)
+    assert.equal((await hook({ 'Verification-Token': token }, { ...deliveries[0], subscriptionId: 'someone-else' })).status, 401)
+    for (const d of deliveries) assert.equal((await hook({ 'Verification-Token': token }, d)).status, 200)
+    assert.equal((await hook({ 'Verification-Token': token }, deliveries[0])).status, 200, 'a repeat delivery is accepted')
+    assert.equal((await db.query(`SELECT COUNT(*)::int AS n FROM rc_telephony_events WHERE telephony_session_id = $1`, [tsid])).rows[0].n, 5, 'and stored once')
+
+    rc.records.push(rec('g1', '2026-10-30T22:30:00Z', 'Inbound', 'Missed', { phoneNumber: '+15045550170' }, {
+      telephonySessionId: tsid, sessionId: 's-greeting', duration: 6,
+      legs: [{ startTime: '2026-10-30T22:30:00Z', legType: 'Accept', result: 'Missed', master: true, to: firm }],
+    }))
+    await db.query(`UPDATE rc_call_sync_state SET window_to = '2026-10-30T20:00:00Z'`)
+    await sync()
+    const l = await list()
+    const g = byId(l.json.calls, '2026-10-30T22:30:00Z')
+    assert.equal(g.classification, 'ended_before_ringing')
+    assert.equal(l.json.counts.ended, 1)
+    const ev = await call('GET', `/api/calls/${g.id}/evidence`)
+    assert.equal(ev.json.live.events, 5)
+    assert.equal(ev.json.live.complete, true)
+    assert.deepEqual(ev.json.live.parties.map((p) => p.states.map((x) => x.code)), [['Setup', 'Answered', 'Disconnected'], ['Answered', 'Disconnected']])
+    assert.ok(!ev.text.includes('5550170'), 'no caller number in the live timeline')
+
+    // A hang-up imported first; its live events arrive later and the call is read again.
+    const t2 = 'ts-late'
+    rc.records.push(rec('h1', '2026-10-30T22:40:00Z', 'Inbound', 'Missed', { phoneNumber: '+15045550171' }, { telephonySessionId: t2, sessionId: 's-late', reason: 'Hang Up', duration: 3 }))
+    await db.query(`UPDATE rc_call_sync_state SET window_to = '2026-10-30T20:00:00Z'`)
+    await sync()
+    const before = byId((await list()).json.calls, '2026-10-30T22:40:00Z')
+    assert.equal(before.classification, 'caller_hung_up')
+    assert.equal(before.stage, null)
+    for (const [i, code] of ['Setup', 'Disconnected'].entries()) {
+      const d = party('p-q', '9001', 'Inbound', code, i + 1, i * 3)
+      d.uuid = `late-${i}`; d.body.telephonySessionId = t2
+      assert.equal((await hook({ 'Verification-Token': token }, d)).status, 200)
+    }
+    let after
+    for (let i = 0; i < 40 && after?.stage !== 'before_ringing'; i++) {
+      await new Promise((r) => setTimeout(r, 25))
+      after = byId((await list()).json.calls, '2026-10-30T22:40:00Z')
+    }
+    assert.equal(after.stage, 'before_ringing', 'read again when its events arrived')
+
+    // Daily check: renewed a month before it would expire.
+    rc.subscriptions.get(stored.subscription_id).expirationTime = new Date(clock.t.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString()
+    const chk = await send('POST', '/api/integrations/ringcentral/events/check', {})
+    assert.equal(chk.status, 200)
+    assert.ok(rc.subscriptionRequests.some((r) => r.renew), 'renewed')
+    assert.ok(new Date(chk.json.expiresAt) > new Date(clock.t.getTime() + 365 * 24 * 60 * 60 * 1000))
+
+    // Removed: deleted in RingCentral, and deliveries are refused again.
+    const rm = await send('DELETE', '/api/integrations/ringcentral/events', undefined)
+    assert.equal(rm.status, 200)
+    assert.equal(rm.json.registered, false)
+    assert.equal(rc.subscriptions.size, 0)
+    assert.equal((await hook({ 'Verification-Token': token }, deliveries[0])).status, 401)
+
+    // Without the Call Control permission, the administrator is told what to fix.
+    rc.subscriptionForbidden = true
+    const denied = await send('POST', '/api/integrations/ringcentral/events', {})
+    rc.subscriptionForbidden = false
+    assert.equal(denied.status, 409)
+    assert.equal(denied.json.code, 'missing_permission')
+    assert.match(denied.json.error, /Call Control/)
+    assert.equal((await call('GET', '/api/integrations/ringcentral/events')).json.registered, false)
+
+    rc.validate = null
+    rc.records = rc.records.filter((r) => !['g1', 'h1'].includes(r.id))
+    await db.query(`DELETE FROM rc_calls WHERE call_key IN ('ts-greeting', 'ts-late')`)
   })
 
   await t.test('RingOut: who may call, saving "ring me at", refusing numbers that must never be dialled', async () => {

@@ -101,41 +101,63 @@ attached.
 | Ring timeout specifically | No. "Not answered" says it was not answered, not why | Partly: `status.reason` such as `Timeout` exists but is not documented |
 | Caller hung up before an answer | **Yes**: `reason: Hang Up` | — |
 | Hung up **while** a named person was rung | Yes when the `Hang Up` is on that person's leg | Corroborated by their party reaching `Proceeding` |
-| Hung up **before anyone was alerted** | **No.** A missing leg is not evidence | Yes in principle: no extension party ever reaches `Proceeding` |
+| Hung up / ended **before anyone was alerted** | **No.** A missing leg is not evidence | **Yes**, from live events: seen to the end, no person's phone ever `Proceeding` |
 | Employee rejected / declined | **No.** `Rejected` and `Declined` results are undocumented; `Stopped` is ambiguous | `status.reason: Rejected` exists but is not documented |
 | Voicemail | **Yes**: an attached voicemail message | `status.code: VoiceMail` is documented |
 | IVR / auto-receptionist handled it | No field says so | Partly |
 | Phone system refused it | **Yes**: documented refusal or failure reasons | — |
 
-## Telephony Session events (reviewed, not switched on)
+## Live call events (Telephony Sessions)
 
-RingCentral can push live events for every call: an **Account Telephony
-Sessions** subscription to `/restapi/v1.0/account/~/telephony/sessions`.
+From the moment an administrator registers them (Integrations → **Live call
+events** → **Register**), RingCentral reports each call as it happens.
 
-- **What each event carries.** Each party of the call (the caller, each
-  extension rung, voicemail) moves through `Setup`, `Proceeding` (being
-  offered to an endpoint), `Answered` ("media is established") and
-  `Disconnected`, with timestamps and a reason.
-- **What it adds.** It is the only source that can show whether an
-  extension was alerted at all, and when the caller left relative to the
-  ringing. That evidence is needed for "abandoned before ringing" and
-  "abandoned while ringing".
-- **Needed to switch it on:**
-  - the **Call Control** app permission;
-  - a public HTTPS webhook on the API that answers RingCentral's validation
-    request (echoing the `Validation-Token` header within 3 seconds);
-  - a subscription created in RingCentral. Webhook subscriptions can last
-    years but must be renewed.
-- **Caveats in RingCentral's docs:**
-  - events can arrive out of order (use `sequence`);
-  - parties outside the account, or in another session after a transfer,
-    are not reported;
-  - `Answered` on the caller's side only means the company was reached, not
-    that a person answered.
-- **Not done yet.** Creating the subscription adds something to the firm's
-  RingCentral account and needs a new permission, so it waits for a
-  decision. It would cover future calls only: past calls cannot gain this
-  evidence.
+**How it's set up**
+- **Subscription.** Account Telephony Sessions,
+  `/restapi/v1.0/account/~/telephony/sessions`, delivered by webhook to
+  `https://api.camulaw.com/webhooks/ringcentral`.
+- **Permission and lifetime.** It needs the **Call Control** permission. It
+  lasts 10 years and a daily check renews it a month before it would end.
+  **Remove** deletes it. It changes nothing in RingCentral's routing, phones
+  or settings.
+- **Receiver** (`routes/ringcentralWebhook.js`):
+  - answers RingCentral's address check by echoing `Validation-Token`;
+  - after that, accepts only deliveries carrying the verification token set
+    at registration, kept as a SHA-256 digest, that name our subscription.
+  - Each party's state change is stored in `rc_telephony_events` (kept 400
+    days), and the call is re-read when its events arrive.
+- **Where it shows.** Each call's details in Calls, under "What happened
+  live": each phone, queue or greeting, its states in order, and how long
+  each person's phone rang.
+
+**What the events are allowed to prove** (RingCentral's documented meanings):
+- **A person's phone was offered the call.** Their party reached
+  `Proceeding`, "The call is being forwarded to an endpoint". Ring time runs
+  from there to their next state.
+- **Answered.** A person's party (on the side facing their phone,
+  `direction: Inbound`) reached `Answered`, "answered on a target endpoint and
+  media is established". `Answered` on the phone system's side only means the
+  call reached the firm, and is shown as "taken by the phone system".
+- **Ended before anyone was rung.** The call was followed to its end (every
+  party seen reached `Disconnected` or `Gone`), no person's phone ever
+  reached `Proceeding`, and no call-log step reached a person. Who ended it,
+  the caller or the system, is not stated. It counts as unanswered (it may
+  need a callback), never against anyone.
+- **When a caller who hung up left.** With the call log's `Hang Up`, the
+  stage becomes *before anyone was rung* or *while ringing Yoletty (18 s)*.
+
+**What they are not used for**
+- **RingCentral's `missedCall` flag** is shown on the phone it was set for,
+  never charged to anyone. RingCentral doesn't document what sets it.
+- **Charges.** Not answering is still charged only from the call log's
+  documented `No Answer` / `Not Answered` / `Line Busy` on that person's
+  leg, and only on calls proven not answered by anyone.
+
+**Limits.**
+- The events depend on RingCentral delivering them. A party that isn't part
+  of the account (the caller's own phone) is never reported, and deliveries
+  can arrive out of order; they're read by `sequence`.
+- Calls before registration have no events.
 
 ## Stored data and re-reading
 

@@ -381,3 +381,111 @@ test('only for not-confirmed calls with steps', () => {
   assert.equal(systemOnlyPlaces(a), null)
   assert.equal(systemOnlyPlaces(null), null)
 })
+
+// --- live call events (Account Telephony Sessions) --------------------------------
+
+const ev = (seq, sec, party, code, extra = {}) => ({
+  id: party.id, extensionId: party.extensionId ?? null, direction: party.direction ?? 'Inbound', sequence: seq, at: at(sec),
+  status: { code, reason: extra.reason ?? null }, missedCall: extra.missedCall ?? null, to: party.to ?? null,
+})
+const P = {
+  company: { id: 'p-co', extensionId: null, direction: 'Outbound' },
+  vm: { id: 'p-vm', extensionId: '9005', direction: 'Inbound' },
+  queue: { id: 'p-q', extensionId: '9002', direction: 'Inbound' },
+  yoletty: { id: 'p-y', extensionId: '9101', direction: 'Inbound' },
+  ciro: { id: 'p-c', extensionId: '9102', direction: 'Inbound' },
+}
+const DIR5 = dir([...DIRECTORY.byId.values(), { id: '9005', number: '5', name: 'Office voicemail', type: 'Voicemail' }])
+const withLive = (recs, events, directory = DIR5) => classifyCall(Array.isArray(recs) ? recs : [recs], { direction: 'inbound', directory, events })
+const greetingOnly = record([
+  leg(0, LINE, null, { legType: 'Accept', master: true, result: 'Missed' }),
+  leg(0, { extensionId: '9005', extensionNumber: '5', name: 'Office voicemail' }, null, { legType: 'Accept', result: 'Missed' }),
+], { result: 'Missed', duration: 6 })
+
+test('live: the closed-office greeting, then the caller left: ended before anyone was rung', () => {
+  const c = withLive(greetingOnly, [
+    ev(1, 0, P.company, 'Setup'), ev(2, 0, P.company, 'Answered'),
+    ev(3, 1, P.vm, 'Setup'), ev(4, 1, P.vm, 'VoiceMail'),
+    ev(5, 6, P.vm, 'Disconnected'), ev(6, 6, P.company, 'Disconnected'),
+  ])
+  assert.equal(c.classification, 'ended_before_ringing')
+  assert.deepEqual(c.notAnsweredBy, [])
+  assert.ok(c.facts.some((f) => f.code === 'ended_before_ringing'))
+  assert.equal(c.live.complete, true)
+})
+
+test('live: not seen to the end proves nothing about ringing', () => {
+  const c = withLive(greetingOnly, [ev(1, 0, P.company, 'Setup'), ev(2, 1, P.vm, 'VoiceMail')])
+  assert.equal(c.classification, 'unknown')
+})
+
+test('live: events out of order are read by sequence', () => {
+  const events = [ev(6, 6, P.company, 'Disconnected'), ev(5, 6, P.vm, 'Disconnected'), ev(1, 0, P.company, 'Setup'), ev(4, 1, P.vm, 'VoiceMail')]
+  const c = withLive(greetingOnly, events)
+  assert.equal(c.classification, 'ended_before_ringing')
+  // The timeline shown in Calls is in RingCentral's order, not arrival order.
+  assert.deepEqual(c.live.parties.find((p) => p.partyId === 'p-co').states.map((x) => x.code), ['Setup', 'Disconnected'])
+  assert.deepEqual(c.live.parties.find((p) => p.partyId === 'p-vm').states.map((x) => x.code), ['VoiceMail', 'Disconnected'])
+})
+
+test('live: caller hung up while Yoletty’s phone rang: hung up, stage while ringing, not charged to her', () => {
+  const c = withLive(record([leg(0, LINE, null, { master: true }), leg(0, QUEUE, null, { result: 'Missed' })], { reason: 'Hang Up', result: 'Missed' }), [
+    ev(1, 0, P.queue, 'Setup'), ev(2, 4, P.yoletty, 'Proceeding'),
+    ev(3, 22, P.yoletty, 'Disconnected', { missedCall: true }), ev(4, 22, P.queue, 'Disconnected'),
+  ])
+  assert.equal(c.classification, 'caller_hung_up')
+  assert.equal(c.stage, 'while_ringing')
+  assert.deepEqual(c.offeredTo.map((o) => o.name), ['Yoletty'])
+  assert.deepEqual(c.notAnsweredBy, [])
+  assert.equal(c.live.parties.find((p) => p.extensionId === '9101').rang.seconds, 18)
+})
+
+test('live: caller hung up and no phone was ever rung: stage before ringing', () => {
+  const c = withLive(record([leg(0, LINE, null, { master: true }), leg(0, QUEUE, null, { result: 'Missed' })], { reason: 'Hang Up', result: 'Missed', duration: 3 }), [
+    ev(1, 0, P.queue, 'Setup'), ev(2, 3, P.queue, 'Disconnected'),
+  ])
+  assert.equal(c.classification, 'caller_hung_up')
+  assert.equal(c.stage, 'before_ringing')
+  assert.ok(!c.gaps.includes('alerting_unknown'))
+})
+
+test('live: RingCentral’s missedCall flag alone never charges anyone', () => {
+  const c = withLive(record([leg(0, LINE, null, { master: true }), leg(0, QUEUE, null, { result: 'Missed' })], { result: 'Missed' }), [
+    ev(1, 0, P.queue, 'Setup'), ev(2, 4, P.yoletty, 'Proceeding'),
+    ev(3, 9, P.yoletty, 'Disconnected', { missedCall: true }), ev(4, 9, P.queue, 'Disconnected'),
+  ])
+  assert.equal(c.classification, 'unknown')
+  assert.deepEqual(c.notAnsweredBy, [])
+  assert.deepEqual(c.offeredTo.map((o) => o.name), ['Yoletty'], 'her phone was offered it: that much is shown')
+})
+
+test('live: answered on her phone (media established) is an answer, even when the call log says Missed', () => {
+  const c = withLive(record([leg(0, LINE, null, { master: true })], { result: 'Missed' }), [
+    ev(1, 0, P.queue, 'Setup'), ev(2, 3, P.yoletty, 'Proceeding'), ev(3, 7, P.yoletty, 'Answered'),
+    ev(4, 90, P.yoletty, 'Disconnected'), ev(5, 90, P.queue, 'Disconnected'),
+  ])
+  assert.equal(c.classification, 'answered')
+  assert.equal(c.answeredBy.name, 'Yoletty')
+})
+
+test('live: "Answered" on the calling side only means the firm was reached, not a person', () => {
+  const c = withLive(greetingOnly, [ev(1, 0, { ...P.yoletty, direction: 'Outbound' }, 'Answered'), ev(2, 5, { ...P.yoletty, direction: 'Outbound' }, 'Disconnected')])
+  assert.notEqual(c.classification, 'answered')
+})
+
+test('live: a queue accepted it and her leg says No Answer; seen to the end with nobody answering → not answered', () => {
+  const c = withLive(record([leg(0, QUEUE, 'Accepted', { master: true }), leg(3, YOLETTY, 'No Answer')]), [
+    ev(1, 0, P.queue, 'Setup'), ev(2, 3, P.yoletty, 'Proceeding'), ev(3, 23, P.yoletty, 'Disconnected', { missedCall: true }),
+    ev(4, 40, P.queue, 'Disconnected'),
+  ])
+  assert.equal(c.classification, 'not_answered')
+  assert.deepEqual(c.notAnsweredBy.map((p) => [p.name, p.reason]), [['Yoletty', 'No Answer']], 'charged from her leg’s documented reason, not the flag')
+})
+
+test('live: a Stopped attempt with nobody answering live no longer blocks a documented hang-up', () => {
+  const c = withLive(record([leg(0, LINE, null, { master: true }), leg(2, YOLETTY, 'Stopped')], { reason: 'Hang Up' }), [
+    ev(1, 0, P.queue, 'Setup'), ev(2, 2, P.yoletty, 'Proceeding'), ev(3, 8, P.yoletty, 'Disconnected'), ev(4, 8, P.queue, 'Disconnected'),
+  ])
+  assert.equal(c.classification, 'caller_hung_up')
+  assert.equal(c.stage, 'while_ringing')
+})

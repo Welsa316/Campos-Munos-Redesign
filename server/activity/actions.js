@@ -58,6 +58,9 @@ export const ACTIONS = {
   'GET /api/integrations/ringcentral/callback': { key: 'integrations.rc_connected', label: 'Finished connecting RingCentral' },
   'POST /api/integrations/ringcentral/refresh': { key: 'integrations.rc_checked', label: 'Checked the RingCentral connection' },
   'POST /api/integrations/ringcentral/disconnect': { key: 'integrations.rc_disconnected', label: 'Disconnected RingCentral' },
+  'POST /api/integrations/ringcentral/events': { key: 'integrations.rc_events_registered', label: 'Registered RingCentral live call events' },
+  'POST /api/integrations/ringcentral/events/check': { key: 'integrations.rc_events_checked', label: 'Checked the RingCentral live call events' },
+  'DELETE /api/integrations/ringcentral/events': { key: 'integrations.rc_events_removed', label: 'Removed RingCentral live call events' },
 
   // Billing
   'POST /api/billing/imports': { key: 'billing.import_uploaded', label: 'Uploaded an eImmigration report' },

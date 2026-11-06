@@ -111,8 +111,12 @@ export const INTEGRATIONS_SCHEMA_SQL = `
   -- classification_evidence. RingCentral's own result stays in result_raw.
   ALTER TABLE rc_calls ADD COLUMN IF NOT EXISTS call_key TEXT GENERATED ALWAYS AS (COALESCE(telephony_session_id, session_id, rc_record_id)) STORED;
   ALTER TABLE rc_calls ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT TRUE;
-  ALTER TABLE rc_calls ADD COLUMN IF NOT EXISTS classification VARCHAR(16)
-    CHECK (classification IN ('answered', 'not_answered', 'caller_hung_up', 'voicemail', 'system', 'unknown'));
+  ALTER TABLE rc_calls ADD COLUMN IF NOT EXISTS classification VARCHAR(24);
+  -- 'ended_before_ringing' needs the live call events; widened and re-checked here.
+  ALTER TABLE rc_calls ALTER COLUMN classification TYPE VARCHAR(24);
+  ALTER TABLE rc_calls DROP CONSTRAINT IF EXISTS rc_calls_classification_check;
+  ALTER TABLE rc_calls ADD CONSTRAINT rc_calls_classification_check
+    CHECK (classification IN ('answered', 'not_answered', 'caller_hung_up', 'ended_before_ringing', 'voicemail', 'system', 'unknown'));
   ALTER TABLE rc_calls ADD COLUMN IF NOT EXISTS classification_evidence JSONB;
   ALTER TABLE rc_calls ADD COLUMN IF NOT EXISTS classifier_version SMALLINT;
   CREATE INDEX IF NOT EXISTS idx_rc_calls_call_key ON rc_calls(call_key);
@@ -170,6 +174,48 @@ export const INTEGRATIONS_SCHEMA_SQL = `
     note TEXT,
     created_by INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  -- RingCentral's live call events (Account Telephony Sessions, webhook at
+  -- /webhooks/ringcentral; integrations/ringcentral/telephonyEvents.js): one
+  -- row per party per notification. They show, for calls from the moment the
+  -- subscription exists, whose phone rang and when, who answered, and when
+  -- each party left. Kept with the call they belong to (telephony_session_id).
+  CREATE TABLE IF NOT EXISTS rc_telephony_events (
+    id BIGSERIAL PRIMARY KEY,
+    notification_uuid TEXT NOT NULL,
+    telephony_session_id TEXT NOT NULL,
+    session_id TEXT,
+    sequence INTEGER,
+    event_time TIMESTAMPTZ,
+    party_id TEXT NOT NULL,
+    extension_id TEXT,
+    direction VARCHAR(8),
+    status_code TEXT,
+    status_reason TEXT,
+    missed_call BOOLEAN,
+    party JSONB NOT NULL,
+    received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (notification_uuid, party_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_rc_telephony_events_session ON rc_telephony_events(telephony_session_id, sequence);
+  CREATE INDEX IF NOT EXISTS idx_rc_telephony_events_received ON rc_telephony_events(received_at);
+
+  -- The one subscription that delivers them. The verification token RingCentral
+  -- sends with every delivery is kept only as a SHA-256 digest.
+  CREATE TABLE IF NOT EXISTS rc_event_subscription (
+    key VARCHAR(20) PRIMARY KEY CHECK (key = 'ringcentral'),
+    subscription_id TEXT,
+    address TEXT,
+    token_digest TEXT,
+    status TEXT,
+    expires_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ,
+    created_by INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
+    checked_at TIMESTAMPTZ,
+    last_event_at TIMESTAMPTZ,
+    last_error_code TEXT,
+    last_error_at TIMESTAMPTZ
   );
 
   -- Where the import stands: one row.
