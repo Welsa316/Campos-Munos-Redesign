@@ -76,12 +76,17 @@
               <div v-if="conn.scope" class="sm:col-span-2"><dt class="text-gray-500 text-[11px]">Permissions granted</dt><dd class="text-gray-900 break-words">{{ conn.scope }}</dd></div>
             </dl>
 
-            <p v-if="data.status === 'not_connected' && data.configured" class="text-[13px] font-ui text-gray-700">
+            <p v-if="data.status === 'not_connected' && data.configured && !desktop" class="text-[13px] font-ui text-gray-700">
               Not connected. Connecting opens RingCentral's sign-in page; sign in with an account allowed to authorise the firm's RingCentral app, approve, and you'll come back here.
+            </p>
+            <!-- RingCentral's sign-in has to come back to the portal in the same
+                 browser; the desktop app hands outside pages to the browser instead. -->
+            <p v-if="desktop && data.configured" class="text-[13px] font-ui text-gray-700">
+              To connect RingCentral, open the portal in a web browser (admin.camulaw.com → Integrations). The desktop app can't finish RingCentral's sign-in.
             </p>
 
             <div class="flex flex-wrap gap-2">
-              <button v-if="data.configured" type="button" @click="connect" :disabled="Boolean(busy)"
+              <button v-if="data.configured && !desktop" type="button" @click="connect" :disabled="Boolean(busy)"
                 class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-navy text-white text-sm font-ui font-semibold hover:bg-brand-navy-dark transition-colors disabled:opacity-50">
                 <FaIcon name="plug" />{{ data.status === 'not_connected' ? 'Connect RingCentral' : 'Connect again' }}
               </button>
@@ -172,11 +177,13 @@ import SectionLinks from '../../components/portal/SectionLinks.vue'
 import ChangePasswordModal from '../../components/messages/ChangePasswordModal.vue'
 import FaIcon from '../../components/FaIcon.vue'
 import { vAlertFocus } from '../../directives/alertFocus.js'
+import { inDesktopApp } from '../../utils/desktop.js'
 
 const route = useRoute()
 const router = useRouter()
 const { adminEmail, logout } = useAuth()
 const { get, post, del } = useApi()
+const desktop = inDesktopApp()
 
 const data = ref(null)
 const loading = ref(false)
@@ -305,8 +312,7 @@ async function disconnectNow() {
 }
 
 async function handleLogout() {
-  await logout()
-  router.push({ name: 'Login' })
+  if (await logout()) router.push({ name: 'Login' })
 }
 
 onMounted(async () => {

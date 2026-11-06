@@ -76,17 +76,18 @@ import { LOGO_SRC } from '../data/brand.js'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 import { safeNextPath } from '../utils/safeNext.js'
+import { readLoginEmail, saveLoginEmail } from '../utils/session.js'
 
 const router = useRouter()
 const route = useRoute()
 const { login, homeRoute } = useAuth()
 
-// The last address used to sign in here, so only the password needs typing.
-const EMAIL_KEY = 'cm-login-email'
-const readEmail = () => { try { return localStorage.getItem(EMAIL_KEY) || '' } catch { return '' } }
-const email = ref(readEmail())
+// With "Keep me signed in", the address is remembered so only the password
+// needs typing next time; the box starts ticked when one was remembered.
+const savedEmail = (() => { try { return readLoginEmail(localStorage) } catch { return '' } })()
+const email = ref(savedEmail)
 const password = ref('')
-const remember = ref(false)
+const remember = ref(!!savedEmail)
 const passwordRef = ref(null)
 // The address is remembered: start in the password box.
 onMounted(() => { if (email.value) passwordRef.value?.focus() })
@@ -99,7 +100,7 @@ async function handleLogin() {
 
   try {
     await login(email.value, password.value, { remember: remember.value })
-    try { localStorage.setItem(EMAIL_KEY, email.value.trim()) } catch { /* private window: nothing to remember */ }
+    try { saveLoginEmail(localStorage, email.value, remember.value) } catch { /* no storage at all */ }
     // The guard redirects again if `next` is a screen this account cannot use.
     router.push(safeNextPath(route.query.next) || homeRoute())
   } catch (err) {

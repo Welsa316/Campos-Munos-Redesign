@@ -1,6 +1,8 @@
 import { ref, computed } from 'vue'
 import { rawFetch } from './useApi.js'
 import { sessionExpired } from './appStatus.js'
+import { toast } from './useToast.js'
+import { signOutReached } from '../utils/session.js'
 import { applyTheme, cacheTheme, DEFAULT_THEME } from '../data/themes.js'
 
 const isAuthenticated = ref(false)
@@ -106,14 +108,15 @@ export function useAuth() {
     sessionExpired.value = false
   }
 
+  /** Signs out; false (and an error toast) when the server never heard it, so the button can be pressed again. */
   async function logout() {
-    try {
-      await rawFetch('/api/auth/logout', { method: 'POST' })
-    } catch {
-      // noop
+    if (!(await signOutReached(() => rawFetch('/api/auth/logout', { method: 'POST' })))) {
+      toast({ text: 'Sign-out did not reach the server, so you are still signed in. Check the connection and try again.', tone: 'error' })
+      return false
     }
     clearProfile()
     verified = false
+    return true
   }
 
   return {
