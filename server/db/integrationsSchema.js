@@ -177,6 +177,10 @@ export const INTEGRATIONS_SCHEMA_SQL = `
     created_by INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
+  -- Cleared together (Calls → Clear the list): the batch can be undone as
+  -- one, and a bulk clear is not counted as "Handled today".
+  ALTER TABLE rc_call_resolutions ADD COLUMN IF NOT EXISTS batch_id TEXT;
+  CREATE INDEX IF NOT EXISTS rc_call_resolutions_batch_idx ON rc_call_resolutions (batch_id) WHERE batch_id IS NOT NULL;
   CREATE TABLE IF NOT EXISTS rc_ignored_numbers (
     counterpart_key TEXT PRIMARY KEY CHECK (counterpart_key <> ''),
     number TEXT,

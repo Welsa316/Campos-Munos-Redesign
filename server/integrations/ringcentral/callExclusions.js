@@ -5,6 +5,9 @@
 // can be removed. Either one call, or every call from its number (for a
 // number that keeps calling, such as a staff member's mobile).
 
+import crypto from 'crypto'
+import { openCallKeys } from './callLog.js'
+
 export const EXCLUSION_REASONS = Object.freeze(['verification', 'staff_test', 'spam', 'other'])
 const NOTE_MAX = 200
 
@@ -114,4 +117,32 @@ export async function unmarkHandled(db, { callId }) {
     [call.id]
   )
   return { callId: Number(call.id), removed: r.rowCount > 0 }
+}
+
+/**
+ * Mark every call Needs attention lists (received before `before`) as
+ * handled in one batch, with one note: for clearing the list after a fix
+ * to the phone system's routing made the old calls moot. Classification and
+ * attribution are untouched, the batch is not counted as "Handled today",
+ * and it can be undone as one.
+ */
+export async function clearOpenCalls(db, { before = new Date(), note, accountId, now = new Date() }) {
+  const text = typeof note === 'string' ? note.trim().slice(0, NOTE_MAX) : ''
+  if (!text) throw new CallExclusionError('note_required', 'Say why these calls are being cleared', 400)
+  const keys = await openCallKeys(db, { before, now })
+  if (!keys.length) return { cleared: 0, batch: null }
+  const batch = crypto.randomUUID()
+  const r = await db.query(
+    `INSERT INTO rc_call_resolutions (call_key, note, created_by, batch_id)
+     SELECT k, $2, $3, $4 FROM unnest($1::text[]) AS k
+     ON CONFLICT (call_key) DO NOTHING`,
+    [keys, text, accountId, batch]
+  )
+  return { cleared: r.rowCount, batch }
+}
+
+/** Undo one clear: its calls go back to Needs attention. */
+export async function undoClear(db, { batch }) {
+  const r = await db.query('DELETE FROM rc_call_resolutions WHERE batch_id = $1', [batch])
+  return { removed: r.rowCount }
 }

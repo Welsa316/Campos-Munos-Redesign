@@ -102,6 +102,7 @@ export function daySections(calls, now = Date.now()) {
 export function followUpLine(c, now = Date.now()) {
   if (c.direction !== 'inbound') return null
   if (c.exclusion) return { tone: 'quiet', text: 'No callback needed' }
+  if (c.handled?.bulk) return { tone: 'done', text: `Cleared from the list${c.handled.by ? ` by ${c.handled.by}` : ''} · ${when(c.handled.at, now)}` }
   if (c.handled) return { tone: 'done', text: `Handled${c.handled.by ? ` by ${c.handled.by}` : ''} · ${when(c.handled.at, now)}` }
   if (c.connectedFollowUp) {
     const at = when(c.connectedFollowUp.at, now)
@@ -117,6 +118,10 @@ export function followUpLine(c, now = Date.now()) {
 export function followUpDetail(c, now = Date.now()) {
   if (c.direction !== 'inbound') return 'An outgoing call. Nothing to follow up.'
   if (c.exclusion) return null // the card shows the exclusion itself
+  if (c.handled?.bulk) {
+    const by = c.handled.by || 'a former user'
+    return `Cleared from Needs attention with the rest of the list by ${by}, ${when(c.handled.at, now)}.${c.handled.note ? ` “${c.handled.note}”` : ''} Nobody followed it up on its own. How the call was classified, and who it is attributed to, is unchanged.`
+  }
   if (c.handled) {
     const by = c.handled.by || 'a former user'
     return `Marked handled by ${by}, ${when(c.handled.at, now)}.${c.handled.note ? ` “${c.handled.note}”` : ''} How the call was classified, and who it is attributed to, is unchanged.`

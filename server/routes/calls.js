@@ -19,9 +19,9 @@ import requireAuth from '../middleware/auth.js'
 import requireCapability, { can } from '../middleware/requireCapability.js'
 import { loadRingCentralConfig } from '../integrations/ringcentral/config.js'
 import { getConnectionStatus } from '../integrations/ringcentral/service.js'
-import { queryCalls, syncCallLog, getSyncState, summarizeMissed, OUTCOME_FILTERS, callEvidence, listPeople, callKpis, callsStamp } from '../integrations/ringcentral/callLog.js'
+import { queryCalls, syncCallLog, getSyncState, summarizeMissed, OUTCOME_FILTERS, callEvidence, listPeople, callKpis, callsStamp, openCallKeys } from '../integrations/ringcentral/callLog.js'
 import { UNANSWERED_CLASSES } from '../integrations/ringcentral/callEvidence.js'
-import { excludeCall, includeCall, markHandled, unmarkHandled, CallExclusionError } from '../integrations/ringcentral/callExclusions.js'
+import { excludeCall, includeCall, markHandled, unmarkHandled, clearOpenCalls, undoClear, CallExclusionError } from '../integrations/ringcentral/callExclusions.js'
 import { placeRingOut, ringOutStatus, cancelRingOut, getMyPhone, setMyPhone, RingOutError } from '../integrations/ringcentral/ringout.js'
 
 const MANUAL_SYNC_MIN_INTERVAL_MS = 30 * 1000
@@ -179,6 +179,31 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
 
   router.delete('/:id(\\d+)/handled', exclude, exclusionWrap(async (req, res) => {
     res.json(await unmarkHandled(pool(), { callId: Number(req.params.id) }))
+  }))
+
+  // Clear the list: every open call received before `before` (default now)
+  // marked handled at once, with one note. Administrators only (calls.clear).
+  const clear = requireCapability('calls.clear')
+  const cutoff = (v) => {
+    if (v == null || v === '') return clock()
+    const d = new Date(v)
+    return Number.isNaN(d.getTime()) ? null : d
+  }
+  // How many it would clear, for the confirmation.
+  router.get('/handled/bulk', clear, exclusionWrap(async (req, res) => {
+    const before = cutoff(req.query.before)
+    if (!before) return res.status(400).json({ error: 'Invalid date', code: 'invalid_date' })
+    res.json({ count: (await openCallKeys(pool(), { before, now: clock() })).length })
+  }))
+  router.post('/handled/bulk', clear, exclusionWrap(async (req, res) => {
+    const before = cutoff(req.body?.before)
+    if (!before) return res.status(400).json({ error: 'Invalid date', code: 'invalid_date' })
+    const out = await clearOpenCalls(pool(), { before, note: req.body?.note, accountId: req.account.id, now: clock() })
+    req.log?.info({ cleared: out.cleared, batch: out.batch }, 'Needs attention cleared')
+    res.json(out)
+  }))
+  router.delete('/handled/bulk/:batch([0-9a-f-]{36})', clear, exclusionWrap(async (req, res) => {
+    res.json(await undoClear(pool(), { batch: req.params.batch }))
   }))
 
   // --- RingOut: call a number from the portal (calls.place) ---------------------

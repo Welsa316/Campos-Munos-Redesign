@@ -49,6 +49,8 @@ export const ACTIONS = {
     details: (req) => ({ reason: body(req).reason, scope: body(req).scope }) },
   'POST /api/calls/:id/handled': { key: 'calls.handled', label: 'Marked a call handled', entity: 'call' },
   'DELETE /api/calls/:id/handled': { key: 'calls.reopened', label: 'Reopened a handled call', entity: 'call' },
+  'POST /api/calls/handled/bulk': { key: 'calls.cleared', label: 'Cleared Needs attention (marked every open call handled)', entity: 'call' },
+  'DELETE /api/calls/handled/bulk/:batch': { key: 'calls.clear_undone', label: 'Undid clearing Needs attention', entity: 'call' },
   'DELETE /api/calls/:id/exclusion': { key: 'calls.included', label: 'Put a missed call back in the counts', entity: 'call' },
   'PUT /api/calls/ringout/me': { key: 'calls.own_phone', label: 'Changed the phone their calls ring first' },
   'POST /api/calls/ringout': { key: 'calls.placed', label: 'Placed a call from the portal',
