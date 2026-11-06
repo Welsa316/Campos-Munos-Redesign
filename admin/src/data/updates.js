@@ -23,6 +23,20 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'calls-one-row-per-caller',
+    at: '2026-11-06T08:50:41Z',
+    section: 'calls',
+    any: ['calls.view'],
+    title: 'Needs attention lists each caller once',
+    summary: 'Someone who rang three times without getting through is now one row with one Call back, not three.',
+    points: [
+      'The row says how many calls, and when the first and last were. Open it to see each call and what RingCentral recorded.',
+      'Handled on that row closes all of their calls; Undo reopens them. A callback that did not connect shows as tried and leaves them open.',
+      'The Needs attention count is now people waiting for a call back. Missed and handled counts still count calls.',
+      'At the bottom, “Check if they still need help” lists calls RingCentral recorded no outcome for. Nobody is counted as missing them, and they are not in the count.',
+    ],
+  },
+  {
     id: 'calls-clear-list',
     at: '2026-11-06T07:22:26Z',
     section: 'calls',

@@ -10,7 +10,7 @@
         <div class="px-6 pt-6 pb-1 flex items-start justify-between gap-3">
           <div class="min-w-0">
             <h2 id="exclude-dialog-title" class="text-[19px] font-semibold tracking-tight text-gray-900">No callback needed</h2>
-            <p class="text-[13px] text-gray-600 mt-0.5 tabular-nums truncate">{{ who }} · {{ when }}</p>
+            <p class="text-[13px] text-gray-600 mt-0.5 tabular-nums truncate">{{ who }} · {{ several ? `${call.callIds.length} calls, last ${when}` : when }}</p>
           </div>
           <button @click="close" type="button" aria-label="Close"
             class="w-8 h-8 flex-shrink-0 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700 flex items-center justify-center transition-colors">
@@ -76,7 +76,8 @@ import { formatPhone } from '../../utils/phone.js'
 import FaIcon from '../../components/FaIcon.vue'
 import { EXCLUSION_REASONS } from './exclusionReasons.js'
 
-// call: { id, number, name, startedAt } or null (closed).
+// call: { id, number, name, startedAt, callIds? } or null (closed). callIds:
+// every call of the caller's episode, each marked on its own.
 const props = defineProps({ call: { type: Object, default: null } })
 const emit = defineEmits(['close', 'saved'])
 const { post } = useApi()
@@ -99,6 +100,7 @@ const when = computed(() => {
   const d = toDate(props.call?.startedAt)
   return d ? d.toLocaleString('en-US', { timeZone: FIRM_TIME_ZONE, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''
 })
+const several = computed(() => (props.call?.callIds?.length || 0) > 1)
 const canSave = computed(() => !busy.value && reason.value && (reason.value !== 'other' || note.value.trim()))
 
 watch(() => props.call, (c) => {
@@ -123,6 +125,7 @@ async function save() {
   try {
     await post(`/api/calls/${props.call.id}/exclusion`, {
       reason: reason.value, note: note.value.trim(), scope: wholeNumber.value ? 'number' : 'call',
+      ...(several.value && !wholeNumber.value ? { callIds: props.call.callIds } : {}),
     })
     emit('saved')
   } catch (e) {

@@ -552,6 +552,12 @@ function baseSql(where, searchSql = '') {
              hd.created_at AS handled_at, hd.note AS handled_note, hd.batch_id AS handled_batch, COALESCE(NULLIF(hdu.display_name, ''), split_part(hdu.email, '@', 1)) AS handled_by,
              (c.direction = 'inbound' AND ${UNANSWERED_SQL('c.classification')} AND c.counterpart_key <> ''
               AND fc.started_at IS NULL AND hd.call_key IS NULL AND ex.kind IS NULL) AS needs_attention,
+             -- The quiet review group: RingCentral recorded no outcome
+             -- ('unknown'), the number can be called back, and nothing since
+             -- shows the person reached us. Never counted as missed, never
+             -- attributed to anyone, not in the Needs attention count.
+             (c.direction = 'inbound' AND c.classification = 'unknown' AND c.counterpart_key <> ''
+              AND fc.started_at IS NULL AND hd.call_key IS NULL AND ex.kind IS NULL) AS needs_review,
              ex.kind AS excluded_kind, ex.reason AS excluded_reason, ex.note AS excluded_note, ex.created_at AS excluded_at,
              COALESCE(NULLIF(exu.display_name, ''), exu.email) AS excluded_by
         FROM rc_calls c
@@ -605,6 +611,123 @@ function baseSql(where, searchSql = '') {
     )`
 }
 
+// --- what is left to do about a call, and callback episodes ----------------------
+
+/**
+ * The follow-up decision for one call, kept apart from its classification
+ * (which says what the call *was* and who it is attributed to; this only says
+ * what is left to do). `r` is a row of the calls query. In order:
+ *
+ *   not_actionable       outgoing; between extensions; a duplicate record of a
+ *                        call (not is_primary); withheld number; ended by the
+ *                        phone system; not classified yet
+ *   confirmed_answered   answered by someone at the firm
+ *   resolved             proven unanswered or not confirmed, and since dealt
+ *                        with: a connected callback, a later answered call,
+ *                        marked handled (or cleared), or no callback needed
+ *   confirmed_unanswered proven not answered by anyone (UNANSWERED_CLASSES) and
+ *                        still open: Needs attention
+ *   review               RingCentral recorded no outcome ('unknown') and still
+ *                        open: "Check if they still need help", never counted
+ *                        as missed or against anyone
+ *
+ * The SQL columns needs_attention and needs_review are the same rules; the
+ * tests hold the two together.
+ */
+export function followUpDecision(r) {
+  if (r.direction !== 'inbound' || r.is_internal || r.is_primary === false) return 'not_actionable'
+  if (r.classification === 'answered') return 'confirmed_answered'
+  if (!r.counterpart_key || !r.classification || r.classification === 'system') return 'not_actionable'
+  const open = !r.handled_at && !r.excluded_kind && !r.connected_followup_at
+  if (UNANSWERED_CLASSES.includes(r.classification)) return open ? 'confirmed_unanswered' : 'resolved'
+  if (r.classification === 'unknown') return open ? 'review' : 'resolved'
+  return 'not_actionable'
+}
+
+// Callback episodes: Needs attention lists one item per person waiting for a
+// call back, not one per call. The open calls from one number belong to the
+// same episode unless something closed the earlier ones in between: a
+// connected callback or a later answered call (which closes every earlier
+// call anyway), or a call of the same kind marked handled, cleared or as
+// needing no callback. episode_after is the latest such event before the
+// call, so the open calls of one episode share (number, episode_after).
+// Callback attempts that did not connect close nothing; they are counted.
+// Derived from the stored calls on every read: nothing to keep in step.
+const EPISODE_START_JOIN = (f) => `
+  LEFT JOIN LATERAL (
+    SELECT MAX(r.started_at) AS at FROM rc_calls r
+     WHERE (${f}.needs_attention OR ${f}.needs_review)
+       AND r.counterpart_key = ${f}.counterpart_key AND r.started_at < ${f}.started_at AND NOT r.is_internal AND r.is_primary
+       AND ((r.direction = 'outbound' AND r.outcome = 'connected') OR r.classification = 'answered'
+         OR (r.direction = 'inbound'
+             AND (CASE WHEN ${f}.needs_attention THEN ${UNANSWERED_SQL('r.classification')} ELSE r.classification = 'unknown' END)
+             AND (EXISTS (SELECT 1 FROM rc_call_resolutions x WHERE x.call_key = r.call_key)
+               OR EXISTS (SELECT 1 FROM rc_call_exclusions x JOIN rc_calls d ON d.id = x.call_id WHERE d.call_key = r.call_key))))
+  ) ep ON TRUE`
+// Callbacks tried after the call that did not connect ("tried 2×").
+const EPISODE_TRIES_JOIN = (f) => `
+  LEFT JOIN LATERAL (
+    SELECT COUNT(*)::int AS n FROM rc_calls r
+     WHERE (${f}.needs_attention OR ${f}.needs_review)
+       AND r.counterpart_key = ${f}.counterpart_key AND r.started_at > ${f}.started_at AND NOT r.is_internal AND r.is_primary
+       AND r.direction = 'outbound' AND r.outcome <> 'connected'
+  ) et ON TRUE`
+const EPISODE_KEY_SQL = (f) => `(${f}.counterpart_key || '|' || COALESCE(ep.at::text, ''))`
+
+/**
+ * Open calls (rows of the calls query with episode_after and episode_tries)
+ * → callback episodes, in the order the rows came. A withheld number is never
+ * grouped: each such call stays its own item. Each episode is identified by
+ * its first call, so it keeps its id as later calls join it.
+ */
+export function groupEpisodes(rows, { names = new Map(), now = new Date(), kind = 'attention' } = {}) {
+  const groups = new Map()
+  for (const r of rows) {
+    const key = r.counterpart_key ? `${r.counterpart_key}|${r.episode_after ? new Date(r.episode_after).toISOString() : ''}` : `call:${r.id}`
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key).push(r)
+  }
+  const at = (r) => new Date(r.started_at).getTime()
+  return [...groups.values()].map((g) => {
+    const calls = [...g].sort((a, b) => at(a) - at(b) || Number(a.id) - Number(b.id))
+    const first = calls[0]
+    const last = calls[calls.length - 1]
+    const shown = calls.map((r) => present(r, names, now))
+    const latest = shown[shown.length - 1]
+    const named = [...shown].reverse().find((c) => c.name) || latest
+    // Who it was offered to, across the calls: for display only.
+    const offeredTo = []
+    const seen = new Set()
+    for (const c of shown) for (const p of c.offeredTo) {
+      const id = p.extensionId || p.name || JSON.stringify(p)
+      if (!seen.has(id)) { seen.add(id); offeredTo.push(p) }
+    }
+    const tries = Number(first.episode_tries) || 0
+    return {
+      id: Number(first.id),
+      kind,
+      number: latest.number,
+      name: named.name,
+      nameSource: named.nameSource,
+      callerLocation: latest.callerLocation,
+      fromFirm: latest.fromFirm,
+      client: latest.client,
+      lead: latest.lead,
+      attempts: calls.length,
+      firstAt: first.started_at,
+      lastAt: last.started_at,
+      callbackAttempts: tries,
+      lastCallbackAttemptAt: tries ? first.attempt_at ?? null : null,
+      latestCallId: Number(last.id),
+      callIds: calls.map((r) => Number(r.id)),
+      // From the first unanswered call: waiting since an earlier day, tried
+      // without connecting, or new today.
+      attentionGroup: kind === 'attention' ? (at(first) < startOfToday(now).getTime() ? 'waiting' : tries ? 'try_again' : 'new') : null,
+      offeredTo,
+    }
+  })
+}
+
 /**
  * Calls in [from, to), newest first, one row per call, with the name from the
  * firm's own records when the number matches one, and for missed calls
@@ -614,8 +737,13 @@ function baseSql(where, searchSql = '') {
  * `person`: a RingCentral extension id. Only calls a leg proves were offered
  * to that person, with counts of what happened to them (answered by them,
  * not answered by them).
+ *
+ * outcome 'attention' also returns `episodes` (the open calls grouped per
+ * person waiting for a call back, groupEpisodes) and the quiet review group:
+ * `review` (episodes of calls with no recorded outcome) and `reviewCalls`.
+ * `calls` stays one row per call, as do the counts.
  */
-export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit = 300, businessHours = false, person = null }) {
+export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit = 300, businessHours = false, person = null, now = new Date() }) {
   const params = [from, to]
   const where = ['c.started_at >= $1', 'c.started_at < $2', 'NOT c.is_internal', 'c.is_primary']
   if (businessHours) where.push(businessHoursSql('c.started_at'))
@@ -674,8 +802,12 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
         COUNT(*) FILTER (WHERE ${UNANSWERED_SQL('classification')} AND classification_evidence->'notAnsweredBy' @> ${personParam}::jsonb AND ${kept})::int AS person_not_answered`
     : ''
   const lim = Math.max(1, Math.min(1000, Math.trunc(Number(limit)) || 300))
-  const [list, counts, names] = await Promise.all([
-    db.query(`${base} SELECT * FROM filtered WHERE ${outcomeSql} ORDER BY started_at DESC, id DESC LIMIT ${lim + 1}`, params),
+  const attention = outcome === 'attention'
+  // Where each open call's episode starts, only for the Needs attention view.
+  const episodeCols = attention ? ', ep.at AS episode_after, et.n AS episode_tries' : ''
+  const episodeJoins = attention ? `${EPISODE_START_JOIN('f')} ${EPISODE_TRIES_JOIN('f')}` : ''
+  const [list, counts, names, reviewList] = await Promise.all([
+    db.query(`${base} SELECT f.*${episodeCols} FROM filtered f ${episodeJoins} WHERE ${outcomeSql} ORDER BY started_at DESC, id DESC LIMIT ${lim + 1}`, params),
     db.query(`${base} SELECT
         COUNT(*) FILTER (WHERE ${inbound})::int AS incoming,
         COUNT(*) FILTER (WHERE ${inbound} AND classification = 'answered')::int AS answered,
@@ -692,15 +824,28 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
         COUNT(*) FILTER (WHERE ${DEALT_WITH_SQL()})::int AS handled${personCounts}
       FROM filtered`, params),
     linkedNames(db),
+    attention
+      ? db.query(`${base} SELECT f.*${episodeCols} FROM filtered f ${episodeJoins} WHERE f.needs_review ORDER BY started_at DESC, id DESC LIMIT ${REVIEW_LIMIT}`, params)
+      : null,
   ])
 
   const rows = list.rows.slice(0, lim)
   return {
-    calls: rows.map((r) => present(r, names)),
+    calls: rows.map((r) => present(r, names, now)),
     counts: counts.rows[0],
     truncated: list.rows.length > lim,
+    ...(attention
+      ? {
+          episodes: groupEpisodes(rows, { names, now }),
+          review: groupEpisodes(reviewList.rows, { names, now, kind: 'review' }),
+          reviewCalls: reviewList.rows.map((r) => present(r, names, now)),
+        }
+      : {}),
   }
 }
+
+// The review group is meant to stay small; past this many calls, the oldest wait.
+const REVIEW_LIMIT = 100
 
 /**
  * RingCentral extension id → the name of the portal account linked to it on
@@ -811,8 +956,8 @@ export function startOfToday(now = new Date()) {
 
 // Oldest first in Needs attention: waiting since before today, then callbacks
 // tried without connecting, then today's.
-function attentionGroup(r) {
-  if (new Date(r.started_at) < startOfToday()) return 'waiting'
+function attentionGroup(r, now = new Date()) {
+  if (new Date(r.started_at) < startOfToday(now)) return 'waiting'
   if (r.attempt_at) return 'try_again'
   return 'new'
 }
@@ -821,38 +966,62 @@ function attentionGroup(r) {
 export const ATTENTION_DAYS = 90
 
 /**
- * The three counts at the top of Calls: calls that still need someone (last
- * ATTENTION_DAYS days), calls dealt with today (marked handled today, or a
- * connected callback or later answered call today), and every call today.
- * "No callback needed" marks are not counted as handled.
+ * The three counts at the top of Calls: people waiting for a call back (open
+ * callback episodes, last ATTENTION_DAYS days), calls dealt with today
+ * (marked handled today, or a connected callback or later answered call
+ * today), and every call today. "No callback needed" marks are not counted
+ * as handled.
+ *
+ * needsAttention and openEpisodes are the same number (open episodes);
+ * openCalls is the unanswered calls behind them. review counts the quiet
+ * review group's episodes, which are in neither.
  */
 export async function callKpis(db, { now = new Date() } = {}) {
   const today = startOfToday(now)
   const from = new Date(now.getTime() - ATTENTION_DAYS * 24 * 60 * 60 * 1000)
   const row = (await db.query(
     `${baseSql(['c.started_at >= $1', 'c.started_at < $2', 'NOT c.is_internal', 'c.is_primary'])}
-     SELECT COUNT(*) FILTER (WHERE needs_attention)::int AS needs_attention,
+     SELECT COUNT(DISTINCT ${EPISODE_KEY_SQL('f')}) FILTER (WHERE needs_attention)::int AS open_episodes,
+            COUNT(*) FILTER (WHERE needs_attention)::int AS open_calls,
+            COUNT(DISTINCT ${EPISODE_KEY_SQL('f')}) FILTER (WHERE needs_review)::int AS review,
             COUNT(*) FILTER (WHERE ${DEALT_WITH_SQL('$3')})::int AS handled_today,
             COUNT(*) FILTER (WHERE started_at >= $3)::int AS total_today
-       FROM filtered`,
+       FROM filtered f ${EPISODE_START_JOIN('f')}`,
     [from, new Date(now.getTime() + 60 * 1000), today]
   )).rows[0]
-  return { needsAttention: row.needs_attention, handledToday: row.handled_today, totalToday: row.total_today, since: from, today }
+  return {
+    needsAttention: row.open_episodes, openEpisodes: row.open_episodes, openCalls: row.open_calls, review: row.review,
+    handledToday: row.handled_today, totalToday: row.total_today, since: from, today,
+  }
 }
 
 /**
- * The calls Needs attention lists now that came in before `before`, by
- * call_key (Calls → Clear the list). Same rows, same rules as the list.
+ * The calls Needs attention lists now that came in before `before`
+ * (Calls → Clear the list). Same rows, same rules as the list. `review`:
+ * the review group's calls too (left out unless asked for).
+ * Returns { keys, people, review }: the call_keys to clear, how many
+ * episodes they make up, and how many review calls there are before the
+ * cutoff, whether or not they are included.
  */
-export async function openCallKeys(db, { before = new Date(), now = new Date() } = {}) {
+export async function openCalls(db, { before = new Date(), now = new Date(), review = false } = {}) {
   const from = new Date(now.getTime() - ATTENTION_DAYS * 24 * 60 * 60 * 1000)
   const to = before < now ? before : new Date(now.getTime() + 60 * 1000)
   const rows = (await db.query(
     `${baseSql(['c.started_at >= $1', 'c.started_at < $2', 'NOT c.is_internal', 'c.is_primary'])}
-     SELECT call_key FROM filtered WHERE needs_attention`,
+     SELECT f.call_key, f.needs_attention, ${EPISODE_KEY_SQL('f')} AS episode FROM filtered f ${EPISODE_START_JOIN('f')}
+      WHERE f.needs_attention OR f.needs_review`,
     [from, to]
   )).rows
-  return rows.map((r) => r.call_key)
+  const cleared = rows.filter((r) => r.needs_attention || review)
+  return {
+    keys: cleared.map((r) => r.call_key),
+    people: new Set(cleared.map((r) => `${r.needs_attention ? 'a' : 'r'}:${r.episode}`)).size,
+    review: rows.filter((r) => !r.needs_attention).length,
+  }
+}
+
+export async function openCallKeys(db, opts = {}) {
+  return (await openCalls(db, opts)).keys
 }
 
 /**
@@ -870,7 +1039,7 @@ export async function callsStamp(db) {
   return [r.calls?.toISOString?.() ?? '', r.handled, r.excluded, r.numbers].join('|')
 }
 
-function present(r, names = new Map()) {
+function present(r, names = new Map(), now = new Date()) {
   const leadName = r.lead_id ? `${r.lead_first || ''} ${r.lead_last || ''}`.trim() : null
   const callerId = r.caller_id_name && !isGenericCallerId(r.caller_id_name) ? titleCase(r.caller_id_name) : null
   let name = null
@@ -917,7 +1086,10 @@ function present(r, names = new Map()) {
     // The workflow around the call (Calls → Needs attention). None of it
     // changes how the call is classified or who it is attributed to.
     needsAttention: Boolean(r.needs_attention),
-    attentionGroup: r.needs_attention ? attentionGroup(r) : null,
+    attentionGroup: r.needs_attention ? attentionGroup(r, now) : null,
+    // No recorded outcome, and nothing since shows the person reached us.
+    needsReview: Boolean(r.needs_review),
+    decision: followUpDecision(r),
     attemptAt: r.attempt_at ?? null,
     connectedFollowUp: r.connected_followup_at ? { at: r.connected_followup_at, kind: r.connected_followup_direction === 'outbound' ? 'called_back' : 'answered_later' } : null,
     handled: r.handled_at ? { at: r.handled_at, by: r.handled_by, note: r.handled_note, bulk: Boolean(r.handled_batch) } : null,

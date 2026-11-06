@@ -57,7 +57,7 @@
                   :class="call.needsAttention ? 'btn-call' : 'btn-quiet'" class="btn">
                   <FaIcon name="phone" />{{ call.needsAttention ? 'Call back' : 'Call' }}
                 </button>
-                <button v-if="canExclude && call.needsAttention" type="button" @click="$emit('handled', call)" :disabled="busy" :aria-busy="busy" class="btn btn-quiet">
+                <button v-if="canExclude && (call.needsAttention || call.needsReview)" type="button" @click="$emit('handled', call)" :disabled="busy" :aria-busy="busy" class="btn btn-quiet">
                   <FaIcon :name="busy ? 'spinner' : 'check'" :spin="busy" />{{ busy ? 'Saving…' : 'Mark handled' }}
                 </button>
                 <button v-if="canExclude && call.handled" type="button" @click="$emit('reopen', call)" :disabled="busy" class="btn btn-quiet">
@@ -77,6 +77,9 @@
             <div v-else-if="canCall && call.number">
               <button type="button" @click="$emit('callback', call)" class="btn btn-quiet"><FaIcon name="phone" />Call</button>
             </div>
+
+            <!-- Callback episode: the caller's unanswered calls, each with its evidence. -->
+            <EpisodeCalls v-if="episode && episode.calls.length > 1" :episode="episode" :now="now" />
 
             <!-- Notes staff write about this caller (staff only). -->
             <CallNotes :call-id="call.id" :can-write="canExclude" :can-delete-any="canDeleteAnyNote" @changed="historyRef?.reload()" />
@@ -107,6 +110,7 @@ import CallDetails from './CallDetails.vue'
 import CallNotes from '../contacts/CallNotes.vue'
 import ContactHistory from '../contacts/ContactHistory.vue'
 import { can } from '../../composables/useAuth.js'
+import EpisodeCalls from './EpisodeCalls.vue'
 import { telHref } from '../../utils/phone.js'
 import { statusLine } from './callEvidenceText.js'
 import { followUpLine, followUpDetail, outboundLine, when } from './callsInbox.js'
@@ -125,6 +129,8 @@ const props = defineProps({
   canSeeLeads: Boolean,
   canMark: Boolean,
   busy: Boolean,
+  // Opened from a caller's row in Needs attention: their episode, calls included.
+  episode: { type: Object, default: null },
 })
 const emit = defineEmits(['close', 'callback', 'handled', 'reopen', 'exclude', 'count-again', 'open-call'])
 const canDeleteAnyNote = computed(() => can('team.manage'))

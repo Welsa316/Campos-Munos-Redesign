@@ -1,8 +1,10 @@
 <template>
-  <!-- One call. Caller · what happened · received · next step on a wide
-       screen; stacked on a phone, with the next step as full-size buttons. -->
-  <article class="call-row" :data-call="c.id" :aria-label="`${displayName}, ${status}`"
-    :class="c.needsAttention && c.attentionGroup !== 'new' ? 'bg-amber-50/30' : ''">
+  <!-- One call, or in Needs attention one caller's unanswered calls (an
+       episode; c is its latest call). Caller · what happened · received ·
+       next step on a wide screen; stacked on a phone, with the next step as
+       full-size buttons. -->
+  <article class="call-row" :data-call="c.id" :data-episode="episode?.id" :aria-label="`${displayName}, ${summary || status}`"
+    :class="c.needsAttention && group !== 'new' ? 'bg-amber-50/30' : ''">
     <div class="call-caller flex items-start gap-3 min-w-0">
       <span :class="c.exclusion ? 'bg-gray-100 text-gray-500' : look.badge"
         class="mt-0.5 w-9 h-9 flex-shrink-0 rounded-full inline-flex items-center justify-center text-sm" :title="look.label">
@@ -29,10 +31,13 @@
     <div class="call-what min-w-0 font-ui">
       <p class="flex items-start gap-2 text-[13.5px] text-gray-800">
         <span :class="DOT[line?.tone || 'none']" class="mt-[0.45em] w-1.5 h-1.5 rounded-full flex-shrink-0" aria-hidden="true"></span>
-        <span class="line-clamp-2" :title="status">{{ status }}</span>
+        <span :class="summary ? 'line-clamp-3' : 'line-clamp-2'" :title="summary || status">{{ summary || status }}</span>
       </p>
       <p v-if="line" :class="TONE[line.tone]" class="mt-0.5 pl-3.5 text-[12.5px]">{{ line.text }}</p>
-      <p v-if="c.direction === 'inbound' && !c.offeredTo.length && c.firm.extension" class="mt-0.5 pl-3.5 text-[12px] text-gray-500">
+      <!-- Several calls: who they were offered to, across all of them; each
+           call's own evidence is in the details. -->
+      <p v-if="summary && offered" class="mt-0.5 pl-3.5 text-[12px] text-gray-500 truncate">Offered to {{ offered }}</p>
+      <p v-else-if="!summary && c.direction === 'inbound' && !c.offeredTo.length && c.firm.extension" class="mt-0.5 pl-3.5 text-[12px] text-gray-500">
         Dialled {{ who({ name: c.firm.name, extension: c.firm.extension }) }}
       </p>
     </div>
@@ -43,14 +48,14 @@
     </p>
 
     <div class="call-actions flex items-center justify-end gap-1.5 font-ui">
-      <template v-if="c.needsAttention">
+      <template v-if="open">
         <button v-if="canCall && c.number" type="button" @click="$emit('callback', c)"
           class="act act-call" :aria-label="`Call back ${displayName}`">
           <FaIcon name="phone" />Call back
         </button>
         <span v-else-if="!c.number" class="px-2 text-[11.5px] text-gray-500">No number</span>
         <button v-if="canExclude" type="button" @click="$emit('handled', c)" :disabled="busy" :aria-busy="busy" :data-handled="c.id"
-          class="act act-quiet" :aria-label="`Mark ${displayName} handled`">
+          class="act act-quiet" :aria-label="`Mark ${displayName} handled${summary ? `, all ${episode.attempts} calls` : ''}`">
           <FaIcon :name="busy ? 'spinner' : 'check'" :spin="busy" />{{ busy ? 'Saving…' : 'Handled' }}
         </button>
       </template>
@@ -87,7 +92,7 @@ import { computed } from 'vue'
 import FaIcon from '../../components/FaIcon.vue'
 import { telHref } from '../../utils/phone.js'
 import { statusLine, who } from './callEvidenceText.js'
-import { followUpLine, outboundLine, timeOf, dayName } from './callsInbox.js'
+import { followUpLine, outboundLine, timeOf, dayName, episodeSummary, episodeLine } from './callsInbox.js'
 import { look as lookOf, phone, durationText } from './callLook.js'
 
 const props = defineProps({
@@ -102,13 +107,20 @@ const props = defineProps({
   menuOpen: Boolean,
   // Needs attention spans days, so each row says which; All calls is grouped by day.
   showDay: Boolean,
+  // Needs attention: the caller's episode (attempts, first/last, callbacks tried).
+  episode: { type: Object, default: null },
 })
 defineEmits(['open', 'callback', 'handled', 'menu', 'exclude', 'count-again', 'reopen'])
 
 const look = computed(() => lookOf(props.c))
 const displayName = computed(() => props.c.name || (props.c.number ? 'Unknown caller' : 'Private number'))
 const status = computed(() => (props.c.direction === 'inbound' ? statusLine(props.c) : outboundLine(props.c)))
-const line = computed(() => followUpLine(props.c, props.now))
+const line = computed(() => (props.episode ? episodeLine(props.episode, props.now) : followUpLine(props.c, props.now)))
+// Open: Needs attention, or the review group (same actions, quieter).
+const open = computed(() => props.c.needsAttention || props.c.needsReview)
+const group = computed(() => props.episode?.attentionGroup ?? props.c.attentionGroup)
+const summary = computed(() => episodeSummary(props.episode, props.now))
+const offered = computed(() => (props.episode?.offeredTo || []).map((p) => p.name || who(p)).join(', '))
 const duration = computed(() => durationText(props.c.durationSeconds))
 
 const DOT = { open: 'bg-amber-500', done: 'bg-green-500', quiet: 'bg-gray-400', none: 'bg-gray-300' }

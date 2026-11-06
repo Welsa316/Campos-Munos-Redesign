@@ -47,6 +47,71 @@ every call from it counts again). The marks are `rc_call_exclusions` (one
 call) and `rc_ignored_numbers` (a number) in
 `server/integrations/ringcentral/callExclusions.js`.
 
+## Needs attention: one item per caller
+
+**Calls → Needs attention** lists the people waiting for a call back, not
+their calls. Consecutive open unanswered calls from one number are one
+**callback episode**: "3 unanswered calls · first Mon 9:15 AM · last 10:05
+AM", with a single Call back / Handled / ⋯. Opening it shows each call and
+what RingCentral recorded for it. A single call reads as before.
+
+What is left to do about a call is decided apart from what the call *was*.
+The classification (`docs/ringcentral-call-classification.md`) and who a call
+is attributed to never change; `followUpDecision()` in
+`server/integrations/ringcentral/callLog.js` says what follows from it, in
+this order:
+
+| Decision | When |
+|---|---|
+| `not_actionable` | Outgoing; between extensions; a duplicate record of a call (not `is_primary`); withheld number; ended by the phone system; not classified yet |
+| `confirmed_answered` | Answered by someone at the firm |
+| `resolved` | Proven unanswered, or no recorded outcome, and since dealt with: a connected callback to the number, a later answered call from it, marked handled (or cleared), or no callback needed |
+| `confirmed_unanswered` | Proven not answered by anyone (not answered, caller hung up, ended before ringing, voicemail) and still open: **Needs attention** |
+| `review` | No recorded outcome (`unknown`) and still open: **Check if they still need help** |
+
+The list's SQL (`needs_attention`, `needs_review`) is the same rules, and the
+tests check every listed call against the function.
+
+**Episodes.** Derived from the stored calls on every read; nothing extra is
+stored. An episode ends when something closes its calls: a connected
+callback or a later answered call (which closes every earlier call), or a
+call marked handled, cleared or as needing no callback. A later unanswered
+call then starts a new episode. A callback that did not connect closes
+nothing: it is counted on the episode ("Tried 2×") and the episode moves to
+*Try again* only when its first call is from today (episodes from earlier
+days stay under *From earlier days*). Each episode is identified by its first
+call, so its row keeps its place as later calls join it. Withheld numbers are
+never grouped (and are not in Needs attention at all). A second RingCentral
+record of the same call is not a second attempt.
+
+**Marking an episode handled** marks each of its calls handled (one
+`rc_call_resolutions` row per call, the calls the page listed); Undo reopens
+exactly those. **No callback needed** from a caller's row applies to every
+call of the episode, each marked on its own, so each can be counted again on
+its own. From a call's own details card both still work on that one call.
+
+**Check if they still need help** sits at the bottom of Needs attention:
+calls RingCentral recorded no outcome for, from a number that can be called
+back (not internal, not the phone system, not a duplicate record), with no
+later connected call or answered call from that number, not handled or
+excluded, in the last 90 days. They are grouped by caller the same way, take
+the same actions, are never attributed to anyone, and are not in the Needs
+attention count or the tab badge.
+
+**Clear the list** marks every open call in Needs attention handled. The
+review group is left alone unless the administrator ticks *Also clear N calls
+with no recorded outcome*; the confirmation counts calls and callers.
+
+### What each number counts
+
+| Number | Unit |
+|---|---|
+| Needs attention (KPI and tab badge), `kpis.needsAttention` = `kpis.openEpisodes` | Open episodes: people waiting for a call back |
+| `kpis.openCalls`, `counts.attention` | The unanswered calls behind them (attempts) |
+| `kpis.review` | Review-group episodes; in no other count |
+| Handled today, Handled tab | Calls, each counted on its own: a caller with three calls marked handled counts three. The Handled tab lists calls, and the KPI opens it, so the two agree |
+| Missed, Voicemail, Not called back, per-person "not answered by them" | Calls, exactly as before episodes. A call with no recorded outcome is never in them |
+
 ## Calling from the portal (RingOut)
 
 Anyone with `calls.place` (administrators, front desk, receptionist) can call
@@ -146,6 +211,11 @@ the legacy staff role do not have it; grant it to one account with
 | `GET /api/calls?from&to&outcome&q&limit` | `outcome`: all, answered, missed, voicemail, unanswered, outgoing, not_returned, excluded. Returns calls, counts, connection and import status. |
 | `POST /api/calls/:id/exclusion` | `{ reason, note, scope }`: mark a missed call or voicemail as needing no callback. `reason`: verification, staff_test, spam, other (note required); `scope`: call or number. `calls.exclude`. |
 | `DELETE /api/calls/:id/exclusion` | Count it again: removes the call's mark and its number's, if any. `calls.exclude`. |
+| `GET /api/calls?outcome=attention` | Also returns `episodes` (one per caller: `id`, `attempts`, `firstAt`, `lastAt`, `callbackAttempts`, `callIds`, `latestCallId`, `attentionGroup`, `offeredTo`), `review` (the review group's episodes) and `reviewCalls`. `calls` and `counts` stay per call. |
+| `POST /api/calls/episodes/handled` | `{ callIds, note }`: every call of one episode handled; returns the ids it marked. `calls.exclude`. |
+| `POST /api/calls/episodes/reopen` | `{ callIds }`: undo that. `calls.exclude`. |
+| `POST /api/calls/:id/exclusion` with `callIds` | No callback needed for every call of the episode (scope `call`). |
+| `GET\|POST /api/calls/handled/bulk` | Clear the list (`calls.clear`). `review=1` / `{ review: true }` includes the review group. The preview returns `{ count, people, review }`. |
 | `POST /api/calls/sync` | Import now (skipped if one ran in the last 30 s) |
 
 ## Tests
@@ -156,4 +226,7 @@ connecting, paged import with faxes skipped, names from clients / leads /
 caller ID, callbacks, counts, filters and search, overlap without duplicates,
 updates, the 30-second guard, company → own-calls fallback, missing
 permission, rate limiting, a token refreshed mid-import, one import at a
-time, retention.
+time, retention. `callEpisodes.flow.test.js` (with `TEST_DATABASE_URL`):
+episodes, callback attempts, what resolves and what splits an episode,
+handling and reopening an episode, the review group, Clear the list with and
+without it, and every call's follow-up decision against the list it is in.

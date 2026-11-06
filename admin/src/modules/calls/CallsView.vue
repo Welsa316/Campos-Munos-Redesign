@@ -27,10 +27,10 @@
     <CallDialog :visible="dialog.open" :number="dialog.number" :name="dialog.name" @close="dialog.open = false" />
     <ExcludeCallDialog :call="excluding" @close="excluding = null" @saved="afterExclude" />
     <ClearCallsDialog :open="clearing" @close="clearing = false" @cleared="afterClear" />
-    <CallDetailCard :call="detailCall" :return-to="detail.returnTo" :now="now"
+    <CallDetailCard :call="detailCall" :episode="detailEpisode" :return-to="detail.returnTo" :now="now"
       :can-call="canCall" :can-exclude="canExclude" :can-see-leads="canSeeLeads" :can-mark="detailCall ? canMark(detailCall) : false"
       :busy="Boolean(detailCall && busyId === detailCall.id)"
-      @close="closeDetail" @callback="openCall" @handled="markHandled" @reopen="reopen" @exclude="startExclude" @count-again="countAgain" @open-call="openCallById" />
+      @close="closeDetail" @callback="openCall" @handled="(c) => markHandled(c, detailEpisode)" @reopen="reopen" @exclude="(c) => startExclude(c, detailEpisode)" @count-again="countAgain" @open-call="openCallById" />
 
     <div ref="scroller" class="flex-1 overflow-y-auto">
       <div class="max-w-[1160px] mx-auto px-4 sm:px-6 pt-5 sm:pt-7 pb-10 space-y-4 font-ui">
@@ -191,17 +191,23 @@
             <div v-else :key="renderedKey" class="panel-in calls-cols">
               <TransitionGroup tag="ul" :name="animateRows ? 'row' : 'row-still'" class="relative" @keydown="onListKey">
                 <li v-for="r in rows" :key="r.key" :class="r.type === 'call' ? 'border-t border-gray-100 first:border-t-0 bg-white' : ''">
-                  <h2 v-if="r.type === 'group'" class="font-ui flex items-center gap-3 px-4 sm:px-5 pt-4 pb-2 text-[11px] font-semibold uppercase tracking-[0.1em]"
-                    :class="r.key === 'g-waiting' || r.key === 'g-try_again' ? 'text-amber-800' : 'text-gray-600'">
+                  <h2 v-if="r.type === 'group'" class="font-ui flex items-center gap-3 px-4 sm:px-5 pb-2 text-[11px] font-semibold uppercase tracking-[0.1em]"
+                    :class="[r.key === 'g-waiting' || r.key === 'g-try_again' ? 'text-amber-800' : 'text-gray-600', r.key === 'g-review' ? 'pt-6 border-t border-gray-100' : 'pt-4']">
                     <span class="whitespace-nowrap">{{ r.label }}<span v-if="r.hint" class="normal-case tracking-normal font-medium text-gray-500"> · {{ r.hint }}</span></span>
                     <span class="h-px flex-1 bg-gray-100" aria-hidden="true"></span>
                     <span class="normal-case tracking-normal font-medium text-gray-500 tabular-nums">{{ r.count }}</span>
                   </h2>
-                  <CallRow v-else :c="r.call" :now="now" :show-day="tab === 'attention'"
+                  <!-- The review group says why it is there, in one line. -->
+                  <p v-if="r.type === 'group' && r.note" class="px-4 sm:px-5 -mt-1 pb-2 font-ui text-[12.5px] text-gray-600">{{ r.note }}</p>
+                  <!-- Nobody waiting, while the review group still has calls. -->
+                  <p v-else-if="r.type === 'empty'" class="flex items-center gap-2 px-4 sm:px-5 py-4 font-ui text-[13px] text-gray-700">
+                    <FaIcon name="circle-check" class="text-green-700" />Nobody is waiting for a call back.
+                  </p>
+                  <CallRow v-else-if="r.type === 'call'" :c="r.call" :episode="r.episode" :now="now" :show-day="tab === 'attention'"
                     :can-call="canCall" :can-exclude="canExclude" :can-see-leads="canSeeLeads" :can-mark="canMark(r.call)"
                     :busy="busyId === r.call.id" :menu-open="menuId === r.call.id"
-                    @open="openDetail" @callback="openCall" @handled="markHandled" @menu="toggleMenu"
-                    @exclude="startExclude" @count-again="countAgain" @reopen="reopen" />
+                    @open="(c, el) => openDetail(c, el, r.episode)" @callback="openCall" @handled="(c) => markHandled(c, r.episode)" @menu="toggleMenu"
+                    @exclude="(c) => startExclude(c, r.episode)" @count-again="countAgain" @reopen="reopen" />
                 </li>
               </TransitionGroup>
             </div>
@@ -240,11 +246,11 @@
         <Transition name="drawer">
           <section v-if="countsHelp" id="calls-counts-help" class="bg-white rounded-2xl ring-1 ring-gray-200 px-5 py-4 text-[13px] text-gray-700 space-y-3" aria-label="How counts work">
             <dl class="grid gap-3 sm:grid-cols-3">
-              <div><dt class="font-semibold text-gray-900">Needs attention</dt><dd class="mt-1">Incoming calls from the last 90 days that nobody answered (not answered, the caller hung up, it ended before anyone was rung, or a voicemail), from a number we can call back, that nobody has dealt with yet. A call leaves the list when a callback to the number connects, the caller gets through on a later call, or someone marks it handled or as needing no callback.</dd></div>
-              <div><dt class="font-semibold text-gray-900">Handled today</dt><dd class="mt-1">Calls dealt with today: marked handled today, or closed today by a connected callback or a later answered call. Includes calls from earlier days. Calls marked as needing no callback are not counted.</dd></div>
+              <div><dt class="font-semibold text-gray-900">Needs attention</dt><dd class="mt-1">People waiting for a call back: incoming calls from the last 90 days that nobody answered (not answered, the caller hung up, it ended before anyone was rung, or a voicemail), from a number we can call back, that nobody has dealt with yet. Several such calls in a row from one number count as one caller. They leave the list when a callback to the number connects, the caller gets through on a later call, or someone marks them handled or as needing no callback. A callback that does not connect is shown as tried and leaves them open.</dd></div>
+              <div><dt class="font-semibold text-gray-900">Handled today</dt><dd class="mt-1">Calls dealt with today, each counted on its own: marked handled today, or closed today by a connected callback or a later answered call. A caller with three unanswered calls, marked handled, counts three. Includes calls from earlier days. Calls marked as needing no callback are not counted.</dd></div>
               <div><dt class="font-semibold text-gray-900">Total calls today</dt><dd class="mt-1">Every incoming and outgoing call that started today, each counted once however many steps RingCentral recorded. Calls between extensions are not counted.</dd></div>
             </dl>
-            <p class="text-gray-600">“Today” is midnight to midnight in New Orleans. Search and filters never change these three counts. Calls RingCentral recorded no outcome for, and withheld numbers, are not listed in Needs attention. Marking a call handled never changes how it is classified or who it is attributed to.</p>
+            <p class="text-gray-600">“Today” is midnight to midnight in New Orleans. Search and filters never change these three counts. Withheld numbers are not listed in Needs attention. Calls RingCentral recorded no outcome for, from a number we can call back, are listed apart under “Check if they still need help”: they are not in the Needs attention count, and nobody is counted as missing them. Marking a call handled never changes how it is classified or who it is attributed to.</p>
           </section>
         </Transition>
       </div>
@@ -270,7 +276,7 @@ import ClearCallsDialog from './ClearCallsDialog.vue'
 import CallRow from './CallRow.vue'
 import CallDetailCard from './CallDetailCard.vue'
 import { toast } from '../../composables/useToast.js'
-import { attentionSections, handledSections, daySections, animateChange, when } from './callsInbox.js'
+import { episodeSections, reviewSection, handledSections, daySections, animateChange, when } from './callsInbox.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -321,6 +327,11 @@ const searched = ref('')
 const countsHelp = ref(false)
 
 const calls = ref([])
+// Needs attention: the open calls grouped per caller (server), and the
+// review group with its own calls.
+const episodes = ref([])
+const review = ref([])
+const reviewCalls = ref([])
 const counts = ref({})
 const kpis = ref(null)
 const stamp = ref(null)
@@ -344,8 +355,9 @@ const canExclude = computed(() => can('calls.exclude'))
 const canClear = computed(() => can('calls.clear'))
 const clearing = ref(false)
 // Only calls counted as missed can be marked as needing no callback: a
-// blocked number, or a call with no recorded outcome, is in no count.
-const canMark = (c) => c.direction === 'inbound' && !['answered', 'system', 'unknown'].includes(c.classification)
+// blocked number, or a call with no recorded outcome, is in no count. The
+// review group's calls are the exception: they take the same actions.
+const canMark = (c) => c.direction === 'inbound' && (c.needsReview || !['answered', 'system', 'unknown'].includes(c.classification))
 
 const dialog = ref({ open: false, number: '', name: '' })
 function openCall(c = null) {
@@ -361,12 +373,31 @@ const viewKey = computed(() => [tab.value, tab.value === 'all' ? range.value : '
 const renderedKey = ref('')
 const animateRows = ref(false)
 
+// Each episode with its calls (oldest first), for its row and its card.
+const callById = computed(() => new Map([...calls.value, ...reviewCalls.value].map((c) => [c.id, c])))
+const withCalls = (ep) => ({ ...ep, calls: ep.callIds.map((id) => callById.value.get(id)).filter(Boolean) })
+const allEpisodes = computed(() => [...episodes.value, ...review.value].map(withCalls))
+
 const rows = computed(() => {
   const out = []
   if (tab.value === 'attention') {
-    for (const s of attentionSections(calls.value)) {
-      out.push({ type: 'group', key: `g-${s.key}`, label: s.label, hint: s.hint, count: s.calls.length })
-      for (const c of s.calls) out.push({ type: 'call', key: c.id, call: c })
+    // One row per caller, keyed by the episode (its first call), so a new
+    // call from the same person updates their row instead of adding one.
+    const full = new Map(allEpisodes.value.map((e) => [e.id, e]))
+    const push = (ep) => {
+      const latest = callById.value.get(ep.latestCallId)
+      if (latest) out.push({ type: 'call', key: ep.id, call: latest, episode: full.get(ep.id) })
+    }
+    const open = episodeSections(episodes.value)
+    for (const s of open) {
+      out.push({ type: 'group', key: `g-${s.key}`, label: s.label, hint: s.hint, count: s.episodes.length })
+      s.episodes.forEach(push)
+    }
+    const quiet = reviewSection(review.value)
+    if (quiet) {
+      if (!open.length) out.push({ type: 'empty', key: 'empty' })
+      out.push({ type: 'group', key: 'g-review', label: quiet.label, note: quiet.note, count: quiet.episodes.length })
+      quiet.episodes.forEach(push)
     }
   } else if (tab.value === 'handled') {
     for (const d of handledSections(calls.value, now.value)) {
@@ -420,9 +451,16 @@ async function load({ quiet = false } = {}) {
     if (!r.current) return
     const data = r.value
     // Same view: animate the few rows that changed. New view: no row motion.
-    animateRows.value = key === renderedKey.value && animateChange(calls.value.map((c) => c.id), data.calls.map((c) => c.id))
+    // Needs attention animates by caller (episode ids), the other views by call.
+    const shown = (d, cs) => (d ? d.map((e) => e.id) : cs.map((c) => c.id))
+    const was = tab.value === 'attention' ? shown([...episodes.value, ...review.value], []) : shown(null, calls.value)
+    const next = data.episodes ? shown([...data.episodes, ...(data.review || [])], []) : shown(null, data.calls)
+    animateRows.value = key === renderedKey.value && animateChange(was, next)
     renderedKey.value = key
     calls.value = data.calls
+    episodes.value = data.episodes || []
+    review.value = data.review || []
+    reviewCalls.value = data.reviewCalls || []
     people.value = data.people || []
     if (Array.isArray(data.outcomeFilters)) {
       outcomeFilters.value = data.outcomeFilters
@@ -539,23 +577,31 @@ function onDocKey(e) {
 
 // The card shows the call as the list last loaded it; once it leaves the
 // list (handled from the card), the card closes.
-const detail = ref({ id: null, snap: null, returnTo: null })
-const detailCall = computed(() => (detail.value.id == null ? null : calls.value.find((c) => c.id === detail.value.id) || detail.value.snap))
-function openDetail(c, opener) {
+// Opened from a caller's row, it also shows their episode (every call in
+// it), kept up to date as the list reloads.
+const detail = ref({ id: null, snap: null, episodeId: null, episodeSnap: null, returnTo: null })
+const detailCall = computed(() => (detail.value.id == null ? null : callById.value.get(detail.value.id) || detail.value.snap))
+const detailEpisode = computed(() => {
+  if (detail.value.episodeId == null) return null
+  return allEpisodes.value.find((e) => e.id === detail.value.episodeId) || detail.value.episodeSnap
+})
+function openDetail(c, opener, episode = null) {
   menuId.value = null
-  detail.value = { id: c.id, snap: c, returnTo: document.querySelector(`[data-open="${c.id}"]`) || opener || null }
+  detail.value = { id: c.id, snap: c, episodeId: episode?.id ?? null, episodeSnap: episode, returnTo: document.querySelector(`[data-open="${c.id}"]`) || opener || null }
 }
 // A call picked from a contact's history: opened in place when this list has
 // it; otherwise it is in All calls under its own day.
 async function openCallById(id) {
-  const c = calls.value.find((x) => x.id === id)
-  if (c) { detail.value = { ...detail.value, id: c.id, snap: c }; return }
+  const c = callById.value.get(id)
+  // With the episode it belongs to, if any: never the previous caller's.
+  const ep = allEpisodes.value.find((e) => e.callIds.includes(id)) || null
+  if (c) { detail.value = { ...detail.value, id: c.id, snap: c, episodeId: ep?.id ?? null, episodeSnap: ep }; return }
   toast({ text: 'That call is not in this list. Find it under All calls.', tone: 'info' })
 }
 function closeDetail({ restore = true } = {}) {
   if (detail.value.id == null) return
   const back = restore ? detail.value.returnTo : null
-  detail.value = { id: null, snap: null, returnTo: null }
+  detail.value = { id: null, snap: null, episodeId: null, episodeSnap: null, returnTo: null }
   if (back) nextTick(() => back.isConnected && back.focus({ preventScroll: true }))
 }
 
@@ -566,11 +612,12 @@ function closeDetail({ restore = true } = {}) {
 const busyId = ref(null)
 const excluding = ref(null)
 let excludedFrom = null
-function startExclude(c) {
+// From a caller's row, "this call" means every call of their episode.
+function startExclude(c, episode = null) {
   menuId.value = null
   excludedFrom = { id: c.id, index: indexOf(c.id) }
   closeDetail({ restore: false })
-  excluding.value = c
+  excluding.value = episode && episode.callIds.length > 1 ? { ...c, callIds: episode.callIds } : c
 }
 async function afterExclude() {
   const c = excluding.value
@@ -592,13 +639,29 @@ async function afterClear(out) {
   })
 }
 
-async function markHandled(c) {
+// From a caller's row (or their card): every call of the episode at once,
+// the calls the list showed. Undo reopens exactly the ones this marked.
+async function markHandled(c, episode = null) {
   if (busyId.value) return
   menuId.value = null
   busyId.value = c.id
   error.value = ''
   const index = indexOf(c.id)
   try {
+    if (episode) {
+      const out = await post('/api/calls/episodes/handled', { callIds: episode.callIds })
+      closeDetail({ restore: false })
+      await load({ quiet: true })
+      const marked = out.callIds || []
+      const name = c.name || 'The caller'
+      showToast(`${name} marked handled${marked.length > 1 ? ` (${marked.length} calls)` : ''}.`, marked.length ? async () => {
+        await post('/api/calls/episodes/reopen', { callIds: marked })
+        await load({ quiet: true })
+        focusAfter(c.id, index)
+      } : null)
+      focusAfter(c.id, index)
+      return
+    }
     await post(`/api/calls/${c.id}/handled`, {})
     closeDetail({ restore: false })
     await load({ quiet: true })
@@ -737,7 +800,12 @@ const outcomeOptions = computed(() => OUTCOMES
 
 const listSummary = computed(() => {
   const n = visibleCalls.value.length
-  if (tab.value === 'attention') return `${n} open ${n === 1 ? 'call' : 'calls'}`
+  if (tab.value === 'attention') {
+    // Callers, and the unanswered calls behind them when that is more.
+    const people = episodes.value.length
+    const open = episodes.value.reduce((t, e) => t + e.attempts, 0)
+    return `${people} ${people === 1 ? 'caller' : 'callers'} to call back${open > people ? ` · ${open} unanswered calls` : ''}`
+  }
   if (tab.value === 'handled') return `${n} handled ${n === 1 ? 'call' : 'calls'}`
   return `${n} ${n === 1 ? 'call' : 'calls'}`
 })
@@ -748,7 +816,7 @@ const scopeLabel = computed(() => {
   return [r === '7 days' || r === '30 days' ? `last ${r}` : r.toLowerCase(), o ? o.toLowerCase() : null].filter(Boolean).join(' · ')
 })
 const FOOTER = {
-  attention: 'Every open call stays here until a callback connects or someone marks it handled.',
+  attention: 'Each caller stays here until a callback connects, they get through on a later call, or someone marks their calls handled.',
   handled: 'Calls marked handled, or closed by a callback that connected or a later answered call. Reopen one from its ⋯ menu.',
   all: 'Each call is counted once; its original outcome is kept.',
 }

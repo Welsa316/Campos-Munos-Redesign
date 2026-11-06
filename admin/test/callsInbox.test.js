@@ -4,7 +4,7 @@
 // browser's.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { attentionSections, handledSections, daySections, followUpLine, followUpDetail, dayName, dateKey, animateChange } from '../src/modules/calls/callsInbox.js'
+import { attentionSections, handledSections, daySections, followUpLine, followUpDetail, dayName, dateKey, animateChange, episodeSections, reviewSection, episodeSummary, episodeLine, REVIEW_GROUP } from '../src/modules/calls/callsInbox.js'
 
 // 11:48 AM in New Orleans on Thu Nov 5 2026.
 const NOW = Date.parse('2026-11-05T17:48:00Z')
@@ -96,4 +96,60 @@ test('a call cleared with the rest of the list says so, not that someone dealt w
   assert.match(followUpDetail(c, NOW), /Cleared from Needs attention with the rest of the list/)
   assert.match(followUpDetail(c, NOW), /Missed before voicemail routing was set up/)
   assert.doesNotMatch(followUpDetail(c, NOW), /^Marked handled/)
+})
+
+// --- callback episodes --------------------------------------------------------------
+
+const ep = (over) => ({
+  id: 1, kind: 'attention', attempts: 1, callIds: [1], latestCallId: 1, firstAt: '2026-11-05T16:00:00Z', lastAt: '2026-11-05T16:00:00Z',
+  callbackAttempts: 0, lastCallbackAttemptAt: null, attentionGroup: 'new', offeredTo: [], ...over,
+})
+
+test('several unanswered calls read as one caller: how many, first and last', () => {
+  const three = ep({ attempts: 3, callIds: [1, 2, 3], firstAt: '2026-11-02T15:15:00Z', lastAt: '2026-11-05T16:05:00Z', attentionGroup: 'waiting' })
+  assert.equal(episodeSummary(three, NOW), '3 unanswered calls · first Mon, Nov 2 9:15 AM · last 10:05 AM')
+  assert.equal(episodeSummary({ ...three, lastAt: '2026-11-04T16:05:00Z' }, NOW), '3 unanswered calls · first Mon, Nov 2 9:15 AM · last yesterday 10:05 AM')
+  assert.equal(episodeSummary({ ...three, kind: 'review', attentionGroup: null }, NOW), '3 calls with no recorded outcome · first Mon, Nov 2 9:15 AM · last 10:05 AM')
+  // One call: no summary, so its row reads exactly as before.
+  assert.equal(episodeSummary(ep(), NOW), null)
+  assert.equal(episodeSummary(null, NOW), null)
+})
+
+test('a caller’s line: waiting since their first call; tries counted, never closing it', () => {
+  assert.deepEqual(episodeLine(ep(), NOW), { tone: 'open', text: 'Callback needed' })
+  assert.deepEqual(episodeLine(ep({ attentionGroup: 'waiting', firstAt: '2026-11-02T15:15:00Z' }), NOW), { tone: 'open', text: 'Waiting since Mon, Nov 2' })
+  assert.deepEqual(episodeLine(ep({ attentionGroup: 'waiting', firstAt: '2026-11-04T15:15:00Z' }), NOW), { tone: 'open', text: 'Waiting since yesterday' })
+  // One try reads as a single call's did; more say how many.
+  assert.deepEqual(episodeLine(ep({ attentionGroup: 'try_again', callbackAttempts: 1, lastCallbackAttemptAt: '2026-11-05T17:46:00Z' }), NOW),
+    followUpLine({ direction: 'inbound', needsAttention: true, attentionGroup: 'try_again', attemptAt: '2026-11-05T17:46:00Z' }, NOW))
+  assert.deepEqual(episodeLine(ep({ attentionGroup: 'waiting', callbackAttempts: 2, lastCallbackAttemptAt: '2026-11-04T22:00:00Z' }), NOW),
+    { tone: 'open', text: 'Tried 2× · last yesterday 4:00 PM · still needs a callback' })
+  assert.deepEqual(episodeLine(ep({ kind: 'review', attentionGroup: null }), NOW), { tone: 'quiet', text: 'Check if they still need help' })
+})
+
+test('Needs attention by caller: oldest trouble first, most recently active inside a group; review apart', () => {
+  const sections = episodeSections([
+    ep({ id: 1, attentionGroup: 'new', lastAt: '2026-11-05T15:00:00Z' }),
+    ep({ id: 2, attentionGroup: 'waiting', lastAt: '2026-11-03T15:00:00Z' }),
+    ep({ id: 3, attentionGroup: 'new', lastAt: '2026-11-05T16:30:00Z' }),
+    // First call on Monday, called again today: still waiting, listed by its last call.
+    ep({ id: 4, attentionGroup: 'waiting', firstAt: '2026-11-02T15:00:00Z', lastAt: '2026-11-05T16:00:00Z' }),
+    ep({ id: 5, attentionGroup: 'try_again' }),
+    ep({ id: 6, kind: 'review', attentionGroup: null }),
+  ])
+  assert.deepEqual(sections.map((s) => [s.key, s.episodes.map((e) => e.id)]), [['waiting', [4, 2]], ['try_again', [5]], ['new', [3, 1]]])
+  assert.equal(reviewSection([ep({ id: 1 })]), null, 'only review episodes go in the review group')
+  const quiet = reviewSection([ep({ id: 7, kind: 'review', lastAt: '2026-11-04T15:00:00Z' }), ep({ id: 8, kind: 'review', lastAt: '2026-11-05T15:00:00Z' })])
+  assert.deepEqual(quiet.episodes.map((e) => e.id), [8, 7])
+  assert.equal(quiet.label, 'Check if they still need help')
+  assert.equal(REVIEW_GROUP.note, 'RingCentral did not record how these calls ended. Nobody is counted as missing them.')
+  assert.equal(reviewSection([]), null)
+})
+
+test('a call in the review group asks someone to check, and claims nobody missed it', () => {
+  const c = call({ needsAttention: false, attentionGroup: null, needsReview: true, classification: 'unknown' })
+  assert.deepEqual(followUpLine(c, NOW), { tone: 'quiet', text: 'Check if they still need help' })
+  assert.match(followUpDetail(c, NOW), /nobody is counted as missing it/)
+  // Once dealt with, it reads as handled like any other call.
+  assert.equal(followUpLine({ ...c, needsReview: false, handled: { at: '2026-11-05T17:10:00Z', by: 'Yoletty' } }, NOW).tone, 'done')
 })
