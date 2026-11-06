@@ -24,7 +24,7 @@ export const SECTIONS = {
 export const UPDATES = [
   {
     id: 'review-fixes-2026-11',
-    at: '2026-11-06T12:00:00Z',
+    at: '2026-11-06T17:33:28Z',
     section: 'everyone',
     any: [],
     title: 'Small fixes you may notice',
