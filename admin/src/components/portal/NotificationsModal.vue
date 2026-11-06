@@ -46,6 +46,11 @@
               <span v-if="busy === 'enable'" class="inline-flex items-center gap-1.5"><FaIcon name="spinner" spin class="text-xs" />Turning on…</span>
               <span v-else>Enable notifications</span>
             </button>
+            <button v-if="state === 'desktop'" type="button" @click="sendDesktopTest" :disabled="Boolean(busy)"
+              class="flex-1 min-w-[180px] py-2.5 rounded-lg bg-brand-navy hover:bg-brand-navy-dark text-white text-sm font-bold tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              <span v-if="busy === 'test'" class="inline-flex items-center gap-1.5"><FaIcon name="spinner" spin class="text-xs" />Sending…</span>
+              <span v-else>Send test notification</span>
+            </button>
             <button v-if="state === 'error'" type="button" @click="refresh"
               class="flex-1 min-w-[180px] py-2.5 rounded-lg border border-gray-200 hover:border-gray-300 text-gray-700 hover:text-gray-900 text-sm font-medium transition-colors">
               Try again
@@ -90,6 +95,7 @@
 // permission prompt appears only after "Enable notifications" is clicked.
 import { ref, computed, watch, nextTick } from 'vue'
 import { rawFetch, goToLogin } from '../../composables/useApi.js'
+import { inDesktopApp } from '../../utils/desktop.js'
 import { pushSupport, permissionState, currentSubscription, subscribeThisBrowser, blockedHelp, testSentHelp } from '../../utils/push.js'
 import FaIcon from '../FaIcon.vue'
 
@@ -120,6 +126,7 @@ const BADGES = {
   not_configured: { label: 'Not available yet', icon: 'circle-info', tone: 'bg-gray-100 text-gray-700' },
   unsupported: { label: 'Not available in this browser', icon: 'circle-info', tone: 'bg-gray-100 text-gray-700' },
   insecure: { label: 'Not available on this connection', icon: 'circle-info', tone: 'bg-gray-100 text-gray-700' },
+  desktop: { label: 'On in this app', icon: 'bell', tone: 'bg-green-50 text-green-800 ring-1 ring-green-200' },
 }
 const badge = computed(() => BADGES[state.value] || BADGES.loading)
 const host = () => (typeof window !== 'undefined' ? window.location.host : 'admin.camulaw.com')
@@ -128,6 +135,7 @@ const explanation = computed(() => ({
   not_configured: 'Desktop notifications are not set up on the server yet. Ask the office administrator.',
   unsupported: 'This browser cannot show desktop notifications. Use a current version of Chrome or Edge.',
   insecure: 'Desktop notifications only work when the portal is opened over https.',
+  desktop: 'This app shows notifications itself while it is running, even with its window closed. Nothing to turn on here.',
 }[state.value] || ''))
 
 async function api(path, method, body) {
@@ -145,6 +153,8 @@ async function api(path, method, body) {
 async function refresh() {
   error.value = ''
   state.value = 'loading'
+  // The desktop app reads its notifications from the server itself.
+  if (inDesktopApp()) { state.value = 'desktop'; return }
   const support = pushSupport()
   if (support !== 'ok') { state.value = support; return }
   try {
@@ -202,6 +212,21 @@ async function turnOff() {
     notice.value = 'Notifications are off for this computer.'
   } catch (e) {
     error.value = e.message || 'Could not turn notifications off. Try again.'
+  } finally {
+    busy.value = ''
+  }
+}
+
+// In the desktop app: a test item in its feed, which it shows within about 20 seconds.
+async function sendDesktopTest() {
+  error.value = ''
+  notice.value = ''
+  busy.value = 'test'
+  try {
+    await api('/api/notifications/test', 'POST', {})
+    notice.value = 'Test sent. It should appear within about 20 seconds.'
+  } catch (e) {
+    error.value = e.message
   } finally {
     busy.value = ''
   }

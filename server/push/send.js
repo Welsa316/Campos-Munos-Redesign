@@ -25,6 +25,7 @@
 // the notification was shown depends on the browser and the operating system.
 import webpush from 'web-push'
 import { pushConfig } from './config.js'
+import { recordNotification } from './feed.js'
 
 // How long the push service keeps a notification for a computer that is off,
 // or whose browser is closed, before dropping it: long enough that a reminder
@@ -67,11 +68,15 @@ export async function sendPush(db, { accountId, eventKey, title, body, url = '/'
   if (typeof eventKey !== 'string' || !eventKey || eventKey.length > 200) throw new TypeError('sendPush: eventKey must be a short string')
   if (typeof title !== 'string' || !title || typeof body !== 'string' || !body) throw new TypeError('sendPush: title and body are required')
 
-  const cfg = pushConfig(env)
-  if (!cfg.configured) return { status: 'not_configured', devices: [] }
-
   const account = (await db.query('SELECT id, disabled_at FROM admin_users WHERE id = $1', [accountId])).rows[0]
   if (!account) return { status: 'no_account', devices: [] }
+
+  // The desktop app's copy (push/feed.js), kept whether or not browser push
+  // is set up or this account turned it on. Never for a disabled account.
+  if (!account.disabled_at && !subscriptionId) await recordNotification(db, { accountId, eventKey, title, body, url, tag })
+
+  const cfg = pushConfig(env)
+  if (!cfg.configured) return { status: 'not_configured', devices: [] }
 
   const subs = (await db.query(
     `SELECT id, endpoint, p256dh, auth FROM push_subscriptions

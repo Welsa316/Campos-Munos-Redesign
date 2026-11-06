@@ -23,6 +23,18 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'missed-call-notifications',
+    at: '2026-11-06T09:31:30Z',
+    section: 'calls',
+    any: ['calls.view'],
+    title: 'A notification for each new missed caller',
+    summary: 'If you turned on notifications, a caller newly waiting for a call back now shows “New missed call”. Click it to open Calls.',
+    points: [
+      'One per person waiting, not one per call: someone who calls three times is announced once.',
+      'It never shows who called or their number; that is in the portal once you open it.',
+    ],
+  },
+  {
     id: 'lead-notifications-app',
     at: '2026-11-06T09:11:24Z',
     section: 'messages',
