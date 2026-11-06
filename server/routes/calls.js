@@ -33,7 +33,7 @@ import { getConnectionStatus } from '../integrations/ringcentral/service.js'
 import { queryCalls, syncCallLog, getSyncState, summarizeMissed, OUTCOME_FILTERS, callEvidence, listPeople, callKpis, callsStamp, openCalls } from '../integrations/ringcentral/callLog.js'
 import { UNANSWERED_CLASSES } from '../integrations/ringcentral/callEvidence.js'
 import { excludeCall, includeCall, markHandled, unmarkHandled, markEpisodeHandled, reopenEpisode, clearOpenCalls, undoClear, CallExclusionError } from '../integrations/ringcentral/callExclusions.js'
-import { closeResolvedReminders, phoneKeysOf } from '../reminders/reminders.js'
+import { closeResolvedReminders, reopenResolvedReminders, phoneKeysOf } from '../reminders/reminders.js'
 import { placeRingOut, ringOutStatus, cancelRingOut, getMyPhone, setMyPhone, RingOutError } from '../integrations/ringcentral/ringout.js'
 import { notifyNewMissedCallers } from '../push/missedCallAlerts.js'
 
@@ -153,6 +153,19 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
     }
   }
 
+  // Undo of a mark (or of Clear the list): the reminders it closed come
+  // back with the calls. Like closing, never fails the undo itself.
+  async function reopenReminders(req, res, { reopen, ...out }) {
+    if (reopen) {
+      try {
+        await reopenResolvedReminders(pool(), { ...reopen, now: clock() })
+      } catch (err) {
+        req.log?.warn({ err: { name: err?.name, code: err?.code } }, 'Reopening callback reminders failed')
+      }
+    }
+    res.json(out)
+  }
+
   router.post('/:id(\\d{1,15})/exclusion', exclude, exclusionWrap(async (req, res) => {
     const b = req.body || {}
     // callIds: the rest of the call's callback episode, marked with it.
@@ -165,7 +178,7 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
   router.delete('/:id(\\d{1,15})/exclusion', exclude, exclusionWrap(async (req, res) => {
     const out = await includeCall(pool(), { callId: Number(req.params.id) })
     req.log?.info({ call: out.callId, removedCall: out.removedCall, removedNumber: out.removedNumber }, 'Missed call counted again')
-    res.json(out)
+    await reopenReminders(req, res, out)
   }))
 
   // Dealt with another way (a callback from a mobile, an email): it leaves
@@ -177,7 +190,7 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
   }))
 
   router.delete('/:id(\\d{1,15})/handled', exclude, exclusionWrap(async (req, res) => {
-    res.json(await unmarkHandled(pool(), { callId: Number(req.params.id) }))
+    await reopenReminders(req, res, await unmarkHandled(pool(), { callId: Number(req.params.id) }))
   }))
 
   // One person's callback episode at once: the ids the page listed for it.
@@ -187,7 +200,7 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
     res.json(out)
   }))
   router.post('/episodes/reopen', exclude, exclusionWrap(async (req, res) => {
-    res.json(await reopenEpisode(pool(), { callIds: req.body?.callIds }))
+    await reopenReminders(req, res, await reopenEpisode(pool(), { callIds: req.body?.callIds }))
   }))
 
   // Clear the list: every open call received before `before` (default now)
@@ -216,7 +229,7 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
     res.json(out)
   }))
   router.delete('/handled/bulk/:batch([0-9a-f-]{36})', clear, exclusionWrap(async (req, res) => {
-    res.json(await undoClear(pool(), { batch: req.params.batch }))
+    await reopenReminders(req, res, await undoClear(pool(), { batch: req.params.batch }))
   }))
 
   // --- RingOut: call a number from the portal (calls.place) ---------------------

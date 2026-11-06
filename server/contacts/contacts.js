@@ -143,15 +143,35 @@ export async function decideMatch(db, { key, submissionId, state, accountId }) {
   return { submissionId: Number(submissionId), state }
 }
 
+// Paging: events are ordered (at DESC, type, ref DESC), and `next` names
+// the last one returned, so the following page starts right after it even
+// when several events share a timestamp. Opaque to the portal.
+const encodeCursor = (r) => Buffer.from(JSON.stringify([r.cur_at, r.type, String(r.ref)])).toString('base64url')
+export function decodeCursor(raw) {
+  if (typeof raw !== 'string' || !raw || raw.length > 200) return null
+  try {
+    const [at, type, ref] = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8'))
+    if (typeof at !== 'string' || Number.isNaN(Date.parse(at)) || typeof type !== 'string' || !/^[a-z_]{1,20}$/.test(type) || !/^\d{1,18}$/.test(String(ref))) return null
+    return { at, type, ref: String(ref) }
+  } catch {
+    return null
+  }
+}
+
 /**
  * One page of a number's history, newest first, as one list of events:
  * calls (calls.view), website leads with their replies and notes (crm.view)
  * and call notes (either). Each source is read only when the account may
  * see it, so a matching number never shows someone a section they cannot
  * open. Leads marked as someone else are left out.
+ *
+ * The next page: `cursor` (the `next` this returned). `before` (an event's
+ * `at`, what the portal sends today) still works: it includes events at that
+ * same millisecond again, so none sharing it is skipped, and the portal
+ * drops the ones it already has by id.
  */
-export async function contactHistory(db, { key, can, before = null, limit = 30 }) {
-  if (!key) return { events: [], more: false }
+export async function contactHistory(db, { key, can, cursor = null, before = null, limit = 30 }) {
+  if (!key) return { events: [], more: false, next: null }
   const lim = Math.max(1, Math.min(PAGE_MAX, Math.trunc(Number(limit)) || 30))
   const parts = []
   const seeCalls = can('calls.view')
@@ -185,21 +205,28 @@ export async function contactHistory(db, { key, can, before = null, limit = 30 }
         FROM call_notes n LEFT JOIN admin_users cu ON cu.id = n.author_id
        WHERE n.phone_key = $1 AND n.deleted_at IS NULL`)
   }
-  if (!parts.length) return { events: [], more: false }
+  if (!parts.length) return { events: [], more: false, next: null }
   const params = [key]
-  let cursor = ''
-  if (before) {
+  let where = ''
+  const after = decodeCursor(cursor)
+  if (after) {
+    params.push(after.at, after.type, after.ref)
+    const [a, t, r] = [params.length - 2, params.length - 1, params.length].map((n) => `$${n}`)
+    where = `WHERE at < ${a}::timestamptz OR (at = ${a}::timestamptz AND (type > ${t} OR (type = ${t} AND ref < ${r}::bigint)))`
+  } else if (before) {
     params.push(new Date(before))
-    cursor = `WHERE at < $${params.length}`
+    where = `WHERE at < $${params.length}::timestamptz + INTERVAL '1 millisecond'`
   }
   params.push(lim + 1)
   const rows = (await db.query(
-    `SELECT * FROM (${parts.join(' UNION ALL ')}) e(type, at, ref, a, b, c3, person, d, sub) ${cursor}
+    `SELECT *, to_char(at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cur_at
+       FROM (${parts.join(' UNION ALL ')}) e(type, at, ref, a, b, c3, person, d, sub) ${where}
       ORDER BY at DESC, type, ref DESC LIMIT $${params.length}`,
     params
   )).rows
   const more = rows.length > lim
-  return { events: rows.slice(0, lim).map(presentEvent), more }
+  const page = rows.slice(0, lim)
+  return { events: page.map(presentEvent), more, next: more ? encodeCursor(page[page.length - 1]) : null }
 }
 
 function presentEvent(r) {

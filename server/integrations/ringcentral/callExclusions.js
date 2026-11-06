@@ -11,6 +11,15 @@ import { openCallKeys, unansweredInbound } from './callLog.js'
 export const EXCLUSION_REASONS = Object.freeze(['verification', 'staff_test', 'spam', 'other'])
 const NOTE_MAX = 200
 
+// What an undo removed, for bringing back the callback reminders the mark
+// closed (reminders.js reopenResolvedReminders): the earliest removed mark's
+// time and the callers' numbers. Not part of any response.
+const reopenOf = (createdAts, phoneKeys) => {
+  const times = createdAts.filter(Boolean).map((t) => new Date(t).getTime())
+  const keys = [...new Set(phoneKeys.filter(Boolean))]
+  return times.length && keys.length ? { since: new Date(Math.min(...times)), phoneKeys: keys } : null
+}
+
 export class CallExclusionError extends Error {
   constructor(code, message, status = 400) {
     super(message)
@@ -106,13 +115,16 @@ export async function includeCall(db, { callId }) {
   // A mark on any RingCentral record of the same call counts for the call,
   // so counting it again clears them all.
   const own = await db.query(
-    'DELETE FROM rc_call_exclusions WHERE call_id IN (SELECT d.id FROM rc_calls d JOIN rc_calls c ON c.call_key = d.call_key WHERE c.id = $1)',
+    'DELETE FROM rc_call_exclusions WHERE call_id IN (SELECT d.id FROM rc_calls d JOIN rc_calls c ON c.call_key = d.call_key WHERE c.id = $1) RETURNING created_at',
     [call.id]
   )
   const byNumber = call.counterpart_key
-    ? await db.query('DELETE FROM rc_ignored_numbers WHERE counterpart_key = $1', [call.counterpart_key])
-    : { rowCount: 0 }
-  return { callId: Number(call.id), removedCall: own.rowCount > 0, removedNumber: byNumber.rowCount > 0 }
+    ? await db.query('DELETE FROM rc_ignored_numbers WHERE counterpart_key = $1 RETURNING created_at', [call.counterpart_key])
+    : { rowCount: 0, rows: [] }
+  return {
+    callId: Number(call.id), removedCall: own.rowCount > 0, removedNumber: byNumber.rowCount > 0,
+    reopen: reopenOf([...own.rows, ...byNumber.rows].map((r) => r.created_at), [call.counterpart_key]),
+  }
 }
 
 export default { excludeCall, includeCall, markHandled, unmarkHandled, markEpisodeHandled, reopenEpisode, EXCLUSION_REASONS }
@@ -144,10 +156,10 @@ export async function markHandled(db, { callId, note, accountId }) {
 export async function unmarkHandled(db, { callId }) {
   const call = await loadCall(db, callId)
   const r = await db.query(
-    'DELETE FROM rc_call_resolutions WHERE call_key = (SELECT call_key FROM rc_calls WHERE id = $1)',
+    'DELETE FROM rc_call_resolutions WHERE call_key = (SELECT call_key FROM rc_calls WHERE id = $1) RETURNING created_at',
     [call.id]
   )
-  return { callId: Number(call.id), removed: r.rowCount > 0 }
+  return { callId: Number(call.id), removed: r.rowCount > 0, reopen: reopenOf(r.rows.map((x) => x.created_at), [call.counterpart_key]) }
 }
 
 /**
@@ -174,10 +186,10 @@ export async function markEpisodeHandled(db, { callIds, note, accountId }) {
 export async function reopenEpisode(db, { callIds }) {
   const calls = await loadEpisode(db, callIds)
   const r = await db.query(
-    'DELETE FROM rc_call_resolutions WHERE batch_id IS NULL AND call_key = ANY($1::text[])',
+    'DELETE FROM rc_call_resolutions WHERE batch_id IS NULL AND call_key = ANY($1::text[]) RETURNING created_at',
     [calls.map((c) => c.call_key)]
   )
-  return { removed: r.rowCount }
+  return { removed: r.rowCount, reopen: reopenOf(r.rows.map((x) => x.created_at), calls.map((c) => c.counterpart_key)) }
 }
 
 /**
@@ -205,6 +217,9 @@ export async function clearOpenCalls(db, { before = new Date(), note, accountId,
 
 /** Undo one clear: its calls go back to Needs attention. */
 export async function undoClear(db, { batch }) {
-  const r = await db.query('DELETE FROM rc_call_resolutions WHERE batch_id = $1', [batch])
-  return { removed: r.rowCount }
+  const r = await db.query('DELETE FROM rc_call_resolutions WHERE batch_id = $1 RETURNING call_key, created_at', [batch])
+  const keys = r.rowCount
+    ? (await db.query("SELECT DISTINCT counterpart_key FROM rc_calls WHERE call_key = ANY($1::text[]) AND counterpart_key <> ''", [r.rows.map((x) => x.call_key)])).rows.map((x) => x.counterpart_key)
+    : []
+  return { removed: r.rowCount, reopen: reopenOf(r.rows.map((x) => x.created_at), keys) }
 }

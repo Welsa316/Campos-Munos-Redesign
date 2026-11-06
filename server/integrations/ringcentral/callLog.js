@@ -401,7 +401,7 @@ async function runSync(db, config, { trigger, backfillDays, retentionDays, deps,
   // evidence: the ones just imported, or all of them when the directory changed.
   const directory = await refreshDirectory(db, config, { token, now, deps })
   await classifyStored(db, { keys: result.rows.map(callKeyOf), all: directory.changed })
-  await db.query(`DELETE FROM rc_calls WHERE started_at < $1::timestamptz - make_interval(days => $2)`, [now, Math.max(30, retentionDays)])
+  await purgeOldCalls(db, { now, retentionDays })
   await purgeOldEvents(db, now)
   // Portal-placed calls are only needed while they ring; the call itself is in the call log.
   await db.query(`DELETE FROM rc_ringouts WHERE created_at < $1::timestamptz - INTERVAL '90 days'`, [now])
@@ -419,6 +419,20 @@ async function runSync(db, config, { trigger, backfillDays, retentionDays, deps,
     [scope, scopeCheckedAt, dateTo, trigger, result.fetched, inserted, result.truncated, complete]
   )
   return { status: 'ok', scope, fetched: result.fetched, new: inserted, truncated: result.truncated, directory: directory.status, directoryCode: directory.code }
+}
+
+/**
+ * The call log keeps retentionDays (at least 30). A call with an open
+ * callback reminder stays until the reminder is finished: the reminder points
+ * at it, and deleting the call would delete the reminder with it.
+ */
+export async function purgeOldCalls(db, { now = new Date(), retentionDays = DEFAULT_RETENTION_DAYS } = {}) {
+  const r = await db.query(
+    `DELETE FROM rc_calls c WHERE c.started_at < $1::timestamptz - make_interval(days => $2)
+       AND NOT EXISTS (SELECT 1 FROM follow_up_reminders r WHERE r.call_id = c.id AND r.status IN ('open', 'due'))`,
+    [now, Math.max(30, retentionDays)]
+  )
+  return r.rowCount
 }
 
 export async function getSyncState(db) {
@@ -1075,8 +1089,10 @@ export async function callsStamp(db) {
             (SELECT COUNT(*) || ':' || COALESCE(MAX(created_at)::text, '') FROM rc_call_resolutions) AS handled,
             (SELECT COUNT(*) || ':' || COALESCE(MAX(created_at)::text, '') FROM rc_call_exclusions) AS excluded,
             (SELECT COUNT(*) || ':' || COALESCE(MAX(created_at)::text, '') FROM rc_ignored_numbers) AS numbers,
-            -- Callback reminders on callers, so a reminder someone else set shows on the row.
-            (SELECT COUNT(*) || ':' || COALESCE(MAX(updated_at)::text, '') FROM follow_up_reminders WHERE target_kind = 'call') AS reminders`
+            -- Callback reminders on callers, so a reminder someone else set shows
+            -- on the row. Every change to one moves updated_at (indexed), and
+            -- only finished ones are ever deleted.
+            (SELECT COALESCE(MAX(updated_at)::text, '') FROM follow_up_reminders WHERE target_kind = 'call') AS reminders`
   )).rows[0]
   return [r.calls?.toISOString?.() ?? '', r.handled, r.excluded, r.numbers, r.reminders].join('|')
 }

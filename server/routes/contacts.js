@@ -2,7 +2,9 @@
 // and the website inbox, internal call notes, and staff decisions about
 // which website leads share a number with the same person.
 //
-//   GET    /api/contacts/history?callId=|submissionId=&before=&limit=
+//   GET    /api/contacts/history?callId=|submissionId=&cursor=&limit=
+//                                     cursor: the page's `next`; the older
+//                                     before=<an event's at> still works
 //   PUT    /api/contacts/matches      { callId | submissionId, lead, state }
 //   GET    /api/contacts/notes?callId=
 //   POST   /api/contacts/notes        { callId, body }
@@ -50,8 +52,9 @@ export function createContactsRouter({ db = null } = {}) {
   router.get('/history', any('calls.view', 'crm.view'), wrap(async (req, res) => {
     const key = await keyFor(req, req.query)
     const before = typeof req.query.before === 'string' && !Number.isNaN(Date.parse(req.query.before)) ? req.query.before : null
+    const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : null
     const [page, matches] = await Promise.all([
-      contactHistory(pool(), { key, can: (n) => can(req, n), before, limit: req.query.limit }),
+      contactHistory(pool(), { key, can: (n) => can(req, n), cursor, before, limit: req.query.limit }),
       can(req, 'crm.view') ? contactMatches(pool(), { key }) : [],
     ])
     res.json({ hasNumber: Boolean(key), ...page, matches })

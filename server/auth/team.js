@@ -10,6 +10,8 @@ import bcrypt from 'bcrypt'
 import { ADMIN_ONLY, ROLES, ROLE_NAMES, resolveCapabilities, isCapability, isRole } from './capabilities.js'
 import { audit } from '../billing/audit.js'
 import { avatarFor } from './avatars.js'
+import { inTransaction } from '../db/transaction.js'
+import { reassignFromDisabled } from '../reminders/reminders.js'
 
 export class TeamError extends Error {
   constructor(message, status = 400) {
@@ -173,6 +175,13 @@ export async function setExtension(db, row, extensionId, actor) {
   return updated
 }
 
+/**
+ * Disable or enable an account. Disabling hands its open callback reminders
+ * to the person doing it, or else to whoever set each one (reminders.js
+ * reassignFromDisabled), in the same transaction, and the audit entry says
+ * how many moved. Returns the account row; `updated.reminders` is that
+ * summary when disabling.
+ */
 export async function setDisabled(db, row, disabled, actor) {
   if (disabled) {
     notSelf(actor, row, 'revoke access for')
@@ -180,14 +189,20 @@ export async function setDisabled(db, row, disabled, actor) {
       throw new TeamError('That is the last enabled administrator; enable or create another first.', 409)
     }
   }
-  const updated = (await db.query(
-    disabled
-      ? 'UPDATE admin_users SET disabled_at = NOW(), token_version = token_version + 1 WHERE id = $1 RETURNING *'
-      : 'UPDATE admin_users SET disabled_at = NULL WHERE id = $1 RETURNING *',
-    [row.id]
-  )).rows[0]
-  await auditFor(actor)(db, row, disabled ? 'staff.disabled' : 'staff.enabled')
-  return updated
+  return inTransaction(db, async (c) => {
+    const updated = (await c.query(
+      disabled
+        ? 'UPDATE admin_users SET disabled_at = NOW(), token_version = token_version + 1 WHERE id = $1 RETURNING *'
+        : 'UPDATE admin_users SET disabled_at = NULL WHERE id = $1 RETURNING *',
+      [row.id]
+    )).rows[0]
+    const reminders = disabled
+      ? await reassignFromDisabled(c, { accountId: row.id, toId: actor?.via === 'portal' ? actor.id : null })
+      : null
+    await auditFor(actor)(c, row, disabled ? 'staff.disabled' : 'staff.enabled',
+      reminders?.reassigned || reminders?.left ? { remindersReassigned: reminders.reassigned, remindersLeft: reminders.left, reassignedTo: reminders.to } : {})
+    return reminders ? Object.assign(updated, { reminders }) : updated
+  })
 }
 
 export async function signOutEverywhere(db, row, actor) {

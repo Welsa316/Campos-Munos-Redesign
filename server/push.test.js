@@ -431,4 +431,18 @@ test('a new missed caller is announced once, to people who can see Calls — not
   await calls('mc-2', 5, '+15045550301')
   await notifyNewMissedCallers(db, { now }, { env: PUSH_ENV, transport })
   assert.equal((await feed(desk)).length, 1)
+
+  // Every later import while the episode is fresh: already announced, so
+  // nobody is told again — not even someone who joined since — and two
+  // imports at the same moment announce it once between them.
+  const joined = await make('missed-joined@example.test', 'receptionist')
+  sent.length = 0
+  const again = await Promise.all([1, 2, 3].map(() => notifyNewMissedCallers(db, { now }, { env: PUSH_ENV, transport })))
+  assert.deepEqual(again, [[], [], []])
+  assert.deepEqual(await feed(joined), [])
+  assert.equal(sent.length, 0)
+  const second = await calls('mc-3', 10, '+15045550303')
+  const both = (await Promise.all([1, 2].map(() => notifyNewMissedCallers(db, { now }, { env: PUSH_ENV, transport })))).flat()
+  assert.deepEqual(both, [Number(second)], 'one of the two imports announced it')
+  assert.deepEqual((await feed(joined)).map((f) => f.event_key), [`missed-call:${second}`])
 })

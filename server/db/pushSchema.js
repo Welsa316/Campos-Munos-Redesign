@@ -38,6 +38,19 @@ export const PUSH_SCHEMA_SQL = `
     UNIQUE (event_key, subscription_id)
   );
   CREATE INDEX IF NOT EXISTS idx_push_deliveries_account ON push_deliveries(account_id, created_at DESC);
+  -- Removing a computer sets its rows' subscription_id to NULL (and the
+  -- send path looks rows up by it); the daily purge goes by created_at.
+  CREATE INDEX IF NOT EXISTS idx_push_deliveries_subscription ON push_deliveries(subscription_id);
+  CREATE INDEX IF NOT EXISTS idx_push_deliveries_created ON push_deliveries(created_at);
+
+  -- Callback episodes already announced as a new missed call
+  -- (push/missedCallAlerts.js), by the episode's first call: each is fanned
+  -- out to the staff once, however many imports see it while it is fresh.
+  -- No foreign key: the call may age out of the log; rows are purged daily.
+  CREATE TABLE IF NOT EXISTS missed_call_announcements (
+    episode_id BIGINT PRIMARY KEY,
+    announced_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
 
   -- Every notification meant for an account, whether or not it turned on
   -- browser notifications: the desktop app reads these (GET

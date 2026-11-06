@@ -209,13 +209,55 @@ test('one number, two people: possible matches, never merged; staff can confirm 
   assert.deepEqual(leads, [{ first_name: 'Maria', phone: '(504) 555-0101' }, { first_name: 'Jose', phone: '504.555.0101' }, { first_name: 'Ana', phone: '504-555-0199' }])
 })
 
-test('history pages back through older events', { skip: SKIP }, async () => {
-  const all = (await call('GET', `/api/contacts/history?callId=${ids.call1}&limit=100`)).json.events
-  const first = (await call('GET', `/api/contacts/history?callId=${ids.call1}&limit=2`)).json
-  assert.equal(first.events.length, 2)
-  assert.equal(first.more, true)
-  const next = (await call('GET', `/api/contacts/history?callId=${ids.call1}&limit=100&before=${encodeURIComponent(first.events[1].at)}`)).json
-  assert.equal(first.events.length + next.events.length, all.filter((e) => Date.parse(e.at) !== Date.parse(first.events[1].at)).length + 1)
+test('history pages back through older events, none skipped or repeated when several share a time', { skip: SKIP }, async () => {
+  // Three notes written in the same instant (microseconds apart from nothing):
+  // a page boundary falls among them.
+  const key = (await db.query('SELECT counterpart_key FROM rc_calls WHERE id = $1', [ids.call1])).rows[0].counterpart_key
+  const tied = []
+  for (const body of ['tie one', 'tie two', 'tie three']) {
+    tied.push((await db.query(
+      `INSERT INTO call_notes (phone_key, call_key, body, author_id, created_at, updated_at)
+       VALUES ($1, NULL, $2, $3, '2026-11-03T18:00:00.123456Z', '2026-11-03T18:00:00.123456Z') RETURNING id`,
+      [key, body, u.desk.id]
+    )).rows[0].id)
+  }
+  try {
+    const all = (await call('GET', `/api/contacts/history?callId=${ids.call1}&limit=100`)).json.events.map((e) => e.id)
+    assert.ok(tied.every((id) => all.includes(`call_note:${id}`)))
+
+    // Following `next`: every event exactly once, in the same order.
+    const seen = []
+    let cursor = ''
+    for (let i = 0; i < 50; i++) {
+      const page = (await call('GET', `/api/contacts/history?callId=${ids.call1}&limit=2${cursor}`)).json
+      seen.push(...page.events.map((e) => e.id))
+      if (!page.more) { assert.equal(page.next, null); break }
+      assert.ok(page.next)
+      cursor = `&cursor=${encodeURIComponent(page.next)}`
+    }
+    assert.deepEqual(seen, all)
+
+    // What the portal does today: `before` = the last event's time, keeping
+    // the ones it has not got yet. With pages of four the first ends among
+    // the three tied notes; nothing is skipped. (The portal pages 20 at a
+    // time; this needs fewer than a page sharing one millisecond.)
+    const kept = []
+    let before = ''
+    for (let i = 0; i < 50; i++) {
+      const page = (await call('GET', `/api/contacts/history?callId=${ids.call1}&limit=4${before}`)).json
+      const fresh = page.events.filter((e) => !kept.some((k) => k.id === e.id))
+      kept.push(...fresh)
+      if (!page.more || !fresh.length) break
+      before = `&before=${encodeURIComponent(kept[kept.length - 1].at)}`
+    }
+    assert.deepEqual(kept.map((e) => e.id).sort(), [...all].sort())
+
+    // A cursor that is not ours is ignored: the first page.
+    const junk = (await call('GET', `/api/contacts/history?callId=${ids.call1}&limit=2&cursor=bm9wZQ`)).json
+    assert.deepEqual(junk.events.map((e) => e.id), all.slice(0, 2))
+  } finally {
+    await db.query('DELETE FROM call_notes WHERE id = ANY($1::bigint[])', [tied])
+  }
 })
 
 test('a withheld number has no history to match on', { skip: SKIP }, async () => {

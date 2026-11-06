@@ -234,6 +234,17 @@ test('email retries back off 1, 5, 15, 60 minutes, five attempts in all', () => 
   assert.deepEqual([1, 2, 3, 4, 5].map(backoffAfter), [1, 5, 15, 60, null])
 })
 
+test('a Resend call that never answers is given up on as transient, so the worker moves on', { timeout: 5000 }, async () => {
+  const hung = { emails: { send: () => new Promise(() => {}) } }
+  const m = createResendMailer({ client: hung, env: { NODE_ENV: 'test' }, timeoutMs: 50 })
+  const t0 = Date.now()
+  const res = await m.send({ to: 'tech@camulaw.com', subject: 's', html: 'h', text: 't', idempotencyKey: 'k' })
+  assert.equal(res.ok, false)
+  assert.equal(res.transient, true, 'retried with the same idempotency key')
+  assert.match(res.error, /timeout/)
+  assert.ok(Date.now() - t0 < 2000)
+})
+
 test('callback reminders', { skip: SKIP }, async (t) => {
   const maria = newNumber()
   const mariaCalls = [await addCall({ at: '2026-11-04T15:00:00Z', number: maria }), await addCall({ at: '2026-11-04T16:00:00Z', number: maria })]
@@ -653,5 +664,309 @@ test('callback reminders', { skip: SKIP }, async (t) => {
     await run({}, later(60))
     assert.equal(mail.sent.length + pushed.length, 0)
     assert.equal((await deliveries(r.id)).length, 0)
+  })
+
+  const at = (mins) => new Date(clock.t.getTime() + mins * MIN).toISOString()
+  const emailsAbout = (path) => mail.sent.filter((m) => m.text.includes(path)).length
+
+  await t.test('undo brings back the reminders a mark closed, and the worker still delivers them', async () => {
+    await closeAll()
+    resetSends()
+    // Undo after marking a caller handled, before the reminder's time: it waits again.
+    const c1 = await addCall({ at: at(-20), number: newNumber() })
+    const r1 = await make({ target: { kind: 'call', id: c1 }, dueAt: 'in_30' })
+    assert.equal((await send('POST', '/api/calls/episodes/handled', { callIds: [c1] })).status, 200)
+    assert.equal((await reminderRow(r1.id)).completion_reason, 'resolved')
+    const undo = await send('POST', '/api/calls/episodes/reopen', { callIds: [c1] })
+    assert.equal(undo.status, 200)
+    assert.deepEqual(undo.json, { removed: 1 }, 'the response is unchanged')
+    let row = await reminderRow(r1.id)
+    assert.equal(row.status, 'open')
+    assert.equal(row.completed_at, null)
+    assert.equal(row.completion_reason, null)
+    assert.equal((await send('GET', `/api/reminders?call=${c1}`)).json.reminders.length, 1, 'back on the caller')
+    await run({}, later(31))
+    assert.equal(emailsAbout(`/calls?call=${c1}`), 1, 'delivered at its time')
+
+    // Reopened after its time had passed, never delivered: due now, delivered on the next run.
+    const c2 = await addCall({ at: at(-20), number: newNumber() })
+    const r2 = await make({ target: { kind: 'call', id: c2 }, dueAt: 'in_30' })
+    assert.equal((await send('POST', `/api/calls/${c2}/handled`, {})).status, 200)
+    const t45 = later(45)
+    const saved = clock.t
+    clock.t = t45
+    try {
+      assert.equal((await send('DELETE', `/api/calls/${c2}/handled`)).status, 200)
+    } finally {
+      clock.t = saved
+    }
+    row = await reminderRow(r2.id)
+    assert.equal(row.status, 'due')
+    assert.deepEqual((await deliveries(r2.id)).filter((d) => d.cycle === row.cycle).map((d) => d.status), ['pending', 'pending'])
+    await run({}, later(46))
+    assert.equal(emailsAbout(`/calls?call=${c2}`), 1)
+    assert.ok(pushed.some((p) => p.payload.url === `/calls?call=${c2}`))
+
+    // Already delivered before it was closed: back on the list, not sent twice.
+    const c3 = await addCall({ at: at(-20), number: newNumber() })
+    const r3 = await make({ target: { kind: 'call', id: c3 }, dueAt: 'in_30' })
+    await run({}, later(31))
+    assert.equal(emailsAbout(`/calls?call=${c3}`), 1)
+    assert.equal((await send('POST', `/api/calls/${c3}/exclusion`, { reason: 'spam' })).status, 200)
+    assert.equal((await reminderRow(r3.id)).completion_reason, 'resolved')
+    clock.t = t45
+    try {
+      assert.equal((await send('DELETE', `/api/calls/${c3}/exclusion`)).status, 200)
+    } finally {
+      clock.t = saved
+    }
+    assert.deepEqual([(await reminderRow(r3.id)).status, (await reminderRow(r3.id)).cycle], ['due', 1], 'the same time, the same cycle')
+    await run({}, later(50))
+    assert.equal(emailsAbout(`/calls?call=${c3}`), 1, 'not emailed again')
+
+    // Undoing Clear the list.
+    const c4 = await addCall({ at: at(-20), number: newNumber() })
+    const r4 = await make({ target: { kind: 'call', id: c4 }, dueAt: 'tomorrow_morning' })
+    const cleared = await send('POST', '/api/calls/handled/bulk', { note: 'Routing fixed' }, u.owner)
+    assert.equal(cleared.status, 200, cleared.text)
+    assert.equal((await reminderRow(r4.id)).completion_reason, 'resolved')
+    assert.equal((await send('DELETE', `/api/calls/handled/bulk/${cleared.json.batch}`, undefined, u.owner)).status, 200)
+    assert.equal((await reminderRow(r4.id)).status, 'open')
+
+    // Finished by a person stays finished; still dealt with another way stays closed.
+    const c5 = await addCall({ at: at(-20), number: newNumber() })
+    const mine = await make({ target: { kind: 'call', id: c5 }, dueAt: 'tomorrow_morning' })
+    const other = await make({ target: { kind: 'call', id: c5 }, dueAt: 'tomorrow_morning', assignee: u.ciro.id })
+    await send('POST', `/api/reminders/${mine.id}/complete`, {})
+    await send('POST', '/api/calls/episodes/handled', { callIds: [c5] })
+    await send('POST', '/api/calls/episodes/reopen', { callIds: [c5] })
+    assert.equal((await reminderRow(mine.id)).completion_reason, 'completed')
+    assert.equal((await reminderRow(other.id)).status, 'open')
+    const n6 = newNumber()
+    const c6 = await addCall({ at: at(-20), number: n6 })
+    const r6 = await make({ target: { kind: 'call', id: c6 }, dueAt: 'tomorrow_morning' })
+    await send('POST', `/api/calls/${c6}/handled`, {})
+    await addCall({ at: at(-5), number: n6, direction: 'outbound', outcome: 'connected' })
+    await send('DELETE', `/api/calls/${c6}/handled`)
+    assert.equal((await reminderRow(r6.id)).completion_reason, 'resolved', 'the callback connected meanwhile')
+
+    // A lead taken out of the archive gets its reminder back.
+    await closeAll()
+    resetSends()
+    const lead = await newLead()
+    const rl = await make({ target: { kind: 'submission', id: lead }, dueAt: 'in_60' })
+    await send('PATCH', `/api/submissions/${lead}/archive`, { archived: true })
+    assert.equal((await reminderRow(rl.id)).completion_reason, 'resolved')
+    assert.equal((await send('PATCH', `/api/submissions/${lead}/archive`, { archived: false })).status, 200)
+    row = await reminderRow(rl.id)
+    assert.ok(['open', 'due'].includes(row.status), row.status)
+    assert.equal(row.completed_at, null)
+    // (That route runs on the real clock, so its time has already passed.)
+    await run({}, new Date())
+    assert.equal(emailsAbout(`/inbox?lead=${lead}`), 1)
+    await closeAll()
+  })
+
+  await t.test('rescheduling while the worker runs never strands a reminder as due with nothing sent', async () => {
+    await closeAll()
+    resetSends()
+    const reminders = await import('./reminders/reminders.js')
+    const r = await make({ target: { kind: 'call', id: episode }, dueAt: 'in_30' })
+    // Due and emailed, with a retry pending after a busy provider.
+    mail.queue.push({ ok: false, error: 'rate_limit_exceeded: slow down', transient: true })
+    await run({}, later(31))
+    assert.deepEqual((await deliveries(r.id)).filter((d) => d.channel === 'email').map((d) => d.status), ['failed', 'pending'])
+    // Snoozed, and the worker claims the new time right as the change lands.
+    const far = later(24 * 60)
+    let raced = false
+    const hook = async (sql) => {
+      if (!raced && /^\s*UPDATE follow_up_reminders SET/.test(sql)) { raced = true; await worker.claimDue(db, { now: far }) }
+    }
+    const racing = {
+      query: async (...a) => { const out = await db.query(...a); await hook(a[0]); return out },
+      connect: async () => {
+        const c = await db.connect()
+        return { query: async (...a) => { const out = await c.query(...a); await hook(a[0]); return out }, release: (e) => c.release(e) }
+      },
+    }
+    const current = await reminderRow(r.id)
+    await reminders.updateReminder(racing, { id: r.id, version: current.version, dueAt: later(60).toISOString(), caps: new Set(['calls.exclude', 'calls.view']), now: clock.t })
+    assert.ok(raced)
+    await run({}, far)
+    const row = await reminderRow(r.id)
+    assert.equal(row.status, 'due')
+    const ds = await deliveries(r.id)
+    assert.deepEqual(ds.filter((d) => d.cycle === row.cycle).map((d) => [d.channel, d.status]), [['email', 'sent'], ['push', 'sent']], 'the new time was delivered')
+    assert.equal(ds.find((d) => d.cycle === 1 && d.attempt === 2).status, 'cancelled', 'the old retry was not sent')
+    assert.equal(ds.find((d) => d.cycle === 1 && d.attempt === 2).error, 'rescheduled')
+    await closeAll()
+  })
+
+  await t.test('each delivery is stamped when it is taken, and a retry waits from after the failed send', async () => {
+    await closeAll()
+    resetSends()
+    await db.query("UPDATE reminder_deliveries SET status = 'cancelled' WHERE status = 'pending'")
+    const a = await make({ target: { kind: 'call', id: episode }, dueAt: 'in_30' })
+    const b = await make({ target: { kind: 'call', id: episode }, dueAt: 'in_30', assignee: u.owner.id })
+    await db.query("UPDATE follow_up_reminders SET due_at = NOW() - INTERVAL '1 minute' WHERE id = ANY($1::bigint[])", [[a.id, b.id]])
+    // On the database's clock, as in production.
+    assert.equal((await worker.claimDue(db)).length, 2)
+    const slow = { send: async () => { await new Promise((r) => setTimeout(r, 300)); return { ok: false, error: 'rate_limit_exceeded: slow down', transient: true } } }
+    await worker.deliverPending(db, { mailer: slow, env: BASE_ENV, pushOptions: { env: PUSH_ENV, transport } })
+    const firsts = (await db.query('SELECT * FROM reminder_deliveries WHERE reminder_id = ANY($1::bigint[]) AND attempt = 1 ORDER BY attempted_at', [[a.id, b.id]])).rows
+    assert.equal(firsts.length, 4)
+    const span = new Date(firsts[3].attempted_at) - new Date(firsts[0].attempted_at)
+    assert.ok(span >= 250, `taken one after another, not all stamped with the start of the run (${span} ms apart)`)
+    const retries = (await db.query("SELECT * FROM reminder_deliveries WHERE reminder_id = ANY($1::bigint[]) AND channel = 'email' AND attempt = 2", [[a.id, b.id]])).rows
+    assert.equal(retries.length, 2)
+    for (const retry of retries) {
+      const failed = firsts.find((d) => d.reminder_id === retry.reminder_id && d.channel === 'email')
+      const wait = new Date(retry.next_attempt_at) - new Date(failed.attempted_at)
+      assert.ok(wait >= MIN + 250, `a minute after the send failed, not after the run started (${wait} ms)`)
+    }
+    await closeAll()
+    await db.query("UPDATE reminder_deliveries SET status = 'cancelled' WHERE status = 'pending'")
+  })
+
+  await t.test('a notification that reached no computer is tried again, three attempts at most', async () => {
+    await closeAll()
+    resetSends()
+    const deskEndpoint = (await db.query('SELECT endpoint FROM push_subscriptions WHERE account_id = $1', [u.desk.id])).rows[0].endpoint
+    failing.add(deskEndpoint)
+    try {
+      const r = await make({ target: { kind: 'call', id: episode }, dueAt: 'in_30' })
+      const t0 = later(31)
+      await run({}, t0)
+      let p = (await deliveries(r.id)).filter((d) => d.channel === 'push')
+      assert.deepEqual(p.map((d) => [d.attempt, d.status]), [[1, 'failed'], [2, 'pending']])
+      assert.equal(new Date(p[1].next_attempt_at) - t0, MIN)
+      // The push service is back: the second attempt reaches the computer.
+      failing.delete(deskEndpoint)
+      await run({}, new Date(t0.getTime() + MIN))
+      p = (await deliveries(r.id)).filter((d) => d.channel === 'push')
+      assert.deepEqual(p.map((d) => d.status), ['failed', 'sent'])
+      assert.equal(pushed.filter((x) => x.endpoint === deskEndpoint).length, 2)
+      const shown = (await send('GET', '/api/reminders/mine')).json.reminders.find((x) => x.id === r.id)
+      assert.deepEqual([shown.delivery.push.status, shown.delivery.push.attempts], ['sent', 2])
+      assert.equal(mail.sent.length, 1, 'the email went once, unaffected')
+
+      // Failing every time: three attempts, then it stays failed.
+      failing.add(deskEndpoint)
+      const r2 = await make({ target: { kind: 'call', id: episode }, dueAt: 'in_30', allowDuplicate: true })
+      let when = later(31)
+      for (const wait of [0, 1, 5, 15, 60]) {
+        when = new Date(when.getTime() + wait * MIN)
+        await run({}, when)
+      }
+      const p2 = (await deliveries(r2.id)).filter((d) => d.channel === 'push')
+      assert.deepEqual(p2.map((d) => d.status), ['failed', 'failed', 'failed'])
+      assert.match(p2[2].error, /gave up/)
+    } finally {
+      failing.delete(deskEndpoint)
+      await closeAll()
+    }
+  })
+
+  await t.test('the close sweep can be skipped on a run; a caller dealt with meanwhile is still never notified', async () => {
+    await closeAll()
+    resetSends()
+    const n = newNumber()
+    const c = await addCall({ at: at(-10), number: n })
+    const r = await make({ target: { kind: 'call', id: c }, dueAt: 'in_30' })
+    await addCall({ at: at(-5), number: n, direction: 'outbound', outcome: 'connected' })
+    const opts = { mailer, env: BASE_ENV, pushOptions: { env: PUSH_ENV, transport }, sweep: false }
+    const quiet = await worker.runReminderWorker(db, { ...opts, now: later(5) })
+    assert.deepEqual(quiet.resolved, [])
+    assert.equal((await reminderRow(r.id)).status, 'open', 'left for the ten-minute sweep')
+    await worker.runReminderWorker(db, { ...opts, now: later(31) })
+    assert.equal((await reminderRow(r.id)).completion_reason, 'resolved', 'checked again before sending')
+    assert.equal(mail.sent.length + pushed.length, 0)
+  })
+
+  await t.test('disabling an account hands its open reminders to the person disabling it, or else to whoever set them', async () => {
+    await closeAll()
+    resetSends()
+    const team = await import('./auth/team.js')
+    const c = await addCall({ at: at(-10), number: newNumber() })
+    const waiting = await make({ target: { kind: 'call', id: c }, dueAt: 'in_60', assignee: u.ciro.id })
+    const due = await make({ target: { kind: 'call', id: c }, dueAt: 'in_30', assignee: u.ciro.id, allowDuplicate: true })
+    await run({}, later(31))
+    assert.equal((await reminderRow(due.id)).status, 'due')
+    const lead = await newLead()
+    const leadR = await make({ target: { kind: 'submission', id: lead }, dueAt: 'in_60', assignee: u.ciro.id })
+    const ciro = async () => (await db.query('SELECT * FROM admin_users WHERE id = $1', [u.ciro.id])).rows[0]
+    const tv = (await ciro()).token_version
+    try {
+      resetSends()
+      const out = await team.setDisabled(db, await ciro(), true, { via: 'portal', id: u.owner.id })
+      assert.equal(out.reminders.reassigned, 3)
+      for (const id of [waiting.id, due.id, leadR.id]) assert.equal((await reminderRow(id)).assigned_to, u.owner.id)
+      const audit = (await db.query("SELECT details FROM billing_audit_events WHERE action = 'staff.disabled' AND entity_id = $1 ORDER BY id DESC LIMIT 1", [String(u.ciro.id)])).rows[0]
+      assert.equal(audit.details.remindersReassigned, 3)
+      // The one that was already due comes round again for its new person.
+      await run({}, later(32))
+      assert.deepEqual(mail.sent.map((m) => m.to), ['owner@example.test'])
+      assert.ok(mail.sent[0].text.includes(`/calls?call=${c}`))
+      assert.ok(!pushed.some((p) => p.endpoint.includes('/ciro-')))
+
+      // From the command line there is no person doing it: to whoever set it.
+      await team.setDisabled(db, await ciro(), false, { via: 'cli' })
+      const fromDesk = await make({ target: { kind: 'call', id: c }, dueAt: 'in_60', assignee: u.ciro.id, allowDuplicate: true })
+      const cli = await team.setDisabled(db, await ciro(), true, { via: 'cli' })
+      assert.equal(cli.reminders.reassigned, 1)
+      assert.equal((await reminderRow(fromDesk.id)).assigned_to, u.desk.id)
+    } finally {
+      await db.query('UPDATE admin_users SET disabled_at = NULL, token_version = $2 WHERE id = $1', [u.ciro.id, tv])
+      await closeAll()
+    }
+  })
+
+  await t.test('history is kept as long as it is useful, and never at the cost of an open reminder', async () => {
+    await closeAll()
+    const reminders = await import('./reminders/reminders.js')
+    const { purgeOldPushDeliveries } = await import('./push/feed.js')
+    const { purgeOldCalls, callsStamp } = await import('./integrations/ringcentral/callLog.js')
+
+    // A changed reminder moves the Calls page's change stamp.
+    const c = await addCall({ at: at(-10), number: newNumber() })
+    const s0 = await callsStamp(db)
+    const r = await make({ target: { kind: 'call', id: c }, dueAt: 'in_60' })
+    const s1 = await callsStamp(db)
+    assert.notEqual(s1, s0)
+    await send('POST', `/api/reminders/${r.id}/complete`, {})
+    assert.notEqual(await callsStamp(db), s1)
+
+    // Per-computer push records: a month.
+    await db.query(
+      `INSERT INTO push_deliveries (account_id, event_key, status, created_at) VALUES
+         ($1, 'purge-test:old', 'sent', NOW() - INTERVAL '40 days'), ($1, 'purge-test:new', 'sent', NOW() - INTERVAL '1 day')`,
+      [u.desk.id]
+    )
+    await purgeOldPushDeliveries(db)
+    assert.deepEqual((await db.query("SELECT event_key FROM push_deliveries WHERE event_key LIKE 'purge-test:%'")).rows.map((x) => x.event_key), ['purge-test:new'])
+
+    // Finished reminders: 180 days, with their delivery history; open ones never.
+    const done = await make({ target: { kind: 'call', id: c }, dueAt: 'in_60' })
+    await send('POST', `/api/reminders/${done.id}/complete`, {})
+    const open = await make({ target: { kind: 'call', id: c }, dueAt: 'in_60' })
+    await db.query("INSERT INTO reminder_deliveries (reminder_id, cycle, channel, status) VALUES ($1, 1, 'email', 'sent')", [done.id])
+    await db.query("UPDATE follow_up_reminders SET updated_at = NOW() - INTERVAL '200 days' WHERE id = ANY($1::bigint[])", [[done.id, open.id]])
+    await reminders.purgeClosedReminders(db)
+    assert.equal(await reminderRow(done.id), undefined)
+    assert.equal((await deliveries(done.id)).length, 0)
+    assert.equal((await reminderRow(open.id)).status, 'open')
+
+    // The call log keeps a call with an open reminder past its retention.
+    const kept = await addCall({ at: '2025-06-01T15:00:00Z', number: newNumber() })
+    const gone = await addCall({ at: '2025-06-01T15:05:00Z', number: newNumber() })
+    const onOld = await make({ target: { kind: 'call', id: kept }, dueAt: 'in_60' })
+    await purgeOldCalls(db, { now: clock.t, retentionDays: 365 })
+    const left = (await db.query('SELECT id FROM rc_calls WHERE id = ANY($1::bigint[])', [[kept, gone]])).rows.map((x) => Number(x.id))
+    assert.deepEqual(left, [kept])
+    assert.equal((await reminderRow(onOld.id)).status, 'open')
+    await send('POST', `/api/reminders/${onOld.id}/complete`, {})
+    await purgeOldCalls(db, { now: clock.t, retentionDays: 365 })
+    assert.equal((await db.query('SELECT 1 FROM rc_calls WHERE id = $1', [kept])).rowCount, 0, 'once it is finished, the call goes')
+    await closeAll()
   })
 })

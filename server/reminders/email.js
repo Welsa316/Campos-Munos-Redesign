@@ -71,15 +71,30 @@ export function renderReminderEmail({ path, overdue = false, env = process.env }
 // rejected address, an unverified domain, a bad key) will fail the same way again.
 const TRANSIENT = new Set(['rate_limit_exceeded', 'application_error', 'internal_server_error', 'concurrent_idempotent_requests'])
 
-export function createResendMailer({ apiKey, env = process.env } = {}) {
-  if (env.NODE_ENV === 'test') throw new Error('Refusing to create a real mailer under NODE_ENV=test')
-  if (!apiKey) return null
-  const resend = new Resend(apiKey)
+// A send that has not answered in this long is given up on, so one stuck
+// request cannot hold the worker (and every reminder behind it). Transient:
+// the retry carries the same idempotency key, so a send that did go out is
+// not sent twice.
+export const SEND_TIMEOUT_MS = 20 * 1000
+
+function withTimeout(promise, ms) {
+  let timer
+  const timeout = new Promise((_resolve, reject) => {
+    timer = setTimeout(() => reject(Object.assign(new Error('timeout'), { name: 'timeout' })), ms)
+  })
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer))
+}
+
+/** `client`: a Resend-like client, for tests; without it a real one (never under NODE_ENV=test). */
+export function createResendMailer({ apiKey, env = process.env, client = null, timeoutMs = SEND_TIMEOUT_MS } = {}) {
+  if (env.NODE_ENV === 'test' && !client) throw new Error('Refusing to create a real mailer under NODE_ENV=test')
+  if (!apiKey && !client) return null
+  const resend = client || new Resend(apiKey)
   return {
     async send({ to, subject, html, text, idempotencyKey }) {
       try {
         // Resend answers { error } rather than throwing for API errors.
-        const { data, error } = await resend.emails.send({ from: notifyFrom(env), to, subject, html, text }, { idempotencyKey })
+        const { data, error } = await withTimeout(resend.emails.send({ from: notifyFrom(env), to, subject, html, text }, { idempotencyKey }), timeoutMs)
         if (error) return { ok: false, error: `${error.name || 'error'}: ${String(error.message || '').slice(0, 160)}`, transient: TRANSIENT.has(error.name) }
         return { ok: true, id: data?.id || null }
       } catch (err) {

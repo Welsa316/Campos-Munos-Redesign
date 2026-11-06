@@ -37,3 +37,10 @@ export async function feedFor(db, { accountId, after = null }) {
 
 /** Old notifications prove nothing; keep a month. */
 export const purgeOldNotifications = (db) => db.query(`DELETE FROM account_notifications WHERE created_at < NOW() - INTERVAL '${KEEP_DAYS} days'`)
+
+/**
+ * The per-computer send records (push_deliveries) only matter while their
+ * event can come round again (a reminder's retries, a fresh missed call):
+ * a month, like the feed.
+ */
+export const purgeOldPushDeliveries = (db) => db.query(`DELETE FROM push_deliveries WHERE created_at < NOW() - INTERVAL '${KEEP_DAYS} days'`)
