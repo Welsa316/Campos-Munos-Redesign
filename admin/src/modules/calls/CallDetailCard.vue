@@ -78,21 +78,11 @@
               <button type="button" @click="$emit('callback', call)" class="btn btn-quiet"><FaIcon name="phone" />Call</button>
             </div>
 
-            <!-- The number's other calls, last 90 days. -->
-            <div v-if="call.number">
-              <h3 class="label">Other calls with this number <span class="font-normal normal-case tracking-normal">· last 90 days</span></h3>
-              <p v-if="history === null" class="mt-2 text-[13px] text-gray-500"><FaIcon name="spinner" spin class="mr-1.5" />Loading…</p>
-              <p v-else-if="history.error" class="mt-2 text-[13px] text-gray-600">Could not load them.</p>
-              <p v-else-if="!history.calls.length" class="mt-2 text-[13px] text-gray-600">None.</p>
-              <ul v-else class="mt-2 divide-y divide-gray-100 rounded-xl ring-1 ring-gray-200">
-                <li v-for="h in history.calls" :key="h.id" class="px-3.5 py-2.5 flex items-start gap-3 text-[13px]">
-                  <FaIcon :name="lookOf(h).icon" class="mt-0.5 text-gray-500" />
-                  <span class="min-w-0 flex-1 text-gray-800">{{ h.direction === 'inbound' ? statusLine(h) : outboundLine(h) }}</span>
-                  <span class="text-gray-500 tabular-nums whitespace-nowrap">{{ when(h.startedAt, now) }}</span>
-                </li>
-              </ul>
-              <p v-if="history?.more" class="mt-1.5 text-[12px] text-gray-500">Showing the latest {{ history.calls.length }}. Search the number in All calls for the rest.</p>
-            </div>
+            <!-- Notes staff write about this caller (staff only). -->
+            <CallNotes :call-id="call.id" :can-write="canExclude" :can-delete-any="canDeleteAnyNote" @changed="historyRef?.reload()" />
+
+            <!-- Calls, website enquiries, replies and notes for this number. -->
+            <ContactHistory ref="historyRef" :call-id="call.id" @open-call="(id) => $emit('open-call', id)" />
 
             <!-- RingCentral's own record, step by step: there for anyone who
                  needs to check, out of the way otherwise. -->
@@ -114,7 +104,9 @@
 import { ref, computed, watch, nextTick, onBeforeUnmount, onDeactivated } from 'vue'
 import FaIcon from '../../components/FaIcon.vue'
 import CallDetails from './CallDetails.vue'
-import { useApi } from '../../composables/useApi.js'
+import CallNotes from '../contacts/CallNotes.vue'
+import ContactHistory from '../contacts/ContactHistory.vue'
+import { can } from '../../composables/useAuth.js'
 import { telHref } from '../../utils/phone.js'
 import { statusLine } from './callEvidenceText.js'
 import { followUpLine, followUpDetail, outboundLine, when } from './callsInbox.js'
@@ -134,13 +126,13 @@ const props = defineProps({
   canMark: Boolean,
   busy: Boolean,
 })
-const emit = defineEmits(['close', 'callback', 'handled', 'reopen', 'exclude', 'count-again'])
+const emit = defineEmits(['close', 'callback', 'handled', 'reopen', 'exclude', 'count-again', 'open-call'])
+const canDeleteAnyNote = computed(() => can('team.manage'))
+const historyRef = ref(null)
 
-const { get } = useApi()
 const cardRef = ref(null)
 const headingRef = ref(null)
 const showEvidence = ref(false)
-const history = ref(null)
 
 const look = computed(() => lookOf(props.call))
 const displayName = computed(() => props.call.name || (props.call.number ? 'Unknown caller' : 'Private number'))
@@ -160,29 +152,13 @@ const exclusionDetail = computed(() => {
 const BOX = { open: 'bg-amber-50 ring-1 ring-amber-200', done: 'bg-green-50 ring-1 ring-green-200', quiet: 'bg-gray-50 ring-1 ring-gray-200' }
 
 // A different call (or the same one re-read) keeps the card; a new call
-// starts with the evidence closed and its own history.
+// starts with the evidence closed. Notes and history load themselves.
 let loadedFor = null
-watch(() => props.call, async (c) => {
+watch(() => props.call, (c) => {
   if (!c) { loadedFor = null; return }
   if (loadedFor === c.id) return
   loadedFor = c.id
   showEvidence.value = false
-  history.value = null
-  if (!c.number) return
-  try {
-    const params = new URLSearchParams({
-      from: new Date(Date.now() - 90 * 864e5).toISOString(),
-      to: new Date(Date.now() + 60 * 1000).toISOString(),
-      q: c.number.replace(/\D/g, ''),
-      limit: '11',
-    })
-    const data = await get(`/api/calls?${params}`)
-    if (loadedFor !== c.id) return
-    const others = (data.calls || []).filter((h) => h.id !== c.id)
-    history.value = { calls: others.slice(0, 10), more: others.length > 10 || data.truncated }
-  } catch {
-    if (loadedFor === c.id) history.value = { error: true }
-  }
 }, { immediate: true })
 
 function focusHeading() { headingRef.value?.focus({ preventScroll: true }) }
