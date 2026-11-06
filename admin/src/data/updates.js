@@ -23,6 +23,19 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'test-channel',
+    at: '2026-11-06T11:15:00Z',
+    section: 'admin',
+    any: ['forms.test'],
+    title: 'A test channel for the website forms',
+    summary: 'Send test forms and chats through the real website without them reaching the inbox. Open Test channel and get a test link.',
+    points: [
+      'A test goes through the same checks as a client’s form, then lands in the Test channel instead of Messages.',
+      'It is not a lead: no unread badge, no lead count, no CSV row, no office email, and no notification for anyone but you.',
+      'The link works for an hour in the browser tab it opens, which shows “Test mode” while it is on.',
+    ],
+  },
+  {
     id: 'stay-signed-in',
     at: '2026-11-06T10:04:57Z',
     section: 'everyone',

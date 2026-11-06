@@ -312,6 +312,12 @@ const cards = computed(() => [
     eyebrow: 'Administrator', title: 'Activity',
     description: 'Every change made in the portal, by whom and when.',
   },
+  can('forms.test') && {
+    key: 'test-channel', to: { name: 'TestChannel' }, icon: 'flask',
+    tile: 'bg-gray-100 text-gray-700',
+    eyebrow: 'Administrator', title: 'Test channel',
+    description: 'Send test forms through the website without touching the inbox.',
+  },
 ].filter(Boolean))
 
 // "Go to" cards size themselves to how many there are (whole class names,
