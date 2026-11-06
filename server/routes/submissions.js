@@ -12,6 +12,7 @@ import { sendLeadConversion } from '../utils/openaiConversions.js'
 import { clientKey } from '../httpSecurity.js'
 import { emailConfigProblems } from '../utils/emailConfig.js'
 import { sha256Hex, digestsEqual } from '../integrations/secretBox.js'
+import { notifyNewLead } from '../push/leadAlerts.js'
 
 const router = Router()
 
@@ -156,6 +157,12 @@ router.post(
       const responseBody = { id: result.rows[0].id, created_at: result.rows[0].created_at }
       if (chatToken) responseBody.chat_token = chatToken
       res.status(201).json(responseBody)
+
+      // A desktop notification for staff who turned them on and may read
+      // leads (push/leadAlerts.js). After the answer, so the website never waits.
+      notifyNewLead(getPool(), { submissionId: responseBody.id, source })
+        .then((r) => { if (r.length) req.log.info({ submissionId: responseBody.id, accounts: r.length }, 'New lead notification sent') })
+        .catch((err) => req.log.warn({ err, submissionId: responseBody.id }, 'New lead notification failed'))
 
       // Server-side copy of the pixel's lead_created (fire and forget). Contact
       // form only, matching the pixel.

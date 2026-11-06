@@ -309,3 +309,39 @@ test('desktop notifications', { skip: SKIP }, async (t) => {
     assert.equal((await call('POST', '/api/push/test', { cookie: yoletty, body: { endpoint: yolettySub.endpoint } })).status, 429, 'still limited')
   })
 })
+
+test('a new website lead notifies, once, the people who may read leads — with no client details', { skip: SKIP }, async () => {
+  const { notifyNewLead } = await import('./push/leadAlerts.js')
+  const make = async (email, role, extra = '') => (await db.query(
+    `INSERT INTO admin_users (email, password_hash, role${extra ? ', capability_revokes' : ''}) VALUES ($1, 'x', $2${extra ? ', $3' : ''}) RETURNING id`,
+    extra ? [email, role, extra] : [email, role]
+  )).rows[0].id
+  const desk = await make('desk-lead@example.test', 'receptionist')
+  const para = await make('para-lead@example.test', 'billing_paralegal')
+  const noLeads = await make('noleads@example.test', 'receptionist', '{crm.view}')
+  const subs = {}
+  for (const [k, id] of [['desk', desk], ['para', para], ['noLeads', noLeads]]) {
+    const s = fakeSub()
+    await db.query('INSERT INTO push_subscriptions (account_id, endpoint, p256dh, auth) VALUES ($1, $2, $3, $4)', [id, s.endpoint, s.keys.p256dh, s.keys.auth])
+    subs[k] = s.endpoint
+  }
+  const lead = (await db.query(`INSERT INTO submissions (first_name, last_name, email, phone, message) VALUES ('Rosa', 'Martinez', 'rosa@example.test', '504-555-0177', 'Mi caso de asilo') RETURNING id`)).rows[0].id
+
+  sent.length = 0
+  await notifyNewLead(db, { submissionId: lead, source: 'contact' }, { env: PUSH_ENV, transport })
+  const to = (endpoint) => sent.filter((s) => s.endpoint === endpoint)
+  assert.equal(to(subs.desk).length, 1, 'the front desk is told')
+  assert.equal(to(subs.para).length, 0, 'billing staff cannot read leads')
+  assert.equal(to(subs.noLeads).length, 0, 'nor can an account with leads revoked')
+  assert.deepEqual(to(subs.desk)[0].payload, {
+    title: 'Campos Muños — New website message',
+    body: 'Someone wrote in through the website. Open Messages to read it.',
+    url: `/inbox?lead=${lead}`,
+    tag: `cm-submission-${lead}`,
+  })
+  for (const secret of ['Rosa', 'Martinez', 'rosa@example.test', '0177', 'asilo']) assert.ok(!JSON.stringify(sent).includes(secret), secret)
+
+  // The same lead again (a retry): nobody is told twice.
+  await notifyNewLead(db, { submissionId: lead, source: 'contact' }, { env: PUSH_ENV, transport })
+  assert.equal(to(subs.desk).length, 1)
+})
