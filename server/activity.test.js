@@ -98,6 +98,7 @@ test('every route that changes something has a name in the activity log', async 
   const { createIntegrationsRouter } = await import('./routes/integrations.js')
   const { createTeamRouter } = await import('./routes/team.js')
   const { createContactsRouter } = await import('./routes/contacts.js')
+  const { createPushRouter } = await import('./routes/push.js')
   const submissions = (await import('./routes/submissions.js')).default
   const auth = (await import('./routes/auth.js')).default
   const { routePattern } = await import('./activity/recorder.js')
@@ -110,6 +111,7 @@ test('every route that changes something has a name in the activity log', async 
     ...routesOf(createIntegrationsRouter({ env: {} }), '/api/integrations'),
     ...routesOf(createTeamRouter(), '/api/team'),
     ...routesOf(createContactsRouter(), '/api/contacts'),
+    ...routesOf(createPushRouter({ env: {} }), '/api/push'),
     ...routesOf(submissions, '/api/submissions'),
     ...routesOf(auth, '/api/auth'),
   ]

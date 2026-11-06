@@ -10,6 +10,7 @@ import logger from '../logger.js'
 import { applyBillingSchema } from './billingSchema.js'
 import { applyStaffSchema } from './staffSchema.js'
 import { applyIntegrationsSchema } from './integrationsSchema.js'
+import { applyPushSchema } from './pushSchema.js'
 import { seedReminderDefaults } from '../billing/reminderModel.js'
 import { applyContactsSchema } from './contactsSchema.js'
 
@@ -178,6 +179,8 @@ async function migrate() {
     // Call notes and contact matches (db/contactsSchema.js). After the
     // integrations schema: it relies on cm_phone_key() and rc_calls.
     await applyContactsSchema(client)
+    // Desktop notifications (Web Push). Needs admin_users.
+    await applyPushSchema(client)
     logger.info('Migration complete — tables created.')
   } finally {
     client.release()

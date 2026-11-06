@@ -24,6 +24,7 @@ import { createCallsRouter } from './routes/calls.js'
 import { createContactsRouter } from './routes/contacts.js'
 import { createTeamRouter } from './routes/team.js'
 import { createActivityRouter } from './routes/activity.js'
+import { createPushRouter } from './routes/push.js'
 import { createRingCentralWebhookRouter } from './routes/ringcentralWebhook.js'
 import { activityRecorder } from './activity/recorder.js'
 import {
@@ -57,7 +58,7 @@ export function readinessCheck(query, { ttlMs = 5000, now = Date.now } = {}) {
   }
 }
 
-export function createApp({ env = process.env, log = logger, beforeFallback, readyQuery } = {}) {
+export function createApp({ env = process.env, log = logger, beforeFallback, readyQuery, pushTransport } = {}) {
   const app = express()
   app.disable('x-powered-by')
 
@@ -150,6 +151,8 @@ export function createApp({ env = process.env, log = logger, beforeFallback, rea
   // Staff accounts (Team tab) and the activity log: administrators only.
   app.use('/api/team', createTeamRouter())
   app.use('/api/activity', createActivityRouter())
+  // Desktop notifications for the signed-in account's own computers.
+  app.use('/api/push', createPushRouter({ env, transport: pushTransport }))
 
   // API 404s — registered before any frontend fallback so an unknown /api/*
   // path returns JSON instead of a page.

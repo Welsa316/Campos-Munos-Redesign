@@ -14,6 +14,7 @@ import { startReminderScheduler } from './billing/scheduler.js'
 import { sweepPendingReplies } from './whatsapp/inbox.js'
 import logger from './logger.js'
 import { emailConfigProblems } from './utils/emailConfig.js'
+import { pushConfig } from './push/config.js'
 import { isProductionEnv, bootEnvProblems } from './utils/productionEnv.js'
 
 const isProduction = isProductionEnv(process.env)
@@ -46,6 +47,11 @@ for (const key of ['WHATSAPP_VERIFY_TOKEN', 'META_APP_SECRET']) {
 // Same for email: without these, website alerts and inbox replies stop.
 const emailProblems = emailConfigProblems()
 if (emailProblems.length) logger.warn({ problems: emailProblems }, 'Email is not configured; website alerts and inbox replies will not be sent')
+
+// And desktop notifications: without the VAPID keys the setting says so and
+// nothing is sent.
+const push = pushConfig(process.env)
+if (!push.configured) logger.warn({ problems: push.problems }, 'Desktop notifications are not configured; nothing will be pushed')
 
 const PORT = process.env.PORT || 3000
 const app = createApp()
