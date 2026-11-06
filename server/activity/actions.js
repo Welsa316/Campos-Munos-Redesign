@@ -23,6 +23,13 @@ export const ACTIONS = {
   // Colours only; not worth a line.
   'PUT /api/auth/theme': { skip: true },
 
+  // Desktop notifications (their own computers only)
+  'POST /api/push/subscriptions': { key: 'push.enabled', label: 'Turned on desktop notifications on a computer', entity: 'account' },
+  'DELETE /api/push/subscriptions': { key: 'push.disabled', label: 'Turned off desktop notifications on a computer', entity: 'account' },
+  // A read sent as POST (the endpoint stays out of the URL); not worth a line.
+  'POST /api/push/subscriptions/status': { skip: true },
+  'POST /api/push/test': { key: 'push.tested', label: 'Sent themselves a test notification', entity: 'account' },
+
   // Website leads (Messages)
   'PATCH /api/submissions/:id/read': { key: 'lead.read', label: 'Marked a lead read or unread', entity: 'lead',
     details: (req) => ({ read: body(req).read !== false }) },

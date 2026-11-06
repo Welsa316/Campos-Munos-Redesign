@@ -10,6 +10,7 @@ import logger from '../logger.js'
 import { applyBillingSchema } from './billingSchema.js'
 import { applyStaffSchema } from './staffSchema.js'
 import { applyIntegrationsSchema } from './integrationsSchema.js'
+import { applyPushSchema } from './pushSchema.js'
 import { seedReminderDefaults } from '../billing/reminderModel.js'
 
 async function migrate() {
@@ -174,6 +175,8 @@ async function migrate() {
     await applyStaffSchema(client)
     // OAuth connections to third parties (RingCentral). Needs admin_users.
     await applyIntegrationsSchema(client)
+    // Desktop notifications (Web Push). Needs admin_users.
+    await applyPushSchema(client)
     logger.info('Migration complete — tables created.')
   } finally {
     client.release()
