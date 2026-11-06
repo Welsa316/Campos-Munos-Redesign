@@ -261,3 +261,18 @@ test('SERVE_FRONTENDS=false (or a server-only checkout) mounts nothing', async (
   assert.deepEqual(await mountFrontends(app, { rootDir: empty }), { admin: false, site: false })
   fs.rmSync(empty, { recursive: true, force: true })
 })
+
+// RingCentral refuses a webhook address whose answer to its check is over
+// 1024 bytes, headers included (SUB-525). Railway adds about 150 bytes of its
+// own, so ours must stay well under: the handshake carries no browser headers.
+test('the RingCentral address check is answered in well under 1024 bytes', async () => {
+  const token = 'a'.repeat(64)
+  const r = await fetch(`${api.base}/webhooks/ringcentral`, { method: 'POST', headers: { 'Validation-Token': token } })
+  assert.equal(r.status, 200)
+  assert.equal(r.headers.get('validation-token'), token)
+  assert.match(r.headers.get('content-type'), /application\/json/)
+  const body = await r.text()
+  const size = 'HTTP/1.1 200 OK\r\n'.length + [...r.headers].reduce((n, [k, v]) => n + k.length + v.length + 4, 0) + 2 + body.length
+  assert.ok(size <= 700, `handshake response is ${size} bytes`)
+  assert.equal(r.headers.get('content-security-policy'), null)
+})
