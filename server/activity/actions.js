@@ -43,6 +43,11 @@ export const ACTIONS = {
   'POST /api/submissions/:id/reply': { key: 'lead.replied', label: 'Emailed a lead', entity: 'lead' },
   'GET /api/submissions/export/csv': { key: 'lead.exported', label: 'Downloaded every lead as CSV' },
 
+  // Test channel (administrator only): test forms kept out of the inbox
+  'POST /api/test-channel/link': { key: 'test_channel.link', label: 'Made a test link for the website forms' },
+  'DELETE /api/test-channel/:id': { key: 'test_channel.removed', label: 'Removed a test form', entity: 'test_form' },
+  'DELETE /api/test-channel': { key: 'test_channel.cleared', label: 'Cleared the test channel' },
+
   // WhatsApp inbox
   'POST /api/whatsapp/conversations/:id/messages': { key: 'whatsapp.replied', label: 'Sent a WhatsApp reply', entity: 'conversation' },
   'POST /api/whatsapp/conversations/:id/notes': { key: 'whatsapp.note_added', label: 'Added a note to a WhatsApp conversation', entity: 'conversation' },

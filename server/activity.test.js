@@ -100,6 +100,7 @@ test('every route that changes something has a name in the activity log', async 
   const { createContactsRouter } = await import('./routes/contacts.js')
   const { createPushRouter } = await import('./routes/push.js')
   const { createNotificationsRouter } = await import('./routes/notifications.js')
+  const { createTestChannelRouter } = await import('./routes/testChannel.js')
   const { createRemindersRouter } = await import('./routes/reminders.js')
   const submissions = (await import('./routes/submissions.js')).default
   const auth = (await import('./routes/auth.js')).default
@@ -115,6 +116,7 @@ test('every route that changes something has a name in the activity log', async 
     ...routesOf(createContactsRouter(), '/api/contacts'),
     ...routesOf(createPushRouter({ env: {} }), '/api/push'),
     ...routesOf(createNotificationsRouter(), '/api/notifications'),
+    ...routesOf(createTestChannelRouter(), '/api/test-channel'),
     ...routesOf(createRemindersRouter(), '/api/reminders'),
     ...routesOf(submissions, '/api/submissions'),
     ...routesOf(auth, '/api/auth'),

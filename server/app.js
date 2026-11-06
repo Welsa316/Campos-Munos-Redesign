@@ -15,6 +15,7 @@ import { pinoHttp } from 'pino-http'
 import crypto from 'crypto'
 import authRoutes from './routes/auth.js'
 import submissionRoutes from './routes/submissions.js'
+import { createTestChannelRouter } from './routes/testChannel.js'
 import { createBillingRouter } from './routes/billing.js'
 import whatsappRoutes from './routes/whatsapp.js'
 import { createWhatsappInboxRouter } from './routes/whatsappInbox.js'
@@ -162,6 +163,8 @@ export function createApp({ env = process.env, log = logger, beforeFallback, rea
   // Staff accounts (Team tab) and the activity log: administrators only.
   app.use('/api/team', createTeamRouter())
   app.use('/api/activity', createActivityRouter())
+  // The administrator's test forms, kept out of the inbox.
+  app.use('/api/test-channel', createTestChannelRouter({ env }))
   // Desktop notifications for the signed-in account's own computers.
   app.use('/api/push', createPushRouter({ env, transport: pushTransport }))
   app.use('/api/notifications', createNotificationsRouter())

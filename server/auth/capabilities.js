@@ -29,19 +29,21 @@ export const CAPABILITIES = {
   // Administrator only (ADMIN_ONLY below): connecting an account grants the
   // API standing access to the firm's phone system, the monday.com mapping
   // decides what the sync writes to the firm's board, and the activity log
-  // shows what every person did.
+  // shows what every person did. The test channel's forms bypass the inbox
+  // and every staff notification, so only the developer sends them.
   'integrations.view': 'See the status of every connected service (eImmigration, monday.com, WhatsApp, RingCentral)',
   'integrations.manage': "Connect, check or disconnect the firm's RingCentral account (OAuth)",
   'monday.configure': 'monday.com board and column mapping, status labels and connection check',
   'activity.view': 'Read the activity log: every change made in the portal, by whom and when',
   'calls.clear': 'Calls: mark every open call in Needs attention as handled at once (for example after fixing the phone system’s routing)',
   'team.manage': 'Team: create accounts, change roles and single permissions, revoke or restore access, sign people out, reset passwords',
+  'forms.test': 'Test channel: send test forms through the website that skip the inbox, lead counts and staff notifications',
 }
 
 // Held by the admin role and nobody else: no other role includes them and a
 // per-account grant of one is ignored, so the only way to hold one is to be
 // an administrator.
-export const ADMIN_ONLY = Object.freeze(['integrations.view', 'integrations.manage', 'monday.configure', 'activity.view', 'team.manage', 'calls.clear'])
+export const ADMIN_ONLY = Object.freeze(['integrations.view', 'integrations.manage', 'monday.configure', 'activity.view', 'team.manage', 'calls.clear', 'forms.test'])
 
 export const ALL_CAPABILITIES = Object.freeze(Object.keys(CAPABILITIES))
 

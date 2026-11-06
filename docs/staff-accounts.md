@@ -65,8 +65,10 @@ need to sign out.
 | `monday.configure` | monday.com board and column mapping, status labels, connection check | ✓ |  |  |  |  |
 | `team.manage` | The Team tab: accounts, roles, single permissions, access, sessions, passwords | ✓ |  |  |  |  |
 | `activity.view` | The activity log | ✓ |  |  |  |  |
+| `forms.test` | The Test channel: test forms sent through the website that skip the inbox, lead counts and staff notifications | ✓ |  |  |  |  |
 
-**Administrator only.** The last five rows (`ADMIN_ONLY` in
+**Administrator only.** The last six rows, and `calls.clear`
+(docs/ringcentral-call-log.md), (`ADMIN_ONLY` in
 `server/auth/capabilities.js`) come with the `admin` role and nothing else:
 no other role includes them, the Team tab and `staff.js grant` refuse to
 hand one to a single account, and a grant written straight into the
@@ -152,6 +154,34 @@ none, so new routes get a readable line. Filter by person, by
 refused/failed, by date (firm days, Central time) or by text; the address
 keeps the filters, so a filtered view can be bookmarked. Rows are never
 updated or deleted by the app.
+
+## Test channel
+
+Administrators only (`forms.test`), at **Test channel** in the header. It
+sends test forms and chats through the real website without them becoming
+leads. **Get a test link** makes a link to the website (good for an hour)
+whose address ends in `#cm-test=<token>`; the website takes the token out
+of the address before any analytics tag loads, keeps it for that browser
+tab, and shows a "Test mode" strip. Its contact form and chat then send the
+token with the form (`site/src/utils/testMode.js`).
+
+The API checks the form exactly as it checks a client's (validation, the
+hidden spam field, the hourly limit, HTML stripping, the ten-minute
+duplicate window), then checks the token: signed with the server's secret,
+not expired, and the account still active, on the same password version
+and holding `forms.test`. A good token stores the form in
+`test_submissions` (chat follow-ups in `test_chat_messages`), never in
+`submissions`, so nothing that reads leads (Messages, the unread badge, the
+CSV, contacts, call matching, Home) can see it. No office email, no
+OpenAI conversion, and the only notification goes to the administrator who
+made the link, opening the Test channel. A token that does not check out
+is refused with an "expired" message rather than stored as a lead. The
+website does not count a test as a lead in Google Analytics or the ads
+pixels either.
+
+Making a link, removing one test and clearing them all are in the activity
+log. Code: `server/testChannel/`, `server/routes/testChannel.js`,
+`server/testChannel.test.js`.
 
 ## Running the script
 

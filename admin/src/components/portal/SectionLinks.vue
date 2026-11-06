@@ -70,10 +70,12 @@ const SECTIONS = [
   // tab it may open.
   { key: 'billing', label: 'Billing', icon: 'file-invoice-dollar', to: { name: 'BillingOverview' }, any: ['billing.view', 'billing.status', 'whatsapp.contacts'] },
   { key: 'calls', label: 'Calls', icon: 'phone-volume', to: { name: 'Calls' }, any: ['calls.view'] },
-  // Administrators only: connecting RingCentral, accounts, the activity log.
+  // Administrators only: connecting RingCentral, accounts, the activity log,
+  // test forms.
   { key: 'integrations', label: 'Integrations', icon: 'plug', to: { name: 'Integrations' }, any: ['integrations.manage'], admin: true },
   { key: 'team', label: 'Team', icon: 'users', to: { name: 'Team' }, any: ['team.manage'], admin: true },
   { key: 'activity', label: 'Activity', icon: 'clock-rotate-left', to: { name: 'Activity' }, any: ['activity.view'], admin: true },
+  { key: 'test-channel', label: 'Test channel', icon: 'flask', to: { name: 'TestChannel' }, any: ['forms.test'], admin: true },
 ]
 
 // An empty list means every signed-in account (Home).

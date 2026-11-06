@@ -63,6 +63,11 @@ export const routes = [
   { path: '/activity', name: 'Activity', component: () => import('../modules/activity/ActivityView.vue'),
     meta: { requiresAuth: true, module: 'activity', capability: 'activity.view', title: 'Activity' } },
 
+  // Test channel: the administrator's test forms from the website, kept out
+  // of the inbox. ?test=<id> opens one.
+  { path: '/test-channel', name: 'TestChannel', component: () => import('../modules/testChannel/TestChannelView.vue'),
+    meta: { requiresAuth: true, module: 'test-channel', capability: 'forms.test', title: 'Test channel' } },
+
   // Sales demo of the operations layer. Fabricated data only, no API calls.
   // Deliberately public within the portal (as it was under /admin) and not
   // linked from anywhere.
