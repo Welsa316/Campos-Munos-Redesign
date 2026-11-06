@@ -16,7 +16,7 @@
         <div class="px-6 pt-6 pb-4 border-b border-gray-100 flex items-start justify-between gap-4">
           <div>
             <h2 id="notifications-title" class="font-heading text-xl text-brand-navy">Desktop notifications</h2>
-            <p id="notifications-text" class="text-gray-500 text-sm mt-1">Receive callback reminders on this computer, even when the portal tab is closed.</p>
+            <p id="notifications-text" class="text-gray-500 text-sm mt-1">Receive callback reminders and new website messages on this computer, even when the portal tab is closed.</p>
           </div>
           <button ref="closeBtnRef" @click="close" type="button"
             class="w-8 h-8 flex-shrink-0 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700 flex items-center justify-center transition-colors"
@@ -64,6 +64,13 @@
             </template>
           </div>
 
+          <!-- Shown as the browser until the portal is installed as an app. -->
+          <p v-if="state === 'on' && !installed" class="text-xs text-gray-600 leading-relaxed" data-install-tip>
+            To have notifications show as Campos Muños instead of your browser, install the portal as an app:
+            in Chrome or Edge, click the install icon at the right of the address bar
+            (or the ⋮ menu → Cast, save and share → Install page as app).
+          </p>
+
           <p class="text-xs text-gray-500">Turn it on separately on each computer you use. Notifications say only that a follow-up is ready, never who it is for.</p>
         </div>
       </div>
@@ -91,6 +98,8 @@ const devices = ref(0)
 const busy = ref('')
 const error = ref('')
 const notice = ref('')
+// Running as the installed app (its own window), where notifications already carry its name.
+const installed = typeof window !== 'undefined' && (window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true)
 const overlayRef = ref(null)
 const closeBtnRef = ref(null)
 let publicKey = null

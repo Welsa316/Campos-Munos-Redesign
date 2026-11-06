@@ -23,6 +23,18 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'lead-notifications-app',
+    at: '2026-11-06T09:10:19Z',
+    section: 'messages',
+    any: ['crm.view'],
+    title: 'A notification when someone writes in through the website',
+    summary: 'If you turned on notifications, a new website message or chat now shows one on your computer. Click it to open the lead.',
+    points: [
+      'It says only that a message arrived, never who wrote or what they said.',
+      'To have notifications show as Campos Muños instead of your browser, install the portal as an app: click the install icon at the right of Chrome’s or Edge’s address bar.',
+    ],
+  },
+  {
     id: 'desktop-notifications',
     at: '2026-11-06T08:57:39Z',
     section: 'everyone',
