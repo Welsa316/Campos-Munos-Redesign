@@ -216,6 +216,7 @@ import { useAuth } from '../../composables/useAuth.js'
 import { useApi, latestOnly } from '../../composables/useApi.js'
 import { formatPhone } from '../../utils/phone.js'
 import PortalHeader from '../../components/portal/PortalHeader.vue'
+import { useVisiblePoll } from '../../composables/useVisiblePoll.js'
 import FaIcon from '../../components/FaIcon.vue'
 import { toDate, isComposing } from '../../utils/text.js'
 
@@ -410,14 +411,7 @@ function fullTime(value) {
 
 // --- live updates: same polling as the lead inbox -------------------------------
 const POLL_INTERVAL_MS = 15000
-let timer = null
-let inFlight = false
-async function poll() {
-  if (inFlight || document.hidden) return
-  inFlight = true
-  try { await loadList({ silent: true }); await loadDetail({ silent: true }) } finally { inFlight = false }
-}
-const onVisible = () => { if (!document.hidden) poll() }
+const poll = useVisiblePoll(async () => { await loadList({ silent: true }); await loadDetail({ silent: true }) }, POLL_INTERVAL_MS)
 
 watch(() => route.params.id, (id) => {
   // Kept alive: leaving for another section is not closing the thread.
@@ -430,16 +424,8 @@ const active = ref(true)
 const setTitle = () => { document.title = `${title.value ? title.value + ' · ' : ''}WhatsApp | Campos Muños Law` }
 watch(title, () => { if (active.value) setTitle() }, { immediate: true })
 
-function listen() {
-  unlisten()
-  timer = setInterval(poll, POLL_INTERVAL_MS)
-  document.addEventListener('visibilitychange', onVisible)
-}
-function unlisten() {
-  clearInterval(timer)
-  timer = null
-  document.removeEventListener('visibilitychange', onVisible)
-}
+const listen = () => poll.start()
+const unlisten = () => poll.stop()
 
 onMounted(async () => {
   get('/api/whatsapp/status').then((s) => { status.value = s }).catch(() => {})
@@ -459,7 +445,7 @@ onActivated(() => {
   const n = route.params.id ? Number(route.params.id) : null
   if (n !== selectedId.value) { if (n) select(n); else closeThread() }
   listen()
-  poll()
+  poll.tick()
 })
 onDeactivated(() => { active.value = false; unlisten() })
 onUnmounted(unlisten)

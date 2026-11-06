@@ -246,6 +246,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../../composables/useAuth.js'
 import { useApi, latestOnly } from '../../composables/useApi.js'
 import PortalHeader from '../../components/portal/PortalHeader.vue'
+import { useVisiblePoll } from '../../composables/useVisiblePoll.js'
 import FaIcon from '../../components/FaIcon.vue'
 import RollingNumber from '../../components/RollingNumber.vue'
 import CallDialog from './CallDialog.vue'
@@ -765,33 +766,26 @@ async function countAgain(c) {
 // and reloads the list only when it did.
 
 const POLL_MS = 10 * 1000
-let poll = null
 let tick = null
-let checking = false
 const live = computed(() => connection.value === 'connected' && Boolean(stamp.value))
 async function checkChanges() {
-  if (checking || document.visibilityState !== 'visible' || loading.value) return
-  checking = true
-  try {
-    const r = await get('/api/calls/changes')
-    if (r?.stamp && r.stamp !== stamp.value) await load({ quiet: true })
-  } catch { /* the next check tries again */ } finally {
-    checking = false
-  }
+  if (loading.value) return
+  const r = await get('/api/calls/changes')
+  if (r?.stamp && r.stamp !== stamp.value) await load({ quiet: true })
 }
-function onVisible() { if (document.visibilityState === 'visible') { now.value = Date.now(); checkChanges() } }
+// Visible tab only; coming back moves the clock and checks at once.
+const poll = useVisiblePoll(checkChanges, POLL_MS, { onShow: () => { now.value = Date.now() } })
 function start() {
   stop()
-  poll = setInterval(checkChanges, POLL_MS)
+  poll.start()
   tick = setInterval(() => { now.value = Date.now() }, 30 * 1000)
-  document.addEventListener('visibilitychange', onVisible)
   document.addEventListener('pointerdown', onDocPointer)
   document.addEventListener('keydown', onDocKey)
 }
 function stop() {
-  clearInterval(poll); clearInterval(tick)
-  poll = tick = null
-  document.removeEventListener('visibilitychange', onVisible)
+  poll.stop()
+  clearInterval(tick)
+  tick = null
   document.removeEventListener('pointerdown', onDocPointer)
   document.removeEventListener('keydown', onDocKey)
 }
