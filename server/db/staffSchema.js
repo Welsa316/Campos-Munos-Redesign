@@ -89,7 +89,8 @@ export const STAFF_SCHEMA_SQL = `
   -- or failed. actor_email and actor_role are copied as they were at the
   -- time, so the row still reads right after an account is renamed, changes
   -- role or is removed. Details hold ids, statuses and counts, never message
-  -- text, passwords or full phone numbers. Rows are never updated.
+  -- text, passwords or full phone numbers. Rows are never updated; they are
+  -- deleted after 400 days (purgeActivity in server/activity/recorder.js).
   CREATE TABLE IF NOT EXISTS staff_activity (
     id BIGSERIAL PRIMARY KEY,
     actor_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,

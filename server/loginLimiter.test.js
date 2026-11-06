@@ -92,3 +92,26 @@ test('failures spread across addresses against one account are limited by the ac
   assert.equal(await login('198.51.100.50', 'owner@example.test', pw.owner), 429, 'the eleventh attempt, from a fresh address, is refused')
   assert.equal(await login('198.51.100.51', 'desk@example.test', pw.desk), 200, 'another account is unaffected')
 })
+
+// The log is written as each response finishes; wait for the rows.
+async function logged(where, args = []) {
+  let rows = []
+  for (let i = 0; i < 80; i++) {
+    rows = (await db.query(`SELECT * FROM staff_activity WHERE ${where} ORDER BY id`, args)).rows
+    if (rows.length) return rows
+    await new Promise((r) => setTimeout(r, 25))
+  }
+  return rows
+}
+
+test('the activity log keeps wrong passwords but not limited or malformed sign-ins', { skip: SKIP }, async () => {
+  // The tests above were each refused once with 429; add a malformed one.
+  assert.equal(await login('192.0.2.1', 'not-an-email', 'x'), 400)
+  assert.equal(await login('192.0.2.2', 'nobody@example.test', 'wrong-password-1'), 401)
+  assert.equal((await logged("action = 'auth.sign_in' AND details->>'email' = 'nobody@example.test'")).length, 1)
+  await new Promise((r) => setTimeout(r, 100))
+  const noise = (await db.query("SELECT status_code FROM staff_activity WHERE action = 'auth.sign_in' AND status_code IN (400, 429)")).rows
+  assert.deepEqual(noise, [])
+  const wrong = (await db.query("SELECT COUNT(*)::int AS n FROM staff_activity WHERE action = 'auth.sign_in' AND status_code = 401")).rows[0].n
+  assert.equal(wrong, 16, 'every wrong password is still logged')
+})

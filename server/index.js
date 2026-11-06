@@ -9,6 +9,7 @@ import { createApp, addFallbackHandlers } from './app.js'
 import { mountFrontends } from './frontends.js'
 import getPool from './db/pool.js'
 import { purgeExpiredUploads } from './billing/importService.js'
+import { purgeActivity, ACTIVITY_RETENTION_DAYS } from './activity/recorder.js'
 import { startReminderScheduler } from './billing/scheduler.js'
 import logger from './logger.js'
 import { emailConfigProblems } from './utils/emailConfig.js'
@@ -73,6 +74,19 @@ async function purgeUploads() {
 }
 setTimeout(purgeUploads, 60 * 1000).unref()
 setInterval(purgeUploads, 24 * 60 * 60 * 1000).unref()
+
+// The activity log keeps ACTIVITY_RETENTION_DAYS (400): a full year to look
+// back on, with some margin. Older rows are deleted once a day.
+async function purgeOldActivity() {
+  try {
+    const n = await purgeActivity(getPool())
+    if (n) logger.info({ purged: n, retentionDays: ACTIVITY_RETENTION_DAYS }, 'Purged old activity log rows')
+  } catch (err) {
+    logger.warn({ err: err.message }, 'Activity log purge failed')
+  }
+}
+setTimeout(purgeOldActivity, 60 * 1000).unref()
+setInterval(purgeOldActivity, 24 * 60 * 60 * 1000).unref()
 
 // Payment reminders: drafts + sending of approved reminders (never unapproved).
 startReminderScheduler({ pool: getPool(), env: process.env, log: logger })
