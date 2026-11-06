@@ -24,7 +24,7 @@ export const SECTIONS = {
 export const UPDATES = [
   {
     id: 'sign-out-and-desktop-app-details',
-    at: '2026-11-06T10:39:30Z',
+    at: '2026-11-06T11:06:32Z',
     section: 'everyone',
     any: [],
     title: 'Signing out, and a few desktop app details',
