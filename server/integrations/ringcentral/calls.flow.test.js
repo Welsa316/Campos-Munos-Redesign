@@ -46,7 +46,7 @@ const rc = {
   ringouts: new Map(), ringoutSeq: 0, ringoutForbidden: false, ringoutRequests: [],
   directoryRequests: [], directoryForbidden: false,
   // The live call-event subscription: what was asked for, and what RingCentral holds.
-  subscriptions: new Map(), subscriptionRequests: [], subscriptionForbidden: false, subSeq: 0,
+  subscriptions: new Map(), subscriptionRequests: [], subscriptionForbidden: false, subscriptionDeleteFails: false, subSeq: 0,
   extensions: [
     { id: 9101, extensionNumber: '101', name: 'Yoletty', type: 'User', status: 'Enabled' },
     { id: 9102, extensionNumber: '102', name: 'Ciro', type: 'User', status: 'Enabled' },
@@ -81,6 +81,7 @@ async function fakeFetch(url, init) {
     }
     const s = rc.subscriptions.get(sub[1])
     if (!s) return reply(404, { errorCode: 'SUB-100' })
+    if (init.method === 'DELETE' && rc.subscriptionDeleteFails) return reply(503, { errorCode: 'CMN-211', message: 'Service temporarily unavailable' })
     if (init.method === 'DELETE') { rc.subscriptions.delete(sub[1]); return reply(204) }
     if (sub[2]) s.expirationTime = new Date(clock.t.getTime() + 315360000 * 1000).toISOString()
     return reply(200, { id: s.id, status: s.status, expirationTime: s.expirationTime })
@@ -914,6 +915,34 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.ok(rc.subscriptionRequests.some((r) => r.renew), 'renewed')
     assert.ok(new Date(chk.json.expiresAt) > new Date(clock.t.getTime() + 365 * 24 * 60 * 60 * 1000))
 
+    // Replacing it when RingCentral cannot delete the current one: stopped,
+    // so two subscriptions never deliver at once.
+    rc.subscriptionDeleteFails = true
+    const blocked = await send('POST', '/api/integrations/ringcentral/events', {})
+    rc.subscriptionDeleteFails = false
+    assert.equal(blocked.status, 502, blocked.text)
+    assert.equal(rc.subscriptions.size, 1, 'no second subscription')
+    assert.equal((await db.query(`SELECT subscription_id FROM rc_event_subscription`)).rows[0].subscription_id, stored.subscription_id)
+    assert.ok((await call('GET', '/api/integrations/ringcentral/events')).json.lastErrorCode)
+
+    // Two registrations at once: the second is refused while the first runs.
+    const validate = rc.validate
+    let release
+    const held = new Promise((r) => { release = r })
+    let entered
+    const inside = new Promise((r) => { entered = r })
+    // Released by the test, or after 2 s so a broken lock fails instead of hanging.
+    rc.validate = async () => { entered(); await Promise.race([held, new Promise((r) => setTimeout(r, 2000))]); return true }
+    const firstReg = send('POST', '/api/integrations/ringcentral/events', {})
+    await inside
+    const secondReg = await send('POST', '/api/integrations/ringcentral/events', {})
+    release()
+    assert.equal(secondReg.status, 409)
+    assert.equal(secondReg.json.code, 'busy')
+    assert.equal((await firstReg).status, 200)
+    assert.equal(rc.subscriptions.size, 1)
+    rc.validate = validate
+
     // Removed: deleted in RingCentral, and deliveries are refused again.
     const rm = await send('DELETE', '/api/integrations/ringcentral/events', undefined)
     assert.equal(rm.status, 200)
@@ -1077,6 +1106,50 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
       delete env.RINGOUT_ALLOWED_COUNTRY_CODES
     }
     assert.equal((await send('POST', '/api/calls/ringout', { to: '+44 20 7946 0958' }, desk)).status, 201, 'unset: every country')
+  })
+
+  await t.test('an import cut off at its page limit goes back for the oldest calls instead of skipping them', async () => {
+    const { syncCallLog } = await import('./callLog.js')
+    const { loadRingCentralConfig } = await import('./config.js')
+    const cfg = loadRingCentralConfig(env)
+    const opts = (maxWindows) => ({ trigger: 'scheduled', deps: { fetchImpl: fakeFetch, now: () => clock.t }, sleep: async () => {}, pageDelayMs: 0, maxPages: 1, maxWindows })
+    const ids = Array.from({ length: 8 }, (_, i) => `trunc${i}`)
+    // Eight calls over the last four hours; RingCentral answers 3 a page, newest first.
+    rc.records.push(...ids.map((id, i) => rec(id, new Date(clock.t.getTime() - (i + 1) * 30 * 60 * 1000).toISOString(), 'Inbound', 'Accepted', { phoneNumber: `+150455502${10 + i}` })))
+    const stored = async () => (await db.query(`SELECT rc_record_id FROM rc_calls WHERE rc_record_id = ANY($1)`, [ids])).rows.map((r) => r.rc_record_id).sort()
+    const before = new Date(clock.t.getTime() - 5 * 60 * 60 * 1000)
+    await db.query(`UPDATE rc_call_sync_state SET window_to = $1`, [before])
+
+    const short = await syncCallLog(db, cfg, opts(2))
+    assert.equal(short.status, 'ok')
+    assert.equal(short.truncated, true)
+    // Two windows of three; the second starts again at the first one's oldest call.
+    assert.deepEqual(await stored(), ids.slice(0, 5).sort(), 'the five newest')
+    const state = (await db.query(`SELECT window_to FROM rc_call_sync_state`)).rows[0]
+    assert.equal(state.window_to.getTime(), before.getTime(), 'the window does not move past unread calls')
+
+    clock.t = new Date(clock.t.getTime() + 60 * 1000)
+    const full = await syncCallLog(db, cfg, opts(10))
+    assert.equal(full.truncated, false)
+    assert.deepEqual(await stored(), [...ids].sort(), 'the next run reads the rest')
+    assert.equal((await db.query(`SELECT window_to FROM rc_call_sync_state`)).rows[0].window_to.getTime(), clock.t.getTime())
+    rc.records = rc.records.filter((r) => !ids.includes(r.id))
+  })
+
+  await t.test('disconnecting when RingCentral will not delete the subscription: it goes ahead, and the page still shows it', async () => {
+    rc.validate = null
+    assert.equal((await send('POST', '/api/integrations/ringcentral/events', {})).status, 200)
+    rc.subscriptionDeleteFails = true
+    try {
+      const d = await send('POST', '/api/integrations/ringcentral/disconnect', {})
+      assert.equal(d.status, 200, d.text)
+      const ev = (await call('GET', '/api/integrations/ringcentral/events')).json
+      assert.equal(ev.registered, true, 'still listed, so it can be replaced after connecting again')
+      assert.ok(ev.lastErrorCode)
+    } finally {
+      rc.subscriptionDeleteFails = false
+    }
+    await connect()
   })
 
   await t.test('an id too long for the database is a 404, not a server error', async () => {

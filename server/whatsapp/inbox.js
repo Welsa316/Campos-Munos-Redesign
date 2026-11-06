@@ -292,6 +292,21 @@ export async function sendReply(db, provider, { conversationId, body, clientKey,
   return { message: outboundJson(row, account), duplicate: false }
 }
 
+// A reply is written as 'pending' before the provider is called. One still
+// pending after this long was cut off mid-send (a restart): it becomes
+// 'unknown', which tells staff to check WhatsApp before sending again,
+// instead of looking like it is still on its way.
+export const PENDING_REPLY_MINUTES = 10
+
+export async function sweepPendingReplies(db) {
+  return (await db.query(
+    `UPDATE wa_outbound_messages SET status = 'unknown', error_code = 'interrupted',
+            error_message = 'The send did not finish; check WhatsApp before trying again', updated_at = NOW()
+      WHERE status = 'pending' AND created_at < NOW() - make_interval(mins => $1)`,
+    [PENDING_REPLY_MINUTES]
+  )).rowCount
+}
+
 function outboundJson(row, account) {
   return {
     key: `out-${row.id}`, direction: 'out', kind: 'staff', at: row.created_at, body: row.body,

@@ -225,6 +225,45 @@ test('the full simulated flow', { skip: SKIP }, async (t) => {
     assert.equal(taken.status, 409, 'an item linked to another client cannot be reused')
   })
 
+  await t.test('a link or unlink is written whole or not at all; clicks reuse the board walk', async () => {
+    const m = (await call('GET', '/api/billing/matching')).json
+    const cinco = m.clients.find((c) => c.eimmigrationClientId === 'EIM-C-0005')
+    const linked = async () => (await db.query("SELECT 1 FROM billing_client_links WHERE system = 'monday' AND external_id = '1013'")).rowCount
+    const decisions = async () => (await db.query("SELECT COUNT(*)::int AS n FROM billing_match_decisions WHERE external_id = '1013'")).rows[0].n
+    const failDecisions = async (on) => db.query(on
+      ? `CREATE OR REPLACE FUNCTION cm_test_fail() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'test failure'; END $$ LANGUAGE plpgsql;
+         CREATE TRIGGER cm_test_fail BEFORE INSERT ON billing_match_decisions FOR EACH ROW EXECUTE FUNCTION cm_test_fail();`
+      : 'DROP TRIGGER cm_test_fail ON billing_match_decisions; DROP FUNCTION cm_test_fail();')
+
+    // Unlink fails at its second write: the link is still there.
+    await failDecisions(true)
+    try {
+      assert.equal((await call('DELETE', `/api/billing/matching/${cinco.clientId}/1013`)).status, 500)
+      assert.equal(await linked(), 1, 'not half unlinked')
+    } finally { await failDecisions(false) }
+    assert.equal((await call('DELETE', `/api/billing/matching/${cinco.clientId}/1013`)).status, 200)
+
+    // Link fails at its second write: no link without its decision.
+    const before = await decisions()
+    await failDecisions(true)
+    try {
+      assert.equal((await call('POST', `/api/billing/matching/${cinco.clientId}`, { body: { mondayItemId: '1013' } })).status, 500)
+      assert.equal(await linked(), 0, 'not half linked')
+    } finally { await failDecisions(false) }
+
+    const listItems = mock.listItems
+    let walks = 0
+    mock.listItems = (...args) => { walks++; return listItems.apply(mock, args) }
+    try {
+      assert.equal((await call('POST', `/api/billing/matching/${cinco.clientId}`, { body: { mondayItemId: '1013' } })).status, 201)
+      const afterFirst = walks
+      assert.equal((await call('POST', `/api/billing/matching/${cinco.clientId}`, { body: { mondayItemId: '1013' } })).json.alreadyLinked, true)
+      assert.equal(walks, afterFirst, 'a second click within a minute does not walk the board again')
+    } finally { mock.listItems = listItems }
+    assert.equal(await linked(), 1)
+    assert.equal(await decisions(), before + 1)
+  })
+
   let syncJob
   await t.test('4. sync preview proposes only real differences, on mapped columns only', async () => {
     const pv = await call('POST', '/api/billing/monday/sync/preview')
@@ -354,6 +393,24 @@ test('the full simulated flow', { skip: SKIP }, async (t) => {
     // Bring the board up to date through the mock router for the next steps.
     const pv2 = await call('POST', '/api/billing/monday/sync/preview')
     assert.equal((await call('POST', `/api/billing/monday/sync/${pv2.json.jobId}/apply`)).status, 200)
+  })
+
+  await t.test('an apply that stops partway is marked failed, and one cut off long ago is swept', async () => {
+    const { applySync } = await import('./syncService.js')
+    const pv = await call('POST', '/api/billing/monday/sync/preview')
+    assert.equal(pv.status, 200, pv.text)
+    // The database fails after the job was claimed.
+    const broken = { query: (sql, args) => (/FROM billing_sync_items/.test(sql) ? Promise.reject(Object.assign(new Error('connection lost'), { code: '57P01' })) : db.query(sql, args)) }
+    await assert.rejects(applySync(broken, mock, pv.json.jobId, { actorId: null }), /connection lost/)
+    const job = (await db.query('SELECT status, error FROM billing_sync_jobs WHERE id = $1', [pv.json.jobId])).rows[0]
+    assert.equal(job.status, 'failed')
+    assert.match(job.error, /57P01/)
+
+    // A process that died mid-apply left this one 'applying'.
+    const pv2 = await call('POST', '/api/billing/monday/sync/preview')
+    await db.query(`UPDATE billing_sync_jobs SET status = 'applying', created_at = NOW() - INTERVAL '3 hours' WHERE id = $1`, [pv2.json.jobId])
+    await assert.rejects(applySync(db, mock, 999999, { actorId: null }), /not found/i)
+    assert.equal((await db.query('SELECT status FROM billing_sync_jobs WHERE id = $1', [pv2.json.jobId])).rows[0].status, 'failed')
   })
 
   await t.test('exceptions CSV lists skipped rows and client-match problems', async () => {

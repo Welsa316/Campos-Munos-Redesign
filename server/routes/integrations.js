@@ -38,7 +38,7 @@ import {
 } from '../integrations/ringcentral/service.js'
 import { RingCentralOAuthError } from '../integrations/ringcentral/oauth.js'
 import {
-  subscriptionStatus, registerSubscription, removeSubscription, checkSubscription, EventSubscriptionError,
+  subscriptionStatus, registerSubscription, removeSubscription, checkSubscription, noteSubscriptionError, EventSubscriptionError,
 } from '../integrations/ringcentral/telephonyEvents.js'
 
 export const BINDING_COOKIE = 'cm_rc_oauth'
@@ -169,7 +169,18 @@ export function createIntegrationsRouter({ db = null, env = process.env, fetchIm
 
   router.post('/ringcentral/disconnect', wrap(async (req, res) => {
     // The subscription is deleted while the connection can still do it.
-    try { await removeSubscription(pool(), config(), { token: await getAccessToken(pool(), config(), deps), env, deps }) } catch { /* gone with the tokens */ }
+    // Without working tokens there is nothing to ask RingCentral with. If
+    // RingCentral refuses, the disconnect still goes ahead (it may be urgent),
+    // but the subscription stays listed with the error, so the page shows it
+    // and connecting again replaces it.
+    try {
+      await removeSubscription(pool(), config(), { token: await getAccessToken(pool(), config(), deps), env, deps })
+    } catch (err) {
+      if (!(err instanceof RingCentralNotConnectedError) && !(err instanceof RingCentralOAuthError)) {
+        req.log?.warn({ provider: 'ringcentral', code: err?.code, status: err?.status }, 'Live-event subscription not removed before disconnecting')
+        await noteSubscriptionError(pool(), err, now ? now() : new Date())
+      }
+    }
     const out = await disconnect(pool(), config(), { actorId: req.account.id }, deps)
     res.json({ ...out, ...(await getConnectionStatus(pool(), config())) })
   }))

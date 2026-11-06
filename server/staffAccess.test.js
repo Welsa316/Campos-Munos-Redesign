@@ -552,4 +552,20 @@ test('shared WhatsApp inbox', { skip: SKIP }, async (t) => {
     migrate()
     assert.equal(await count(), before + 1, 'once')
   })
+
+  await t.test('a reply cut off mid-send stops looking pending after ten minutes', async () => {
+    const { sweepPendingReplies } = await import('./whatsapp/inbox.js')
+    const conv = (await db.query('SELECT id FROM wa_conversations ORDER BY id LIMIT 1')).rows[0].id
+    const add = async (key, minutesAgo) => (await db.query(
+      `INSERT INTO wa_outbound_messages (conversation_id, body, idempotency_key, provider_mode, simulated, status, created_at)
+       VALUES ($1, 'Hola', $2, 'mock', true, 'pending', NOW() - make_interval(mins => $3)) RETURNING id`,
+      [conv, key, minutesAgo]
+    )).rows[0].id
+    const stale = await add('sweep-stale', 11)
+    const fresh = await add('sweep-fresh', 1)
+    assert.equal(await sweepPendingReplies(db), 1)
+    const status = async (id) => (await db.query('SELECT status FROM wa_outbound_messages WHERE id = $1', [id])).rows[0].status
+    assert.equal(await status(stale), 'unknown', 'staff are told to check WhatsApp, never resent')
+    assert.equal(await status(fresh), 'pending', 'one still being sent is left alone')
+  })
 })

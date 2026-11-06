@@ -29,6 +29,10 @@ export const DEFAULT_RETENTION_DAYS = 365
 export const EVIDENCE_BACKFILL_DAYS = 90
 const PER_PAGE = 250
 const MAX_PAGES = 20
+// RingCentral sends the newest calls first, so a window cut off at MAX_PAGES
+// is missing its oldest calls. The import then reads again from the start of
+// the window up to the oldest call it got, at most this many times per run.
+const MAX_WINDOWS = 5
 const PAGE_DELAY_MS = 6500
 const LOCK_KEY = 'cm_rc_call_sync'
 
@@ -224,7 +228,7 @@ export class CallSyncError extends Error {
   }
 }
 
-async function fetchWindow({ config, token, path, scope, dateFrom, dateTo, deps, sleep, pageDelayMs }) {
+async function fetchWindow({ config, token, path, scope, dateFrom, dateTo, deps, sleep, pageDelayMs, maxPages = MAX_PAGES }) {
   const rows = []
   let fetched = 0
   let truncated = false
@@ -241,9 +245,33 @@ async function fetchWindow({ config, token, path, scope, dateFrom, dateTo, deps,
     }
     const more = Boolean(body?.navigation?.nextPage) && records.length > 0
     if (!more) break
-    if (page >= MAX_PAGES) { truncated = true; break }
+    if (page >= maxPages) { truncated = true; break }
   }
   return { rows, fetched, truncated }
+}
+
+/**
+ * The whole of [dateFrom, dateTo], in as many windows as it takes (up to
+ * maxWindows): each truncated window is followed by one ending at the oldest
+ * call it returned. truncated: the oldest part is still unread.
+ */
+async function fetchRange({ dateFrom, dateTo, maxWindows = MAX_WINDOWS, ...args }) {
+  const rows = []
+  let fetched = 0
+  let to = dateTo
+  for (let w = 0; w < maxWindows; w++) {
+    const got = await fetchWindow({ ...args, dateFrom, dateTo: to })
+    rows.push(...got.rows)
+    fetched += got.fetched
+    if (!got.truncated) return { rows, fetched, truncated: false }
+    const oldest = Math.min(...got.rows.map((r) => r.started_at.getTime()))
+    // A second past the oldest call: calls in that same second are read
+    // again rather than skipped (the import is idempotent).
+    const next = new Date(oldest + 1000)
+    if (!Number.isFinite(oldest) || next >= to || next <= dateFrom) break
+    to = next
+  }
+  return { rows, fetched, truncated: true }
 }
 
 async function upsertCalls(db, rows) {
@@ -373,6 +401,7 @@ async function classifyCalls(db, keys, ctx) {
 export async function syncCallLog(db, config, {
   trigger = 'manual', backfillDays = DEFAULT_BACKFILL_DAYS, retentionDays = DEFAULT_RETENTION_DAYS,
   deps = {}, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), pageDelayMs = PAGE_DELAY_MS,
+  maxPages = MAX_PAGES, maxWindows = MAX_WINDOWS,
 } = {}) {
   const now = deps.now ? deps.now() : new Date()
   const lockClient = typeof db.totalCount === 'number' ? await db.connect() : db
@@ -380,7 +409,7 @@ export async function syncCallLog(db, config, {
     const got = (await lockClient.query('SELECT pg_try_advisory_lock(hashtext($1)) AS ok', [LOCK_KEY])).rows[0]?.ok
     if (!got) return { status: 'busy' }
     try {
-      return await runSync(db, config, { trigger, backfillDays, retentionDays, deps, sleep, pageDelayMs, now })
+      return await runSync(db, config, { trigger, backfillDays, retentionDays, deps, sleep, pageDelayMs, maxPages, maxWindows, now })
     } finally {
       await lockClient.query('SELECT pg_advisory_unlock(hashtext($1))', [LOCK_KEY]).catch(() => {})
     }
@@ -389,7 +418,7 @@ export async function syncCallLog(db, config, {
   }
 }
 
-async function runSync(db, config, { trigger, backfillDays, retentionDays, deps, sleep, pageDelayMs, now }) {
+async function runSync(db, config, { trigger, backfillDays, retentionDays, deps, sleep, pageDelayMs, maxPages, maxWindows, now }) {
   await db.query(`INSERT INTO rc_call_sync_state (key) VALUES ('ringcentral') ON CONFLICT (key) DO NOTHING`)
   const state = (await db.query(`SELECT * FROM rc_call_sync_state WHERE key = 'ringcentral'`)).rows[0]
   // Calls classified by older rules (or not yet) are read again first, even
@@ -435,7 +464,7 @@ async function runSync(db, config, { trigger, backfillDays, retentionDays, deps,
     }
   }
 
-  const fetchArgs = { config, dateFrom, dateTo, deps, sleep, pageDelayMs }
+  const fetchArgs = { config, dateFrom, dateTo, deps, sleep, pageDelayMs, maxPages, maxWindows }
   const recentlyExtension = state.scope === 'extension' && state.scope_checked_at
     && now.getTime() - new Date(state.scope_checked_at).getTime() < SCOPE_RECHECK_MS
   let scope = recentlyExtension ? 'extension' : 'account'
@@ -443,14 +472,14 @@ async function runSync(db, config, { trigger, backfillDays, retentionDays, deps,
   let result
   try {
     try {
-      result = await withToken((t) => fetchWindow({ ...fetchArgs, token: t, path: scope === 'account' ? ACCOUNT_PATH : EXTENSION_PATH, scope }))
+      result = await withToken((t) => fetchRange({ ...fetchArgs, token: t, path: scope === 'account' ? ACCOUNT_PATH : EXTENSION_PATH, scope }))
     } catch (err) {
       // The connecting user may read only their own calls; RingCentral says
       // so with a 403 on the company log.
       if (scope !== 'account' || !(err instanceof RingCentralApiError) || err.status !== 403) throw err
       scope = 'extension'
       scopeCheckedAt = now
-      result = await withToken((t) => fetchWindow({ ...fetchArgs, token: t, path: EXTENSION_PATH, scope }))
+      result = await withToken((t) => fetchRange({ ...fetchArgs, token: t, path: EXTENSION_PATH, scope }))
     }
   } catch (err) {
     return recordError(errorCodeOf(err))
@@ -465,12 +494,18 @@ async function runSync(db, config, { trigger, backfillDays, retentionDays, deps,
   await purgeOldEvents(db, now)
   // Portal-placed calls are only needed while they ring; the call itself is in the call log.
   await db.query(`DELETE FROM rc_ringouts WHERE created_at < $1::timestamptz - INTERVAL '90 days'`, [now])
+  // Still cut off after every window: the oldest calls are unread, so the
+  // window stays where it was and the next run reads it again, instead of
+  // moving on and leaving them behind for good.
+  const complete = !result.truncated
   await db.query(
-    `UPDATE rc_call_sync_state SET scope = $1, scope_checked_at = $2, window_to = $3, last_run_at = $3, last_success_at = $3,
+    `UPDATE rc_call_sync_state SET scope = $1, scope_checked_at = $2, window_to = CASE WHEN $8 THEN $3 ELSE window_to END,
+            last_run_at = $3, last_success_at = $3,
             last_trigger = $4, last_fetched = $5, last_new = $6, last_truncated = $7, last_error_code = NULL, last_error_at = NULL,
-            legs_backfilled_at = COALESCE(legs_backfilled_at, $3), raw_backfilled_at = COALESCE(raw_backfilled_at, $3)
+            legs_backfilled_at = CASE WHEN $8 THEN COALESCE(legs_backfilled_at, $3) ELSE legs_backfilled_at END,
+            raw_backfilled_at = CASE WHEN $8 THEN COALESCE(raw_backfilled_at, $3) ELSE raw_backfilled_at END
       WHERE key = 'ringcentral'`,
-    [scope, scopeCheckedAt, dateTo, trigger, result.fetched, inserted, result.truncated]
+    [scope, scopeCheckedAt, dateTo, trigger, result.fetched, inserted, result.truncated, complete]
   )
   return { status: 'ok', scope, fetched: result.fetched, new: inserted, truncated: result.truncated, directory: directory.status, directoryCode: directory.code }
 }

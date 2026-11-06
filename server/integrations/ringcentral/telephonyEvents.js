@@ -149,16 +149,50 @@ async function recordError(db, code, now) {
   )
 }
 
+/** Record why RingCentral refused a subscription change, for the Integrations page. */
+export async function noteSubscriptionError(db, err, now = new Date()) {
+  await recordError(db, codeOf(err), now)
+}
+
+const REGISTER_LOCK = 'cm_rc_event_subscription'
+
 /**
  * Create the subscription (or replace ours). RingCentral validates the
  * address during this request, so the receiver must already be deployed.
+ * One registration at a time: two at once would each create a subscription
+ * and only the last would be remembered, leaving the other delivering.
  */
-export async function registerSubscription(db, config, { token, actorId = null, env = process.env, now = new Date(), deps = {} } = {}) {
+export async function registerSubscription(db, config, opts = {}) {
+  const lockClient = typeof db.totalCount === 'number' ? await db.connect() : db
+  try {
+    const got = (await lockClient.query('SELECT pg_try_advisory_lock(hashtext($1)) AS ok', [REGISTER_LOCK])).rows[0]?.ok
+    if (!got) throw new EventSubscriptionError('busy', 'The live-event subscription is already being set up. Try again in a moment.', 409)
+    try {
+      return await registerOnce(db, config, opts)
+    } finally {
+      await lockClient.query('SELECT pg_advisory_unlock(hashtext($1))', [REGISTER_LOCK]).catch(() => {})
+    }
+  } finally {
+    if (lockClient !== db) lockClient.release()
+  }
+}
+
+async function registerOnce(db, config, { token, actorId = null, env = process.env, now = new Date(), deps = {} } = {}) {
   const address = webhookAddress(config, env)
   if (!address) throw new EventSubscriptionError('no_address', 'The API has no https address for RingCentral to deliver to', 409)
   const existing = (await db.query(`SELECT subscription_id FROM rc_event_subscription WHERE key = 'ringcentral'`)).rows[0]
   if (existing?.subscription_id) {
-    try { await rcSend(config, token, 'DELETE', `/restapi/v1.0/subscription/${encodeURIComponent(existing.subscription_id)}`, undefined, deps) } catch { /* already gone */ }
+    // Only "it is already gone" is fine. Anything else leaves the old one
+    // delivering beside the new one, so stop here.
+    try {
+      await rcSend(config, token, 'DELETE', `/restapi/v1.0/subscription/${encodeURIComponent(existing.subscription_id)}`, undefined, deps)
+    } catch (err) {
+      if (!(err instanceof RingCentralApiError) || err.status !== 404) {
+        const code = codeOf(err)
+        await recordError(db, code, now)
+        throw new EventSubscriptionError(code, `RingCentral did not remove the current subscription (${code}). Try again.`, 502)
+      }
+    }
   }
   // The token is stored (as a digest) before RingCentral is asked, so its very
   // first delivery is already verifiable.
@@ -241,5 +275,5 @@ export async function purgeOldEvents(db, now = new Date()) {
 
 export default {
   EVENT_FILTER, WEBHOOK_PATH, webhookAddress, storeNotification, isTrustedDelivery, loadEvents,
-  subscriptionStatus, registerSubscription, removeSubscription, checkSubscription, purgeOldEvents,
+  subscriptionStatus, registerSubscription, removeSubscription, checkSubscription, purgeOldEvents, noteSubscriptionError,
 }
