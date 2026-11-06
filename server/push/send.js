@@ -26,6 +26,12 @@
 import webpush from 'web-push'
 import { pushConfig } from './config.js'
 
+// How long the push service keeps a notification for a computer that is off,
+// or whose browser is closed, before dropping it: long enough that a reminder
+// or a website message sent overnight still shows when the browser starts in
+// the morning. (The test notification keeps its own few minutes.)
+export const PUSH_TTL_SECONDS = 24 * 60 * 60
+
 export const CALLBACK_REMINDER = Object.freeze({
   title: 'Campos Muños — Callback Reminder',
   body: 'You have a scheduled follow-up ready to review.',
@@ -56,7 +62,7 @@ const short = (v, n) => String(v ?? '').slice(0, n)
  *   outcome  'sent' (accepted by the push service) | 'already_sent' |
  *            'expired' (device removed) | 'failed' | 'skipped' (account disabled)
  */
-export async function sendPush(db, { accountId, eventKey, title, body, url = '/', tag, subscriptionId = null, ttl = 3600 } = {}, { env = process.env, transport = webpush } = {}) {
+export async function sendPush(db, { accountId, eventKey, title, body, url = '/', tag, subscriptionId = null, ttl = PUSH_TTL_SECONDS } = {}, { env = process.env, transport = webpush } = {}) {
   if (!Number.isInteger(accountId) || accountId < 1) throw new TypeError('sendPush: accountId must be an admin_users id')
   if (typeof eventKey !== 'string' || !eventKey || eventKey.length > 200) throw new TypeError('sendPush: eventKey must be a short string')
   if (typeof title !== 'string' || !title || typeof body !== 'string' || !body) throw new TypeError('sendPush: title and body are required')
