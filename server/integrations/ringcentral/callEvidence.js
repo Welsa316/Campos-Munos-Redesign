@@ -21,7 +21,7 @@
 // Anything else is 'unknown', with the reason why.
 import { REASON_MEANING } from './reasonMeanings.js'
 
-export const CLASSIFIER_VERSION = 2
+export const CLASSIFIER_VERSION = 3
 
 const MAX_LEGS = 60
 const DROP_KEYS = new Set(['recording', 'billing', 'uri', 'contentUri'])
@@ -77,14 +77,22 @@ const str = (v) => (typeof v === 'string' && v.trim() ? v.trim() : typeof v === 
  * it. `person` is true or false when the directory says so, and null when it
  * cannot (directory unavailable, or no such extension in it).
  *
- * Only the extension id identifies an extension: a number can be given to
+ * Only an extension id identifies an extension: a number can be given to
  * someone else later, so a leg that names only a number (or an id the
  * directory no longer has) is never matched to whoever has it now.
+ *
+ * RingCentral often puts the id not in `to` but in the leg's own `extension`
+ * ("the extension on whose behalf"), with only the number in `to`. That id is
+ * used when the directory's number for it agrees with the leg's number.
  */
-function targetExtension(to, directory) {
+function targetExtension(to, directory, ownerId = null) {
   if (!to || typeof to !== 'object') return null
-  const id = str(to.extensionId)
   const number = str(to.extensionNumber)
+  let id = str(to.extensionId)
+  if (!id && number && ownerId) {
+    const owner = directory?.byId?.get(ownerId)
+    if (owner && str(owner.number) === number) id = ownerId
+  }
   if (!id && !number) return null
   const known = (id && directory?.byId?.get(id)) || null
   return {
@@ -113,7 +121,7 @@ function readSteps(raws, directory) {
       const key = JSON.stringify([level, l.startTime, l.legType, l.to?.extensionId, l.to?.extensionNumber, digits(l.to?.phoneNumber), l.reason, l.result])
       if (seen.has(key)) continue
       seen.add(key)
-      const ext = targetExtension(l.to, directory)
+      const ext = targetExtension(l.to, directory, str(l.extension?.id))
       const toDigits = digits(l.to?.phoneNumber)
       let to
       if (ext) to = { kind: 'extension', ...ext }
