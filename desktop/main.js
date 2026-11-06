@@ -13,11 +13,12 @@ const { resolveConfig, isPortalUrl, externalUrl, portalPathUrl, isReloadShortcut
 const { createPoller } = require('./src/poller')
 const { createNotifier } = require('./src/notifier')
 const { createStore, cursorFor } = require('./src/store')
+const { createStatus, describe } = require('./src/status')
 const { restoreBounds, MIN_SIZE } = require('./src/window-state')
 
 const APP_ID = 'com.camulaw.portal'
 const APP_NAME = 'Campos Muños'
-const { portalOrigin, apiOrigin } = resolveConfig()
+const { portalOrigin, apiOrigin } = resolveConfig(process.env, { allowOverrides: !app.isPackaged })
 const isMac = process.platform === 'darwin'
 const isWindows = process.platform === 'win32'
 
@@ -38,6 +39,11 @@ let tray = null
 let quitting = false
 let store = null
 let poller = null
+// Set while the window shows the offline page: the portal URL to load again.
+let portalUrlToRetry = null
+let retryTimer = null
+const status = createStatus()
+let signedOutAlert = null
 
 const asset = (name) => path.join(__dirname, 'assets', name)
 
@@ -130,8 +136,40 @@ function createWindow() {
     }
   })
 
+  // Offline, or the portal down: show a page that says so instead of a blank
+  // window, and keep trying (the reload keys are off in this app).
+  win.webContents.on('did-fail-load', (_event, code, _desc, url, isMainFrame) => {
+    // -3 is a load replaced by another one, not a failure.
+    if (!isMainFrame || code === -3 || !isPortalUrl(url, portalOrigin)) return
+    showOffline(url)
+  })
+
   win.on('focus', () => poller && poller.poke())
-  win.loadURL(portalOrigin + '/')
+  loadPortal(portalOrigin + '/')
+}
+
+function loadPortal(url) {
+  portalUrlToRetry = null
+  clearInterval(retryTimer)
+  retryTimer = null
+  // A failure is handled by did-fail-load; the promise only needs catching.
+  win.loadURL(url).catch(() => {})
+}
+
+function showOffline(url) {
+  portalUrlToRetry = url
+  win.loadFile(asset('offline.html')).catch(() => {})
+  if (!retryTimer) {
+    retryTimer = setInterval(() => {
+      if (net.isOnline()) retryPortal()
+    }, 15_000)
+  }
+}
+
+function retryPortal() {
+  if (!win || win.isDestroyed()) return
+  if (portalUrlToRetry) loadPortal(portalUrlToRetry)
+  else win.webContents.reload()
 }
 
 function showWindow() {
@@ -158,6 +196,12 @@ function guardNavigation(contents) {
     return { action: 'deny' }
   })
   const keepInPortal = (event, url) => {
+    // The offline page's "Try again" link reloads the page that failed.
+    if (portalUrlToRetry) {
+      event.preventDefault()
+      retryPortal()
+      return
+    }
     if (isPortalUrl(url, portalOrigin)) return
     event.preventDefault()
     openOutside(url)
@@ -231,7 +275,16 @@ function toggleLoginItem(on) {
 // --- Tray and menus -------------------------------------------------------------
 
 function trayMenu() {
+  const { label } = describe(status.state, APP_NAME)
+  const problem = label ? [
+    { label, enabled: false },
+    status.state === 'signed-out'
+      ? { label: 'Sign in…', click: () => showWindow() }
+      : { label: 'Try again now', click: () => { retryPortal(); poller && poller.poke() } },
+    { type: 'separator' },
+  ] : []
   return Menu.buildFromTemplate([
+    ...problem,
     { label: `Open ${APP_NAME}`, click: () => showWindow() },
     { type: 'separator' },
     {
@@ -284,7 +337,7 @@ function buildMenu() {
     },
     { role: 'windowMenu' },
     // A way out if a page ever gets stuck, without a browser's shortcut.
-    { role: 'help', submenu: [{ label: 'Reload Campos Muños', click: () => win?.webContents.reload() }] },
+    { role: 'help', submenu: [{ label: 'Reload Campos Muños', click: () => retryPortal() }] },
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
@@ -299,7 +352,7 @@ function startNotifications() {
     onClick: (url) => {
       showWindow()
       const target = portalPathUrl(url, portalOrigin)
-      if (target && win) win.loadURL(target)
+      if (target && win) loadPortal(target)
     },
   })
 
@@ -318,7 +371,10 @@ function startNotifications() {
     },
     cursor: cursorFor(store, apiOrigin),
     notify: (item) => notifier.show(item),
-    onState: (s) => { state = s },
+    onState: (s) => {
+      state = s
+      showStatus(status.report(s))
+    },
   })
   poller.start()
 
@@ -329,7 +385,10 @@ function startNotifications() {
   let wasOnline = net.isOnline()
   setInterval(() => {
     const online = net.isOnline()
-    if (online && !wasOnline) poller.poke()
+    if (online && !wasOnline) {
+      poller.poke()
+      if (portalUrlToRetry) retryPortal()
+    }
     wasOnline = online
   }, 10_000).unref()
 
@@ -341,4 +400,26 @@ function startNotifications() {
     const domain = String(cookie.domain || '').replace(/^\./, '')
     if (domain === apiHost || apiHost.endsWith('.' + domain)) poller.poke()
   })
+}
+
+// Make a stopped poller visible: tray tooltip and menu, the Dock badge on
+// macOS, and one notification when a signed-in session ends.
+function showStatus({ state, changed, alert }) {
+  if (!changed && !alert) return
+  const { tooltip, badge } = describe(state, APP_NAME)
+  if (tray) {
+    tray.setToolTip(tooltip)
+    tray.setContextMenu(trayMenu())
+  }
+  if (isMac && app.dock) app.dock.setBadge(badge)
+  // Someone looking at the window sees the sign-in page; no need to tell them.
+  if (alert && !(win && !win.isDestroyed() && win.isVisible() && win.isFocused())) {
+    signedOutAlert = new Notification({
+      title: 'Signed out of Campos Muños',
+      body: 'Notifications are paused. Click to sign in again.',
+      icon: isMac ? undefined : asset('icon.png'),
+    })
+    signedOutAlert.on('click', () => showWindow())
+    signedOutAlert.show()
+  }
 }

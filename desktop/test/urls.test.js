@@ -16,6 +16,14 @@ test('config defaults to production and accepts local overrides', () => {
   assert.equal(resolveConfig({ CM_PORTAL_URL: 'not a url' }).portalOrigin, PORTAL)
 })
 
+test('an installed app ignores the environment overrides', () => {
+  const env = { CM_PORTAL_URL: 'http://evil.example', CM_API_URL: 'https://api.evil.example' }
+  assert.deepEqual(
+    resolveConfig(env, { allowOverrides: false }),
+    { portalOrigin: PORTAL, apiOrigin: 'https://api.camulaw.com' },
+  )
+})
+
 test('only the portal origin counts as in-app', () => {
   assert.equal(isPortalUrl('https://admin.camulaw.com/inbox?lead=1', PORTAL), true)
   assert.equal(isPortalUrl('https://admin.camulaw.com.evil.com/', PORTAL), false)
