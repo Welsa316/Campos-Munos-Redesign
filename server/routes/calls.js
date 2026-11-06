@@ -19,7 +19,7 @@ import requireAuth from '../middleware/auth.js'
 import requireCapability, { can } from '../middleware/requireCapability.js'
 import { loadRingCentralConfig } from '../integrations/ringcentral/config.js'
 import { getConnectionStatus } from '../integrations/ringcentral/service.js'
-import { queryCalls, syncCallLog, getSyncState, summarizeMissed, OUTCOME_FILTERS } from '../integrations/ringcentral/callLog.js'
+import { queryCalls, syncCallLog, getSyncState, summarizeMissed, OUTCOME_FILTERS, callEvidence, listPeople } from '../integrations/ringcentral/callLog.js'
 import { excludeCall, includeCall, CallExclusionError } from '../integrations/ringcentral/callExclusions.js'
 import { placeRingOut, ringOutStatus, cancelRingOut, getMyPhone, setMyPhone, RingOutError } from '../integrations/ringcentral/ringout.js'
 
@@ -63,10 +63,25 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
       const outcome = typeof req.query.outcome === 'string' && OUTCOME_FILTERS.includes(req.query.outcome) ? req.query.outcome : 'all'
       const q = typeof req.query.q === 'string' ? req.query.q : ''
       const businessHours = ['1', 'true'].includes(String(req.query.businessHours || ''))
-      const result = await queryCalls(pool(), { from, to, outcome, q, limit: req.query.limit, businessHours })
-      res.json({ ...result, ...(await status(req)) })
+      // A RingCentral extension id (digits): calls proven offered to that person.
+      const person = typeof req.query.person === 'string' && /^\d{1,20}$/.test(req.query.person) ? req.query.person : null
+      const result = await queryCalls(pool(), { from, to, outcome, q, limit: req.query.limit, businessHours, person })
+      res.json({ ...result, people: await listPeople(pool()), ...(await status(req)) })
     } catch (err) {
       req.log?.error({ err }, 'List calls error')
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  })
+
+  // One call's evidence: every step RingCentral recorded, what each reason
+  // means, who it was confirmed offered to, and why it is classified as it is.
+  router.get('/:id(\\d+)/evidence', async (req, res) => {
+    try {
+      const ev = await callEvidence(pool(), Number(req.params.id))
+      if (!ev) return res.status(404).json({ error: 'Call not found' })
+      res.json(ev)
+    } catch (err) {
+      req.log?.error({ err }, 'Call evidence error')
       res.status(500).json({ error: 'Internal server error' })
     }
   })
