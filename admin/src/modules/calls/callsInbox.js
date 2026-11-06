@@ -55,6 +55,64 @@ export function attentionSections(calls) {
   })).filter((g) => g.calls.length)
 }
 
+// --- callback episodes -------------------------------------------------------------
+// Needs attention lists one item per person waiting for a call back (the
+// server groups their unanswered calls into an episode), and below it the
+// quiet review group: calls RingCentral recorded no outcome for.
+
+export const REVIEW_GROUP = {
+  key: 'review',
+  label: 'Check if they still need help',
+  note: 'RingCentral did not record how these calls ended. Nobody is counted as missing them.',
+}
+
+const byLatest = (a, b) => new Date(b.lastAt) - new Date(a.lastAt) || b.id - a.id
+const lower = (day) => day.replace(/^(Today|Yesterday)\b/, (m) => m.toLowerCase())
+
+/**
+ * Needs attention by episode: one section per group that has any (the
+ * server sets each episode's group from its first call), the most recently
+ * active caller first inside each. Review episodes are never in these.
+ */
+export function episodeSections(episodes) {
+  const open = episodes.filter((e) => e.kind !== 'review')
+  return GROUPS.map((g) => ({
+    ...g,
+    episodes: open.filter((e) => (e.attentionGroup || 'new') === g.key).sort(byLatest),
+  })).filter((g) => g.episodes.length)
+}
+
+/** The review group, most recent first; null when it is empty. */
+export function reviewSection(review) {
+  const list = review.filter((e) => e.kind === 'review').sort(byLatest)
+  return list.length ? { ...REVIEW_GROUP, episodes: list } : null
+}
+
+/**
+ * "3 unanswered calls · first Mon, Nov 2 9:15 AM · last 10:05 AM". Null for a
+ * single call: its row reads exactly as it did before episodes.
+ */
+export function episodeSummary(ep, now = Date.now()) {
+  if (!ep || ep.attempts < 2) return null
+  const what = ep.kind === 'review' ? 'calls with no recorded outcome' : 'unanswered calls'
+  return `${ep.attempts} ${what} · first ${lower(when(ep.firstAt, now))} · last ${lower(when(ep.lastAt, now))}`
+}
+
+/**
+ * What is left to do about the person, in one line (same tones as
+ * followUpLine). Callbacks that did not connect are counted, not resolving.
+ */
+export function episodeLine(ep, now = Date.now()) {
+  if (ep.kind === 'review') return { tone: 'quiet', text: 'Check if they still need help' }
+  const n = ep.callbackAttempts || 0
+  if (n && ep.lastCallbackAttemptAt) {
+    const at = when(ep.lastCallbackAttemptAt, now)
+    return { tone: 'open', text: n === 1 ? `Tried ${at} · still needs a callback` : `Tried ${n}× · last ${lower(at)} · still needs a callback` }
+  }
+  if (ep.attentionGroup === 'waiting') return { tone: 'open', text: `Waiting since ${lower(dayName(ep.firstAt, now))}` }
+  return { tone: 'open', text: 'Callback needed' }
+}
+
 /** When a dealt-with call was dealt with: marked handled, or closed by a later connected call. */
 export const resolvedAt = (c) => c.handled?.at || c.connectedFollowUp?.at || null
 
@@ -109,6 +167,7 @@ export function followUpLine(c, now = Date.now()) {
     const at = when(c.connectedFollowUp.at, now)
     return { tone: 'done', text: c.connectedFollowUp.kind === 'called_back' ? `Called back and connected · ${at}` : `Caller reached us later · ${at}` }
   }
+  if (c.needsReview) return { tone: 'quiet', text: 'Check if they still need help' }
   if (!c.needsAttention) return null
   if (c.attemptAt) return { tone: 'open', text: `Tried ${when(c.attemptAt, now)} · still needs a callback` }
   if (c.attentionGroup === 'waiting') return { tone: 'open', text: `Waiting since ${dayName(c.startedAt, now).replace(/^Yesterday$/, 'yesterday')}` }
@@ -136,6 +195,9 @@ export function followUpDetail(c, now = Date.now()) {
   if (c.needsAttention) {
     const tried = c.attemptAt ? ` A callback was tried ${when(c.attemptAt, now)} but did not connect.` : ''
     return `Open.${tried} It stays in Needs attention until a callback connects, the caller gets through on a later call, or someone marks it handled.`
+  }
+  if (c.needsReview) {
+    return 'RingCentral did not record how this call ended, so nobody is counted as missing it, and nothing since shows the caller reached us. Check whether they still need help. It leaves this list when a callback connects, they get through on a later call, or someone marks it handled.'
   }
   if (c.classification === 'answered') return 'Answered. Nothing to follow up.'
   if (!c.number) return 'The number was withheld, so there is no one to call back. It is not listed in Needs attention.'

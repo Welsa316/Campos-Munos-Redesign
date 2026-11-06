@@ -33,10 +33,20 @@
               class="w-full px-3.5 py-2.5 rounded-xl bg-brand-surface border border-gray-200 focus:border-brand-navy/40 focus:ring-2 focus:ring-brand-navy/10 focus:outline-none text-[14px]" />
           </div>
 
+          <!-- The review group stays unless asked: nobody missed those calls,
+               but someone may still need to check on them. -->
+          <label v-if="review" class="flex items-start gap-3 rounded-xl bg-brand-surface px-3.5 py-3 cursor-pointer">
+            <input v-model="withReview" type="checkbox" class="mt-0.5 w-4 h-4 accent-brand-navy" />
+            <span class="min-w-0">
+              <span class="block text-[13px] font-semibold text-gray-900">Also clear {{ review }} {{ review === 1 ? 'call' : 'calls' }} with no recorded outcome</span>
+              <span class="block text-[12px] text-gray-600 leading-snug">From “Check if they still need help”. Left as they are unless ticked.</span>
+            </span>
+          </label>
+
           <p class="text-[13px] tabular-nums" role="status" aria-live="polite">
             <span v-if="count === null" class="text-gray-500">Counting…</span>
             <span v-else-if="count === 0" class="text-gray-600">No open calls came in before then.</span>
-            <span v-else class="font-semibold text-gray-900">{{ count }} open {{ count === 1 ? 'call' : 'calls' }} will be marked handled.</span>
+            <span v-else class="font-semibold text-gray-900">{{ count }} open {{ count === 1 ? 'call' : 'calls' }}{{ people && people !== count ? ` from ${people} ${people === 1 ? 'caller' : 'callers'}` : '' }} will be marked handled.</span>
           </p>
 
           <p v-if="error" role="alert" class="text-[13px] text-brand-red">{{ error }}</p>
@@ -67,6 +77,10 @@ const DEFAULT_NOTE = 'Missed before voicemail routing was set up'
 const before = ref('')
 const note = ref(DEFAULT_NOTE)
 const count = ref(null)
+// Callers the calls are from, and the review group's calls before the cutoff.
+const people = ref(null)
+const review = ref(0)
+const withReview = ref(false)
 const busy = ref(false)
 const error = ref('')
 const overlayRef = ref(null)
@@ -90,14 +104,19 @@ async function recount() {
   if (!cutoff.value) { count.value = 0; return }
   count.value = null
   try {
-    const r = await latestCount(() => get(`/api/calls/handled/bulk?before=${encodeURIComponent(cutoff.value.toISOString())}`))
-    if (r.current) count.value = r.value.count
+    const q = new URLSearchParams({ before: cutoff.value.toISOString(), ...(withReview.value ? { review: '1' } : {}) })
+    const r = await latestCount(() => get(`/api/calls/handled/bulk?${q}`))
+    if (r.current) {
+      count.value = r.value.count
+      people.value = r.value.people ?? null
+      review.value = r.value.review || 0
+    }
   } catch (e) {
     error.value = e.message
     count.value = 0
   }
 }
-watch(before, () => { if (props.open) recount() })
+watch([before, withReview], () => { if (props.open) recount() })
 
 watch(() => props.open, (open) => {
   if (!open) {
@@ -109,6 +128,8 @@ watch(() => props.open, (open) => {
   // A minute ahead, so a call that is still ringing as the dialog opens is included.
   before.value = localInput(new Date(Date.now() + 60 * 1000))
   note.value = DEFAULT_NOTE
+  withReview.value = false
+  review.value = 0
   error.value = ''
   busy.value = false
   recount()
@@ -120,7 +141,7 @@ async function save() {
   busy.value = true
   error.value = ''
   try {
-    const out = await post('/api/calls/handled/bulk', { before: cutoff.value.toISOString(), note: note.value.trim() })
+    const out = await post('/api/calls/handled/bulk', { before: cutoff.value.toISOString(), note: note.value.trim(), review: withReview.value })
     emit('cleared', out)
   } catch (e) {
     error.value = e.message
