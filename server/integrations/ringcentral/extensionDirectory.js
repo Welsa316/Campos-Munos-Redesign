@@ -53,8 +53,12 @@ export async function saveDirectory(db, entries, now = new Date()) {
 
 /** The stored directory as the classifier reads it. */
 export async function loadDirectory(db) {
-  const state = (await db.query(`SELECT directory_refreshed_at FROM rc_call_sync_state WHERE key = 'ringcentral'`)).rows[0]
-  const rows = (await db.query('SELECT id, extension_number AS number, name, type, status FROM rc_extensions')).rows
+  const [stateRes, extRes] = await Promise.all([
+    db.query(`SELECT directory_refreshed_at FROM rc_call_sync_state WHERE key = 'ringcentral'`),
+    db.query('SELECT id, extension_number AS number, name, type, status FROM rc_extensions'),
+  ])
+  const state = stateRes.rows[0]
+  const rows = extRes.rows
   return {
     available: Boolean(state?.directory_refreshed_at) && rows.length > 0,
     refreshedAt: state?.directory_refreshed_at ?? null,
