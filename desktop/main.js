@@ -6,7 +6,7 @@
 
 const path = require('node:path')
 const {
-  app, BrowserWindow, Menu, Tray, Notification, clipboard, nativeImage, net, powerMonitor, screen, session, shell,
+  app, BrowserWindow, Menu, Tray, Notification, clipboard, dialog, ipcMain, nativeImage, net, powerMonitor, screen, session, shell,
 } = require('electron')
 
 const { resolveConfig, isPortalUrl, externalUrl, portalPathUrl, isReloadShortcut } = require('./src/urls')
@@ -15,6 +15,9 @@ const { createNotifier } = require('./src/notifier')
 const { createStore, cursorFor } = require('./src/store')
 const { createStatus, describe } = require('./src/status')
 const { restoreBounds, MIN_SIZE } = require('./src/window-state')
+const { createLog, originOnly } = require('./src/log')
+const { createCrashGuard } = require('./src/crash-guard')
+const { createRateLimit } = require('./src/rate-limit')
 
 const APP_ID = 'com.camulaw.portal'
 const APP_NAME = 'Campos Muños'
@@ -23,6 +26,8 @@ const isMac = process.platform === 'darwin'
 const isWindows = process.platform === 'win32'
 
 app.setName(APP_NAME)
+// Every page this app ever shows runs in Chromium's sandbox.
+app.enableSandbox()
 // Windows shows the name and icon registered for this id on every toast.
 if (isWindows) app.setAppUserModelId(APP_ID)
 
@@ -44,12 +49,26 @@ let portalUrlToRetry = null
 let retryTimer = null
 const status = createStatus()
 let signedOutAlert = null
+// Set once the portal has registered for in-place navigation (preload.js);
+// cleared on every full page load, which starts a fresh portal.
+let portalCanNavigate = false
+let log = () => {}
+const crashGuard = createCrashGuard()
+const externalLimit = createRateLimit()
+let lastThrottleLog = 0
 
 const asset = (name) => path.join(__dirname, 'assets', name)
 
+// Every web page, including any the portal opens, gets the same rules.
+app.on('web-contents-created', (_event, contents) => guardNavigation(contents))
+
 function start() {
   store = createStore(path.join(app.getPath('userData'), 'settings.json'))
+  log = createLog(path.join(app.getPath('userData'), 'logs', 'app.log'))
+  log('start', { version: app.getVersion(), platform: process.platform })
   lockDownSession(session.defaultSession)
+  allowDownloadsFromPortalOnly(session.defaultSession)
+  answerPortal()
   setUpLoginItem()
   buildMenu()
   createWindow()
@@ -58,6 +77,9 @@ function start() {
 
   app.on('activate', () => showWindow())
   app.on('before-quit', () => { quitting = true })
+  // The computer shutting down or the person signing out of it must not be
+  // held up by close-to-tray (Windows asks every window first).
+  powerMonitor.on('shutdown', () => { quitting = true })
 }
 
 // --- Window -----------------------------------------------------------------
@@ -93,7 +115,6 @@ function createWindow() {
   if (bounds.maximized) win.maximize()
   win.once('ready-to-show', () => win.show())
 
-  guardNavigation(win.webContents)
   // An app, not a browser tab: Cmd/Ctrl+R, Cmd/Ctrl+Shift+R and F5 do nothing
   // (Help → Reload is there if a page ever gets stuck).
   win.webContents.on('before-input-event', (event, input) => {
@@ -144,11 +165,57 @@ function createWindow() {
     showOffline(url)
   })
 
+  // Windows: logging off or shutting down closes the window for real.
+  win.on('query-session-end', () => { quitting = true })
+  win.on('session-end', () => { quitting = true })
+
+  watchRenderer(win)
+
   win.on('focus', () => poller && poller.poke())
   loadPortal(portalOrigin + '/')
 }
 
+// The page crashed or froze. Reload it (not forever: a page that crashes
+// straight away again gets the offline page instead of a reload loop), and
+// for a hang let the person choose, since it may still recover.
+function watchRenderer(w) {
+  const contents = w.webContents
+  contents.on('did-navigate', () => { portalCanNavigate = false })
+  contents.on('render-process-gone', (_event, details) => {
+    portalCanNavigate = false
+    log('renderer-gone', { reason: details.reason, exitCode: details.exitCode })
+    if (details.reason === 'clean-exit' || w.isDestroyed()) return
+    const url = contents.getURL()
+    const again = isPortalUrl(url, portalOrigin) ? url : portalOrigin + '/'
+    if (crashGuard.shouldReload()) loadPortal(again)
+    else showOffline(again)
+  })
+  let asking = false
+  w.on('unresponsive', async () => {
+    log('unresponsive', {})
+    if (asking || w.isDestroyed()) return
+    asking = true
+    try {
+      const { response } = await dialog.showMessageBox(w, {
+        type: 'warning',
+        buttons: ['Reload', 'Wait'],
+        defaultId: 1,
+        cancelId: 1,
+        message: 'Campos Muños is not responding',
+        detail: 'You can wait for it to recover, or reload the portal. Reloading loses anything typed but not saved.',
+      })
+      // A hung page cannot reload itself; end it, and the crash handler above
+      // loads the portal again.
+      if (response === 0 && !w.isDestroyed()) contents.forcefullyCrashRenderer()
+    } finally {
+      asking = false
+    }
+  })
+  w.on('responsive', () => log('responsive', {}))
+}
+
 function loadPortal(url) {
+  portalCanNavigate = false
   portalUrlToRetry = null
   clearInterval(retryTimer)
   retryTimer = null
@@ -157,6 +224,7 @@ function loadPortal(url) {
 }
 
 function showOffline(url) {
+  log('portal-unreachable', { url: originOnly(url) })
   portalUrlToRetry = url
   win.loadFile(asset('offline.html')).catch(() => {})
   if (!retryTimer) {
@@ -183,10 +251,20 @@ function showWindow() {
 }
 
 // Only the portal loads inside the app. Everything else goes to the
-// system browser / mail / phone app, and only for https, mailto and tel.
+// system browser / mail / phone app, and only for https, mailto and tel,
+// a few at a time (a page opening links in a loop gets only a handful).
 function openOutside(url) {
   const safe = externalUrl(url)
-  if (safe) shell.openExternal(safe).catch(() => {})
+  if (!safe) return
+  if (!externalLimit.allow()) {
+    // Once a minute at most, or a page opening links in a loop fills the log.
+    if (Date.now() - lastThrottleLog > 60_000) {
+      lastThrottleLog = Date.now()
+      log('external-link-throttled', { url: originOnly(safe) })
+    }
+    return
+  }
+  shell.openExternal(safe).catch(() => {})
 }
 
 function guardNavigation(contents) {
@@ -239,6 +317,43 @@ function addContextMenu(contents) {
 
 // --- Session / permissions ----------------------------------------------------
 
+// Downloads only from the portal and the API (the CSV exports, saved from the
+// portal as blob: URLs of the portal's own origin). Anything else is refused.
+function allowDownloadsFromPortalOnly(ses) {
+  ses.on('will-download', (event, item) => {
+    const raw = item.getURL()
+    let from = ''
+    try {
+      const u = new URL(raw)
+      from = u.protocol === 'blob:' ? new URL(u.pathname).origin : u.origin
+    } catch { /* unparseable: refused below */ }
+    if (from === portalOrigin || from === apiOrigin) return
+    log('download-refused', { url: originOnly(raw) })
+    event.preventDefault()
+  })
+}
+
+// The only two things the portal can ask the app (preload.js): to say it can
+// take a notification's link in place, and what the notification state is.
+// Each answers only the app's own window showing the portal.
+function fromPortalWindow(event) {
+  return !!win && !win.isDestroyed() && event.sender === win.webContents &&
+    event.senderFrame === win.webContents.mainFrame && isPortalUrl(event.senderFrame.url, portalOrigin)
+}
+
+function answerPortal() {
+  ipcMain.on('campos:navigate-ready', (event) => {
+    if (fromPortalWindow(event)) portalCanNavigate = true
+  })
+  ipcMain.handle('campos:notification-state', (event) => {
+    if (!fromPortalWindow(event)) return null
+    return {
+      feed: poller ? status.state : 'off',
+      supported: Notification.isSupported(),
+    }
+  })
+}
+
 // The portal may show notifications and write to the clipboard (its "Copy"
 // buttons). Every other permission (camera, microphone, location, ...) and
 // every other origin is refused.
@@ -256,20 +371,25 @@ function lockDownSession(ses) {
 
 // --- Start at login -------------------------------------------------------------
 
+// On by default, set once on the first run. After that the system's own
+// setting is the truth: someone who turns it off in System Settings or Task
+// Manager is not overruled at the next launch.
 function setUpLoginItem() {
   // Running from source would register the bare Electron binary; skip it.
   if (!app.isPackaged) return
-  let wanted = store.get('openAtLogin')
-  if (typeof wanted !== 'boolean') {
-    wanted = true // on by default, first run only
-    store.set('openAtLogin', wanted)
-  }
-  app.setLoginItemSettings({ openAtLogin: wanted })
+  if (store.get('loginItemSet') === true) return
+  app.setLoginItemSettings({ openAtLogin: true })
+  store.set('loginItemSet', true)
+}
+
+function opensAtLogin() {
+  try { return app.getLoginItemSettings().openAtLogin === true } catch { return false }
 }
 
 function toggleLoginItem(on) {
-  store.set('openAtLogin', on)
-  if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: on })
+  if (!app.isPackaged) return
+  app.setLoginItemSettings({ openAtLogin: on })
+  store.set('loginItemSet', true)
 }
 
 // --- Tray and menus -------------------------------------------------------------
@@ -290,7 +410,7 @@ function trayMenu() {
     {
       label: 'Start at login',
       type: 'checkbox',
-      checked: store.get('openAtLogin') !== false,
+      checked: app.isPackaged && opensAtLogin(),
       enabled: app.isPackaged,
       click: (item) => toggleLoginItem(item.checked),
     },
@@ -352,11 +472,20 @@ function startNotifications() {
     onClick: (url) => {
       showWindow()
       const target = portalPathUrl(url, portalOrigin)
-      if (target && win) loadPortal(target)
+      if (!target || !win) return
+      // In place through the portal's router when it is showing and listening;
+      // otherwise (offline page, an older portal) a full load.
+      if (portalCanNavigate && !portalUrlToRetry && isPortalUrl(win.webContents.getURL(), portalOrigin)) {
+        const u = new URL(target)
+        win.webContents.send('campos:navigate', u.pathname + u.search + u.hash)
+      } else {
+        loadPortal(target)
+      }
     },
   })
 
   let state = 'ok'
+  const cursor = cursorFor(store, apiOrigin)
   poller = createPoller({
     // Uses the window's cookies, so it is signed in exactly when the portal is.
     fetchFeed: (after) => {
@@ -369,9 +498,10 @@ function startNotifications() {
         signal: AbortSignal.timeout(15_000),
       })
     },
-    cursor: cursorFor(store, apiOrigin),
+    cursor,
     notify: (item) => notifier.show(item),
     onState: (s) => {
+      if (s !== state) log('feed-state', { state: s })
       state = s
       showStatus(status.report(s))
     },
@@ -393,13 +523,27 @@ function startNotifications() {
   }, 10_000).unref()
 
   // Signing in sets the session cookie on the API host: start right away
-  // instead of waiting out the slow signed-out interval.
+  // instead of waiting out the slow signed-out interval. Signing out (or the
+  // session expiring) removes it: clear what the portal kept on this computer.
   const apiHost = new URL(apiOrigin).hostname
-  session.defaultSession.cookies.on('changed', (_event, cookie, _cause, removed) => {
-    if (removed || state !== 'signed-out') return
+  session.defaultSession.cookies.on('changed', (_event, cookie, cause, removed) => {
     const domain = String(cookie.domain || '').replace(/^\./, '')
-    if (domain === apiHost || apiHost.endsWith('.' + domain)) poller.poke()
+    if (!(domain === apiHost || apiHost.endsWith('.' + domain))) return
+    if (!removed) {
+      if (state === 'signed-out') poller.poke()
+      return
+    }
+    // 'overwrite' is a new sign-in replacing the old cookie, not a sign-out.
+    if (cookie.name === 'token' && cause !== 'overwrite') clearAfterSignOut(cursor)
   })
+}
+
+function clearAfterSignOut(cursor) {
+  log('signed-out-cleanup', {})
+  cursor.reset()
+  const ses = session.defaultSession
+  ses.clearStorageData({ origin: portalOrigin, storages: ['localstorage', 'cachestorage', 'serviceworkers', 'indexdb'] }).catch(() => {})
+  ses.clearCache().catch(() => {})
 }
 
 // Make a stopped poller visible: tray tooltip and menu, the Dock badge on
