@@ -95,12 +95,12 @@
               </button>
             </div>
 
-            <div v-if="confirmDisconnect" role="alertdialog" aria-labelledby="dc-h" class="rounded-lg ring-1 ring-red-200 bg-red-50 px-4 py-3 text-[13px] font-ui">
+            <div v-if="confirmDisconnect" role="alertdialog" aria-labelledby="dc-h" v-alert-focus @keydown.esc.stop="confirmDisconnect = false" class="rounded-lg ring-1 ring-red-200 bg-red-50 px-4 py-3 text-[13px] font-ui">
               <p id="dc-h" class="font-semibold text-gray-900">Disconnect RingCentral?</p>
               <p class="mt-1 text-gray-700">The server's access is revoked and its stored tokens are deleted. Calls, numbers and settings in RingCentral are not affected. You can connect again at any time.</p>
               <div class="mt-3 flex gap-2">
                 <button type="button" @click="disconnectNow" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg bg-brand-red text-white font-semibold disabled:opacity-50">Disconnect</button>
-                <button type="button" @click="confirmDisconnect = false" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-white">Cancel</button>
+                <button type="button" data-autofocus @click="confirmDisconnect = false" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-white">Cancel</button>
               </div>
             </div>
           </div>
@@ -147,12 +147,12 @@
                 <FaIcon name="xmark" />Remove
               </button>
             </div>
-            <div v-if="confirmRemoveEvents" role="alertdialog" aria-labelledby="re-h" class="rounded-lg ring-1 ring-red-200 bg-red-50 px-4 py-3">
+            <div v-if="confirmRemoveEvents" role="alertdialog" aria-labelledby="re-h" v-alert-focus @keydown.esc.stop="confirmRemoveEvents = false" class="rounded-lg ring-1 ring-red-200 bg-red-50 px-4 py-3">
               <p id="re-h" class="font-semibold text-gray-900">Stop live call events?</p>
               <p class="mt-1 text-gray-700">The subscription is deleted in RingCentral. Events already received stay with their calls; new calls are classified from the call log only.</p>
               <div class="mt-3 flex gap-2">
                 <button type="button" @click="removeEvents" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg bg-brand-red text-white font-semibold disabled:opacity-50">Remove</button>
-                <button type="button" @click="confirmRemoveEvents = false" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-white">Cancel</button>
+                <button type="button" data-autofocus @click="confirmRemoveEvents = false" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-white">Cancel</button>
               </div>
             </div>
           </div>
@@ -170,6 +170,7 @@ import { useApi } from '../../composables/useApi.js'
 import SectionLinks from '../../components/portal/SectionLinks.vue'
 import ChangePasswordModal from '../../components/messages/ChangePasswordModal.vue'
 import FaIcon from '../../components/FaIcon.vue'
+import { vAlertFocus } from '../../directives/alertFocus.js'
 
 const route = useRoute()
 const router = useRouter()

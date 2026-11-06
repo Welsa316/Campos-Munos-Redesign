@@ -22,26 +22,31 @@
         </div>
 
         <div class="px-6">
-          <div class="inline-flex w-full bg-brand-surface rounded-xl p-1" role="tablist" aria-label="Picture style">
-            <button v-for="t in TABS" :key="t.key" type="button" role="tab" :aria-selected="tab === t.key" @click="tab = t.key"
+          <div class="inline-flex w-full bg-brand-surface rounded-xl p-1" role="tablist" aria-label="Picture style" @keydown="rovingKeydown">
+            <button v-for="t in TABS" :key="t.key" :id="`avatar-tab-${t.key}`" type="button" role="tab" :aria-selected="tab === t.key"
+              aria-controls="avatar-panel" :tabindex="tab === t.key ? 0 : -1" @click="tab = t.key"
               :class="tab === t.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-800'"
               class="flex-1 py-1.5 rounded-lg text-[13px] font-semibold transition-colors">{{ t.label }}</button>
           </div>
         </div>
 
         <div class="flex-1 overflow-y-auto px-6 py-4">
-          <div v-if="tab === 'fluent'" class="grid grid-cols-4 sm:grid-cols-8 gap-2" role="radiogroup" aria-label="3D animals">
-            <button v-for="a in FLUENT_AVATARS" :key="a.key" type="button" role="radio"
+          <!-- Each group is one Tab stop; the arrow keys pick inside it. -->
+          <div id="avatar-panel" role="tabpanel" :aria-labelledby="`avatar-tab-${tab}`">
+          <div v-if="tab === 'fluent'" class="grid grid-cols-4 sm:grid-cols-8 gap-2" role="radiogroup" aria-label="3D animals" @keydown="rovingKeydown">
+            <button v-for="(a, i) in FLUENT_AVATARS" :key="a.key" type="button" role="radio"
               :aria-checked="isPicked('fluent', a.key)" :aria-label="a.label" :title="a.label"
+              :tabindex="rovingTabindex(isPicked('fluent', a.key), i, draft.kind === 'fluent')"
               @click="pick('fluent', a.key)"
               :class="isPicked('fluent', a.key) ? 'ring-2 ring-brand-navy bg-brand-surface' : 'hover:bg-brand-surface'"
               class="aspect-square rounded-2xl flex items-center justify-center transition-colors">
               <img :src="fluentSrc(a.key)" alt="" class="w-[78%] h-[78%]" draggable="false" />
             </button>
           </div>
-          <div v-else class="grid grid-cols-6 sm:grid-cols-8 gap-2" role="radiogroup" aria-label="Emoji">
-            <button v-for="e in EMOJI_AVATARS" :key="e" type="button" role="radio"
+          <div v-else class="grid grid-cols-6 sm:grid-cols-8 gap-2" role="radiogroup" aria-label="Emoji" @keydown="rovingKeydown">
+            <button v-for="(e, i) in EMOJI_AVATARS" :key="e" type="button" role="radio"
               :aria-checked="isPicked('emoji', e)" :aria-label="e"
+              :tabindex="rovingTabindex(isPicked('emoji', e), i, draft.kind === 'emoji')"
               @click="pick('emoji', e)"
               :class="isPicked('emoji', e) ? 'ring-2 ring-brand-navy bg-brand-surface' : 'hover:bg-brand-surface'"
               class="aspect-square rounded-2xl flex items-center justify-center text-[26px] leading-none transition-colors">
@@ -49,11 +54,13 @@
             </button>
           </div>
           <p v-if="tab === 'emoji'" class="text-[11px] text-gray-500 mt-3">Emoji are drawn by each computer, so they look slightly different on a Mac and on Windows.</p>
+          </div>
 
           <p class="text-[12px] font-semibold text-gray-700 mt-5 mb-2">Background</p>
-          <div class="flex flex-wrap gap-2.5" role="radiogroup" aria-label="Background colour">
-            <button v-for="c in AVATAR_COLORS" :key="c.key" type="button" role="radio"
+          <div class="flex flex-wrap gap-2.5" role="radiogroup" aria-label="Background colour" @keydown="rovingKeydown">
+            <button v-for="(c, i) in AVATAR_COLORS" :key="c.key" type="button" role="radio"
               :aria-checked="draft.bg === c.key" :aria-label="c.label" :title="c.label"
+              :tabindex="rovingTabindex(draft.bg === c.key, i, AVATAR_COLORS.some((x) => x.key === draft.bg))"
               @click="draft = { ...draft, bg: c.key }"
               :style="{ backgroundColor: c.hex }"
               :class="draft.bg === c.key ? 'ring-2 ring-offset-2 ring-brand-navy' : 'ring-1 ring-black/5'"
@@ -81,6 +88,7 @@ import { ref, watch, nextTick } from 'vue'
 import { rawFetch, goToLogin } from '../composables/useApi.js'
 import { FLUENT_AVATARS, EMOJI_AVATARS, AVATAR_COLORS, fluentSrc } from '../data/avatars.js'
 import UserAvatar from './UserAvatar.vue'
+import { rovingKeydown, rovingTabindex } from '../utils/roving.js'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -120,7 +128,7 @@ const close = () => emit('close')
 
 function trapFocus(e) {
   if (!overlayRef.value) return
-  const focusable = overlayRef.value.querySelectorAll('button:not([disabled])')
+  const focusable = overlayRef.value.querySelectorAll('button:not([disabled]):not([tabindex="-1"])')
   if (!focusable.length) return
   const first = focusable[0]
   const last = focusable[focusable.length - 1]

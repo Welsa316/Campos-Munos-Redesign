@@ -3,6 +3,8 @@ import { useAuth } from '../composables/useAuth.js'
 import { routes } from './routes.js'
 import { reloadForStaleBuild, clearStaleBuildMark } from './staleBuild.js'
 import { prefetchSections } from './prefetch.js'
+import { nextTick } from 'vue'
+import { movesFocus, focusMainHeading } from '../utils/routeFocus.js'
 
 const BRAND = 'Campos Muños Law'
 
@@ -48,11 +50,13 @@ router.onError((err, to) => {
   reloadForStaleBuild(err, router.resolve(to.fullPath).href, { storage: window.sessionStorage, assign: (href) => window.location.assign(href) })
 })
 
-router.afterEach((to, _from, failure) => {
+router.afterEach((to, from, failure) => {
   if (typeof document === 'undefined') return
   if (!failure) clearStaleBuildMark(window.sessionStorage)
   // Views that own a live title (the inbox's unread count) set their own.
   if (to.meta?.title) document.title = `${to.meta.title} | ${BRAND}`
+  // A new section: focus its heading once it has rendered (routeFocus.js).
+  if (!failure && movesFocus(to, from)) nextTick(() => focusMainHeading())
   // Signed in: fetch the other sections' code while the browser is idle.
   const { isAuthenticated, canAny } = useAuth()
   if (!failure && isAuthenticated.value) prefetchSections(routes, (meta) => canAny(...[].concat(meta.capability)))

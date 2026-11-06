@@ -114,13 +114,14 @@
               </div>
 
               <!-- Confirming a role change -->
-              <div v-if="pending?.id === a.id && pending.kind === 'role'" role="alertdialog" :aria-labelledby="`cr-${a.id}`"
+              <div v-if="pending?.id === a.id && pending.kind === 'role'" role="alertdialog" :aria-labelledby="`cr-${a.id}`" v-alert-focus
+                @keydown.esc.stop="pending = null"
                 class="mx-4 sm:mx-5 mb-4 rounded-lg ring-1 ring-brand-navy/20 bg-brand-surface px-4 py-3 text-[13px]">
                 <p :id="`cr-${a.id}`" class="font-semibold text-gray-900">Make {{ nameOf(a) }} {{ roleLabel(pending.role) }}?</p>
                 <p class="mt-1 text-gray-700">{{ roleSummary(pending.role) }} It applies on their next click; any permission changes made for them stay.</p>
                 <div class="mt-3 flex gap-2">
                   <button type="button" @click="confirmRole(a)" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg bg-brand-navy text-white font-semibold disabled:opacity-50">Change role</button>
-                  <button type="button" @click="pending = null" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-white">Cancel</button>
+                  <button type="button" data-autofocus @click="pending = null" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-white">Cancel</button>
                 </div>
               </div>
 
@@ -176,13 +177,14 @@
                   <p class="text-[11px] text-gray-500 max-w-md pb-2">{{ extensions.length ? 'Calls offered to this extension show under this person’s name in Calls. RingCentral’s own name for it stays in each call’s details.' : 'The extension list appears after the next call import from RingCentral.' }}</p>
                 </div>
 
-                <div v-if="pending?.id === a.id && pending.kind !== 'role'" role="alertdialog" :aria-labelledby="`cf-${a.id}`"
+                <div v-if="pending?.id === a.id && pending.kind !== 'role'" role="alertdialog" :aria-labelledby="`cf-${a.id}`" v-alert-focus
+                  @keydown.esc.stop="pending = null"
                   class="rounded-lg ring-1 ring-red-200 bg-red-50 px-4 py-3 text-[13px]">
                   <p :id="`cf-${a.id}`" class="font-semibold text-gray-900">{{ CONFIRM[pending.kind].title(nameOf(a)) }}</p>
                   <p class="mt-1 text-gray-700">{{ CONFIRM[pending.kind].body }}</p>
                   <div class="mt-3 flex gap-2">
                     <button type="button" @click="run(a, pending.kind)" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg bg-brand-red text-white font-semibold disabled:opacity-50">{{ CONFIRM[pending.kind].action }}</button>
-                    <button type="button" @click="pending = null" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-white">Cancel</button>
+                    <button type="button" data-autofocus @click="pending = null" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-white">Cancel</button>
                   </div>
                 </div>
 
@@ -225,6 +227,7 @@ import { useAuth } from '../../composables/useAuth.js'
 import PortalHeader from '../../components/portal/PortalHeader.vue'
 import UserAvatar from '../../components/UserAvatar.vue'
 import FaIcon from '../../components/FaIcon.vue'
+import { vAlertFocus } from '../../directives/alertFocus.js'
 
 const { get, post, put } = useApi()
 const { adminEmail } = useAuth()

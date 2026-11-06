@@ -14,7 +14,7 @@
       <button type="button" @click="reload" class="font-semibold underline">Reload</button>
     </template>
   </div>
-  <main id="main">
+  <main id="main" tabindex="-1">
     <!-- The sections staff move between stay alive, so going back to one
          shows it at once while it refreshes in the background. Signing out
          empties the cache, so the next account never sees the last one's. -->

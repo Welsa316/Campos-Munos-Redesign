@@ -153,8 +153,10 @@
             <p v-if="actionError" role="alert" class="mt-2 text-xs font-ui text-brand-red">{{ actionError }}</p>
           </div>
 
-          <!-- Messages -->
-          <div ref="threadEl" class="flex-1 overflow-y-auto px-5 sm:px-6 py-5 space-y-4" aria-live="polite">
+          <!-- Messages. Not a live region (it would read the whole thread out
+               on every refresh); a client's new message is announced below. -->
+          <p class="sr-only" role="status">{{ arrivalNote }}</p>
+          <div ref="threadEl" class="flex-1 overflow-y-auto px-5 sm:px-6 py-5 space-y-4">
             <p v-if="!detail.messages.length" class="text-center text-sm text-gray-500 font-ui">No messages yet.</p>
             <div v-for="m in detail.messages" :key="m.key" :class="m.direction === 'out' ? 'flex justify-end' : ''">
               <div class="max-w-[85%] sm:max-w-[70%]">
@@ -284,6 +286,8 @@ const noteDraft = ref('')
 const draft = ref('')
 const sendError = ref('')
 const threadEl = ref(null)
+// "New message from …" for screen readers when the open thread gets one.
+const arrivalNote = ref('')
 const showChangePassword = ref(false)
 // One key per message being written: a retried or double-clicked send is
 // recognised by the server and goes out once.
@@ -317,7 +321,10 @@ async function loadDetail({ silent = false, scroll = false } = {}) {
   try {
     const d = await get(`/api/whatsapp/conversations/${id}`)
     if (selectedId.value !== id) return // moved on while this loaded
-    const grew = !detail.value || detail.value.id !== d.id || detail.value.messages.length !== d.messages.length
+    const sameThread = detail.value?.id === d.id
+    const grew = !detail.value || !sameThread || detail.value.messages.length !== d.messages.length
+    const last = d.messages[d.messages.length - 1]
+    if (sameThread && grew && last?.direction === 'in') arrivalNote.value = `New message from ${title.value || 'the client'}`
     detail.value = d
     if (scroll || grew) { await nextTick(); threadEl.value?.scrollTo({ top: threadEl.value.scrollHeight }) }
   } catch (err) {
@@ -336,6 +343,7 @@ function select(id) {
   }
   selectedId.value = id
   detail.value = null
+  arrivalNote.value = ''
   router.replace({ name: 'WhatsApp', params: { id } })
   loadDetail({ scroll: true })
 }

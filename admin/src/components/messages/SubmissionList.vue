@@ -15,28 +15,36 @@
       </div>
 
       <!-- View toggle: Inbox / Archived -->
-      <div class="flex bg-brand-surface rounded-lg p-0.5 mb-3">
+      <div class="flex bg-brand-surface rounded-lg p-0.5 mb-3" role="group" aria-label="Folder">
         <button
+          type="button"
           @click="$emit('changeView', 'inbox')"
+          :aria-pressed="viewMode === 'inbox'"
           :class="viewMode === 'inbox' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
           class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-all"
         >Inbox</button>
         <button
+          type="button"
           @click="$emit('changeView', 'archived')"
+          :aria-pressed="viewMode === 'archived'"
           :class="viewMode === 'archived' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
           class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-all"
         >Archived</button>
       </div>
 
       <!-- Filter toggle (only in inbox view) -->
-      <div v-if="viewMode === 'inbox'" class="flex bg-brand-surface rounded-lg p-0.5">
+      <div v-if="viewMode === 'inbox'" class="flex bg-brand-surface rounded-lg p-0.5" role="group" aria-label="Read state">
         <button
+          type="button"
           @click="filter = 'all'"
+          :aria-pressed="filter === 'all'"
           :class="filter === 'all' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
           class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-all"
         >All</button>
         <button
+          type="button"
           @click="filter = 'unread'"
+          :aria-pressed="filter === 'unread'"
           :class="filter === 'unread' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
           class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-all"
         >Unread</button>
@@ -72,15 +80,18 @@
 
       <!-- Pipeline at a glance: counts come from what's loaded, and clicking
            one narrows the list to that stage. -->
-      <div class="mt-3 flex flex-wrap gap-1.5">
+      <div class="mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Status">
         <button
+          type="button"
           @click="statusFilter = ''"
+          :aria-pressed="statusFilter === ''"
           :class="statusFilter === '' ? 'bg-brand-navy text-white ring-brand-navy' : 'bg-brand-surface text-gray-600 ring-transparent hover:text-gray-900'"
           class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap transition-colors"
         >All {{ props.submissions.length }}</button>
         <button
           v-for="st in LEAD_STATUSES"
           :key="st.key"
+          type="button"
           @click="statusFilter = statusFilter === st.key ? '' : st.key"
           :title="st.hint"
           :aria-pressed="statusFilter === st.key"
@@ -108,7 +119,9 @@
         ]"
       >
       <button
+        type="button"
         @click="$emit('select', sub.id)"
+        :aria-current="sub.id === selectedId ? 'true' : undefined"
         class="w-full text-left px-5 pt-4 pb-2"
       >
         <div class="flex items-start gap-3">
@@ -119,7 +132,8 @@
           <div class="flex-1 min-w-0">
             <div class="flex items-baseline justify-between gap-2 mb-1">
               <span :class="['font-ui text-sm truncate flex items-center gap-1.5', sub.is_read ? 'text-gray-700' : 'text-gray-900 font-semibold']">
-                <i v-if="sub.source === 'chat'" class="fa-solid fa-comment-dots text-brand-navy/60 text-[10px] flex-shrink-0" title="Chat session"></i>
+                <i v-if="sub.source === 'chat'" class="fa-solid fa-comment-dots text-brand-navy/60 text-[10px] flex-shrink-0" title="Chat session" aria-hidden="true"></i>
+                <span v-if="sub.source === 'chat'" class="sr-only">Chat session: </span>
                 <span class="truncate">{{ sub.first_name }} {{ sub.last_name }}</span>
               </span>
               <span class="text-xs text-gray-500 font-ui flex-shrink-0">

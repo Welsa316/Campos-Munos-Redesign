@@ -9,15 +9,21 @@
       <div class="flex items-center gap-3 sm:gap-4 min-w-0">
         <img src="/logo.png" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
         <div class="w-px h-8 bg-gray-200 hidden sm:block" aria-hidden="true"></div>
-        <h1 class="font-heading text-lg text-brand-navy tracking-tight hidden xl:block whitespace-nowrap">Client Messages</h1>
-        <div class="flex bg-brand-surface rounded-lg p-0.5 sm:ml-1">
+        <!-- Always in the document (announced, and focused after a move here);
+             shown from 1280px. -->
+        <h1 class="font-heading text-lg text-brand-navy tracking-tight sr-only xl:not-sr-only whitespace-nowrap">Client Messages</h1>
+        <div class="flex bg-brand-surface rounded-lg p-0.5 sm:ml-1" role="group" aria-label="Show">
           <button
+            type="button"
             @click="changeView('inbox')"
+            :aria-pressed="viewMode === 'inbox'"
             :class="viewMode === 'inbox' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
             class="text-xs font-ui font-medium px-3 py-1.5 rounded-md transition-all"
           >Inbox</button>
           <button
+            type="button"
             @click="changeView('contacts')"
+            :aria-pressed="viewMode === 'contacts'"
             :class="viewMode === 'contacts' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
             class="text-xs font-ui font-medium px-3 py-1.5 rounded-md transition-all"
           >Contacts</button>
@@ -87,12 +93,16 @@
       <button type="button" @click="inboxNotice = ''" class="font-semibold underline">Dismiss</button>
     </p>
 
+    <!-- Always mounted, so screen readers hear the change (a region inserted
+         with its text already in it is often not announced). -->
+    <p class="sr-only" role="status">{{ listStatus }}</p>
+
     <!-- Full-screen loading/error only when there's nothing to show yet. A manual
          refresh or view switch with data already loaded updates in place instead
          of tearing down the open conversation + reply draft. -->
     <div v-if="loadingList && submissions.length === 0" class="flex-1 flex items-center justify-center">
       <div class="text-center">
-        <i class="fa-solid fa-spinner fa-spin text-2xl text-brand-navy mb-3"></i>
+        <i class="fa-solid fa-spinner fa-spin text-2xl text-brand-navy mb-3" aria-hidden="true"></i>
         <p class="text-gray-500 text-sm font-ui">Loading messages...</p>
       </div>
     </div>
@@ -100,7 +110,7 @@
     <!-- Error state -->
     <div v-else-if="listError && submissions.length === 0" class="flex-1 flex items-center justify-center">
       <div class="text-center">
-        <i class="fa-solid fa-exclamation-triangle text-2xl text-brand-red mb-3"></i>
+        <i class="fa-solid fa-exclamation-triangle text-2xl text-brand-red mb-3" aria-hidden="true"></i>
         <p class="text-gray-500 text-sm font-ui mb-4">Failed to load messages</p>
         <button @click="fetchSubmissions" class="text-brand-navy text-sm font-ui font-medium hover:underline">
           Try again
@@ -230,6 +240,11 @@ const listRef = ref(null)
 const notesRequestedFor = ref(null)
 
 const unreadCount = computed(() => submissions.value.filter(s => !s.is_read).length)
+const listStatus = computed(() => {
+  if (submissions.value.length) return ''
+  if (loadingList.value) return 'Loading messages…'
+  return listError.value ? 'Failed to load messages.' : ''
+})
 
 // --- Live inbox -------------------------------------------------------------
 // The inbox refreshes itself so a new inquiry appears without anyone pressing

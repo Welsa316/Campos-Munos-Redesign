@@ -47,7 +47,7 @@
             class="w-full bg-brand-navy text-white font-ui font-semibold tracking-wider text-sm py-4 rounded-xl btn-magnetic disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span v-if="loading">
-              <i class="fa-solid fa-spinner fa-spin mr-2"></i>Signing in...
+              <i class="fa-solid fa-spinner fa-spin mr-2" aria-hidden="true"></i>Signing in...
             </span>
             <span v-else>Sign In</span>
           </button>

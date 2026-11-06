@@ -13,14 +13,16 @@
 
         <!-- Archived leads are a separate book, not a sub-set of the live one:
              mixing them in made a closed lead look like work still to do. -->
-        <div class="flex bg-brand-surface rounded-lg p-0.5">
+        <div class="flex bg-brand-surface rounded-lg p-0.5" role="group" aria-label="Show">
           <button
+            type="button"
             @click="$emit('changeArchived', false)"
             :aria-pressed="!archivedView"
             :class="!archivedView ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
             class="text-xs font-ui font-medium px-3 py-1.5 rounded-md whitespace-nowrap transition-all"
           >Active</button>
           <button
+            type="button"
             @click="$emit('changeArchived', true)"
             :aria-pressed="archivedView"
             :class="archivedView ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
@@ -40,15 +42,18 @@
         </div>
       </div>
 
-      <div class="flex flex-wrap gap-1.5">
+      <div class="flex flex-wrap gap-1.5" role="group" aria-label="Status">
         <button
+          type="button"
           @click="statusFilter = ''"
+          :aria-pressed="statusFilter === ''"
           :class="statusFilter === '' ? 'bg-brand-navy text-white ring-brand-navy' : 'bg-brand-surface text-gray-600 ring-transparent hover:text-gray-900'"
           class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap transition-colors"
         >All {{ contacts.length }}</button>
         <button
           v-for="st in LEAD_STATUSES"
           :key="st.key"
+          type="button"
           @click="statusFilter = statusFilter === st.key ? '' : st.key"
           :title="st.hint"
           :aria-pressed="statusFilter === st.key"
@@ -68,8 +73,9 @@
         <thead class="sticky top-0 bg-white z-10">
           <tr class="border-b border-gray-200">
             <th v-for="col in COLUMNS" :key="col.key" scope="col"
+              :aria-sort="col.sortable ? (sortKey === col.key ? (sortAsc ? 'ascending' : 'descending') : 'none') : undefined"
               class="px-4 py-2.5 text-[10px] font-ui font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">
-              <button v-if="col.sortable" @click="toggleSort(col.key)" class="inline-flex items-center gap-1 hover:text-gray-800">
+              <button v-if="col.sortable" type="button" @click="toggleSort(col.key)" class="inline-flex items-center gap-1 hover:text-gray-800">
                 {{ col.label }}
                 <i v-if="sortKey === col.key" :class="sortAsc ? 'fa-chevron-up' : 'fa-chevron-down'" class="fa-solid text-[8px]" aria-hidden="true"></i>
               </button>
@@ -87,7 +93,7 @@
             <td class="px-4 py-3 align-top">
               <!-- The name opens the lead from the keyboard too; the row click is a mouse convenience. -->
               <button type="button" @click.stop="$emit('select', c.id)" class="font-ui text-sm text-gray-900 font-medium whitespace-nowrap text-left hover:underline">{{ c.first_name }} {{ c.last_name }}</button>
-              <span v-if="!c.is_read" class="ml-2 inline-block w-1.5 h-1.5 rounded-full bg-brand-red align-middle" title="Unread"><span class="sr-only">Unread</span></span>
+              <span v-if="!c.is_read" class="ml-2 inline-block w-1.5 h-1.5 rounded-full bg-brand-red align-middle" title="Unread" aria-hidden="true"></span><span v-if="!c.is_read" class="sr-only">Unread</span>
             </td>
             <td class="px-4 py-3 align-top whitespace-nowrap">
               <a :href="telHref(c.phone)" @click.stop class="block text-xs text-brand-navy hover:underline">{{ formatPhone(c.phone) }}</a>
@@ -130,7 +136,7 @@
             </td>
             <td class="px-4 py-3 align-top max-w-[280px]">
               <p v-if="c.latest_note" class="text-[11px] text-gray-600 font-ui leading-snug line-clamp-2">{{ c.latest_note }}</p>
-              <p v-else class="text-[11px] text-gray-300 font-ui italic">—</p>
+              <p v-else class="text-[11px] text-gray-500 font-ui"><span aria-hidden="true">—</span><span class="sr-only">No note</span></p>
             </td>
             <td class="px-4 py-3 align-top text-[11px] text-gray-500 font-ui whitespace-nowrap">
               {{ shortDate(c.created_at) }}

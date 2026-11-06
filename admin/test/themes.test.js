@@ -22,7 +22,8 @@ const UI = 3
 const PAIRS = [
   ['text-primary', ['surface', 'surface-elevated', 'app-bg', 'content-bg', 'surface-subtle', 'surface-hover', 'surface-selected', 'input-bg'], TEXT],
   ['text-secondary', ['surface', 'surface-elevated', 'app-bg', 'content-bg', 'surface-subtle', 'surface-hover', 'input-bg'], TEXT],
-  ['text-muted', ['surface', 'app-bg', 'content-bg', 'surface-subtle'], TEXT],
+  // Muted text is also every field's placeholder (on input-bg).
+  ['text-muted', ['surface', 'app-bg', 'content-bg', 'surface-subtle', 'input-bg'], TEXT],
   ['text-link', ['surface', 'app-bg', 'content-bg', 'surface-subtle', 'primary-soft'], TEXT],
   ['text-on-primary', ['primary', 'primary-hover', 'success-solid', 'warning-solid', 'danger-solid', 'danger-solid-hover', 'info-solid', 'inverse-bg'], TEXT],
   ['text-on-sidebar', ['sidebar-bg', 'sidebar-hover', 'sidebar-active'], TEXT],

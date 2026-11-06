@@ -25,7 +25,7 @@
     <ChangePasswordModal :visible="showChangePassword" @close="showChangePassword = false" />
 
     <div class="flex-1 overflow-y-auto overflow-x-hidden">
-      <main class="min-h-full relative max-w-[1120px] mx-auto px-4 sm:px-8 pt-6 sm:pt-10 pb-10 flex flex-col gap-4 sm:gap-5 font-ui">
+      <div class="min-h-full relative max-w-[1120px] mx-auto px-4 sm:px-8 pt-6 sm:pt-10 pb-10 flex flex-col gap-4 sm:gap-5 font-ui">
         <!-- Greeting, top left, no card. The words rise in letter by letter
              (SplitText); the picture and role line settle in around them. -->
         <div class="flex items-start justify-between gap-4 px-1">
@@ -111,7 +111,7 @@
           <span class="text-xs text-gray-400" aria-hidden="true">✦</span>
           <span class="text-gray-500">Staff portal</span>
         </footer>
-      </main>
+      </div>
     </div>
   </div>
 </template>

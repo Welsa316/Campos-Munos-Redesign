@@ -134,7 +134,7 @@
           <section>
             <h3 class="text-[10px] uppercase tracking-[0.1em] text-gray-500 font-semibold mb-2">monday.com</h3>
             <p v-if="!detail.mondayLinks.length" class="text-gray-500">Client not linked yet. <router-link :to="{ name: 'BillingMatching' }" class="text-brand-navy underline">Link it</router-link>.</p>
-            <ul v-else><li v-for="l in detail.mondayLinks" :key="l.external_id" class="text-gray-700">{{ l.external_label || l.external_id }} <span class="text-gray-400">({{ l.method === 'manual' ? 'linked by staff' : 'matched by eImmigration ID' }})</span></li></ul>
+            <ul v-else><li v-for="l in detail.mondayLinks" :key="l.external_id" class="text-gray-700">{{ l.external_label || l.external_id }} <span class="text-gray-500">({{ l.method === 'manual' ? 'linked by staff' : 'matched by eImmigration ID' }})</span></li></ul>
           </section>
 
           <section>

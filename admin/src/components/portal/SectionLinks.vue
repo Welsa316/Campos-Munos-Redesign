@@ -1,6 +1,7 @@
 <template>
   <!-- The portal's other sections, as the same quiet header links each
        section has always used; only the ones this account may open. -->
+  <nav aria-label="Portal sections" class="flex items-center gap-1 lg:gap-2">
   <router-link v-for="s in visible" :key="s.key" :to="s.to"
     :class="[LINK, s.admin && adminLinks.length > 1 ? 'hidden lg:flex' : '']"
     :aria-label="s.label" :title="s.label">
@@ -24,6 +25,7 @@
       </li>
     </ul>
   </details>
+  </nav>
 </template>
 
 <script setup>
