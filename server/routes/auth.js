@@ -1,13 +1,14 @@
 import { Router } from 'express'
 import bcrypt from 'bcrypt'
-import jwt from 'jsonwebtoken'
 import rateLimit from 'express-rate-limit'
 import { body } from 'express-validator'
 import getPool from '../db/pool.js'
 import validate from '../middleware/validate.js'
 import requireAuth from '../middleware/auth.js'
 import { clientKey, sessionCookieOptions } from '../httpSecurity.js'
-import { loadAccount, tokenMatches, profileJson } from '../auth/account.js'
+import { loadAccount, profileJson } from '../auth/account.js'
+import { signSession, verifySession, revokeSession } from '../auth/session.js'
+import { PASSWORD_MAX_BYTES } from '../auth/team.js'
 import { parseAvatar, AVATAR_COLORS } from '../auth/avatars.js'
 import { THEMES } from '../auth/themes.js'
 import { audit } from '../billing/audit.js'
@@ -96,11 +97,7 @@ router.post(
         return res.status(403).json({ error: 'This account is disabled. Ask the office administrator.' })
       }
 
-      const token = jwt.sign(
-        { id: admin.id, email: admin.email, tv: admin.token_version },
-        process.env.JWT_SECRET,
-        { expiresIn: '8h' }
-      )
+      const token = signSession({ id: admin.id, email: admin.email, tokenVersion: admin.token_version })
 
       res.cookie('token', token, cookieOptions())
       res.json(profileJson(account))
@@ -112,12 +109,18 @@ router.post(
 )
 
 router.post('/logout', async (req, res) => {
-  // For the activity log: whose session this was, if it still is one.
+  // The token itself stops working, not just the cookie: a copy taken before
+  // sign-out would otherwise stay valid for the rest of its 8 hours.
   try {
-    const decoded = jwt.verify(req.cookies?.token || '', process.env.JWT_SECRET)
-    const account = await loadAccount(getPool(), decoded.id)
-    if (account && tokenMatches(decoded, account)) req.activityActor = account
-  } catch { /* no session: nothing to attribute */ }
+    const session = await verifySession(getPool(), req.cookies?.token || '')
+    // For the activity log: whose session this was, if it still is one.
+    if (session.ok) {
+      req.activityActor = session.account
+      await revokeSession(getPool(), session.decoded)
+    }
+  } catch (err) {
+    req.log?.error({ err }, 'Logout could not revoke the session')
+  }
   const { maxAge, ...clearOptions } = cookieOptions()
   res.clearCookie('token', clearOptions)
   res.json({ ok: true })
@@ -128,7 +131,10 @@ router.post(
   passwordChangeLimiter,
   requireAuth,
   body('currentPassword').notEmpty().withMessage('Current password is required'),
-  body('newPassword').isLength({ min: 10, max: 200 }).withMessage('New password must be at least 10 characters'),
+  body('newPassword').isLength({ min: 10 }).withMessage('New password must be at least 10 characters'),
+  // bcrypt reads only the first 72 bytes; anything after would be ignored.
+  body('newPassword').custom((v) => Buffer.byteLength(String(v), 'utf8') <= PASSWORD_MAX_BYTES)
+    .withMessage('New password must be at most 72 characters (accented letters count as two)'),
   validate,
   async (req, res) => {
     try {
@@ -161,11 +167,7 @@ router.post(
       )
 
       // Re-issue this session's cookie with the new token_version so the admin stays logged in.
-      const newToken = jwt.sign(
-        { id: adminId, email: updated.rows[0].email, tv: updated.rows[0].token_version },
-        process.env.JWT_SECRET,
-        { expiresIn: '8h' }
-      )
+      const newToken = signSession({ id: adminId, email: updated.rows[0].email, tokenVersion: updated.rows[0].token_version })
       res.cookie('token', newToken, cookieOptions())
 
       res.json({ ok: true })
@@ -222,18 +224,16 @@ router.get('/verify', async (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    // Mirror requireAuth: the account must still exist, be enabled, and the
-    // token version must match, so a password change (which bumps
-    // token_version) invalidates older sessions here too instead of passing
-    // on signature alone.
-    const account = await loadAccount(getPool(), decoded.id)
-    if (!account || account.disabled || !tokenMatches(decoded, account)) {
+    // The same checks as requireAuth (server/auth/session.js), so a password
+    // change or a sign-out ends the session here too instead of passing on
+    // signature alone.
+    const session = await verifySession(getPool(), token)
+    if (!session.ok) {
       return res.status(401).json({ authenticated: false })
     }
     // The portal draws its navigation from these capabilities; the API
     // enforces them on every route regardless.
-    res.json(profileJson(account))
+    res.json(profileJson(session.account))
   } catch {
     return res.status(401).json({ authenticated: false })
   }

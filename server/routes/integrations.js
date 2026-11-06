@@ -14,6 +14,9 @@
 //                                 status, register (or replace), remove
 //                                 (telephonyEvents.js; deliveries arrive at
 //                                 /webhooks/ringcentral)
+//   POST /ringcentral/events/check  ask RingCentral whether the subscription
+//                                 is still active and renew it if it is due;
+//                                 answers with the same status as GET
 //
 // Every route except the callback needs a portal session with
 // integrations.manage (administrators only). The callback is reached by a
@@ -23,11 +26,10 @@
 // httpSecurity.js like every cookie-authenticated write.
 import { Router } from 'express'
 import rateLimit from 'express-rate-limit'
-import jwt from 'jsonwebtoken'
 import getPool from '../db/pool.js'
 import requireAuth from '../middleware/auth.js'
 import requireCapability from '../middleware/requireCapability.js'
-import { loadAccount, tokenMatches } from '../auth/account.js'
+import { verifySession } from '../auth/session.js'
 import { clientKey, sessionCookieOptions } from '../httpSecurity.js'
 import { loadRingCentralConfig } from '../integrations/ringcentral/config.js'
 import {
@@ -47,10 +49,8 @@ async function sessionAccount(req, db, env) {
   const token = req.cookies?.token
   if (!token) return null
   try {
-    const decoded = jwt.verify(token, env.JWT_SECRET || process.env.JWT_SECRET)
-    const account = await loadAccount(db, decoded.id)
-    if (!account || account.disabled || !tokenMatches(decoded, account)) return null
-    return account
+    const session = await verifySession(db, token, env.JWT_SECRET || process.env.JWT_SECRET)
+    return session.ok ? session.account : null
   } catch {
     return null
   }

@@ -57,6 +57,7 @@ function chosenPassword() {
   const given = process.env.STAFF_PASSWORD
   if (given == null) return undefined
   if (given.length < 12) throw new Error('STAFF_PASSWORD must be at least 12 characters')
+  if (Buffer.byteLength(given, 'utf8') > team.PASSWORD_MAX_BYTES) throw new Error('STAFF_PASSWORD must be at most 72 bytes (bcrypt ignores the rest)')
   return given
 }
 
