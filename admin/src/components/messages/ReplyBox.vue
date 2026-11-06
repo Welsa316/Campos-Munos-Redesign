@@ -66,6 +66,11 @@ const { post } = useApi()
 const body = ref('')
 const sending = ref(false)
 const toast = ref(null)
+// One key per reply: a retry after a timeout carries the same key, so the
+// server sends the email once even if the first attempt did get through.
+// A new key once that reply is sent, or its text changes.
+let clientKey = crypto.randomUUID()
+let keyedText = ''
 
 async function sendReply() {
   if (!body.value.trim() || sending.value) return
@@ -73,12 +78,17 @@ async function sendReply() {
   sending.value = true
   toast.value = null
 
+  const text = body.value.trim()
+  if (text !== keyedText) { clientKey = crypto.randomUUID(); keyedText = text }
   try {
     const result = await post(`/api/submissions/${props.submissionId}/reply`, {
-      body: body.value.trim(),
+      body: text,
+      clientKey,
     })
 
     body.value = ''
+    clientKey = crypto.randomUUID()
+    keyedText = ''
     // Pass the result up: it carries the auto-advanced lead status.
     emit('replied', result)
 
@@ -88,7 +98,8 @@ async function sendReply() {
       showToast('Reply sent', 'success')
     }
   } catch {
-    showToast('Failed to send reply. Please try again.', 'warning')
+    // The text stays; sending again reuses the key, so nothing goes out twice.
+    showToast('Could not confirm it was sent. Send again — it will not go out twice.', 'warning')
   } finally {
     sending.value = false
   }

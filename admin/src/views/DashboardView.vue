@@ -196,8 +196,8 @@ const summaries = computed(() => {
       numberTone: 'text-danger-ink-strong',
       subTone: 'text-danger-ink opacity-80',
       value: !m ? '·' : connected ? total : '—',
-      sub: connected
-        ? `Last 30 days · Mon–Fri 9–5${m.missed.voicemail ? ` · ${m.missed.voicemail} went to voicemail` : ''}${m.missed.unconfirmed ? ` · ${m.missed.unconfirmed} not confirmed, not counted` : ''}`
+      sub: m?.error ? COULD_NOT_LOAD : connected
+        ? `Last 30 days · Mon–Fri 9–5${m.missed.voicemail ? ` · ${m.missed.voicemail} went to voicemail` : ''}`
         : m ? 'RingCentral is not connected yet' : 'Last 30 days · Mon–Fri 9–5',
       pill: connected ? (notReturned ? `${notReturned} not called back` : 'All called back') : null,
       pillTone: notReturned ? 'bg-brand-red text-white' : 'bg-white/80 text-danger-ink-strong',
@@ -216,9 +216,9 @@ const summaries = computed(() => {
       arrowTone: 'bg-glass-navy-chip text-glass-navy-ink',
       numberTone: 'text-glass-navy-ink',
       subTone: 'text-glass-navy-ink opacity-70',
-      value: !u ? '·' : u.count >= 200 ? '200+' : u.count,
-      sub: firstName.value ? `Waiting for you, ${firstName.value}` : 'Website and chat inquiries',
-      pill: u ? (u.count ? `Oldest from ${ago(u.oldest)}` : 'All caught up') : null,
+      value: !u ? '·' : u.error ? '—' : u.count >= 200 ? '200+' : u.count,
+      sub: u?.error ? COULD_NOT_LOAD : firstName.value ? `Waiting for you, ${firstName.value}` : 'Website and chat inquiries',
+      pill: u && !u.error ? (u.count ? `Oldest from ${ago(u.oldest)}` : 'All caught up') : null,
       pillTone: 'bg-glass-navy-chip text-glass-navy-ink',
     })
   }
@@ -238,7 +238,7 @@ const summaries = computed(() => {
       numberTone: 'text-danger-ink-strong',
       subTone: 'text-danger-ink opacity-80',
       value: !b ? '·' : imported ? overdue.count : '—',
-      sub: imported
+      sub: b?.error ? COULD_NOT_LOAD : imported
         ? `From the eImmigration report of ${shortDay(b.lastImport.report_date || b.lastImport.applied_at)}`
         : b ? 'No eImmigration report imported yet' : 'From the latest eImmigration report',
       pill: imported && overdue.count ? `${money(overdue.owedCents)} owed` : imported ? 'Nothing overdue' : null,
@@ -256,7 +256,7 @@ const summaries = computed(() => {
       arrowTone: 'bg-glass-navy-chip text-glass-navy-ink',
       numberTone: 'text-glass-navy-ink',
       subTone: 'text-glass-navy-ink opacity-70',
-      value: !b ? '·' : r?.count ?? 0,
+      value: !b ? '·' : b.error ? '—' : r?.count ?? 0,
       sub: 'Payment reminders drafted by the rules',
       pill: r?.count ? `Oldest from ${ago(r.oldest)}` : b ? 'Nothing to approve' : null,
       pillTone: 'bg-glass-navy-chip text-glass-navy-ink',
@@ -323,21 +323,26 @@ const SIZE = {
   sm: { card: 'p-4 sm:p-5 min-h-[180px]', tile: 'w-[48px] h-[48px] rounded-[14px]', icon: 'text-[21px]', eyebrow: 'mt-4', title: 'text-[19px]', text: 'text-[12.5px]' },
 }
 
+// A card whose figures failed to load says so, rather than claiming nothing
+// is connected or imported. Each is tried once more after a few seconds.
+const COULD_NOT_LOAD = 'Could not load these figures. Open the page, or reload to try again.'
+const withRetry = (fn) => fn().catch(() => new Promise((r) => setTimeout(r, 4000)).then(fn))
+
 onMounted(() => {
   if (showsBillingFigures.value) {
-    get('/api/billing/overview').then((d) => { billing.value = d }).catch(() => { billing.value = {} })
+    withRetry(() => get('/api/billing/overview')).then((d) => { billing.value = d }).catch(() => { billing.value = { error: true } })
   }
   if (can('calls.view')) {
-    get(`/api/calls/summary?from=${encodeURIComponent(monthStart.toISOString())}`)
+    withRetry(() => get(`/api/calls/summary?from=${encodeURIComponent(monthStart.toISOString())}`))
       .then((d) => { missed.value = d })
-      .catch(() => { missed.value = { connection: 'unknown' } })
+      .catch(() => { missed.value = { error: true } })
   }
   if (can('crm.view')) {
-    get('/api/submissions?unread=true&limit=200').then((rows) => {
+    withRetry(() => get('/api/submissions?unread=true&limit=200')).then((rows) => {
       const list = Array.isArray(rows) ? rows : []
       // Newest first from the API: the oldest waiting is the last one.
       unread.value = { count: list.length, oldest: list.length ? list[list.length - 1].created_at : null }
-    }).catch(() => { unread.value = null })
+    }).catch(() => { unread.value = { error: true } })
   }
 })
 

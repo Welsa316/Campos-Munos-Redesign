@@ -97,8 +97,15 @@
             <p class="text-gray-500 font-ui text-sm">Select a conversation</p>
           </div>
         </div>
-        <div v-else-if="!detail" class="flex-1 flex items-center justify-center">
-          <p v-if="detailError" class="text-sm font-ui text-gray-600">{{ detailError }}</p>
+        <div v-else-if="!detail" class="flex-1 flex flex-col items-center justify-center gap-3 px-6 text-center">
+          <template v-if="detailError">
+            <p role="alert" class="text-sm font-ui text-gray-600">{{ detailError }}</p>
+            <!-- On a phone the list is hidden while a conversation is open: give a way back. -->
+            <div class="flex gap-4 text-sm font-ui">
+              <button type="button" @click="loadDetail()" class="font-semibold text-brand-navy underline">Try again</button>
+              <button type="button" @click="closeThread" class="font-semibold text-brand-navy underline lg:hidden">Back to conversations</button>
+            </div>
+          </template>
           <FaIcon v-else name="spinner" spin class="text-brand-navy" />
         </div>
 
@@ -227,7 +234,7 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../../composables/useAuth.js'
-import { useApi, rawFetch, goToLogin } from '../../composables/useApi.js'
+import { useApi, rawFetch, goToLogin, latestOnly } from '../../composables/useApi.js'
 import { formatPhone } from '../../utils/phone.js'
 import SectionLinks from '../../components/portal/SectionLinks.vue'
 import FaIcon from '../../components/FaIcon.vue'
@@ -287,10 +294,14 @@ const title = computed(() => {
   return detail.value.clients[0]?.name || detail.value.profileName || waPhone(detail.value.phone)
 })
 
+// A poll that started before a view switch must not repaint the old view.
+const latestConversations = latestOnly()
 async function loadList({ silent = false } = {}) {
   if (!silent) { loadingList.value = true; listError.value = '' }
   try {
-    conversations.value = await get(`/api/whatsapp/conversations?view=${view.value}`)
+    const r = await latestConversations(() => get(`/api/whatsapp/conversations?view=${view.value}`))
+    if (!r.current) return
+    conversations.value = r.value
     listError.value = ''
   } catch (err) {
     if (!silent) listError.value = err.message || 'Could not load conversations'

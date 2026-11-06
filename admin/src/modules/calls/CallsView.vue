@@ -206,7 +206,7 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../../composables/useAuth.js'
-import { useApi } from '../../composables/useApi.js'
+import { useApi, latestOnly } from '../../composables/useApi.js'
 import { formatPhone, telHref } from '../../utils/phone.js'
 import SectionLinks from '../../components/portal/SectionLinks.vue'
 import ChangePasswordModal from '../../components/messages/ChangePasswordModal.vue'
@@ -316,6 +316,7 @@ function rangeBounds(key) {
   return { from: start, to: soon }
 }
 
+const latestCalls = latestOnly()
 async function load({ quiet = false } = {}) {
   if (!quiet) loading.value = true
   error.value = ''
@@ -325,7 +326,10 @@ async function load({ quiet = false } = {}) {
     if (search.value.trim()) params.set('q', search.value.trim())
     if (businessHours.value) params.set('businessHours', '1')
     if (personFilter.value) params.set('person', personFilter.value)
-    const data = await get(`/api/calls?${params}`)
+    // A slow answer for an earlier range, filter or search is dropped.
+    const r = await latestCalls(() => get(`/api/calls?${params}`))
+    if (!r.current) return
+    const data = r.value
     calls.value = data.calls
     people.value = data.people || []
     counts.value = data.counts || {}

@@ -8,7 +8,7 @@
       <div class="flex flex-wrap items-center gap-3 mb-3">
         <h2 class="font-ui font-semibold text-gray-900 text-sm tracking-wide">
           {{ archivedView ? 'Archived' : 'Contacts' }}
-          <span class="ml-1 text-gray-500 font-normal">{{ filtered.length }} of {{ contacts.length }}</span>
+          <span class="ml-1 text-gray-500 font-normal">{{ filtered.length }} of {{ contacts.length }}<template v-if="total != null && total > contacts.length"> loaded, {{ total }} in all</template></span>
         </h2>
 
         <!-- Archived leads are a separate book, not a sub-set of the live one:
@@ -85,8 +85,9 @@
             class="border-b border-gray-50 hover:bg-brand-surface/60 cursor-pointer transition-colors"
           >
             <td class="px-4 py-3 align-top">
-              <span class="font-ui text-sm text-gray-900 font-medium whitespace-nowrap">{{ c.first_name }} {{ c.last_name }}</span>
-              <span v-if="!c.is_read" class="ml-2 inline-block w-1.5 h-1.5 rounded-full bg-brand-red align-middle" title="Unread"></span>
+              <!-- The name opens the lead from the keyboard too; the row click is a mouse convenience. -->
+              <button type="button" @click.stop="$emit('select', c.id)" class="font-ui text-sm text-gray-900 font-medium whitespace-nowrap text-left hover:underline">{{ c.first_name }} {{ c.last_name }}</button>
+              <span v-if="!c.is_read" class="ml-2 inline-block w-1.5 h-1.5 rounded-full bg-brand-red align-middle" title="Unread"><span class="sr-only">Unread</span></span>
             </td>
             <td class="px-4 py-3 align-top whitespace-nowrap">
               <a :href="telHref(c.phone)" @click.stop class="block text-xs text-brand-navy hover:underline">{{ formatPhone(c.phone) }}</a>
@@ -138,6 +139,11 @@
         </tbody>
       </table>
     </div>
+      <!-- More leads exist than are loaded: say so, and load the next page. -->
+    <div v-if="total != null && total > contacts.length" class="px-6 py-3 border-t border-gray-100 flex flex-wrap items-center gap-3 text-xs font-ui text-gray-600 flex-shrink-0" data-load-older>
+      <span>Showing the {{ contacts.length }} most recent of {{ total }}.</span>
+      <button type="button" @click="$emit('loadOlder')" :disabled="loadingOlder" class="font-semibold text-brand-navy underline disabled:opacity-50">{{ loadingOlder ? 'Loading…' : 'Load older' }}</button>
+    </div>
   </div>
 </template>
 
@@ -154,8 +160,11 @@ import { formatPhone, telHref } from '../../utils/phone.js'
 const props = defineProps({
   contacts: { type: Array, default: () => [] },
   archivedView: { type: Boolean, default: false },
+  // How many leads match in all (the list holds the most recent page or pages).
+  total: { type: Number, default: null },
+  loadingOlder: { type: Boolean, default: false },
 })
-const emit = defineEmits(['select', 'setStatus', 'changeArchived'])
+const emit = defineEmits(['select', 'setStatus', 'changeArchived', 'loadOlder'])
 
 
 const COLUMNS = [

@@ -23,6 +23,7 @@
         <h2 id="history-h" class="text-sm font-ui font-semibold text-gray-900">Import history</h2>
       </header>
       <p v-if="loading" class="p-6 text-center text-sm text-gray-500 font-ui">Loading…</p>
+      <LoadError v-else-if="loadFailed" message="Could not load the import history." @retry="load" />
       <p v-else-if="!jobs.length" class="p-6 text-center text-sm text-gray-500 font-ui">No reports imported yet.</p>
       <ul v-else class="divide-y divide-gray-100">
         <li v-for="j in jobs" :key="j.id">
@@ -49,6 +50,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useBillingApi, uploadReport, shortDate, REPORT_TYPE_LABELS } from '../api.js'
 import { can } from '../../../composables/useAuth.js'
+import LoadError from '../../../components/LoadError.vue'
 
 const canImport = can('billing.import')
 
@@ -68,9 +70,11 @@ const dragging = ref(false)
 const uploading = ref(false)
 const uploadError = ref('')
 
+const loadFailed = ref(false)
 async function load() {
   loading.value = true
-  try { jobs.value = await api.imports() } finally { loading.value = false }
+  loadFailed.value = false
+  try { jobs.value = await api.imports() } catch { loadFailed.value = true } finally { loading.value = false }
 }
 
 async function handle(file) {

@@ -192,6 +192,7 @@ const eventsError = ref('')
 const confirmRemoveEvents = ref(false)
 const eventsChip = computed(() => {
   const e = events.value
+  if (!e && eventsError.value) return { label: 'Could not load', tone: 'bg-amber-50 text-amber-800' }
   if (!e?.registered) return { label: 'Not registered', tone: 'bg-gray-100 text-gray-600' }
   if (e.status === 'Active') return { label: 'Receiving', tone: 'bg-emerald-50 text-emerald-800' }
   return { label: e.status || 'Problem', tone: 'bg-amber-50 text-amber-800' }

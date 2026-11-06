@@ -159,7 +159,7 @@
 
 <script setup>
 import FaIcon from '../../../components/FaIcon.vue'
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useBillingApi, shortDate } from '../api.js'
 import { can } from '../../../composables/useAuth.js'
 
@@ -206,6 +206,8 @@ const labels = reactive({})
 const keep = ref([])
 const eimIdColumnId = ref('')
 const savedAt = ref(null)
+// "Saved" describes the mapping as it was saved; any change since makes it untrue.
+watch([boardId, eimIdColumnId, keep, () => ({ ...map }), () => ({ ...labels })], () => { savedAt.value = null }, { deep: true })
 const plan = ref(null)
 const result = ref(null)
 
@@ -268,6 +270,7 @@ async function check() {
 async function save() {
   busy.value = 'save'
   error.value = ''
+  savedAt.value = null
   try {
     const columnMap = {}
     for (const f of FIELDS) {
@@ -304,10 +307,13 @@ async function apply() {
   error.value = ''
   try {
     result.value = await api.syncApply(plan.value.jobId)
-    state.value = await api.monday()
   } catch (err) {
     error.value = err.message
   } finally {
+    // A plan is used once, whatever happened: a timed-out apply may still have
+    // written to monday.com, so the next step is a fresh preview, never a retry.
+    plan.value = null
+    state.value = await api.monday().catch(() => state.value)
     busy.value = ''
   }
 }

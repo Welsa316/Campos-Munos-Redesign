@@ -165,7 +165,7 @@
                   <div>
                     <label :for="`ext-${a.id}`" class="text-[11px] font-semibold text-gray-700">RingCentral extension</label>
                     <select :id="`ext-${a.id}`" :value="a.rcExtensionId || ''" :disabled="Boolean(busy) || !extensions.length"
-                      @change="linkExtension(a, $event.target.value)"
+                      @change="linkExtension(a, $event.target.value, $event)"
                       class="mt-1 block w-64 max-w-full text-sm px-3 py-2 rounded-lg border border-gray-300 bg-white focus:border-brand-navy focus:outline-none disabled:opacity-60">
                       <option value="">Not linked</option>
                       <option v-for="x in extensions" :key="x.id" :value="x.id" :disabled="Boolean(linkedTo(x.id, a))">
@@ -188,6 +188,7 @@
 
                 <fieldset class="rounded-lg ring-1 ring-gray-100 p-4">
                   <legend class="px-1 text-[11px] font-semibold text-gray-700">What {{ nameOf(a) }} can do</legend>
+                  <p v-if="capStatus.id === a.id" :role="capStatus.ok ? 'status' : 'alert'" :class="capStatus.ok ? 'text-green-700' : 'text-brand-red'" class="text-[11px] font-semibold">{{ capStatus.text }}</p>
                   <p class="text-[11px] text-gray-500">Ticked boxes come from the role unless marked. Untick to take one permission away from this person only; tick to add one.</p>
                   <div class="mt-3 grid grid-cols-[minmax(0,1fr)] md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-4">
                     <div v-for="g in capabilityGroups" :key="g.label">
@@ -195,7 +196,7 @@
                     <label v-for="c in g.items" :key="c.key" class="flex items-start gap-2.5 py-1 text-xs"
                       :class="lockedCap(a, c) ? 'cursor-not-allowed' : 'cursor-pointer'">
                       <input type="checkbox" class="mt-0.5 w-3.5 h-3.5 accent-brand-navy flex-shrink-0" :checked="a.capabilities.includes(c.key)"
-                        :disabled="lockedCap(a, c) || Boolean(busy)" @change="toggleCap(a, c)" />
+                        :disabled="lockedCap(a, c) || Boolean(busy)" @change="toggleCap(a, c, $event)" />
                       <span class="min-w-0">
                         <span class="text-gray-900">{{ c.description }}</span>
                         <span v-if="a.grants.includes(c.key)" class="ml-1 text-[10px] font-semibold text-green-800 bg-green-100 px-1.5 py-0.5 rounded">Added</span>
@@ -369,21 +370,29 @@ async function run(a, kind) {
   else { replace(out); saved.value = 'Saved' }
 }
 
-async function toggleCap(a, c) {
+async function toggleCap(a, c, event) {
   const has = a.capabilities.includes(c.key)
   // Back to the role's default when that gives the wanted result.
   const state = has ? (a.grants.includes(c.key) ? 'default' : 'revoke') : (a.revokes.includes(c.key) ? 'default' : 'grant')
   const out = await act('cap', () => put(`/api/team/${a.id}/capabilities/${c.key}`, { state }))
-  if (out) { replace(out); saved.value = 'Permission saved' }
+  if (out) { replace(out); saved.value = 'Permission saved'; capStatus.value = { id: a.id, ok: true, text: 'Saved' } }
+  else {
+    // The box was ticked by the click itself; Vue has nothing new to draw, so put it back by hand.
+    if (event?.target) event.target.checked = has
+    capStatus.value = { id: a.id, ok: false, text: `Not saved: ${error.value}` }
+  }
 }
+// What happened to the last permission change, shown inside that person's box.
+const capStatus = ref({ id: null, ok: true, text: '' })
 
 function startRename(a) { renaming.value = a.id; nameDraft.value = a.displayName || '' }
 // RingCentral's people extensions; each can be linked to one account.
 const extensions = ref([])
 const linkedTo = (extId, self) => accounts.value.find((x) => x.id !== self.id && x.rcExtensionId === extId) || null
-async function linkExtension(a, extId) {
+async function linkExtension(a, extId, event) {
   const out = await act('extension', () => put(`/api/team/${a.id}/extension`, { extensionId: extId || null }))
   if (out) { replace(out); saved.value = extId ? `Linked ${nameOf(a)} to their RingCentral extension` : `Unlinked ${nameOf(a)} from RingCentral` }
+  else if (event?.target) event.target.value = a.rcExtensionId || ''
 }
 
 async function rename(a) {

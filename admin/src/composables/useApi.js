@@ -5,6 +5,8 @@
 // is host-only on the API and SameSite=Lax: admin.camulaw.com and
 // api.camulaw.com are the same *site*, so the browser sends it, while a page on
 // any other site cannot ride on it.
+import { sessionExpired } from './appStatus.js'
+
 export const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '')
 
 /** Where the router lives, so redirects work under '/' and under '/admin/'. */
@@ -25,13 +27,28 @@ export async function rawFetch(path, options = {}) {
   })
 }
 
+/**
+ * The session ended (a 401). No reload: a reload would throw away a reply
+ * someone was typing. The banner in App.vue offers to sign in again and come
+ * back to this screen; requests stop until then.
+ */
 function goToLogin() {
   if (typeof window === 'undefined') return
-  if (window.location.pathname !== LOGIN_PATH) window.location.href = LOGIN_PATH
+  if (window.location.pathname !== LOGIN_PATH) sessionExpired.value = true
 }
+
+/** Where to sign in so the person comes back to this screen afterwards. */
+export function loginHref() {
+  if (typeof window === 'undefined') return LOGIN_PATH
+  const here = window.location.pathname.slice(import.meta.env.BASE_URL.length - 1) + window.location.search
+  return here && here !== '/' ? `${LOGIN_PATH}?next=${encodeURIComponent(here)}` : LOGIN_PATH
+}
+
+export { latestOnly } from '../utils/latestOnly.js'
 
 export function useApi() {
   async function apiFetch(path, options = {}) {
+    if (sessionExpired.value) throw new Error('Your session has ended. Sign in again.')
     const res = await rawFetch(path, options)
 
     if (res.status === 401) {

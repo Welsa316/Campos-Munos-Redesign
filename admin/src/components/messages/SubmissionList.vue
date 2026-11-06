@@ -190,6 +190,11 @@
       </div>
       </div>
     </div>
+      <!-- More leads exist than are loaded: say so, and load the next page. -->
+    <div v-if="total != null && total > submissions.length" class="px-6 py-3 border-t border-gray-100 flex flex-wrap items-center gap-3 text-xs font-ui text-gray-600 flex-shrink-0" data-load-older>
+      <span>Showing the {{ submissions.length }} most recent of {{ total }}.</span>
+      <button type="button" @click="$emit('loadOlder')" :disabled="loadingOlder" class="font-semibold text-brand-navy underline disabled:opacity-50">{{ loadingOlder ? 'Loading…' : 'Load older' }}</button>
+    </div>
   </div>
 </template>
 
@@ -209,9 +214,12 @@ const props = defineProps({
   selectedId: { type: Number, default: null },
   viewMode: { type: String, default: 'inbox' },
   refreshing: { type: Boolean, default: false },
+  // How many leads match in all (the list holds the most recent page or pages).
+  total: { type: Number, default: null },
+  loadingOlder: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['select', 'refresh', 'changeView', 'setStatus', 'openNotes'])
+const emit = defineEmits(['select', 'refresh', 'changeView', 'setStatus', 'openNotes', 'loadOlder'])
 
 const refreshBtn = ref(null)
 // Let the dashboard restore focus here after the detail pane unmounts (e.g. archive).

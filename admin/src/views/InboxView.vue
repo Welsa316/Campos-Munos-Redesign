@@ -81,6 +81,12 @@
 
     <ChangePasswordModal :visible="showChangePassword" @close="showChangePassword = false" />
 
+    <!-- A write that failed (status, mark as read, opening a lead): said where she is. -->
+    <p v-if="inboxNotice" role="alert" class="flex items-center gap-3 px-4 sm:px-6 py-2 bg-amber-50 text-amber-900 text-[13px] font-ui border-b border-amber-100">
+      <span class="flex-1">{{ inboxNotice }}</span>
+      <button type="button" @click="inboxNotice = ''" class="font-semibold underline">Dismiss</button>
+    </p>
+
     <!-- Full-screen loading/error only when there's nothing to show yet. A manual
          refresh or view switch with data already loaded updates in place instead
          of tearing down the open conversation + reply draft. -->
@@ -107,14 +113,18 @@
       <ContactsTable
         :contacts="submissions"
         :archivedView="contactsArchived"
+        :total="total"
+        :loadingOlder="loadingOlder"
+        @loadOlder="loadOlder"
         @select="selectSubmission"
         @setStatus="updateStatus"
         @changeArchived="changeContactsArchived"
       />
 
       <!-- Detail opens over the table so the table keeps its full width -->
-      <div v-if="selectedId !== null" class="absolute inset-0 z-20 flex">
-        <button class="flex-1 bg-black/20" aria-label="Close contact details" @click="closeDetail"></button>
+      <div v-if="selectedId !== null" ref="contactPanel" class="absolute inset-0 z-20 flex" role="dialog" aria-modal="true" aria-label="Contact details"
+        @keydown.esc="closeDetail" @keydown.tab="trapTab(contactPanel, $event)">
+        <button class="flex-1 bg-black/20" aria-label="Close contact details" tabindex="-1" @click="closeDetail"></button>
         <div class="w-full max-w-2xl bg-white shadow-2xl flex flex-col">
           <SubmissionDetail
             :submission="selectedSubmission"
@@ -144,6 +154,9 @@
           :selectedId="selectedId"
           :viewMode="viewMode"
           :refreshing="loadingList"
+          :total="total"
+          :loadingOlder="loadingOlder"
+          @loadOlder="loadOlder"
           @select="selectSubmission"
           @refresh="fetchSubmissions"
           @changeView="changeView"
@@ -174,10 +187,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick, watchEffect } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, watchEffect } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
-import { useApi, rawFetch, goToLogin } from '../composables/useApi.js'
+import { useApi, rawFetch, goToLogin, latestOnly } from '../composables/useApi.js'
+import { trapTab, rememberFocus } from '../utils/focusTrap.js'
 import SubmissionList from '../components/messages/SubmissionList.vue'
 import SubmissionDetail from '../components/messages/SubmissionDetail.vue'
 import ChangePasswordModal from '../components/messages/ChangePasswordModal.vue'
@@ -194,6 +208,16 @@ const selectedId = ref(null)
 const selectedSubmission = ref(null)
 const loadingList = ref(true)
 const listError = ref(false)
+// Leads come a page at a time: the newest page is re-read by every poll, and
+// older pages, once loaded with "Load older", are kept below it.
+const PAGE = 100
+const total = ref(null)
+const older = ref([])
+const loadingOlder = ref(false)
+const latestList = latestOnly()
+const latestDetail = latestOnly()
+// A failed write the person should know about (status, mark as read).
+const inboxNotice = ref('')
 const viewMode = ref('inbox')
 // Which book of leads the Contacts table is showing. Archived leads used to
 // be listed alongside live ones, which both read as active work and — since
@@ -341,11 +365,16 @@ async function fetchSubmissions({ silent = false } = {}) {
     const archived = viewMode.value === 'contacts'
       ? contactsArchived.value
       : viewMode.value === 'archived'
-    const fresh = await get(`/api/submissions?archived=${archived}`)
+    const r = await latestList(() => get(`/api/submissions?archived=${archived}&limit=${PAGE}&withTotal=1`))
+    // A slow answer for a list she has since switched away from is dropped.
+    if (!r.current) return
+    const page = Array.isArray(r.value) ? r.value : r.value.rows
+    total.value = Array.isArray(r.value) ? null : r.value.total
     // Replacing the array is safe for the open conversation: the detail pane
     // renders from selectedSubmission, not from this list.
-    submissions.value = fresh
-    notifyOnNewArrivals(fresh)
+    const ids = new Set(page.map((s) => s.id))
+    submissions.value = [...page, ...older.value.filter((s) => !ids.has(s.id))]
+    notifyOnNewArrivals(page)
   } catch {
     if (!silent) listError.value = true
   } finally {
@@ -369,7 +398,27 @@ function changeContactsArchived(archived) {
 // Each view returns a different set of rows, so the incoming list is a new
 // baseline rather than a delta. Without re-seeding, opening Archived and
 // tabbing away fires a desktop notification for every archived lead.
+async function loadOlder() {
+  loadingOlder.value = true
+  try {
+    const archived = viewMode.value === 'contacts' ? contactsArchived.value : viewMode.value === 'archived'
+    const r = await get(`/api/submissions?archived=${archived}&limit=${PAGE}&offset=${submissions.value.length}&withTotal=1`)
+    const page = Array.isArray(r) ? r : r.rows
+    if (!Array.isArray(r)) total.value = r.total
+    const have = new Set(submissions.value.map((s) => s.id))
+    const add = page.filter((s) => !have.has(s.id))
+    older.value = [...older.value, ...add]
+    submissions.value = [...submissions.value, ...add]
+  } catch {
+    inboxNotice.value = 'Could not load older leads. Try again.'
+  } finally {
+    loadingOlder.value = false
+  }
+}
+
 function switchList() {
+  older.value = []
+  total.value = null
   seeded = false
   selectedId.value = null
   selectedSubmission.value = null
@@ -380,12 +429,28 @@ async function selectSubmission(id) {
   if (selectedId.value === id && selectedSubmission.value) return
   selectedId.value = id
 
+  let r
   try {
-    selectedSubmission.value = await get(`/api/submissions/${id}`)
+    r = await latestDetail(() => get(`/api/submissions/${id}`))
+  } catch {
+    // Clear the selection too, so a failed detail-fetch on mobile falls back to
+    // the list instead of stranding the admin on a blank pane with no way back.
+    if (selectedId.value === id) {
+      selectedSubmission.value = null
+      selectedId.value = null
+      inboxNotice.value = 'Could not open that lead. Try again.'
+    }
+    return
+  }
+  // She opened another lead while this one loaded.
+  if (!r.current || selectedId.value !== id) return
+  selectedSubmission.value = r.value
 
-    const sub = submissions.value.find(s => s.id === id)
-    // Read-only accounts look without changing what colleagues see as unread.
-    if (sub && !sub.is_read && can('crm.manage')) {
+  const sub = submissions.value.find(s => s.id === id)
+  // Read-only accounts look without changing what colleagues see as unread.
+  // A failed mark-read leaves the lead open; it just stays unread.
+  if (sub && !sub.is_read && can('crm.manage')) {
+    try {
       await patch(`/api/submissions/${id}/read`)
       sub.is_read = true
       // Keep the open detail in step with the list so it doesn't keep showing the
@@ -393,12 +458,9 @@ async function selectSubmission(id) {
       if (selectedSubmission.value && selectedSubmission.value.id === id) {
         selectedSubmission.value.is_read = true
       }
+    } catch {
+      inboxNotice.value = 'Could not mark it as read. It still shows as unread for everyone.'
     }
-  } catch {
-    // Clear the selection too, so a failed detail-fetch on mobile falls back to
-    // the list instead of stranding the admin on a blank pane with no way back.
-    selectedSubmission.value = null
-    selectedId.value = null
   }
 }
 
@@ -415,9 +477,10 @@ async function updateStatus({ id, status }) {
 
   try {
     await patch(`/api/submissions/${id}/status`, { status })
-  } catch {
+  } catch (err) {
     if (row) row.status = previous
     if (selectedSubmission.value?.id === id) selectedSubmission.value.status = previous
+    inboxNotice.value = `Status not changed: ${err.message}`
   }
 }
 
@@ -425,7 +488,22 @@ function closeDetail() {
   selectedId.value = null
   selectedSubmission.value = null
   notesRequestedFor.value = null
+  contactOpener?.restore()
+  contactOpener = null
 }
+
+// Contacts opens a lead over the table as a modal panel: focus moves into it,
+// Tab stays inside, Esc closes, and focus returns to the name that opened it.
+const contactPanel = ref(null)
+let contactOpener = null
+watch(selectedId, async (id, was) => {
+  if (viewMode.value !== 'contacts') return
+  if (id !== null && was === null) {
+    contactOpener = rememberFocus()
+    await nextTick()
+    contactPanel.value?.querySelector('button:not([tabindex="-1"]), a[href]')?.focus()
+  }
+})
 
 // The notes button in the list opens the lead with its log already expanded.
 function openNotes(id) {

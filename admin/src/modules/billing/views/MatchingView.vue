@@ -28,6 +28,7 @@
       </header>
 
       <p v-if="loading && !data" class="p-8 text-center text-sm text-gray-500 font-ui">Loading…</p>
+      <LoadError v-else-if="loadFailed && !data" message="Could not load the clients." @retry="load" />
       <p v-else-if="!shown.length" class="p-8 text-center text-sm text-gray-500 font-ui">{{ filter === 'todo' ? 'Every client is linked.' : 'No clients here.' }}</p>
       <ul v-else class="divide-y divide-gray-100">
         <li v-for="c in shown" :key="c.clientId" class="px-4 sm:px-5 py-4 grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] gap-3 lg:gap-6">
@@ -87,6 +88,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useBillingApi, money } from '../api.js'
 import { can } from '../../../composables/useAuth.js'
+import LoadError from '../../../components/LoadError.vue'
 
 const emit = defineEmits(['counts'])
 const STATUS = {
@@ -106,6 +108,7 @@ const data = ref(null)
 const loading = ref(true)
 const busy = ref(false)
 const error = ref('')
+const loadFailed = ref(false)
 const filter = ref('todo')
 const picks = reactive({})
 
@@ -132,6 +135,7 @@ async function load() {
     emit('counts', { unmatched: counts.value.todo })
   } catch (err) {
     error.value = `Could not load clients: ${err.message}`
+    loadFailed.value = true
   } finally {
     loading.value = false
   }

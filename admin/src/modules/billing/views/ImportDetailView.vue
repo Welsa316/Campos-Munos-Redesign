@@ -280,15 +280,20 @@ function describe(changes = []) {
   }).join('; ')
 }
 
-async function load(filter = rowFilter.value) {
+// The mapping form is filled from the server on the first load and after a
+// preview or approval, never by a change of row filter: that only changes
+// which rows are listed, and must not undo a mapping being edited.
+async function load(filter = rowFilter.value, { seedForm = true } = {}) {
   loading.value = true
   error.value = ''
   try {
     const j = await api.importJob(id.value, filter)
     job.value = j
-    for (const f of FIELD_ORDER) mapping[f] = j.mapping?.[f] ?? null
-    reportType.value = j.report_type || 'invoice_summary'
-    reportDate.value = j.report_date || ''
+    if (seedForm) {
+      for (const f of FIELD_ORDER) mapping[f] = j.mapping?.[f] ?? null
+      reportType.value = j.report_type || 'invoice_summary'
+      reportDate.value = j.report_date || ''
+    }
     fieldWarnings.value = (j.errors || []).filter((e) => e && e.message && (e.severity === 'error' || e.severity === 'warning'))
   } catch (err) {
     error.value = `Could not load the import: ${err.message}`
@@ -299,7 +304,7 @@ async function load(filter = rowFilter.value) {
 
 function setRowFilter(key) {
   rowFilter.value = key
-  load(key)
+  load(key, { seedForm: false })
 }
 
 async function runPreview() {
@@ -324,7 +329,10 @@ async function approve() {
     await load()
   } catch (err) {
     error.value = err.message
-    if (/Preview it again/.test(err.message)) await load()
+    // Whatever went wrong (including a timeout after the server applied it),
+    // show the import as the server now has it, not a stale Approve button.
+    await load()
+    if (!error.value) error.value = err.message
   } finally {
     busy.value = ''
   }
