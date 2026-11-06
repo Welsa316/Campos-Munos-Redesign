@@ -311,8 +311,7 @@ test('staff roles and capabilities', { skip: SKIP }, async (t) => {
     assert.equal((await call('GET', '/api/whatsapp/assignees', { cookie: freshCookie })).status, 401)
     assert.equal((await call('GET', '/api/auth/verify', { cookie: freshCookie })).status, 401)
     await db.query('UPDATE admin_users SET disabled_at = NULL WHERE id = $1', [fresh.id])
-    // (A fresh sign-in is not repeated here: the login limiter allows five
-    // attempts per address and this file uses all five.)
+    // (A fresh sign-in is not repeated here; a signed token proves the same.)
     const n = (await db.query("SELECT id, token_version FROM admin_users WHERE email = 'nobody@example.test'")).rows[0]
     assert.equal((await call('GET', '/api/auth/verify', { cookie: `token=${jwt.sign({ id: n.id, email: 'x', tv: n.token_version }, process.env.JWT_SECRET)}` })).status, 200, 'enabled again')
   })
