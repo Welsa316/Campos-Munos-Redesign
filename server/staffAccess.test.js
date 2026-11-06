@@ -187,6 +187,29 @@ test('staff roles and capabilities', { skip: SKIP }, async (t) => {
     assert.equal(login.status, 200, 'the old password still signs in')
   })
 
+  await t.test('"keep me signed in" lasts 30 days; otherwise 8 hours; signing out still ends it', async () => {
+    const signIn = async (extra) => {
+      const res = await fetch(`${base}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'owner@example.test', password: 'old-admin-password-1', ...extra }) })
+      const set = res.headers.get('set-cookie') || ''
+      const token = (set.match(/token=([^;]+)/) || [])[1]
+      const claims = token ? jwt.decode(token) : null
+      return { status: res.status, maxAge: Number((set.match(/Max-Age=(\d+)/) || [])[1]), life: claims ? claims.exp - claims.iat : null, cookie: token ? `token=${token}` : null }
+    }
+    const day = 24 * 60 * 60
+    const kept = await signIn({ remember: true })
+    assert.equal(kept.status, 200)
+    assert.equal(kept.maxAge, 30 * day, 'the cookie is kept 30 days')
+    assert.equal(kept.life, 30 * day, 'and so is the session')
+    const plain = await signIn({})
+    assert.equal(plain.maxAge, 8 * 60 * 60)
+    assert.equal(plain.life, 8 * 60 * 60)
+    assert.equal((await signIn({ remember: 'yes' })).status, 400)
+    // Signing out ends a kept session at once.
+    assert.equal((await call('GET', '/api/auth/verify', { cookie: kept.cookie })).status, 200)
+    await fetch(`${base}/api/auth/logout`, { method: 'POST', headers: { Cookie: kept.cookie } })
+    assert.equal((await call('GET', '/api/auth/verify', { cookie: kept.cookie })).status, 401)
+  })
+
   await t.test('front desk: leads and WhatsApp, payment status read-only, nothing financial', async () => {
     const c = users.frontCookie
     const me = await call('GET', '/api/auth/verify', { cookie: c })

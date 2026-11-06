@@ -62,7 +62,7 @@ const passwordChangeLimiter = rateLimit({
 
 // httpOnly, Lax (portal and API are same-site, so it travels; nothing
 // cross-site can carry it), host-only on the API. See sessionCookieOptions().
-const cookieOptions = () => sessionCookieOptions(process.env)
+const cookieOptions = (opts) => sessionCookieOptions(process.env, opts)
 
 router.post(
   '/login',
@@ -73,6 +73,7 @@ router.post(
   // could never match. We match case-insensitively in the query instead.
   body('email').isEmail().withMessage('Valid email required'),
   body('password').notEmpty().withMessage('Password required'),
+  body('remember').optional().isBoolean({ strict: true }).withMessage('remember must be true or false'),
   validate,
   async (req, res) => {
     try {
@@ -97,9 +98,10 @@ router.post(
         return res.status(403).json({ error: 'This account is disabled. Ask the office administrator.' })
       }
 
-      const token = signSession({ id: admin.id, email: admin.email, tokenVersion: admin.token_version })
+      const remember = req.body.remember === true
+      const token = signSession({ id: admin.id, email: admin.email, tokenVersion: admin.token_version, remember })
 
-      res.cookie('token', token, cookieOptions())
+      res.cookie('token', token, cookieOptions({ remember }))
       res.json(profileJson(account))
     } catch (err) {
       req.log.error({ err: err }, 'Login error')
@@ -167,8 +169,10 @@ router.post(
       )
 
       // Re-issue this session's cookie with the new token_version so the admin stays logged in.
-      const newToken = signSession({ id: adminId, email: updated.rows[0].email, tokenVersion: updated.rows[0].token_version })
-      res.cookie('token', newToken, cookieOptions())
+      // Kept signed in stays kept signed in.
+      const remember = req.admin?.rm === true
+      const newToken = signSession({ id: adminId, email: updated.rows[0].email, tokenVersion: updated.rows[0].token_version, remember })
+      res.cookie('token', newToken, cookieOptions({ remember }))
 
       res.json({ ok: true })
     } catch (err) {
