@@ -94,7 +94,9 @@ const DUPLICATE_WINDOW_MINUTES = 10
 const honeypot = (req, res, next) => {
   const trap = req.body?.website
   if (trap == null || trap === '' || (typeof trap === 'string' && !trap.trim())) return next()
-  req.log?.info('Submission with the hidden field filled in; ignored')
+  // Warn: if a real client's browser ever fills it, this line is the only trace.
+  const domain = typeof req.body?.email === 'string' ? req.body.email.split('@')[1]?.toLowerCase().slice(0, 100) : undefined
+  req.log?.warn({ emailDomain: domain || null, source: req.body?.source === 'chat' ? 'chat' : 'form' }, 'Submission with the hidden field filled in; ignored')
   return res.status(201).json({ created_at: new Date().toISOString() })
 }
 

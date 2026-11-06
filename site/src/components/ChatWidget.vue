@@ -73,10 +73,12 @@
 
             <form @submit.prevent="startChat" class="space-y-3">
               <!-- Left empty by people (they never see it); bots that fill every field
-                   are answered as if sent and nothing is stored (server/routes/submissions.js). -->
+                   are answered as if sent and nothing is stored (server/routes/submissions.js).
+                   Its name and label mean nothing to autofill or password managers, which
+                   would otherwise fill it in for a real client and lose their message. -->
               <div aria-hidden="true" style="position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden;">
-                <label for="chat-website">Website</label>
-                <input id="chat-website" v-model="form.website" type="text" name="website" tabindex="-1" autocomplete="off" />
+                <label for="chat-cm-hp">Leave this field empty</label>
+                <input id="chat-cm-hp" v-model="form.website" type="text" name="cm_hp" tabindex="-1" autocomplete="off" data-1p-ignore data-lpignore="true" data-form-type="other" />
               </div>
               <div class="grid grid-cols-2 gap-2">
                 <input v-model="form.firstName" type="text" required maxlength="255"
