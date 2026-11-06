@@ -40,6 +40,11 @@
       <p v-else-if="!summary && c.direction === 'inbound' && !c.offeredTo.length && c.firm.extension" class="mt-0.5 pl-3.5 text-[12px] text-gray-500">
         Dialled {{ who({ name: c.firm.name, extension: c.firm.extension }) }}
       </p>
+      <!-- A callback reminder on this caller: the soonest, and how many more. -->
+      <p v-if="nextReminder" :class="reminderState === 'upcoming' ? 'text-gray-600' : 'text-amber-800 font-semibold'" class="mt-1 pl-3.5 text-[12.5px] flex items-center gap-1.5" data-reminder-chip>
+        <FaIcon name="bell" class="text-[11px]" />
+        <span class="tabular-nums">{{ dueLine(nextReminder, now) }} · {{ nextReminder.assignee.name }}<span v-if="reminders.length > 1" class="font-normal text-gray-500"> · +{{ reminders.length - 1 }} more</span></span>
+      </p>
     </div>
 
     <p class="call-time font-ui text-right lg:text-left tabular-nums">
@@ -67,7 +72,7 @@
         </button>
       </template>
 
-      <div class="relative" data-row-menu>
+      <div class="relative" data-row-menu data-reminder-trigger>
         <button type="button" @click="$emit('menu', c.id)" :data-menu="c.id"
           class="act act-icon" :aria-label="`More actions for ${displayName}`" aria-haspopup="menu" :aria-expanded="menuOpen" :aria-controls="menuOpen ? `call-menu-${c.id}` : null">
           <FaIcon name="ellipsis" />
@@ -76,12 +81,15 @@
           <div v-if="menuOpen" :id="`call-menu-${c.id}`" role="menu" :aria-label="`Actions for ${displayName}`" @keydown="onMenuKey"
             class="absolute right-0 top-full mt-1.5 z-30 w-56 rounded-xl bg-white ring-1 ring-gray-200 shadow-lg py-1 text-[13px]">
             <button type="button" role="menuitem" class="menu-item" @click="$emit('open', c, menuTrigger())"><FaIcon name="circle-info" />Call details</button>
+            <button v-if="canRemind && open" type="button" role="menuitem" class="menu-item" @click="$emit('remind', c)"><FaIcon name="bell" />{{ nextReminder ? 'Add a reminder…' : 'Remind me…' }}</button>
             <button v-if="canExclude && canMark && !c.exclusion && !c.handled" type="button" role="menuitem" class="menu-item" @click="$emit('exclude', c)"><FaIcon name="ban" />No callback needed</button>
             <button v-if="canExclude && c.exclusion" type="button" role="menuitem" class="menu-item" @click="$emit('count-again', c)"><FaIcon name="rotate-left" />{{ c.exclusion.scope === 'number' ? 'Count this number again' : 'Count it again' }}</button>
             <button v-if="canExclude && c.handled" type="button" role="menuitem" class="menu-item" @click="$emit('reopen', c)"><FaIcon name="rotate-left" />Reopen follow-up</button>
             <router-link v-if="c.lead && canSeeLeads" role="menuitem" class="menu-item" :to="{ name: 'Inbox', query: { lead: c.lead.id } }"><FaIcon name="inbox" />Open website lead</router-link>
           </div>
         </Transition>
+        <ReminderPopover v-if="remindOpen" floating :target="{ kind: 'call', id: episode.id }"
+          @close="$emit('remind-close')" @saved="(r, how) => $emit('reminded', r, how)" />
       </div>
     </div>
   </article>
@@ -94,6 +102,8 @@ import { telHref } from '../../utils/phone.js'
 import { statusLine, who } from './callEvidenceText.js'
 import { followUpLine, outboundLine, timeOf, dayName, episodeSummary, episodeLine } from './callsInbox.js'
 import { look as lookOf, phone, durationText } from './callLook.js'
+import ReminderPopover from '../reminders/ReminderPopover.vue'
+import { dueLine, dueState } from '../reminders/dueChoices.js'
 
 const props = defineProps({
   c: { type: Object, required: true },
@@ -109,8 +119,12 @@ const props = defineProps({
   showDay: Boolean,
   // Needs attention: the caller's episode (attempts, first/last, callbacks tried).
   episode: { type: Object, default: null },
+  // Callback reminders on this caller (soonest first), and whether this account sets them.
+  reminders: { type: Array, default: () => [] },
+  canRemind: Boolean,
+  remindOpen: Boolean,
 })
-defineEmits(['open', 'callback', 'handled', 'menu', 'exclude', 'count-again', 'reopen'])
+defineEmits(['open', 'callback', 'handled', 'menu', 'exclude', 'count-again', 'reopen', 'remind', 'remind-close', 'reminded'])
 
 const look = computed(() => lookOf(props.c))
 const displayName = computed(() => props.c.name || (props.c.number ? 'Unknown caller' : 'Private number'))
@@ -122,6 +136,8 @@ const group = computed(() => props.episode?.attentionGroup ?? props.c.attentionG
 const summary = computed(() => episodeSummary(props.episode, props.now))
 const offered = computed(() => (props.episode?.offeredTo || []).map((p) => p.name || who(p)).join(', '))
 const duration = computed(() => durationText(props.c.durationSeconds))
+const nextReminder = computed(() => props.reminders[0] || null)
+const reminderState = computed(() => (nextReminder.value ? dueState(nextReminder.value, props.now) : null))
 
 const DOT = { open: 'bg-amber-500', done: 'bg-green-500', quiet: 'bg-gray-400', none: 'bg-gray-300' }
 const TONE = { open: 'text-amber-800', done: 'text-green-800', quiet: 'text-gray-600' }

@@ -17,11 +17,13 @@ export async function recordNotification(db, { accountId, eventKey, title, body,
 /**
  * Notifications after `after` (an id), oldest first. Without `after`, none:
  * just the cursor, so a desktop app starting up never replays history.
+ * `account` says whose feed it is, so the app keeps one cursor per person
+ * when someone else signs in on the same computer.
  */
 export async function feedFor(db, { accountId, after = null }) {
   if (after == null) {
     const r = (await db.query('SELECT COALESCE(MAX(id), 0)::bigint AS id FROM account_notifications WHERE account_id = $1', [accountId])).rows[0]
-    return { items: [], cursor: String(r.id) }
+    return { items: [], cursor: String(r.id), account: String(accountId) }
   }
   const rows = (await db.query(
     `SELECT id, title, body, url, tag, created_at FROM account_notifications
@@ -29,7 +31,7 @@ export async function feedFor(db, { accountId, after = null }) {
     [accountId, after, FEED_PAGE]
   )).rows
   const items = rows.map((r) => ({ id: String(r.id), title: r.title, body: r.body, url: r.url, tag: r.tag, createdAt: r.created_at }))
-  return { items, cursor: items.length ? items[items.length - 1].id : String(after) }
+  return { items, cursor: items.length ? items[items.length - 1].id : String(after), account: String(accountId) }
 }
 
 /** Old notifications prove nothing; keep a month. */

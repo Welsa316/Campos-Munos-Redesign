@@ -27,6 +27,8 @@ import { createTeamRouter } from './routes/team.js'
 import { createActivityRouter } from './routes/activity.js'
 import { createPushRouter } from './routes/push.js'
 import { createNotificationsRouter } from './routes/notifications.js'
+import { createRemindersRouter } from './routes/reminders.js'
+import { createWorkQueueRouter } from './routes/workQueue.js'
 import { createRingCentralWebhookRouter } from './routes/ringcentralWebhook.js'
 import { activityRecorder } from './activity/recorder.js'
 import {
@@ -42,6 +44,12 @@ const REQUEST_ID = /^[\w-]{8,64}$/
 export function requestIdFor(req) {
   const given = req.headers['x-request-id']
   return typeof given === 'string' && REQUEST_ID.test(given) ? given : crypto.randomUUID()
+}
+
+// The desktop app's feed poll (GET /api/notifications/feed).
+export function isFeedPoll(req) {
+  const path = String(req.originalUrl || req.url || '').split('?')[0]
+  return req.method === 'GET' && path === '/api/notifications/feed'
 }
 
 // /readyz is unauthenticated. One database round trip every few seconds is
@@ -92,6 +100,8 @@ export function createApp({ env = process.env, log = logger, beforeFallback, rea
     customLogLevel: (req, res, err) => {
       if (err || res.statusCode >= 500) return 'error'
       if (res.statusCode >= 400) return 'warn'
+      // Every desktop app polls the feed every 20 seconds; its successes are noise.
+      if (isFeedPoll(req)) return 'debug'
       return 'info'
     },
     serializers: {
@@ -158,6 +168,10 @@ export function createApp({ env = process.env, log = logger, beforeFallback, rea
   // Desktop notifications for the signed-in account's own computers.
   app.use('/api/push', createPushRouter({ env, transport: pushTransport }))
   app.use('/api/notifications', createNotificationsRouter())
+  // Callback reminders on callers and website leads (server/reminders/).
+  app.use('/api/reminders', createRemindersRouter())
+  // Home's "My follow-ups" (read-only).
+  app.use('/api/work-queue', createWorkQueueRouter())
 
   // API 404s — registered before any frontend fallback so an unknown /api/*
   // path returns JSON instead of a page.

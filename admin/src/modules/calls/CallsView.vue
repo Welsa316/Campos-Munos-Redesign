@@ -30,6 +30,7 @@
     <CallDetailCard :call="detailCall" :episode="detailEpisode" :return-to="detail.returnTo" :now="now"
       :can-call="canCall" :can-exclude="canExclude" :can-see-leads="canSeeLeads" :can-mark="detailCall ? canMark(detailCall) : false"
       :busy="Boolean(detailCall && busyId === detailCall.id)"
+      :reminders="detailReminders" :can-remind="canRemind" @reminders-changed="loadReminders"
       @close="closeDetail" @callback="openCall" @handled="(c) => markHandled(c, detailEpisode)" @reopen="reopen" @exclude="(c) => startExclude(c, detailEpisode)" @count-again="countAgain" @open-call="openCallById" />
 
     <div ref="scroller" class="flex-1 overflow-y-auto">
@@ -206,6 +207,8 @@
                   <CallRow v-else-if="r.type === 'call'" :c="r.call" :episode="r.episode" :now="now" :show-day="tab === 'attention'"
                     :can-call="canCall" :can-exclude="canExclude" :can-see-leads="canSeeLeads" :can-mark="canMark(r.call)"
                     :busy="busyId === r.call.id" :menu-open="menuId === r.call.id"
+                    :reminders="r.episode ? remindersForEpisode(reminders, r.episode) : []" :can-remind="canRemind && Boolean(r.episode)" :remind-open="remindId === r.call.id"
+                    @remind="startRemind" @remind-close="closeRemind" @reminded="afterRemind"
                     @open="(c, el) => openDetail(c, el, r.episode)" @callback="openCall" @handled="(c) => markHandled(c, r.episode)" @menu="toggleMenu"
                     @exclude="(c) => startExclude(c, r.episode)" @count-again="countAgain" @reopen="reopen" />
                 </li>
@@ -277,6 +280,9 @@ import CallRow from './CallRow.vue'
 import CallDetailCard from './CallDetailCard.vue'
 import { toast } from '../../composables/useToast.js'
 import { episodeSections, reviewSection, handledSections, daySections, animateChange, when } from './callsInbox.js'
+import { remindersApi } from '../reminders/remindersApi.js'
+import { remindersForEpisode } from '../reminders/reminderText.js'
+import { dueLine } from '../reminders/dueChoices.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -318,7 +324,12 @@ function fromLink(q) {
   businessHours.value = q.hours === 'business'
   tab.value = q.tab === 'handled' ? 'handled' : q.tab === 'all' || q.range || q.filter || q.hours ? 'all' : 'attention'
   filtersOpen.value = Boolean(q.filter || q.hours || q.person)
+  // /calls?call=<id> (a reminder's email or notification): that caller's card, once the list is in.
+  const id = Number(q.call)
+  pendingCall = Number.isSafeInteger(id) && id > 0 ? id : null
+  if (pendingCall) tab.value = 'attention'
 }
+let pendingCall = null
 fromLink(route.query)
 const people = ref([])
 const personRow = computed(() => people.value.find((p) => p.extensionId === personFilter.value) || null)
@@ -353,6 +364,8 @@ const canRefresh = computed(() => configured.value && connection.value === 'conn
 const canExclude = computed(() => can('calls.exclude'))
 // Clearing the whole list at once (calls.clear, administrators).
 const canClear = computed(() => can('calls.clear'))
+// Callback reminders on a caller (calls.exclude, the same as marking them handled).
+const canRemind = computed(() => can('calls.exclude'))
 const clearing = ref(false)
 // Only calls counted as missed can be marked as needing no callback: a
 // blocked number, or a call with no recorded outcome, is in no count. The
@@ -446,9 +459,11 @@ async function load({ quiet = false } = {}) {
     if (searched.value) params.set('q', searched.value)
     if (businessHours.value) params.set('businessHours', '1')
     if (personFilter.value) params.set('person', personFilter.value)
-    // A slow answer for an earlier view is dropped.
+    // A slow answer for an earlier view is dropped. Reminders come with each
+    // load: the change stamp moves when one is set, changed or closed.
     const r = await latestCalls(() => get(`/api/calls?${params}`))
     if (!r.current) return
+    loadReminders()
     const data = r.value
     // Same view: animate the few rows that changed. New view: no row motion.
     // Needs attention animates by caller (episode ids), the other views by call.
@@ -472,12 +487,60 @@ async function load({ quiet = false } = {}) {
     truncated.value = data.truncated
     applyStatus(data)
     error.value = ''
+    openPendingCall()
   } catch (e) {
     error.value = e.message
   } finally {
     loading.value = false
   }
 }
+
+// --- callback reminders -----------------------------------------------------------
+
+const reminders = ref([])
+const latestReminders = latestOnly()
+async function loadReminders() {
+  try {
+    const r = await latestReminders(() => remindersApi.forCalls())
+    if (r.current) reminders.value = r.value.reminders || []
+  } catch { /* the list still works; the next load tries again */ }
+}
+// The Remind me panel open on one row (its latest call's id).
+const remindId = ref(null)
+function startRemind(c) {
+  menuId.value = null
+  remindId.value = c.id
+}
+function closeRemind({ restore = true } = {}) {
+  const id = remindId.value
+  remindId.value = null
+  if (restore && id) nextTick(() => document.querySelector(`[data-menu="${id}"]`)?.focus())
+}
+async function afterRemind(r, { created }) {
+  closeRemind()
+  toast({ text: `${created ? 'Reminder set' : 'Reminder changed'}: ${dueLine(r, Date.now())}.` })
+  await loadReminders()
+}
+const detailReminders = computed(() => remindersForEpisode(reminders.value, detailEpisode.value || (detailCall.value ? { callIds: [detailCall.value.id] } : null)))
+
+// Opened by /calls?call=<id>: the card of the caller that call belongs to,
+// or a word that they no longer need a call back.
+function openPendingCall() {
+  if (!pendingCall || tab.value !== 'attention') return
+  const id = pendingCall
+  pendingCall = null
+  router.replace({ query: Object.fromEntries(Object.entries(route.query).filter(([k]) => k !== 'call')) })
+  const ep = allEpisodes.value.find((e) => e.callIds.includes(id) || e.id === id)
+  const c = ep ? callById.value.get(ep.latestCallId) : null
+  if (c) openDetail(c, null, ep)
+  else toast({ text: 'That caller no longer needs a call back. Find the call under All calls or Handled.', tone: 'info' })
+}
+// A reminder's Open while this page is already showing.
+watch(() => route.query.call, (v) => {
+  if (!v) return
+  fromLink(route.query)
+  if (!loading.value) load({ quiet: true })
+})
 
 function applyStatus(data) {
   sync.value = data.sync
@@ -569,6 +632,7 @@ function closeMenu({ restore = true } = {}) {
 }
 function onDocPointer(e) { if (menuId.value && !e.target.closest('[data-row-menu]')) closeMenu({ restore: false }) }
 function onDocKey(e) {
+  if (e.key === 'Escape' && remindId.value && !detail.value.id) { e.preventDefault(); closeRemind() }
   if (e.key === 'Escape' && menuId.value) { e.preventDefault(); closeMenu() }
   if (e.key === 'Tab' && menuId.value && !e.target.closest?.('[data-row-menu]')) closeMenu({ restore: false })
 }
@@ -767,7 +831,7 @@ onActivated(() => {
   if (Object.keys(route.query).length) fromLink(route.query)
   if (viewKey.value === before) load({ quiet: true })
 })
-onDeactivated(() => { stop(); menuId.value = null })
+onDeactivated(() => { stop(); menuId.value = null; remindId.value = null })
 onUnmounted(() => { stop(); clearTimeout(searchTimer) })
 
 // --- presentation -----------------------------------------------------------------
@@ -860,8 +924,7 @@ const emptyText = computed(() => {
 })
 
 async function handleLogout() {
-  await logout()
-  router.push({ name: 'Login' })
+  if (await logout()) router.push({ name: 'Login' })
 }
 </script>
 

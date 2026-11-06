@@ -14,6 +14,7 @@ import { applyPushSchema } from './pushSchema.js'
 import { seedReminderDefaults } from '../billing/reminderModel.js'
 import { applyContactsSchema } from './contactsSchema.js'
 import { applyTestChannelSchema } from './testChannelSchema.js'
+import { applyRemindersSchema } from './remindersSchema.js'
 
 async function migrate() {
   const pool = getPool()
@@ -185,6 +186,9 @@ async function migrate() {
     // The administrator's test channel (test forms kept apart from leads).
     // Needs admin_users.
     await applyTestChannelSchema(client)
+    // Callback reminders (db/remindersSchema.js). Needs admin_users,
+    // submissions and rc_calls.
+    await applyRemindersSchema(client)
     logger.info('Migration complete — tables created.')
   } finally {
     client.release()

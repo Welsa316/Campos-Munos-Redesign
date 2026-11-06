@@ -1,7 +1,8 @@
 // The portal's one toast queue (SwipeToast.vue shows it). Pure state, so the
 // rules are tested apart from the page: a success says only what the server
 // has confirmed (callers toast after the request resolves), an error stays
-// until dismissed, at most three show at once, and Undo runs once.
+// until dismissed, at most three show at once, and Undo (or an action such
+// as Open) runs once.
 
 export const MAX_TOASTS = 3
 export const TOAST_MS = 6000
@@ -18,9 +19,11 @@ export function createToastQueue({ schedule = (fn, ms) => setTimeout(fn, ms), ca
     cancel(timers.get(t.id))
     timers.set(t.id, schedule(() => dismiss(t.id), t.duration))
   }
-  function show({ text, tone = 'success', undo = null, persistent = tone === 'error', duration = TOAST_MS } = {}) {
+  // action: { label, run } — a button such as Open ("A callback reminder is due").
+  function show({ text, tone = 'success', undo = null, action = null, persistent = tone === 'error', duration = TOAST_MS } = {}) {
     if (!text) return null
-    const t = { id: ++seq, text: String(text), tone, undo: typeof undo === 'function' ? undo : null, persistent, duration }
+    const act = action && typeof action.run === 'function' && action.label ? { label: String(action.label), run: action.run } : null
+    const t = { id: ++seq, text: String(text), tone, undo: typeof undo === 'function' ? undo : null, action: act, persistent, duration }
     items.push(t)
     // The oldest non-error toast makes room; an error is never pushed out.
     while (items.length > MAX_TOASTS) {
@@ -49,5 +52,12 @@ export function createToastQueue({ schedule = (fn, ms) => setTimeout(fn, ms), ca
     dismiss(id)
     await fn()
   }
-  return { items, show, dismiss, hold, release, undo, subscribe: (fn) => { listeners.add(fn); return () => listeners.delete(fn) } }
+  async function act(id) {
+    const t = items.find((x) => x.id === id)
+    if (!t?.action) return
+    const fn = t.action.run
+    dismiss(id)
+    await fn()
+  }
+  return { items, show, dismiss, hold, release, undo, act, subscribe: (fn) => { listeners.add(fn); return () => listeners.delete(fn) } }
 }
