@@ -496,7 +496,7 @@ export async function getSyncState(db) {
 // --- the list the portal shows ------------------------------------------------------
 
 export const OUTCOME_FILTERS = Object.freeze([
-  'all', 'answered', 'missed', 'hung_up', 'ended', 'voicemail', 'unconfirmed', 'system', 'unanswered', 'outgoing', 'not_returned', 'excluded', 'attention',
+  'all', 'answered', 'missed', 'hung_up', 'ended', 'voicemail', 'unconfirmed', 'system', 'unanswered', 'outgoing', 'not_returned', 'excluded', 'attention', 'handled',
 ])
 
 // The firm's opening hours, as published on the website (site/index.html,
@@ -512,6 +512,14 @@ export const businessHoursSql = (col) =>
 // voicemail. A call the evidence cannot settle ('unknown') is never counted
 // as missed.
 const UNANSWERED_SQL = (col) => `${col} IN (${UNANSWERED_CLASSES.map((c) => `'${c}'`).join(', ')})`
+
+// Dealt with (Calls → Handled, and "Handled today" when given a since): an
+// unanswered call marked handled, or closed by a connected callback or a
+// later answered call. One marked as needing no callback is not counted.
+const DEALT_WITH_SQL = (since = null) => {
+  const at = (col) => (since ? `${col} >= ${since}` : `${col} IS NOT NULL`)
+  return `direction = 'inbound' AND excluded_kind IS NULL AND (${at('handled_at')} OR (${at('connected_followup_at')} AND ${UNANSWERED_SQL('classification')} AND counterpart_key <> ''))`
+}
 
 // A missed call or voicemail counts as returned once the firm called that
 // number back, or the person called again and got through.
@@ -701,6 +709,7 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
     not_returned: `${inbound} AND ${UNANSWERED_SQL('classification')} AND followup_at IS NULL AND counterpart_key <> '' AND ${kept}`,
     excluded: 'excluded_kind IS NOT NULL',
     attention: 'needs_attention',
+    handled: DEALT_WITH_SQL(),
   }[OUTCOME_FILTERS.includes(outcome) ? outcome : 'all']
 
   const personCounts = personParam
@@ -723,7 +732,8 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
         COUNT(*) FILTER (WHERE direction = 'outbound')::int AS outgoing,
         COUNT(*) FILTER (WHERE ${inbound} AND ${UNANSWERED_SQL('classification')} AND followup_at IS NULL AND counterpart_key <> '' AND ${kept})::int AS not_returned,
         COUNT(*) FILTER (WHERE excluded_kind IS NOT NULL)::int AS excluded,
-        COUNT(*) FILTER (WHERE needs_attention)::int AS attention${personCounts}
+        COUNT(*) FILTER (WHERE needs_attention)::int AS attention,
+        COUNT(*) FILTER (WHERE ${DEALT_WITH_SQL()})::int AS handled${personCounts}
       FROM filtered`, params),
     linkedNames(db),
   ])
@@ -848,8 +858,7 @@ export async function callKpis(db, { now = new Date() } = {}) {
   const row = (await db.query(
     `${baseSql(['c.started_at >= $1', 'c.started_at < $2', 'NOT c.is_internal', 'c.is_primary'])}
      SELECT COUNT(*) FILTER (WHERE needs_attention)::int AS needs_attention,
-            COUNT(*) FILTER (WHERE direction = 'inbound' AND excluded_kind IS NULL AND (
-              handled_at >= $3 OR (connected_followup_at >= $3 AND ${UNANSWERED_SQL('classification')} AND counterpart_key <> '')))::int AS handled_today,
+            COUNT(*) FILTER (WHERE ${DEALT_WITH_SQL('$3')})::int AS handled_today,
             COUNT(*) FILTER (WHERE started_at >= $3)::int AS total_today
        FROM filtered`,
     [from, new Date(now.getTime() + 60 * 1000), today]
