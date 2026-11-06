@@ -497,7 +497,8 @@ export async function summarizeMissed(db, { now = new Date(), days = 30, from: s
   const row = (await db.query(
     `SELECT COUNT(*) FILTER (WHERE ${UNANSWERED_SQL('c.classification')} AND NOT ${EXCLUDED_SQL})::int AS total,
             COUNT(*) FILTER (WHERE c.classification = 'voicemail' AND NOT ${EXCLUDED_SQL})::int AS voicemail,
-            COUNT(*) FILTER (WHERE ${UNANSWERED_SQL('c.classification')} AND NOT ${EXCLUDED_SQL} AND c.counterpart_key <> '' AND NOT ${RETURNED_SQL})::int AS not_returned,
+            COUNT(*) FILTER (WHERE ${UNANSWERED_SQL('c.classification')} AND NOT ${EXCLUDED_SQL} AND c.counterpart_key <> '' AND NOT ${RETURNED_SQL}
+                                AND NOT EXISTS (SELECT 1 FROM rc_call_resolutions hd WHERE hd.call_key = c.call_key))::int AS not_returned,
             COUNT(*) FILTER (WHERE c.classification = 'unknown' AND NOT ${EXCLUDED_SQL})::int AS unconfirmed
        FROM rc_calls c
       WHERE NOT c.is_internal AND c.direction = 'inbound' AND c.is_primary
@@ -660,7 +661,8 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
     system: `${inbound} AND classification = 'system'`,
     unanswered: `${inbound} AND ${UNANSWERED_SQL('classification')} AND ${kept}`,
     outgoing: "direction = 'outbound'",
-    not_returned: `${inbound} AND ${UNANSWERED_SQL('classification')} AND followup_at IS NULL AND counterpart_key <> '' AND ${kept}`,
+    // Marked handled (or cleared from Needs attention) is dealt with: not "not called back".
+    not_returned: `${inbound} AND ${UNANSWERED_SQL('classification')} AND followup_at IS NULL AND handled_at IS NULL AND counterpart_key <> '' AND ${kept}`,
     excluded: 'excluded_kind IS NOT NULL',
     attention: 'needs_attention',
     handled: DEALT_WITH_SQL(),
@@ -684,7 +686,7 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
         COUNT(*) FILTER (WHERE ${inbound} AND classification = 'unknown' AND ${kept})::int AS unconfirmed,
         COUNT(*) FILTER (WHERE ${inbound} AND classification = 'system')::int AS system,
         COUNT(*) FILTER (WHERE direction = 'outbound')::int AS outgoing,
-        COUNT(*) FILTER (WHERE ${inbound} AND ${UNANSWERED_SQL('classification')} AND followup_at IS NULL AND counterpart_key <> '' AND ${kept})::int AS not_returned,
+        COUNT(*) FILTER (WHERE ${inbound} AND ${UNANSWERED_SQL('classification')} AND followup_at IS NULL AND handled_at IS NULL AND counterpart_key <> '' AND ${kept})::int AS not_returned,
         COUNT(*) FILTER (WHERE excluded_kind IS NOT NULL)::int AS excluded,
         COUNT(*) FILTER (WHERE needs_attention)::int AS attention,
         COUNT(*) FILTER (WHERE ${DEALT_WITH_SQL()})::int AS handled${personCounts}

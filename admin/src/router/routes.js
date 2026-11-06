@@ -23,6 +23,10 @@ export const routes = [
   { path: '/inbox', name: 'Inbox', component: () => import('../views/InboxView.vue'),
     meta: { requiresAuth: true, module: 'messages', capability: 'crm.view' } },
 
+  // Updates: what changed in the portal, for the parts each account can open.
+  { path: '/updates', name: 'Updates', component: () => import('../views/UpdatesView.vue'),
+    meta: { requiresAuth: true, module: 'updates', title: 'Updates' } },
+
   // Calls module: the RingCentral call log (read-only).
   { path: '/calls', name: 'Calls', component: () => import('../modules/calls/CallsView.vue'),
     meta: { requiresAuth: true, module: 'calls', capability: 'calls.view', title: 'Calls' } },
