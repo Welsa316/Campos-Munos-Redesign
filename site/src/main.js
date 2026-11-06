@@ -1,3 +1,6 @@
+// First: takes the administrator's test link (#cm-test=…) out of the address
+// before the router reads it (utils/testMode.js).
+import './utils/testMode.js'
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'

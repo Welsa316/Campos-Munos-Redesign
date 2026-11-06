@@ -222,6 +222,7 @@ import { ref, computed, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useScrollReveal } from '../composables/useScrollReveal.js'
 import { rawFetch } from '../utils/publicApi.js'
+import { currentTestToken, endTestMode, isTestLinkRefusal } from '../utils/testMode.js'
 import { CONSULTATION_KEYS, consultationLabel } from '../data/consultationTypes.js'
 import { MAPS_PROFILE_URL } from '../data/contact.js'
 import { COUNTRIES } from '../data/countries.js'
@@ -272,23 +273,26 @@ async function submitForm() {
   const conversionEventId = crypto.randomUUID?.()
 
   try {
+    // The administrator's test link, when this tab has one (utils/testMode.js).
+    const testToken = currentTestToken()
     const res = await rawFetch('/api/submissions', {
       method: 'POST',
-      body: JSON.stringify({ ...form.value, conversionEventId }),
+      body: JSON.stringify({ ...form.value, conversionEventId, ...(testToken ? { testToken } : {}) }),
     })
 
     if (!res.ok) {
       // Read the JSON error body so we can surface a specific message.
       const data = await res.json().catch(() => ({}))
+      if (isTestLinkRefusal(res.status, data)) endTestMode()
       errorText.value = res.status === 429
         ? t('contact.rateLimitError')
-        : t('contact.errorMessage')
+        : isTestLinkRefusal(res.status, data) ? t('testMode.expired') : t('contact.errorMessage')
       throw new Error(data.error || 'Submission failed')
     }
 
     // Count the lead only once the server has accepted it, so failed and
-    // rate-limited attempts don't inflate the number.
-    trackLead('form', { consultation_type: form.value.consultationType || 'other' }, { conversionEventId })
+    // rate-limited attempts don't inflate the number. A test is not a lead.
+    if (!testToken) trackLead('form', { consultation_type: form.value.consultationType || 'other' }, { conversionEventId })
 
     submitted.value = true
     form.value = { firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '', website: '' }

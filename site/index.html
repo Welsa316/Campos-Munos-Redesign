@@ -6,6 +6,10 @@
 
     <!-- OpenAI ads pixel (ChatGPT ads conversions). Lead conversions are sent
          from src/utils/analytics.js alongside the GA4 generate_lead event. -->
+    <!-- The administrator's test link (#cm-test=…, from the portal's Test
+         channel): kept for this tab and taken out of the address before any
+         tag below can see it. src/utils/testMode.js reads it from here. -->
+    <script>(function(){try{var m=/(?:^#|&)cm-test=([^&]+)/.exec(location.hash);if(m){sessionStorage.setItem('cm-test-token',decodeURIComponent(m[1]));history.replaceState(history.state,'',location.pathname+location.search)}}catch(e){}})()</script>
     <script>!function(w,d,s,u){if(w.oaiq)return;var q=function(){q.q.push(arguments)};q.q=[];w.oaiq=q;var j=d.createElement(s);j.async=1;j.src=u;var f=d.getElementsByTagName(s)[0];f.parentNode.insertBefore(j,f)}(window,document,"script","https://bzrcdn.openai.com/sdk/oaiq.min.js");oaiq("init",{pixelId:"NshoMD9T8va4mtuWzuZwPr",debug:false});</script>
     <meta name="theme-color" content="#003F8D" />
 

@@ -216,6 +216,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { rawFetch } from '../utils/publicApi.js'
+import { currentTestToken, endTestMode, isTestLinkRefusal } from '../utils/testMode.js'
 import { CONSULTATION_KEYS, consultationLabel } from '../data/consultationTypes.js'
 import { COUNTRIES } from '../data/countries.js'
 
@@ -271,6 +272,11 @@ function loadSession() {
     const raw = localStorage.getItem(SESSION_KEY)
     if (!raw) return
     const parsed = JSON.parse(raw)
+    // A test chat only lasts as long as the test link that started it.
+    if (parsed?.test && !currentTestToken()) {
+      localStorage.removeItem(SESSION_KEY)
+      return
+    }
     if (parsed && parsed.id) {
       session.value = parsed
       messages.value = parsed.messages || []
@@ -278,6 +284,13 @@ function loadSession() {
   } catch {
     /* ignore corrupted session */
   }
+}
+
+function endTestChat() {
+  session.value = null
+  messages.value = []
+  try { localStorage.removeItem(SESSION_KEY) } catch { /* ignore */ }
+  formError.value = t('testMode.expired')
 }
 
 function saveSession() {
@@ -374,6 +387,9 @@ async function startChat() {
   }
 
   loading.value = true
+  // The administrator's test link, when this tab has one (utils/testMode.js).
+  const testToken = currentTestToken()
+  let refusedTestLink = false
   try {
     const res = await rawFetch('/api/submissions', {
       method: 'POST',
@@ -387,17 +403,20 @@ async function startChat() {
         message: f.message.trim(),
         source: 'chat',
         website: f.website,
+        ...(testToken ? { testToken } : {}),
       }),
     })
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
+      if (isTestLinkRefusal(res.status, data)) { endTestMode(); refusedTestLink = true }
       throw new Error(data.error || 'Submission failed')
     }
 
     // A chat session lands in the same inbox as the contact form, so it counts
     // as a lead — tracked separately so the firm can compare the two channels.
-    trackLead('chat', { consultation_type: f.consultationType || 'other' })
+    // A test chat is not a lead.
+    if (!testToken) trackLead('chat', { consultation_type: f.consultationType || 'other' })
 
     const data = await res.json()
     const firstMessageBody = f.message.trim()
@@ -409,13 +428,15 @@ async function startChat() {
       email: f.email.trim(),
       phone: f.phone.trim(),
       startedAt: data.created_at,
+      // A test chat's id is in the test channel, not among leads.
+      ...(data.test ? { test: true } : {}),
     }
     messages.value = [{ id: `m-${data.id}`, body: firstMessageBody, sent_at: data.created_at }]
     saveSession()
     form.value = { firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '', website: '' }
     nextTick(scrollThreadToBottom)
   } catch (err) {
-    formError.value = t('chat.sendError')
+    formError.value = refusedTestLink ? t('testMode.expired') : t('chat.sendError')
   } finally {
     loading.value = false
   }
@@ -424,6 +445,11 @@ async function startChat() {
 async function sendFollowUp() {
   const body = newMessage.value.trim()
   if (!body || !session.value || sending.value) return
+  // A test chat whose link ran out: it cannot go on, and must not become a lead.
+  if (session.value.test && !currentTestToken()) {
+    endTestChat()
+    return
+  }
 
   sending.value = true
   pendingText.value = body
@@ -433,11 +459,12 @@ async function sendFollowUp() {
   try {
     const res = await rawFetch(`/api/submissions/${session.value.id}/chat-message`, {
       method: 'POST',
-      body: JSON.stringify({ body, chatToken: session.value.chatToken }),
+      body: JSON.stringify({ body, chatToken: session.value.chatToken, ...(session.value.test ? { testToken: currentTestToken() } : {}) }),
     })
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
+      if (isTestLinkRefusal(res.status, data)) { endTestMode(); endTestChat(); pendingText.value = ''; return }
       throw new Error(data.error || 'Send failed')
     }
 

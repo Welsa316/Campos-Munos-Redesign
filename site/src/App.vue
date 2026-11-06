@@ -25,6 +25,7 @@
       <ChatWidget />
     </div>
     <InactivityPopup />
+    <TestModeStrip />
     <div class="sm:hidden">
       <MobileContactWidget />
     </div>
@@ -38,6 +39,7 @@ import SiteHeader from './components/SiteHeader.vue'
 import SiteFooter from './components/SiteFooter.vue'
 import LanguageToggle from './components/LanguageToggle.vue'
 import InactivityPopup from './components/InactivityPopup.vue'
+import TestModeStrip from './components/TestModeStrip.vue'
 import ChatWidget from './components/ChatWidget.vue'
 import MobileContactWidget from './components/MobileContactWidget.vue'
 

@@ -152,6 +152,12 @@ export default {
     firmName: "CAMPOS MUÑOS LAW, LLC {'|'} IMMIGRATION ATTORNEYS",
   },
   readMore: 'Leer más',
+  testMode: {
+    label: 'Modo de prueba.',
+    note: 'Lo que envíe va al canal de pruebas, no a la oficina.',
+    exit: 'Salir',
+    expired: 'El enlace de prueba venció. Pida uno nuevo en el canal de pruebas del portal.',
+  },
   a11y: {
     skipToContent: 'Saltar al contenido principal',
     close: 'Cerrar',
