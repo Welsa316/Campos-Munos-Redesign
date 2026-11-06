@@ -27,6 +27,7 @@ import { createActivityRouter } from './routes/activity.js'
 import { createPushRouter } from './routes/push.js'
 import { createNotificationsRouter } from './routes/notifications.js'
 import { createRemindersRouter } from './routes/reminders.js'
+import { createWorkQueueRouter } from './routes/workQueue.js'
 import { createRingCentralWebhookRouter } from './routes/ringcentralWebhook.js'
 import { activityRecorder } from './activity/recorder.js'
 import {
@@ -158,6 +159,8 @@ export function createApp({ env = process.env, log = logger, beforeFallback, rea
   app.use('/api/notifications', createNotificationsRouter())
   // Callback reminders on callers and website leads (server/reminders/).
   app.use('/api/reminders', createRemindersRouter())
+  // Home's "My follow-ups" (read-only).
+  app.use('/api/work-queue', createWorkQueueRouter())
 
   // API 404s — registered before any frontend fallback so an unknown /api/*
   // path returns JSON instead of a page.

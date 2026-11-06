@@ -122,6 +122,8 @@ before(async () => {
   app.use('/api/reminders', createRemindersRouter({ db, now: () => clock.t }))
   app.use('/api/calls', createCallsRouter({ db, env: { NODE_ENV: 'test' }, now: () => clock.t }))
   app.use('/api/submissions', submissions)
+  const { createWorkQueueRouter } = await import('./routes/workQueue.js')
+  app.use('/api/work-queue', createWorkQueueRouter({ db, now: () => clock.t }))
   addFallbackHandlers(app)
   server = app.listen(0)
   await new Promise((r) => server.once('listening', r))
@@ -578,6 +580,70 @@ test('callback reminders', { skip: SKIP }, async (t) => {
     assert.equal(pushed.length, 1, 'no second notification')
     assert.equal((await reminderRow(r.id)).status, 'due')
     await closeAll()
+  })
+
+  await t.test('My follow-ups: my reminders by urgency, then new website leads, only what I may open', async () => {
+    await closeAll()
+    await db.query('UPDATE submissions SET is_read = TRUE')
+    const n = newNumber()
+    const caller = await addCall({ at: new Date(clock.t.getTime() - 60 * MIN).toISOString(), number: n })
+    const at = (mins) => new Date(clock.t.getTime() + mins * MIN).toISOString()
+    const mk = async (body, as = u.desk) => (await make({ allowDuplicate: true, ...body }, as)).id
+    const later = await mk({ target: { kind: 'call', id: caller }, dueAt: at(26 * 60) })
+    const today = await mk({ target: { kind: 'call', id: caller }, dueAt: at(120) })
+    const overdue = await mk({ target: { kind: 'call', id: caller }, dueAt: at(5) })
+    const dueNow = await mk({ target: { kind: 'call', id: caller }, dueAt: at(5) })
+    await db.query("UPDATE follow_up_reminders SET due_at = $2, status = 'due' WHERE id = $1", [overdue, at(-30)])
+    await db.query("UPDATE follow_up_reminders SET due_at = $2, status = 'due' WHERE id = $1", [dueNow, at(-1)])
+    // Someone else's reminder is not mine.
+    await mk({ target: { kind: 'call', id: caller }, dueAt: at(10), assignee: u.ciro.id })
+    const fresh = await newLead()
+    const archived = await newLead()
+    await db.query('UPDATE submissions SET is_archived = TRUE WHERE id = $1', [archived])
+    const contacted = await newLead()
+    await db.query("UPDATE submissions SET status = 'contacted' WHERE id = $1", [contacted])
+    // A lead I already have a reminder on is listed once, as the reminder.
+    const mine = await newLead()
+    const leadReminder = await mk({ target: { kind: 'submission', id: mine }, dueAt: at(3 * 24 * 60) })
+
+    const q = await send('GET', '/api/work-queue')
+    assert.equal(q.status, 200, q.text)
+    assert.deepEqual(q.json.items.map((i) => [i.kind, i.group, i.reminderId ?? i.path]), [
+      ['callback', 'overdue', overdue],
+      ['callback', 'due', dueNow],
+      ['callback', 'today', today],
+      ['new_lead', 'lead', `/inbox?lead=${fresh}`],
+      ['callback', 'later', later],
+    ])
+    assert.equal(q.json.hasMore, true, 'the lead reminder is the sixth')
+    assert.equal(q.json.items[0].path, `/calls?call=${caller}`)
+    assert.equal(q.json.items[0].number, n)
+    assert.ok(!JSON.stringify(q.json).includes('Necesito'), 'no message text')
+    // Done: it leaves the list, and the next one moves up.
+    await send('POST', `/api/reminders/${overdue}/complete`, {})
+    const q2 = (await send('GET', '/api/work-queue')).json
+    assert.equal(q2.items[0].reminderId, dueNow)
+    assert.equal(q2.items[4].reminderId, leadReminder)
+    assert.equal(q2.hasMore, false)
+
+    // Billing staff: neither calls nor leads.
+    assert.equal((await send('GET', '/api/work-queue', undefined, u.para)).status, 403)
+    // Leads only: no callers, even with a reminder on one.
+    await db.query("UPDATE follow_up_reminders SET assigned_to = $1 WHERE id = $2", [u.leads.id, today])
+    const leadsOnly = (await send('GET', '/api/work-queue', undefined, u.leads)).json
+    assert.ok(leadsOnly.items.length > 0)
+    assert.ok(leadsOnly.items.every((i) => i.kind !== 'callback'))
+    assert.deepEqual(leadsOnly.sections, { calls: false, leads: true })
+    // Calls only (crm.view taken away): no leads.
+    await db.query("UPDATE admin_users SET capability_revokes = '{crm.view}' WHERE id = $1", [u.desk.id])
+    try {
+      const callsOnly = (await send('GET', '/api/work-queue')).json
+      assert.ok(callsOnly.items.every((i) => i.kind === 'callback'))
+      assert.deepEqual(callsOnly.sections, { calls: true, leads: false })
+    } finally {
+      await db.query("UPDATE admin_users SET capability_revokes = '{}' WHERE id = $1", [u.desk.id])
+      await closeAll()
+    }
   })
 
   await t.test('cancelled before it is due: never delivered', async () => {
