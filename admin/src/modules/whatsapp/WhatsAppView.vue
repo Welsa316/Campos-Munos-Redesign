@@ -213,7 +213,7 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../../composables/useAuth.js'
-import { useApi, rawFetch, goToLogin, latestOnly } from '../../composables/useApi.js'
+import { useApi, latestOnly } from '../../composables/useApi.js'
 import { formatPhone } from '../../utils/phone.js'
 import PortalHeader from '../../components/portal/PortalHeader.vue'
 import FaIcon from '../../components/FaIcon.vue'
@@ -222,14 +222,7 @@ import { toDate, isComposing } from '../../utils/text.js'
 const route = useRoute()
 const router = useRouter()
 const { can } = useAuth()
-const { get, post } = useApi()
-const put = async (path, body) => {
-  const res = await rawFetch(path, { method: 'PUT', body: JSON.stringify(body) })
-  if (res.status === 401) { goToLogin(); throw new Error('Unauthorized') }
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error || 'Request failed')
-  return data
-}
+const { get, post, put } = useApi()
 
 const VIEWS = [
   { key: 'open', label: 'Open' },

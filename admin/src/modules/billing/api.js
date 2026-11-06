@@ -2,14 +2,7 @@
 import { useApi, rawFetch, goToLogin } from '../../composables/useApi.js'
 
 export function useBillingApi() {
-  const { get, post, del } = useApi()
-  const put = async (path, body) => {
-    const res = await rawFetch(path, { method: 'PUT', body: JSON.stringify(body) })
-    if (res.status === 401) { goToLogin(); throw new Error('Unauthorized') }
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.error || 'Request failed')
-    return data
-  }
+  const { get, post, del, put } = useApi()
   return {
     overview: () => get('/api/billing/overview'),
     invoices: (params = {}) => get(`/api/billing/invoices?${new URLSearchParams(params)}`),
