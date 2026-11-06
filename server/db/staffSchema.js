@@ -52,6 +52,13 @@ export const STAFF_SCHEMA_SQL = `
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
   CREATE INDEX IF NOT EXISTS idx_wa_conversations_assigned ON wa_conversations(assigned_to);
+  -- New messages open their conversation as they are stored
+  -- (db/whatsappEvents.js). This catches up history stored before that.
+  -- Idempotent; one scan of the events per deploy instead of one per inbox
+  -- poll.
+  INSERT INTO wa_conversations (wa_id)
+  SELECT DISTINCT from_wa_id FROM whatsapp_events WHERE kind = 'message' AND from_wa_id IS NOT NULL
+  ON CONFLICT (wa_id) DO NOTHING;
 
   -- Internal notes: seen by staff only, never sent.
   CREATE TABLE IF NOT EXISTS wa_conversation_notes (
