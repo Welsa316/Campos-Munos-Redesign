@@ -7,11 +7,16 @@
     :aria-label="s.label" :title="s.label">
     <span class="relative inline-flex">
       <FaIcon :name="s.icon" class="text-xs" />
-      <!-- Updates: something changed in the last 48 hours for this account. -->
-      <span v-if="s.key === 'updates' && updatesNew" class="absolute -top-2 -right-3.5 px-1 rounded bg-brand-navy text-white text-[9px] font-bold leading-[14px] uppercase tracking-wide" aria-hidden="true">New</span>
+      <!-- Updates: something changed in the last 48 hours for this account.
+           A dot on the icon where it has no label, so nothing beside it is
+           covered; a "New" tag after the label where it has one. -->
+      <span v-if="s.key === 'updates' && updatesNew" :class="UNLABELLED_AT[labelAt]"
+        class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-brand-navy ring-2 ring-white" aria-hidden="true"></span>
     </span>
     <!-- Labelled only where this header has room for every action. -->
     <span :class="LABEL_AT[labelAt]">{{ s.label }}</span>
+    <span v-if="s.key === 'updates' && updatesNew" :class="LABEL_AT[labelAt]"
+      class="px-1.5 rounded bg-brand-navy text-white text-[10px] font-bold leading-[16px] uppercase tracking-wide" aria-hidden="true">New</span>
     <span v-if="s.key === 'updates' && updatesNew" class="sr-only">, new</span>
   </router-link>
 
@@ -48,6 +53,7 @@ const props = defineProps({
 
 // Whole class names, so Tailwind sees them.
 const LABEL_AT = { sm: 'hidden sm:inline', lg: 'hidden lg:inline', xl: 'hidden xl:inline', '2xl': 'hidden 2xl:inline' }
+const UNLABELLED_AT = { sm: 'sm:hidden', lg: 'lg:hidden', xl: 'xl:hidden', '2xl': '2xl:hidden' }
 const LINK = 'flex items-center gap-2 px-2.5 sm:px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors'
 
 const SECTIONS = [
