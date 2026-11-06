@@ -24,7 +24,7 @@ export const SECTIONS = {
 export const UPDATES = [
   {
     id: 'lead-notifications-app',
-    at: '2026-11-06T09:10:19Z',
+    at: '2026-11-06T09:11:24Z',
     section: 'messages',
     any: ['crm.view'],
     title: 'A notification when someone writes in through the website',
@@ -45,6 +45,7 @@ export const UPDATES = [
       'On Home, press the bell next to Password, then Enable notifications, and allow them when your browser asks.',
       'Send test notification checks it works. If nothing appears, the box says where your computer keeps the setting (Windows and Mac are different).',
       'Turn it off any time on that computer. Each computer is switched on separately.',
+      'Notifications only show while the browser is running. On Windows, let it keep running when its windows are closed: in Chrome, Settings → System → Continue running background apps; in Edge, Settings → System and performance → Startup boost and Continue running background apps. A notification sent while the browser was quit shows when it next starts, up to a day later.',
       'Notifications never show a client’s name, number or case, only that something is ready to review.',
     ],
   },

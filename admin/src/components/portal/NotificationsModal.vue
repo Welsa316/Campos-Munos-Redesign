@@ -64,6 +64,12 @@
             </template>
           </div>
 
+          <!-- Push is delivered to the browser: it must be running, even with no window open. -->
+          <p v-if="state === 'on'" class="text-xs text-gray-600 leading-relaxed" data-background-tip>
+            Notifications show only while your browser is running. To get them with every window closed, let it keep running in the background:
+            in Chrome, Settings → System → Continue running background apps; in Edge, Settings → System and performance → Startup boost.
+            One sent while the browser was quit appears when it next starts, up to a day later.
+          </p>
           <!-- Shown as the browser until the portal is installed as an app. -->
           <p v-if="state === 'on' && !installed" class="text-xs text-gray-600 leading-relaxed" data-install-tip>
             To have notifications show as Campos Muños instead of your browser, install the portal as an app:

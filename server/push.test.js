@@ -333,6 +333,7 @@ test('a new website lead notifies, once, the people who may read leads — with 
   assert.equal(to(subs.desk).length, 1, 'the front desk is told')
   assert.equal(to(subs.para).length, 0, 'billing staff cannot read leads')
   assert.equal(to(subs.noLeads).length, 0, 'nor can an account with leads revoked')
+  assert.equal(to(subs.desk)[0].options.TTL, 24 * 60 * 60, 'kept a day for a computer that is off')
   assert.deepEqual(to(subs.desk)[0].payload, {
     title: 'Campos Muños — New website message',
     body: 'Someone wrote in through the website. Open Messages to read it.',
