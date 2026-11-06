@@ -20,6 +20,16 @@ test('a refusal keeps its status, code and body (a reminder clash carries the re
   })
 })
 
+test('a limit the server sets reads in its own words (429 too_many_changes, 409 too_many_open)', async () => {
+  for (const [status, code, error] of [
+    [429, 'too_many_changes', 'Too many reminder changes in a few minutes. Wait a moment and try again.'],
+    [409, 'too_many_open', 'There are already 50 open reminders from you for this person. Finish or cancel some first.'],
+  ]) {
+    const apiFetch = createApiFetch({ send: async () => reply(status, { error, code }) })
+    await assert.rejects(apiFetch('/api/reminders', { method: 'POST' }), (e) => e.status === status && e.code === code && e.message === error)
+  }
+})
+
 test('a refusal with no JSON body still says something', async () => {
   const apiFetch = createApiFetch({ send: async () => ({ status: 502, ok: false, json: async () => { throw new SyntaxError('html') } }) })
   await assert.rejects(apiFetch('/x'), (e) => e.status === 502 && e.code === null && e.message.length > 0)

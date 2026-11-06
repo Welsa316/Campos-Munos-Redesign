@@ -55,7 +55,7 @@ import { can } from '../../composables/useAuth.js'
 import { toast } from '../../composables/useToast.js'
 import FaIcon from '../../components/FaIcon.vue'
 import { when } from '../calls/callsInbox.js'
-import { historyLine, possibleMatch, HISTORY_ICON } from './historyText.js'
+import { historyLine, possibleMatch, olderPageParam, HISTORY_ICON } from './historyText.js'
 import { consultationLabel } from '../../data/consultationTypes.js'
 
 const props = defineProps({
@@ -70,6 +70,8 @@ const events = ref([])
 const matches = ref([])
 const hasNumber = ref(true)
 const more = ref(false)
+// The last page's cursor for the next older one (absent from an older API).
+let next = null
 const loading = ref(false)
 const loaded = ref(false)
 const error = ref(false)
@@ -81,9 +83,10 @@ async function load({ older = false } = {}) {
   loading.value = true
   error.value = false
   try {
-    const before = older && events.value.length ? `&before=${encodeURIComponent(events.value[events.value.length - 1].at)}` : ''
-    const r = await get(`/api/contacts/history?${query()}&limit=20${before}`)
+    const page = older ? olderPageParam(next, events.value) : ''
+    const r = await get(`/api/contacts/history?${query()}&limit=20${page}`)
     events.value = older ? [...events.value, ...r.events.filter((e) => !events.value.some((x) => x.id === e.id))] : r.events
+    next = r.next || null
     more.value = r.more
     hasNumber.value = r.hasNumber
     matches.value = r.matches || []
@@ -94,7 +97,7 @@ async function load({ older = false } = {}) {
     loading.value = false
   }
 }
-watch(() => [props.callId, props.submissionId], () => { events.value = []; load() }, { immediate: true })
+watch(() => [props.callId, props.submissionId], () => { events.value = []; next = null; load() }, { immediate: true })
 defineExpose({ reload: () => load() })
 
 // A person counts as undecided while any of their leads is.

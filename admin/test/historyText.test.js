@@ -1,7 +1,7 @@
 // The words a contact's history uses for each event.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { historyLine, possibleMatch } from '../src/modules/contacts/historyText.js'
+import { historyLine, possibleMatch, olderPageParam } from '../src/modules/contacts/historyText.js'
 
 test('calls say what RingCentral recorded, and who answered only when known', () => {
   assert.equal(historyLine({ type: 'call', direction: 'inbound', classification: 'answered', employee: 'Ciro Perez' }), 'Incoming call, answered by Ciro Perez')
@@ -19,4 +19,11 @@ test('website events, replies and notes', () => {
   assert.equal(historyLine({ type: 'call_note', employee: 'Yoletty' }), 'Call note by Yoletty')
   assert.equal(possibleMatch({ type: 'submission', match: 'possible' }), true)
   assert.equal(possibleMatch({ type: 'submission', match: 'confirmed' }), false)
+})
+
+test('older pages follow the server cursor, and fall back to before= without one', () => {
+  const events = [{ id: 1, at: '2026-11-06T15:00:00.000Z' }, { id: 2, at: '2026-11-05T15:00:00.000Z' }]
+  assert.equal(olderPageParam('MjAyNi0xMS0wNXwy+/=', events), '&cursor=MjAyNi0xMS0wNXwy%2B%2F%3D')
+  assert.equal(olderPageParam(null, events), '&before=2026-11-05T15%3A00%3A00.000Z')
+  assert.equal(olderPageParam(undefined, []), '')
 })
