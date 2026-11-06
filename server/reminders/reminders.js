@@ -148,7 +148,8 @@ export function present(r) {
     // 'resolved': closed by the server because the follow-up was dealt with.
     completionReason: r.completion_reason,
     cancelledAt: r.cancelled_at,
-    delivery: deliverySummary(r.deliveries),
+    // What happened when it fell due; nothing while it waits (again, after a snooze).
+    delivery: r.status === 'open' ? {} : deliverySummary(r.deliveries),
   }
 }
 

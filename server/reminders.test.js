@@ -17,7 +17,7 @@ import pg from 'pg'
 import jwt from 'jsonwebtoken'
 import webpush from 'web-push'
 import { CLASSIFIER_VERSION } from './integrations/ringcentral/callEvidence.js'
-import { nextBusinessMorning, firmWall, parseDue } from './reminders/dueTime.js'
+import { nextBusinessMorning, firmWall, firmInstant, parseDue } from './reminders/dueTime.js'
 import { renderReminderEmail, emailAllowlist, createResendMailer, REMINDER_EMAIL } from './reminders/email.js'
 import { backoffAfter, EMAIL_BACKOFF_MINUTES, MAX_EMAIL_ATTEMPTS } from './reminders/worker.js'
 import { CALLBACK_REMINDER } from './push/send.js'
@@ -196,6 +196,9 @@ test('tomorrow morning is 9:00 AM New Orleans time on the next business day, acr
   nine('2026-11-06T05:30:00Z', '2026-11-06T15:00:00.000Z')
   // Before 9 AM on a weekday, "tomorrow" is still tomorrow.
   nine('2026-11-04T12:00:00Z', '2026-11-05T15:00:00.000Z')
+  // A wall-clock time just after the spring-forward, on the day itself.
+  assert.equal(firmInstant(2026, 3, 8, 3, 30).toISOString(), '2026-03-08T08:30:00.000Z')
+  assert.equal(firmInstant(2026, 11, 1, 9, 0).toISOString(), '2026-11-01T15:00:00.000Z')
 })
 
 test('due times: future only (a minute of skew), at most a year out, presets worked out on the server', () => {
