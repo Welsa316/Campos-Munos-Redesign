@@ -12,6 +12,7 @@ test('only the desktop app counts as the desktop app', () => {
 })
 
 import { listenForDesktopNavigation, desktopNotificationState } from '../src/utils/desktop.js'
+import { pushOpenPath } from '../src/utils/push.js'
 
 const fakeRouter = () => { const pushed = []; return { pushed, push: async (p) => { pushed.push(p) } } }
 
@@ -26,6 +27,18 @@ test('a notification clicked in the app moves the portal in place, only to its o
   handler('https://evil.example')
   handler(42)
   assert.deepEqual(router.pushed, ['/calls?tab=handled'])
+})
+
+test('a browser notification and a desktop app notification accept the same paths', () => {
+  let handler = null
+  const router = fakeRouter()
+  listenForDesktopNavigation(router, { campos: { desktop: true, onNavigate: (fn) => { handler = fn } } })
+  const long = `/calls?q=${'a'.repeat(400)}`
+  const paths = ['/calls?call=12', long, '/calls\\..\\evil', `/x${'a'.repeat(600)}`, '//evil.example']
+  const viaPush = paths.filter((p) => pushOpenPath({ type: 'cm-push-open', path: p }) === p)
+  for (const p of paths) handler(p)
+  assert.deepEqual(viaPush, router.pushed)
+  assert.deepEqual(viaPush, ['/calls?call=12', long])
 })
 
 test('in a browser, or an app without the hook, nothing registers', () => {

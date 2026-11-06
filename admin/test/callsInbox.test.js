@@ -4,29 +4,11 @@
 // browser's.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { attentionSections, handledSections, daySections, followUpLine, followUpDetail, dayName, dateKey, animateChange, episodeSections, reviewSection, episodeSummary, episodeLine, REVIEW_GROUP } from '../src/modules/calls/callsInbox.js'
+import { handledSections, daySections, followUpLine, followUpDetail, dayName, dateKey, animateChange, episodeSections, reviewSection, episodeSummary, episodeLine, REVIEW_GROUP } from '../src/modules/calls/callsInbox.js'
 
 // 11:48 AM in New Orleans on Thu Nov 5 2026.
 const NOW = Date.parse('2026-11-05T17:48:00Z')
 const call = (over) => ({ id: 1, direction: 'inbound', classification: 'not_answered', number: '+15045550101', startedAt: '2026-11-05T16:00:00Z', needsAttention: true, attentionGroup: 'new', ...over })
-
-test('needs attention lists only open calls, oldest trouble first, newest first inside a group', () => {
-  const sections = attentionSections([
-    call({ id: 1, attentionGroup: 'new', startedAt: '2026-11-05T15:00:00Z' }),
-    call({ id: 2, attentionGroup: 'waiting', startedAt: '2026-11-03T15:00:00Z' }),
-    call({ id: 3, attentionGroup: 'new', startedAt: '2026-11-05T16:30:00Z' }),
-    call({ id: 4, attentionGroup: 'try_again' }),
-    call({ id: 5, needsAttention: false, attentionGroup: null }),
-    call({ id: 6, attentionGroup: 'waiting', startedAt: '2026-11-04T15:00:00Z' }),
-  ])
-  assert.deepEqual(sections.map((s) => s.key), ['waiting', 'try_again', 'new'])
-  assert.deepEqual(sections.map((s) => s.calls.map((c) => c.id)), [[6, 2], [4], [3, 1]])
-})
-
-test('a group with no calls is not shown', () => {
-  assert.deepEqual(attentionSections([call({ attentionGroup: 'new' })]).map((s) => s.key), ['new'])
-  assert.deepEqual(attentionSections([]), [])
-})
 
 test('an open call reads as open; only what the server sent closes it', () => {
   assert.deepEqual(followUpLine(call(), NOW), { tone: 'open', text: 'Callback needed' })

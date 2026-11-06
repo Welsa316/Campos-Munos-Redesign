@@ -40,20 +40,6 @@ export const GROUPS = [
   { key: 'new', label: 'New today', hint: '' },
 ]
 
-/**
- * Needs attention as the page lists it: one section per group that has
- * calls, newest first inside each. Calls the server no longer marks as
- * needing attention are left out, whatever the list contains.
- */
-export function attentionSections(calls) {
-  const open = calls.filter((c) => c.needsAttention)
-  return GROUPS.map((g) => ({
-    ...g,
-    calls: open.filter((c) => (c.attentionGroup || 'new') === g.key)
-      .sort((a, b) => new Date(b.startedAt) - new Date(a.startedAt) || b.id - a.id),
-  })).filter((g) => g.calls.length)
-}
-
 // --- callback episodes -------------------------------------------------------------
 // Needs attention lists one item per person waiting for a call back (the
 // server groups their unanswered calls into an episode), and below it the

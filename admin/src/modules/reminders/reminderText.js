@@ -31,6 +31,9 @@ export function remindersForEpisode(reminders, episode) {
   return (reminders || []).filter((r) => r.target.kind === 'call' && ids.has(r.target.id))
 }
 
+/** What marks a reminder as announced: its id and due time, so a snoozed one counts as new. */
+export const announceKey = (r) => `${r.id}@${new Date(r.dueAt).getTime()}`
+
 /**
  * The due reminders to announce now: due (by status or time) and not
  * announced before in this tab. A snoozed reminder that comes round again
@@ -39,7 +42,6 @@ export function remindersForEpisode(reminders, episode) {
 export function dueToAnnounce(reminders, seen, now = Date.now()) {
   return (reminders || []).filter((r) => {
     if (r.status !== 'due' && new Date(r.dueAt).getTime() > now) return false
-    return !seen.has(`${r.id}@${new Date(r.dueAt).getTime()}`)
+    return !seen.has(announceKey(r))
   })
 }
-export const announceKey = (r) => `${r.id}@${new Date(r.dueAt).getTime()}`

@@ -3,6 +3,8 @@
 // reading state; the permission prompt only ever follows a click on
 // "Enable notifications".
 
+import { isPortalPath } from './portalPath.js'
+
 const BASE = import.meta.env?.BASE_URL ?? '/'
 export const SW_URL = `${BASE}push-sw.js`
 export const SW_SCOPE = BASE
@@ -76,10 +78,8 @@ export function blockedHelp(host, nav = globalThis.navigator) {
  * (push-sw.js posts { type: 'cm-push-open', path }). Only in-portal paths.
  */
 export function pushOpenPath(data) {
-  if (!data || data.type !== 'cm-push-open' || typeof data.path !== 'string') return null
-  const p = data.path
-  if (p.length > 300 || !p.startsWith('/') || p.startsWith('//') || p.startsWith('/\\')) return null
-  return p
+  if (!data || data.type !== 'cm-push-open') return null
+  return isPortalPath(data.path) ? data.path : null
 }
 
 export function listenForNotificationClicks(router, win = globalThis) {
