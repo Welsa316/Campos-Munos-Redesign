@@ -23,6 +23,18 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'my-follow-ups',
+    at: '2026-11-06T18:30:00Z',
+    section: 'everyone',
+    any: ['calls.view', 'crm.view'],
+    title: 'My follow-ups on Home',
+    summary: 'Home now lists the few things waiting for you, most urgent first: your callback reminders that are overdue, due or later today, then website messages nobody has opened yet.',
+    points: [
+      'Click a line to open that caller or message. View all opens Needs attention or Messages.',
+      'Only your own reminders are listed. A reminder you mark Done, or a caller who is reached, leaves the list.',
+    ],
+  },
+  {
     id: 'callback-reminders',
     at: '2026-11-06T18:00:00Z',
     section: 'calls',
