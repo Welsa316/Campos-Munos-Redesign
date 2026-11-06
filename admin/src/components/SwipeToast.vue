@@ -15,6 +15,7 @@
         <FaIcon :name="t.tone === 'error' ? 'circle-exclamation' : t.tone === 'info' ? 'circle-info' : 'circle-check'" class="flex-shrink-0" />
         <span class="flex-1 min-w-0">{{ t.text }}</span>
         <button v-if="t.undo" type="button" @click="runUndo(t)" class="min-h-9 px-2 font-semibold underline">Undo</button>
+        <button v-if="t.action" type="button" @click="runAction(t)" class="min-h-9 px-2 font-semibold underline">{{ t.action.label }}</button>
         <button type="button" @click="toastQueue.dismiss(t.id)" aria-label="Dismiss" class="w-9 h-9 -mr-2 inline-flex items-center justify-center rounded-lg hover:bg-white/10"><FaIcon name="xmark" /></button>
       </div>
     </TransitionGroup>
@@ -47,6 +48,9 @@ function endDrag(t) {
   else toastQueue.release(t.id)
 }
 function cancelDrag(t) { if (drag.id === t.id) { drag.id = null; toastQueue.release(t.id) } }
+async function runAction(t) {
+  try { await toastQueue.act(t.id) } catch (e) { toast({ text: e.message || 'Could not open that.', tone: 'error' }) }
+}
 async function runUndo(t) {
   try { await toastQueue.undo(t.id) } catch (e) { toast({ text: e.message || 'Could not undo that.', tone: 'error' }) }
 }

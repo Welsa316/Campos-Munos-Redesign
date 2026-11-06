@@ -65,3 +65,20 @@ test('Undo runs once and removes the toast', async () => {
   assert.equal(runs, 1)
   assert.equal(q.items.length, 0)
 })
+
+test('an action (Open) runs once, removes the toast, and a persistent one waits for it', async () => {
+  const c = fakeClock()
+  const q = createToastQueue(c)
+  let opened = 0
+  const id = q.show({ text: 'A callback reminder is due', tone: 'info', persistent: true, action: { label: 'Open', run: () => { opened++ } } })
+  c.advance(60 * 60 * 1000)
+  assert.equal(q.items.length, 1, 'still there an hour later')
+  assert.equal(q.items[0].action.label, 'Open')
+  await q.act(id)
+  await q.act(id)
+  assert.equal(opened, 1)
+  assert.equal(q.items.length, 0)
+  // Without a label or a function there is no button.
+  const bare = q.show({ text: 'x', action: { label: 'Open' } })
+  assert.equal(q.items.find((t) => t.id === bare).action, null)
+})

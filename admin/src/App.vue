@@ -32,11 +32,14 @@ import { sessionExpired, renderError } from './composables/appStatus.js'
 import { loginHref } from './composables/useApi.js'
 import { useAuth } from './composables/useAuth.js'
 import SwipeToast from './components/SwipeToast.vue'
+import { useReminderAlerts } from './modules/reminders/useReminderAlerts.js'
 
 // Each refreshes itself when shown again (onActivated) and stops polling
 // while hidden (onDeactivated).
 const KEPT = ['DashboardView', 'InboxView', 'CallsView', 'WhatsAppView']
 const { isAuthenticated } = useAuth()
+// A callback reminder falling due while the portal is open: a toast with Open.
+useReminderAlerts()
 
 const reload = () => window.location.reload()
 </script>
