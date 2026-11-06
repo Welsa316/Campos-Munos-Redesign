@@ -217,9 +217,9 @@ const summaries = computed(() => {
       arrowTone: 'bg-glass-navy-chip text-glass-navy-ink',
       numberTone: 'text-glass-navy-ink',
       subTone: 'text-glass-navy-ink opacity-70',
-      value: !u ? '·' : u.error ? '—' : u.count >= 200 ? '200+' : u.count,
+      value: !u ? '·' : u.error ? '—' : u.count,
       sub: u?.error ? COULD_NOT_LOAD : firstName.value ? `Waiting for you, ${firstName.value}` : 'Website and chat inquiries',
-      pill: u && !u.error ? (u.count ? `Oldest from ${ago(u.oldest)}` : 'All caught up') : null,
+      pill: u && !u.error ? (u.count ? (u.oldest ? `Oldest from ${ago(u.oldest)}` : null) : 'All caught up') : null,
       pillTone: 'bg-glass-navy-chip text-glass-navy-ink',
     })
   }
@@ -343,11 +343,9 @@ function loadFigures({ quiet = false } = {}) {
       .catch(() => { missed.value = failed(missed.value) })
   }
   if (can('crm.view')) {
-    withRetry(() => get('/api/submissions?unread=true&limit=200')).then((rows) => {
-      const list = Array.isArray(rows) ? rows : []
-      // Newest first from the API: the oldest waiting is the last one.
-      unread.value = { count: list.length, oldest: list.length ? list[list.length - 1].created_at : null }
-    }).catch(() => { unread.value = failed(unread.value) })
+    withRetry(() => get('/api/submissions/unread-count'))
+      .then((d) => { unread.value = { count: Number(d?.count) || 0, oldest: d?.oldest || null } })
+      .catch(() => { unread.value = failed(unread.value) })
   }
 }
 let activations = 0

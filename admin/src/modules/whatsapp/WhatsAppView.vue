@@ -444,7 +444,7 @@ const POLL_INTERVAL_MS = 15000
 let timer = null
 let inFlight = false
 async function poll() {
-  if (inFlight) return
+  if (inFlight || document.hidden) return
   inFlight = true
   try { await loadList({ silent: true }); await loadDetail({ silent: true }) } finally { inFlight = false }
 }

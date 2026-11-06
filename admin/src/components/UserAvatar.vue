@@ -4,6 +4,7 @@
     :style="{ width: `${size}px`, height: `${size}px`, backgroundColor: colorHex(avatar?.bg) }"
     role="img" :aria-label="label">
     <img v-if="avatar?.kind === 'fluent'" :src="fluentSrc(avatar.key)" alt="" draggable="false"
+      :width="Math.round(size * 0.72)" :height="Math.round(size * 0.72)" decoding="async"
       :style="{ width: `${Math.round(size * 0.72)}px`, height: `${Math.round(size * 0.72)}px` }" />
     <span v-else-if="avatar?.kind === 'emoji'" aria-hidden="true" class="leading-none"
       :style="{ fontSize: `${Math.round(size * 0.52)}px` }">{{ avatar.key }}</span>

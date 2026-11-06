@@ -40,7 +40,7 @@
               @click="pick('fluent', a.key)"
               :class="isPicked('fluent', a.key) ? 'ring-2 ring-brand-navy bg-brand-surface' : 'hover:bg-brand-surface'"
               class="aspect-square rounded-2xl flex items-center justify-center transition-colors">
-              <img :src="fluentSrc(a.key)" alt="" class="w-[78%] h-[78%]" draggable="false" />
+              <img :src="fluentSrc(a.key)" alt="" width="128" height="128" loading="lazy" decoding="async" class="w-[78%] h-[78%]" draggable="false" />
             </button>
           </div>
           <div v-else class="grid grid-cols-6 sm:grid-cols-8 gap-2" role="radiogroup" aria-label="Emoji" @keydown="rovingKeydown">
