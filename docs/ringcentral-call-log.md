@@ -84,6 +84,9 @@ person per 10 minutes. The audit trail keeps the last 4 digits only.
   log is in RingCentral's "Heavy" rate group, so pages are spaced ~6.5 s
   apart and a rate-limit answer just ends the run; the next one catches up.
 - Calls older than `RINGCENTRAL_CALL_RETENTION_DAYS` (365) are deleted.
+- RingCentral's full record for each call (`rc_calls.rc_raw`, minus
+  recordings, voicemail and other links, and billing) and the portal's
+  reading of it, kept separately. See `docs/ringcentral-call-classification.md`.
 - Stored: time, direction, duration, RingCentral's result, the outside
   number and caller ID, the firm-side line or extension, who answered, and
   each step RingCentral recorded for the call (`rc_calls.legs`: who it rang,
@@ -113,8 +116,11 @@ call log".
 | Name only | RingCentral's caller ID, when it is a name |
 | Unknown caller · City, ST | No match; the carrier sent a location instead of a name |
 | Private number | The caller withheld their number |
-| Called … → Rang … → Went to voicemail | Where an incoming call went, in order: the firm number dialled, each extension it rang, forwards and transfers, and voicemail, with how each step ended. Shown on missed calls and on calls that passed through more than one place (a call answered straight away already says who answered). A forward to a number outside the firm shows only its last 4 digits. Search finds a call by the name of anyone it rang |
-| Not called back | A missed call or voicemail with no later outgoing call to that number and no later answered call from it, as far as RingCentral saw (a call back from a personal mobile is not in the log) |
+| Answered / Not answered / Caller hung up / Voicemail / Not confirmed | What RingCentral's own evidence proves about the call, never guessed from its result, the duration, or a step that is missing (`docs/ringcentral-call-classification.md`). **Not confirmed** is never counted as missed |
+| Offered to … · no answer | The people a RingCentral step shows the call reaching, with what that step says happened. Search finds a call by their name |
+| Details and evidence | Every step RingCentral recorded, in order: where it went (person, queue, IVR, forwarded phone ending in 4 digits), RingCentral's result, its reason and what RingCentral documents that reason to mean, and the length. Also RingCentral's own result for the call, kept apart from the portal's reading |
+| Offered to: *person* | Only the calls a step proves were offered to that person, with how many they answered and how many they did not. Nobody is charged with a call someone else answered |
+| Not called back | A call proven not answered (not answered, caller hung up, or voicemail) with no later outgoing call to that number and no later answered call from it, as far as RingCentral saw (a call back from a personal mobile is not in the log) |
 
 Numbers are matched on their digits (last 10 for US/Canada), so
 "(504) 555-0101", "504.555.0101" and "+1 504 555 0101" agree. Calls between

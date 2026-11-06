@@ -44,6 +44,12 @@ const rc = {
   records: [], requests: [], issued: 0, refresh: new Set(),
   accountForbidden: false, extensionForbidden: false, rateLimitOnce: false, unauthorizedOnce: false, delayMs: 0, gate: null, onRequest: null,
   ringouts: new Map(), ringoutSeq: 0, ringoutForbidden: false, ringoutRequests: [],
+  directoryRequests: [], directoryForbidden: false,
+  extensions: [
+    { id: 9101, extensionNumber: '101', name: 'Yoletty', type: 'User', status: 'Enabled' },
+    { id: 9102, extensionNumber: '102', name: 'Ciro', type: 'User', status: 'Enabled' },
+    { id: 9001, extensionNumber: '1', name: 'Main menu', type: 'IvrMenu', status: 'Enabled' },
+  ],
 }
 async function fakeFetch(url, init) {
   const u = new URL(url)
@@ -54,6 +60,14 @@ async function fakeFetch(url, init) {
     rc.issued++
     rc.refresh.add(`RT-${rc.issued}`)
     return reply(200, { access_token: `AT-${rc.issued}`, refresh_token: `RT-${rc.issued}`, expires_in: 3600, refresh_token_expires_in: 604800, owner_id: '1' })
+  }
+  // The extension directory (who is a person): read once a day, kept apart
+  // from the call log requests the other tests count.
+  if (u.pathname === '/restapi/v1.0/account/~/extension') {
+    rc.directoryRequests.push(Object.fromEntries(u.searchParams))
+    if (!/^Bearer AT-\d+$/.test(init.headers.Authorization)) return reply(401, { errorCode: 'OAU-149' })
+    if (rc.directoryForbidden) return reply(403, { errorCode: 'CMN-408', errors: [{ errorCode: 'CMN-408', permissionName: 'ReadAccounts' }] })
+    return reply(200, { records: rc.extensions, navigation: {} })
   }
   rc.requests.push({ path: u.pathname, query: Object.fromEntries(u.searchParams), auth: init.headers.Authorization })
   rc.onRequest?.()
@@ -128,21 +142,27 @@ before(async () => {
 
   rc.records = [
     rec('c1', '2026-10-30T15:00:00Z', 'Inbound', 'Accepted', { phoneNumber: '+15045550101', name: 'WIRELESS CALLER' },
-      { legs: [{ result: 'Accepted', to: { name: 'Yoletty', extensionNumber: '101' } }] }),
-    rec('c2', '2026-10-30T16:00:00Z', 'Inbound', 'Missed', { phoneNumber: '+15045550123', name: 'METAIRIE LA' }),
+      { legs: [{ startTime: '2026-10-30T15:00:02Z', legType: 'Accept', result: 'Accepted', reason: 'Accepted', to: { name: 'Yoletty', extensionNumber: '101', extensionId: '9101' } }] }),
+    rec('c2', '2026-10-30T16:00:00Z', 'Inbound', 'Missed', { phoneNumber: '+15045550123', name: 'METAIRIE LA' }, {
+      legs: [{ startTime: '2026-10-30T16:00:02Z', legType: 'Accept', result: 'Missed', reason: 'No Answer', to: { name: 'Yoletty', extensionNumber: '101', extensionId: '9101' } }],
+    }),
     rec('c3', '2026-10-30T16:30:00Z', 'Outbound', 'Call connected', { phoneNumber: '+15045550123' }),
     rec('c4', '2026-10-30T17:00:00Z', 'Inbound', 'Voicemail', { phoneNumber: '+15045550177', name: 'NEW ORLEANS LA' }, {
       legs: [
         { startTime: '2026-10-30T17:00:00Z', legType: 'PstnToSip', result: 'Missed', master: true, to: firm },
-        { startTime: '2026-10-30T17:00:05Z', legType: 'Accept', result: 'Missed', to: { name: 'Yoletty', extensionNumber: '101' } },
-        { startTime: '2026-10-30T17:00:30Z', legType: 'FindMe', result: 'No Answer', to: { phoneNumber: '+15045559876' } },
-        { startTime: '2026-10-30T17:00:50Z', legType: 'Voicemail', result: 'Voicemail', to: { name: 'Ciro', extensionNumber: '102' } },
+        { startTime: '2026-10-30T17:00:05Z', legType: 'Accept', result: 'Missed', reason: 'No Answer', reasonDescription: 'Ring timeout', to: { name: 'Yoletty', extensionNumber: '101', extensionId: '9101' } },
+        { startTime: '2026-10-30T17:00:30Z', legType: 'FindMe', result: 'No Answer', reason: 'Not Answered', to: { phoneNumber: '+15045559876' }, extension: { id: 9101, uri: 'https://platform.example/ext/9101' } },
+        { startTime: '2026-10-30T17:00:50Z', legType: 'Unknown', result: 'Voicemail', to: { name: 'Ciro', extensionNumber: '102', extensionId: '9102' },
+          message: { id: 'vm1', type: 'VoiceMail', uri: 'https://platform.example/vm1' } },
       ],
+      recording: { id: 'rec1', contentUri: 'https://platform.example/rec1' },
     }),
     rec('c5', '2026-10-30T18:00:00Z', 'Inbound', 'Missed', { phoneNumber: '+15045550199', name: 'JOSE GARCIA' }),
     rec('c6', '2026-10-30T18:30:00Z', 'Inbound', 'Accepted', { extensionNumber: '102', name: 'Paula' }),
-    rec('c7', '2026-10-30T19:00:00Z', 'Inbound', 'Missed', { name: 'Anonymous' }),
-    rec('c8', '2026-10-30T19:30:00Z', 'Inbound', 'Missed', { phoneNumber: '+15045550188', name: 'LUIS PRUEBA' }),
+    rec('c7', '2026-10-30T19:00:00Z', 'Inbound', 'Missed', { name: 'Anonymous' }, { reason: 'Hang Up' }),
+    rec('c8', '2026-10-30T19:30:00Z', 'Inbound', 'Missed', { phoneNumber: '+15045550188', name: 'LUIS PRUEBA' }, {
+      legs: [{ startTime: '2026-10-30T19:30:03Z', legType: 'Accept', result: 'Missed', reason: 'No Answer', to: { name: 'Ciro', extensionNumber: '102', extensionId: '9102' } }],
+    }),
     { ...rec('fax1', '2026-10-30T20:00:00Z', 'Inbound', 'Received', { phoneNumber: '+15045550111' }), type: 'Fax' },
   ]
 
@@ -233,6 +253,20 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.equal(sleeps.length, 2, 'a pause before each later page')
     assert.equal(s.json.sync.lastErrorCode, null)
     assert.ok(!/AT-\d|RT-\d|calls-secret/.test(s.text))
+    // The first import reads 90 days once, to collect RingCentral's full records.
+    assert.equal(new Date(rc.requests[0].query.dateFrom).getTime(), clock.t.getTime() - 90 * 24 * 60 * 60 * 1000)
+    // Which extensions are people: read once, alongside.
+    assert.equal(rc.directoryRequests.length, 1)
+    assert.equal(s.json.result.directory, 'refreshed')
+    assert.ok(s.json.sync.directoryRefreshedAt)
+    // RingCentral's record is kept as sent, minus recordings, voicemail and other links.
+    const raw = (await db.query(`SELECT rc_raw FROM rc_calls WHERE rc_record_id = 'c4'`)).rows[0].rc_raw
+    assert.equal(raw.result, 'Voicemail')
+    assert.equal(raw.legs[1].reasonDescription, 'Ring timeout')
+    assert.deepEqual(raw.legs[2].extension, { id: 9101 })
+    assert.deepEqual(raw.legs[3].message, { type: 'VoiceMail' })
+    assert.equal(raw.recording, undefined)
+    assert.ok(!JSON.stringify(raw).includes('platform.example'))
   })
 
   await t.test('the list: names from the firm’s records, readable outcomes, callbacks, counts', async () => {
@@ -246,7 +280,8 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.equal(maria.name, 'Maria Lopez')
     assert.equal(maria.nameSource, 'lead')
     assert.equal(maria.outcome, 'answered')
-    assert.deepEqual(maria.answeredBy, { name: 'Yoletty', extension: '101' })
+    assert.equal(maria.classification, 'answered')
+    assert.deepEqual(maria.answeredBy, { kind: 'extension', extensionId: '9101', extension: '101', name: 'Yoletty' })
     assert.equal(maria.durationSeconds, 125)
 
     const carmen = byId(calls, '2026-10-30T16:00:00Z')
@@ -257,6 +292,9 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
 
     const vm = byId(calls, '2026-10-30T17:00:00Z')
     assert.equal(vm.outcome, 'voicemail')
+    assert.equal(vm.classification, 'voicemail')
+    assert.equal(vm.result, 'Voicemail', "RingCentral's own result is passed on unchanged")
+    assert.deepEqual(vm.notAnsweredBy.map((p) => p.name), ['Yoletty'])
     assert.equal(vm.name, null, 'a city caller ID is not a name')
     assert.equal(vm.callerIdName, 'NEW ORLEANS LA')
     assert.equal(vm.callerLocation, 'New Orleans, LA')
@@ -270,21 +308,31 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.equal(byId(calls, '2026-10-30T19:30:00Z').name, 'Luis Prueba', 'caller ID used when nothing else matches')
     assert.equal(byId(calls, '2026-10-30T19:00:00Z').number, null)
 
-    // The withheld number (c7) is missed but cannot be called back, so it is not 'not returned'.
-    assert.deepEqual(r.json.counts, { incoming: 6, answered: 1, missed: 4, voicemail: 1, outgoing: 1, not_returned: 3, excluded: 0 })
+    // Read on evidence: c2 and c8 were offered to someone whose leg says No
+    // Answer; c7's record says the caller hung up first; c4 has a voicemail
+    // message; c5 says "Missed" but nothing documented backs it, so it is
+    // not confirmed and never counted as missed. The withheld number (c7)
+    // cannot be called back, so it is not 'not returned'; c2 was called back.
+    assert.equal(byId(calls, '2026-10-30T18:00:00Z').classification, 'unknown')
+    assert.equal(byId(calls, '2026-10-30T19:00:00Z').classification, 'caller_hung_up')
+    assert.deepEqual(r.json.counts, {
+      incoming: 6, answered: 1, missed: 2, hung_up: 1, voicemail: 1, unconfirmed: 1, system: 0, outgoing: 1, not_returned: 2, excluded: 0,
+    })
     assert.deepEqual(calls.map((c) => c.startedAt), [...calls.map((c) => c.startedAt)].sort().reverse(), 'newest first')
   })
 
   await t.test('filters and search', async () => {
-    assert.equal((await list('&outcome=missed')).json.calls.length, 4)
-    assert.equal((await list('&outcome=not_returned')).json.calls.length, 3)
-    assert.equal((await list('&outcome=unanswered')).json.calls.length, 5)
+    assert.equal((await list('&outcome=missed')).json.calls.length, 2)
+    assert.equal((await list('&outcome=not_returned')).json.calls.length, 2)
+    assert.equal((await list('&outcome=unanswered')).json.calls.length, 4, 'not answered, hung up and voicemail; not the unconfirmed one')
+    assert.equal((await list('&outcome=hung_up')).json.calls.length, 1)
+    assert.equal((await list('&outcome=unconfirmed')).json.calls.length, 1)
     assert.equal((await list('&outcome=outgoing')).json.calls.length, 1)
     assert.equal((await list('&outcome=answered')).json.calls.length, 1)
     assert.equal((await list(`&q=${encodeURIComponent('carmen')}`)).json.calls.length, 2, 'her missed call and the callback')
     assert.equal((await list(`&q=${encodeURIComponent('555-0101')}`)).json.calls.length, 1)
     assert.equal((await list(`&q=${encodeURIComponent('+1 (504) 555-0177')}`)).json.calls.length, 1)
-    assert.equal((await list(`&q=${encodeURIComponent('yoletty')}`)).json.calls.length, 2, 'search covers who answered (c1) and every extension a call rang (c4)')
+    assert.equal((await list(`&q=${encodeURIComponent('yoletty')}`)).json.calls.length, 3, 'search covers who answered (c1) and who a call was offered to (c2, c4)')
     assert.equal((await list(`&q=${encodeURIComponent('100%_')}`)).json.calls.length, 0, 'LIKE wildcards are literal')
     assert.equal((await call('GET', '/api/calls?from=2026-10-31&to=2026-10-30')).status, 400)
     assert.equal((await call('GET', '/api/calls?from=nope')).status, 400)
@@ -309,28 +357,185 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.equal(rc.requests.length, 0)
   })
 
-  await t.test('where a call went: each step kept on import, shown in order, searchable by who it reached', async () => {
+  await t.test('one call in detail: every step, what each reason means, who it was offered to', async () => {
     const vm = byId((await list()).json.calls, '2026-10-30T17:00:00Z')
-    assert.deepEqual(vm.path.map((p) => [p.kind, p.name, p.extension, p.numberEnd, p.result]), [
-      ['line', firm.name ?? null, null, null, null],
-      ['rang', 'Yoletty', '101', null, 'no_answer'],
-      ['forwarded', null, null, '9876', 'no_answer'],
-      ['voicemail', 'Ciro', '102', null, 'voicemail'],
+    const ev = await call('GET', `/api/calls/${vm.id}/evidence`)
+    assert.equal(ev.status, 200)
+    assert.equal(ev.json.classification, 'voicemail')
+    assert.deepEqual(ev.json.rcResults, ['Voicemail'])
+    assert.equal(ev.json.records, 1)
+    const legs = ev.json.steps.filter((x) => x.level === 'leg')
+    assert.deepEqual(legs.map((x) => [x.legType, x.reason, x.to.kind, x.to.name ?? null]), [
+      ['PstnToSip', null, 'line', 'Campos Muños Law'],
+      ['Accept', 'No Answer', 'extension', 'Yoletty'],
+      ['FindMe', 'Not Answered', 'external', null],
+      ['Unknown', null, 'extension', 'Ciro'],
     ])
-    assert.ok(!(await list()).text.includes('5559876'), 'a forwarded mobile number is never sent whole')
-    assert.equal(byId((await list()).json.calls, '2026-10-30T16:30:00Z').path, null, 'none for outgoing calls')
-    const ciro = (await list('&q=ciro')).json.calls
-    assert.deepEqual(ciro.map((c) => new Date(c.startedAt).toISOString()), ['2026-10-30T17:00:00.000Z'], 'a call that reached Ciro, found by his name')
+    assert.equal(legs[1].reasonMeaning, 'You did not answer the call', "RingCentral's documented meaning")
+    assert.equal(legs[1].reasonDescription, 'Ring timeout')
+    assert.equal(legs[2].to.numberEnd, '9876')
+    // Ciro's box took the message; that does not show his phone was offered it.
+    assert.deepEqual(ev.json.offeredTo.map((o) => [o.name, o.reason]), [['Yoletty', 'No Answer']])
+    assert.ok(ev.json.facts.some((f) => f.code === 'voicemail_message'))
+    assert.ok(!ev.text.includes('5559876'), 'a forwarded mobile number is never sent whole')
+    assert.equal((await call('GET', '/api/calls/999999/evidence')).status, 404)
+    assert.equal((await call('GET', `/api/calls/${vm.id}/evidence`, { cookie: users.para.cookie })).status, 403)
+    const out = byId((await list()).json.calls, '2026-10-30T16:30:00Z')
+    assert.equal((await call('GET', `/api/calls/${out.id}/evidence`)).json.classification, null, 'outgoing calls are not classified')
+  })
+
+  await t.test('by person: only calls a leg proves were offered to them, and what happened', async () => {
+    const r = await list()
+    assert.deepEqual(r.json.people.map((p) => [p.name, p.extension]), [['Ciro', '102'], ['Yoletty', '101']], 'people only, not the IVR menu')
+    const y = await list('&person=9101')
+    assert.deepEqual(y.json.calls.map((c) => new Date(c.startedAt).toISOString()).sort(),
+      ['2026-10-30T15:00:00.000Z', '2026-10-30T16:00:00.000Z', '2026-10-30T17:00:00.000Z'])
+    assert.equal(y.json.counts.person_answered, 1)
+    assert.equal(y.json.counts.person_not_answered, 2)
+    const c = await list('&person=9102')
+    assert.deepEqual(c.json.calls.map((x) => new Date(x.startedAt).toISOString()), ['2026-10-30T19:30:00.000Z'], 'c4 went to his voicemail, not his phone')
+    assert.equal(c.json.counts.person_not_answered, 1)
+    assert.equal((await list('&person=nope')).json.calls.length, 7, 'an invalid id is ignored')
+  })
+
+  await t.test('a portal account linked to its extension: calls show the person’s portal name', async () => {
+    // RingCentral can name an extension something else entirely ("Office CML").
+    const ext = (await db.query(`SELECT name FROM rc_extensions WHERE id = '9101'`)).rows[0]
+    assert.equal(ext.name, 'Yoletty')
+    await db.query(`UPDATE rc_extensions SET name = 'Office CML' WHERE id = '9101'`)
+    await db.query(`UPDATE admin_users SET display_name = 'Yoletty R.', rc_extension_id = '9101' WHERE email = 'desk@example.test'`)
+    try {
+      const l = await list()
+      assert.equal(l.json.people.find((p) => p.extensionId === '9101').name, 'Yoletty R.')
+      assert.equal(l.json.people.find((p) => p.extensionId === '9101').rcName, 'Office CML')
+      const maria = byId(l.json.calls, '2026-10-30T15:00:00Z')
+      assert.equal(maria.answeredBy.name, 'Yoletty R.')
+      assert.equal(maria.answeredBy.rcName, 'Yoletty', 'RingCentral’s name as recorded on the call is kept beside it')
+      const vm = byId(l.json.calls, '2026-10-30T17:00:00Z')
+      const ev = await call('GET', `/api/calls/${vm.id}/evidence`)
+      assert.equal(ev.json.offeredTo[0].name, 'Yoletty R.')
+      assert.equal(ev.json.steps.find((x) => x.to.id === '9101').to.name, 'Yoletty R.')
+      assert.equal((await list(`&q=${encodeURIComponent('Yoletty R')}`)).json.calls.length, 3, 'found by the portal name')
+    } finally {
+      await db.query(`UPDATE rc_extensions SET name = 'Yoletty' WHERE id = '9101'`)
+      await db.query(`UPDATE admin_users SET display_name = NULL, rc_extension_id = NULL WHERE email = 'desk@example.test'`)
+    }
+  })
+
+  await t.test('two records of one call count once, read together', async () => {
+    rc.records.push(
+      rec('d1', '2026-10-30T21:00:00Z', 'Inbound', 'Missed', { phoneNumber: '+15045550166' }, {
+        telephonySessionId: 'ts-dup', sessionId: 's-dup',
+        legs: [{ startTime: '2026-10-30T21:00:02Z', legType: 'Accept', reason: 'No Answer', to: { name: 'Yoletty', extensionNumber: '101', extensionId: '9101' } }],
+      }),
+      rec('d2', '2026-10-30T21:00:00Z', 'Inbound', 'Accepted', { phoneNumber: '+15045550166' }, {
+        telephonySessionId: 'ts-dup', sessionId: 's-dup',
+        legs: [{ startTime: '2026-10-30T21:00:09Z', legType: 'Accept', reason: 'Accepted', to: { name: 'Ciro', extensionNumber: '102', extensionId: '9102' } }],
+      }),
+    )
+    await db.query(`UPDATE rc_call_sync_state SET window_to = '2026-10-30T20:00:00Z'`)
+    const before = (await list()).json.counts
+    await sync()
+    const l = await list()
+    const dup = l.json.calls.filter((c) => new Date(c.startedAt).toISOString() === '2026-10-30T21:00:00.000Z')
+    assert.equal(dup.length, 1, 'one row for the call')
+    assert.equal(dup[0].classification, 'answered')
+    assert.equal(dup[0].answeredBy.name, 'Ciro')
+    assert.deepEqual(dup[0].notAnsweredBy, [], 'Ciro answered, so Yoletty is not charged with a miss')
+    assert.equal(l.json.counts.incoming, before.incoming + 1)
+    assert.equal(l.json.counts.missed, before.missed)
+    assert.equal((await db.query(`SELECT COUNT(*)::int AS n FROM rc_calls WHERE call_key = 'ts-dup'`)).rows[0].n, 2, 'both records are kept')
+    rc.records = rc.records.filter((r) => !['d1', 'd2'].includes(r.id))
+    await db.query(`DELETE FROM rc_calls WHERE call_key = 'ts-dup'`)
+  })
+
+  await t.test('an incoming call whose session also holds an outgoing record still counts, read as incoming', async () => {
+    rc.records.push(
+      rec('m1', '2026-10-30T21:10:00Z', 'Inbound', 'Missed', { phoneNumber: '+15045550167' }, {
+        telephonySessionId: 'ts-mixed', sessionId: 's-mixed',
+        legs: [{ startTime: '2026-10-30T21:10:02Z', legType: 'Accept', reason: 'No Answer', to: { name: 'Yoletty', extensionNumber: '101', extensionId: '9101' } }],
+      }),
+      // A transfer out to a mobile, with more legs than the incoming record.
+      rec('m2', '2026-10-30T21:10:00Z', 'Outbound', 'Call connected', { phoneNumber: '+15049998877' }, {
+        telephonySessionId: 'ts-mixed', sessionId: 's-mixed',
+        legs: [1, 2, 3].map((i) => ({ startTime: `2026-10-30T21:10:1${i}Z`, legType: 'SipToPstnMetered', reason: 'Accepted', to: { phoneNumber: '+15049998877' } })),
+      }),
+    )
+    await db.query(`UPDATE rc_call_sync_state SET window_to = '2026-10-30T20:00:00Z'`)
+    const before = (await list()).json.counts
+    await sync()
+    const l = await list()
+    const mixed = l.json.calls.filter((c) => new Date(c.startedAt).toISOString() === '2026-10-30T21:10:00.000Z')
+    assert.equal(mixed.length, 1)
+    assert.equal(mixed[0].direction, 'inbound')
+    assert.equal(mixed[0].classification, 'not_answered')
+    assert.equal(l.json.counts.missed, before.missed + 1)
+    const ev = await call('GET', `/api/calls/${mixed[0].id}/evidence`)
+    assert.ok(!ev.text.includes('9998877'), 'the transfer target is never sent whole')
+    rc.records = rc.records.filter((r) => !['m1', 'm2'].includes(r.id))
+    await db.query(`DELETE FROM rc_calls WHERE call_key = 'ts-mixed'`)
+  })
+
+  await t.test('"count it again" clears a mark made on another record of the same call', async () => {
+    rc.records.push(rec('x1', '2026-10-30T21:20:00Z', 'Inbound', 'Missed', { phoneNumber: '+15045550168' }, {
+      telephonySessionId: 'ts-x', sessionId: 's-x',
+      legs: [{ startTime: '2026-10-30T21:20:02Z', legType: 'Accept', reason: 'No Answer', to: { name: 'Ciro', extensionNumber: '102', extensionId: '9102' } }],
+    }))
+    await db.query(`UPDATE rc_call_sync_state SET window_to = '2026-10-30T20:00:00Z'`)
+    await sync()
+    const first = Number((await db.query(`SELECT id FROM rc_calls WHERE rc_record_id = 'x1'`)).rows[0].id)
+    assert.equal((await send('POST', `/api/calls/${first}/exclusion`, { reason: 'spam' }, { cookie: users.desk.cookie })).status, 200)
+    // A second record of the same call arrives, with more evidence, and becomes the call.
+    rc.records.push(rec('x2', '2026-10-30T21:20:00Z', 'Inbound', 'Missed', { phoneNumber: '+15045550168' }, {
+      telephonySessionId: 'ts-x', sessionId: 's-x',
+      legs: [
+        { startTime: '2026-10-30T21:20:02Z', legType: 'Accept', reason: 'No Answer', to: { name: 'Ciro', extensionNumber: '102', extensionId: '9102' } },
+        { startTime: '2026-10-30T21:20:03Z', legType: 'Accept', reason: 'No Answer', to: { name: 'Yoletty', extensionNumber: '101', extensionId: '9101' } },
+      ],
+    }))
+    await db.query(`UPDATE rc_call_sync_state SET window_to = '2026-10-30T20:00:00Z'`)
+    await sync()
+    const shown = byId((await list()).json.calls, '2026-10-30T21:20:00Z')
+    assert.notEqual(shown.id, first, 'the fuller record now stands for the call')
+    assert.equal(shown.exclusion.reason, 'spam', 'the mark still applies')
+    const back = await send('DELETE', `/api/calls/${shown.id}/exclusion`, undefined, { cookie: users.desk.cookie })
+    assert.equal(back.json.removedCall, true)
+    assert.equal(byId((await list()).json.calls, '2026-10-30T21:20:00Z').exclusion, null)
+    rc.records = rc.records.filter((r) => !['x1', 'x2'].includes(r.id))
+    await db.query(`DELETE FROM rc_calls WHERE call_key = 'ts-x'`)
+  })
+
+  await t.test('without the extension list nothing is confirmed as a person, and nothing is counted against anyone', async () => {
+    rc.directoryForbidden = true
+    await db.query(`DELETE FROM rc_extensions`)
+    await db.query(`UPDATE rc_call_sync_state SET directory_refreshed_at = NULL`)
+    const s = await sync()
+    assert.equal(s.json.result.status, 'ok', 'the call import itself goes on')
+    assert.equal(s.json.result.directory, 'error')
+    assert.equal(s.json.sync.directoryErrorCode, 'missing_permission')
+    const { classifyStored } = await import('./callLog.js')
+    await classifyStored(db, { all: true })
+    const l = await list()
+    assert.equal(l.json.counts.answered, 0)
+    assert.equal(l.json.counts.missed, 0)
+    const maria = byId(l.json.calls, '2026-10-30T15:00:00Z')
+    assert.equal(maria.classification, 'unknown')
+    assert.ok(maria.gaps.includes('directory_unavailable'), 'and the call says why')
+    assert.equal(byId(l.json.calls, '2026-10-30T19:00:00Z').classification, 'caller_hung_up', 'a hang-up needs no directory')
+    rc.directoryForbidden = false
+    await db.query(`UPDATE rc_call_sync_state SET directory_refreshed_at = NULL`)
+    const back = await sync()
+    assert.equal(back.json.result.directory, 'refreshed')
+    assert.equal((await list()).json.counts.answered, 1, 'a changed directory re-reads every call')
   })
 
   await t.test('calls imported before their steps were kept are read again once, then the window is back to normal', async () => {
     await db.query(`UPDATE rc_calls SET legs = NULL`)
     await db.query(`UPDATE rc_call_sync_state SET legs_backfilled_at = NULL, window_to = $1`, [clock.t])
-    assert.equal(byId((await list()).json.calls, '2026-10-30T17:00:00Z').path, null)
     rc.requests = []
     await sync()
     assert.equal(new Date(rc.requests[0].query.dateFrom).getTime(), clock.t.getTime() - 14 * 24 * 60 * 60 * 1000, 'the whole backfill period')
-    assert.equal(byId((await list()).json.calls, '2026-10-30T17:00:00Z').path.length, 4)
+    assert.equal((await db.query(`SELECT jsonb_array_length(legs) AS n FROM rc_calls WHERE rc_record_id = 'c4'`)).rows[0].n, 4)
     clock.t = new Date(clock.t.getTime() + 60 * 1000)
     rc.requests = []
     const state = (await db.query('SELECT window_to, legs_backfilled_at FROM rc_call_sync_state')).rows[0]
@@ -403,21 +608,23 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
 
   await t.test('dashboard summary: unanswered calls in business hours (Mon–Fri 9–5 New Orleans), last 30 days', async () => {
     // Friday 6:30 pm and Saturday 10 am in New Orleans: outside business hours.
-    await db.query(`INSERT INTO rc_calls (rc_record_id, direction, started_at, outcome, scope, counterpart_number, counterpart_key) VALUES
-      ('after-hours', 'inbound', '2026-10-30T23:30:00Z', 'missed', 'account', '+15045550155', '5045550155'),
-      ('weekend', 'inbound', '2026-10-31T15:00:00Z', 'voicemail', 'account', '+15045550156', '5045550156'),
-      ('too-old', 'inbound', '2026-09-15T15:00:00Z', 'missed', 'account', '+15045550157', '5045550157')`)
+    await db.query(`INSERT INTO rc_calls (rc_record_id, direction, started_at, outcome, classification, classifier_version, scope, counterpart_number, counterpart_key) VALUES
+      ('after-hours', 'inbound', '2026-10-30T23:30:00Z', 'missed', 'not_answered', 1, 'account', '+15045550155', '5045550155'),
+      ('weekend', 'inbound', '2026-10-31T15:00:00Z', 'voicemail', 'voicemail', 1, 'account', '+15045550156', '5045550156'),
+      ('too-old', 'inbound', '2026-09-15T15:00:00Z', 'missed', 'not_answered', 1, 'account', '+15045550157', '5045550157')`)
     const s = await call('GET', '/api/calls/summary')
     assert.equal(s.status, 200)
-    // c2 (returned), c4 voicemail, c5, c7 (withheld), c8, all on a Friday morning or afternoon.
-    assert.equal(s.json.missed.total, 5)
+    // c2 (returned), c4 voicemail, c7 (hung up, withheld), c8, all on a
+    // Friday; c5 is not confirmed, so it is counted apart, never as missed.
+    assert.equal(s.json.missed.total, 4)
     assert.equal(s.json.missed.voicemail, 1)
-    assert.equal(s.json.missed.notReturned, 3, 'c4, c5 and c8; c2 was called back and c7 has no number')
+    assert.equal(s.json.missed.notReturned, 2, 'c4 and c8; c2 was called back and c7 has no number')
+    assert.equal(s.json.missed.unconfirmed, 1)
     assert.equal(s.json.missed.businessHours.timeZone, 'America/Chicago')
     assert.equal(s.json.connection, 'connected')
     // The Calls page shows the same set when opened from the dashboard card.
     const listed = await call('GET', `/api/calls?from=${encodeURIComponent('2026-10-01T00:00:00Z')}&to=${encodeURIComponent('2026-11-01T00:00:00Z')}&outcome=unanswered&businessHours=1`)
-    assert.equal(listed.json.calls.length, 5)
+    assert.equal(listed.json.calls.length, 4)
     assert.equal((await call('GET', '/api/calls/summary', { cookie: users.para.cookie })).status, 403)
     assert.equal((await call('GET', `/api/calls/summary?from=${encodeURIComponent('2026-10-30T20:00:00Z')}`)).json.missed.total, 0, 'a later start leaves them out')
     assert.equal((await call('GET', '/api/calls/summary?from=2020-01-01')).status, 400, 'at most about a month')
@@ -452,8 +659,8 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     // c4: someone from the firm testing the line from their mobile. Every call
     // from that number, including one that comes in later.
     assert.equal((await mark('c4', { reason: 'staff_test', scope: 'number', note: '  Ana testing the line  ' }, users.owner)).status, 200)
-    await db.query(`INSERT INTO rc_calls (rc_record_id, direction, started_at, outcome, scope, counterpart_number, counterpart_key)
-      VALUES ('later-test', 'inbound', '2026-10-30T20:15:00Z', 'missed', 'account', '+15045550177', '5045550177')`)
+    await db.query(`INSERT INTO rc_calls (rc_record_id, direction, started_at, outcome, classification, classifier_version, scope, counterpart_number, counterpart_key)
+      VALUES ('later-test', 'inbound', '2026-10-30T20:15:00Z', 'missed', 'not_answered', 1, 'account', '+15045550177', '5045550177')`)
     l = await list()
     assert.deepEqual(l.json.counts, { ...base, incoming: base.incoming + 1, voicemail: base.voicemail - 1, missed: base.missed - 1, not_returned: base.not_returned - 2, excluded: 3 })
     const later = byId(l.json.calls, '2026-10-30T20:15:00Z')

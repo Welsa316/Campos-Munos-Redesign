@@ -98,6 +98,35 @@ export const INTEGRATIONS_SCHEMA_SQL = `
   -- transfers, voicemail), to show where it went. NULL: imported before
   -- steps were kept.
   ALTER TABLE rc_calls ADD COLUMN IF NOT EXISTS legs JSONB;
+  -- The record exactly as RingCentral sent it (minus recording and voicemail
+  -- links and billing), kept apart from the portal's reading of it, so every
+  -- classification can show its evidence and be redone
+  -- (integrations/ringcentral/callEvidence.js). NULL: imported before it was kept.
+  ALTER TABLE rc_calls ADD COLUMN IF NOT EXISTS rc_raw JSONB;
+  -- One call can arrive as several records sharing a telephony session: they
+  -- are read together and the call counts once (is_primary on one of them).
+  -- classification is the portal's evidence-based reading of the whole call
+  -- (callEvidence.js: answered, not_answered, caller_hung_up, voicemail,
+  -- system, unknown; NULL for outgoing), with what it rests on in
+  -- classification_evidence. RingCentral's own result stays in result_raw.
+  ALTER TABLE rc_calls ADD COLUMN IF NOT EXISTS call_key TEXT GENERATED ALWAYS AS (COALESCE(telephony_session_id, session_id, rc_record_id)) STORED;
+  ALTER TABLE rc_calls ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT TRUE;
+  ALTER TABLE rc_calls ADD COLUMN IF NOT EXISTS classification VARCHAR(16)
+    CHECK (classification IN ('answered', 'not_answered', 'caller_hung_up', 'voicemail', 'system', 'unknown'));
+  ALTER TABLE rc_calls ADD COLUMN IF NOT EXISTS classification_evidence JSONB;
+  ALTER TABLE rc_calls ADD COLUMN IF NOT EXISTS classifier_version SMALLINT;
+  CREATE INDEX IF NOT EXISTS idx_rc_calls_call_key ON rc_calls(call_key);
+
+  -- The firm's RingCentral extensions and their type (a person, a queue, an
+  -- IVR menu), from GET /account/~/extension (extensionDirectory.js).
+  CREATE TABLE IF NOT EXISTS rc_extensions (
+    id TEXT PRIMARY KEY,
+    extension_number TEXT,
+    name TEXT,
+    type TEXT,
+    status TEXT,
+    seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
   CREATE INDEX IF NOT EXISTS idx_rc_calls_started ON rc_calls(started_at DESC);
   CREATE INDEX IF NOT EXISTS idx_rc_calls_key ON rc_calls(counterpart_key, started_at);
 
@@ -105,6 +134,11 @@ export const INTEGRATIONS_SCHEMA_SQL = `
   -- first for each person (their direct number rings their RingCentral app),
   -- and each call they placed, so its progress can be shown and cancelled.
   ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS ringout_phone TEXT;
+  -- The RingCentral extension that is this person (Team tab), so the call log
+  -- shows calls offered to "Yoletty" rather than RingCentral's own name for
+  -- the extension. One account per extension.
+  ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS rc_extension_id TEXT;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_users_rc_extension ON admin_users(rc_extension_id) WHERE rc_extension_id IS NOT NULL;
   CREATE TABLE IF NOT EXISTS rc_ringouts (
     id BIGSERIAL PRIMARY KEY,
     rc_ringout_id TEXT NOT NULL,
@@ -156,6 +190,12 @@ export const INTEGRATIONS_SCHEMA_SQL = `
   -- When the calls already imported were read again once to pick up their
   -- steps (legs), so each one shows where it went.
   ALTER TABLE rc_call_sync_state ADD COLUMN IF NOT EXISTS legs_backfilled_at TIMESTAMPTZ;
+  -- Same, once, to pick up RingCentral's full record (rc_calls.rc_raw) for
+  -- calls imported before it was kept, so they can be classified on evidence.
+  ALTER TABLE rc_call_sync_state ADD COLUMN IF NOT EXISTS raw_backfilled_at TIMESTAMPTZ;
+  ALTER TABLE rc_call_sync_state ADD COLUMN IF NOT EXISTS directory_refreshed_at TIMESTAMPTZ;
+  ALTER TABLE rc_call_sync_state ADD COLUMN IF NOT EXISTS directory_error_code TEXT;
+  ALTER TABLE rc_call_sync_state ADD COLUMN IF NOT EXISTS directory_error_at TIMESTAMPTZ;
 `
 
 export async function applyIntegrationsSchema(db) {

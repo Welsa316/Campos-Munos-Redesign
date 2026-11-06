@@ -95,6 +95,8 @@ export const ACTIONS = {
   'PUT /api/team/:id/role': { key: 'team.role', label: 'Changed someone’s role', entity: 'account',
     details: (req) => ({ role: body(req).role }) },
   'PUT /api/team/:id/name': { key: 'team.renamed', label: 'Renamed an account', entity: 'account' },
+  'PUT /api/team/:id/extension': { key: 'team.extension', label: 'Linked an account to a RingCentral extension', entity: 'account',
+    details: (req) => ({ extensionId: body(req).extensionId ?? null }) },
   'PUT /api/team/:id/capabilities/:capability': { key: 'team.capability', label: 'Changed one permission for an account', entity: 'account',
     details: (req) => ({ capability: req.params.capability, state: body(req).state }) },
   'POST /api/team/:id/clear-overrides': { key: 'team.overrides_cleared', label: 'Reset an account to its role’s permissions', entity: 'account' },

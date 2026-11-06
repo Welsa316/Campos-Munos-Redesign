@@ -206,6 +206,31 @@ test('activity log and team management', { skip: SKIP }, async (t) => {
     assert.ok(!JSON.stringify(log).includes(reset.json.password))
   })
 
+  await t.test('team: link an account to the RingCentral extension that is this person', async () => {
+    await db.query(`INSERT INTO rc_extensions (id, extension_number, name, type, status) VALUES
+      ('9101', '101', 'Office CML', 'User', 'Enabled'), ('9001', '1', 'CML', 'Department', 'Enabled') ON CONFLICT (id) DO NOTHING`)
+    await db.query(`INSERT INTO rc_call_sync_state (key, directory_refreshed_at) VALUES ('ringcentral', NOW())
+      ON CONFLICT (key) DO UPDATE SET directory_refreshed_at = NOW()`)
+    const list = await call('GET', '/api/team', { cookie: dev })
+    assert.deepEqual(list.json.extensions, [{ id: '9101', number: '101', name: 'Office CML' }], 'people only, not the queue')
+    const yoletty = list.json.accounts.find((a) => a.email === 'yoletty@example.test')
+    const linked = await call('PUT', `/api/team/${yoletty.id}/extension`, { cookie: dev, body: { extensionId: '9101' } })
+    assert.equal(linked.status, 200, linked.text)
+    assert.equal(linked.json.rcExtensionId, '9101')
+    // One account per extension.
+    const other = list.json.accounts.find((a) => a.email === 'dev@example.test')
+    const taken = await call('PUT', `/api/team/${other.id}/extension`, { cookie: dev, body: { extensionId: '9101' } })
+    assert.equal(taken.status, 409)
+    assert.match(taken.json.error, /already linked to yoletty@example.test/)
+    assert.equal((await call('PUT', `/api/team/${other.id}/extension`, { cookie: dev, body: { extensionId: '424242' } })).status, 404)
+    assert.equal((await call('PUT', `/api/team/${other.id}/extension`, { cookie: dev, body: { extensionId: 'x; DROP' } })).status, 400)
+    assert.equal((await call('PUT', `/api/team/${yoletty.id}/extension`, { cookie: front, body: { extensionId: null } })).status, 403)
+    const log = await logged("source = 'portal' AND action = 'team.extension' AND outcome = 'ok'", [], { atLeast: 1 })
+    assert.equal(log[0].details.extensionId, '9101')
+    const unlinked = await call('PUT', `/api/team/${yoletty.id}/extension`, { cookie: dev, body: { extensionId: null } })
+    assert.equal(unlinked.json.rcExtensionId, null)
+  })
+
   await t.test('admin-only permissions cannot be handed to anyone else', async () => {
     const rita = (await db.query("SELECT id FROM admin_users WHERE email = 'rita@example.test'")).rows[0].id
     for (const cap of ['team.manage', 'activity.view', 'monday.configure', 'integrations.view', 'integrations.manage']) {
