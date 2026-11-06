@@ -24,7 +24,7 @@ export const SECTIONS = {
 export const UPDATES = [
   {
     id: 'callback-reminders',
-    at: '2026-11-06T18:00:00Z',
+    at: '2026-11-06T10:11:00Z',
     section: 'calls',
     any: ['calls.exclude', 'crm.manage'],
     title: 'Callback reminders',
@@ -34,11 +34,22 @@ export const UPDATES = [
       'Pick In 30 minutes, In 1 hour, Tomorrow morning (9:00 AM, the next weekday) or a date and time. The exact time shows before you save. Times are New Orleans time.',
       'A reminder can be for you or a colleague, with a short note only staff see. The email and notification never say who the caller is: open the portal to see.',
       'If the caller is reached first (a callback connects, or they are marked handled), the reminder closes by itself and nothing is sent.',
+    id: 'stay-signed-in',
+    at: '2026-11-06T10:09:24Z',
+    section: 'everyone',
+    any: [],
+    title: 'Stay signed in, and smoother switching between sections',
+    summary: 'On the sign-in page, tick “Keep me signed in on this computer” to stay signed in for 30 days instead of 8 hours.',
+    points: [
+      'The sign-in page remembers your email, so only the password needs typing.',
+      'Leave the box off on a shared computer. Signing out still ends it straight away.',
+      'Moving between sections now fades smoothly instead of jumping.',
+      'The Messages header no longer runs its labels over each other on wide screens.',
     ],
   },
   {
     id: 'missed-call-notifications',
-    at: '2026-11-06T09:31:30Z',
+    at: '2026-11-06T09:32:51Z',
     section: 'calls',
     any: ['calls.view'],
     title: 'A notification for each new missed caller',

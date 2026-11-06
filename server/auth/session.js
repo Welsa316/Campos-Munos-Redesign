@@ -8,12 +8,15 @@ import { loadAccount, tokenMatches } from './account.js'
 
 const ALGORITHM = 'HS256'
 export const SESSION_TTL = '8h'
+// "Keep me signed in on this computer": ended early by signing out, a
+// password change, or an administrator signing the account out everywhere.
+export const REMEMBERED_TTL = '30d'
 
 /** A new session token. The jti lets a sign-out revoke this one session only. */
-export function signSession({ id, email, tokenVersion }, secret = process.env.JWT_SECRET) {
-  return jwt.sign({ id, email, tv: tokenVersion }, secret, {
+export function signSession({ id, email, tokenVersion, remember = false }, secret = process.env.JWT_SECRET) {
+  return jwt.sign({ id, email, tv: tokenVersion, ...(remember ? { rm: true } : {}) }, secret, {
     algorithm: ALGORITHM,
-    expiresIn: SESSION_TTL,
+    expiresIn: remember ? REMEMBERED_TTL : SESSION_TTL,
     jwtid: crypto.randomUUID(),
   })
 }

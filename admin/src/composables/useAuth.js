@@ -88,10 +88,10 @@ export function useAuth() {
     return isAuthenticated.value
   }
 
-  async function login(email, password) {
+  async function login(email, password, { remember = false } = {}) {
     const res = await rawFetch('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, remember: remember === true }),
     })
 
     const data = await res.json().catch(() => ({}))
