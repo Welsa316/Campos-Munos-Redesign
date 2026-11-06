@@ -993,6 +993,21 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.deepEqual(times(await dealt()), [])
     assert.equal((await send('DELETE', `/api/calls/${c2}/exclusion`, undefined, { cookie: users.desk.cookie })).status, 200)
     await db.query(`DELETE FROM rc_calls WHERE rc_record_id = 'try-1'`)
+
+    // Marked handled is dealt with: no longer counted, listed or shown on
+    // Home as not called back; reopened, it is again.
+    const c4 = (await att()).calls.find((c) => new Date(c.startedAt).toISOString() === '2026-10-30T17:00:00.000Z')
+    const notReturned = async () => ({
+      count: (await list()).json.counts.not_returned,
+      listed: (await list('&outcome=not_returned')).json.calls.some((c) => c.id === c4.id),
+      home: (await call('GET', `/api/calls/summary?from=${encodeURIComponent('2026-10-30T00:00:00Z')}`)).json.missed.notReturned,
+    })
+    const nrBefore = await notReturned()
+    assert.equal(nrBefore.listed, true, 'open and not called back')
+    assert.equal((await send('POST', `/api/calls/${c4.id}/handled`, {}, { cookie: users.desk.cookie })).status, 200)
+    assert.deepEqual(await notReturned(), { count: nrBefore.count - 1, listed: false, home: nrBefore.home - 1 })
+    assert.equal((await send('DELETE', `/api/calls/${c4.id}/handled`, undefined, { cookie: users.desk.cookie })).status, 200)
+    assert.deepEqual(await notReturned(), nrBefore)
   })
 
   await t.test('clear the list: administrators only; every open call handled in one batch; not counted as handled today; undone as one', async () => {
