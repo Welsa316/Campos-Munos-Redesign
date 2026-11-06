@@ -13,7 +13,7 @@ export const CLASS_LABEL = {
 
 export const CLASS_EXPLAINED = {
   answered: 'A person’s extension, or a phone the call was forwarded to, accepted the call.',
-  not_answered: 'RingCentral offered the call to the people listed and their attempts were not answered. Nobody accepted it.',
+  not_answered: 'RingCentral offered the call to the people listed, their attempts were not answered, and no other phone, queue or menu accepted it.',
   caller_hung_up: 'RingCentral recorded that the caller hung up before the call was answered.',
   voicemail: 'A voicemail message is attached to this call.',
   system: 'The phone system ended the call (for example a blocked number or a refused call). No person was offered it.',
@@ -27,6 +27,7 @@ const GAP_TEXT = {
   no_legs: 'RingCentral sent no step-by-step detail for this call.',
   no_reason: 'RingCentral gave no reason for how this call ended.',
   no_record: 'This call was imported before RingCentral’s full record was kept.',
+  system_accepted: 'A queue or menu accepted the call, so it may have been passed to someone this record does not show.',
 }
 export const gapText = (g) => GAP_TEXT[g] || null
 
@@ -49,6 +50,7 @@ export function stepTarget(to) {
     return to.type ? `${base} (${TYPE_LABEL[to.type] || to.type}${rc})` : `${base}${rc}`
   }
   if (to.kind === 'external') return `Phone ending ${to.numberEnd || '····'}`
+  if (to.kind === 'caller') return `Back to the caller (ending ${to.numberEnd || '····'})`
   if (to.kind === 'line') return to.name ? `${to.name} (the line dialled)` : 'The line dialled'
   return to.name || '—'
 }
@@ -73,6 +75,7 @@ export function statusLine(c) {
   if (cls === 'caller_hung_up') return (c.offeredTo || []).length ? `Caller hung up before an answer · offered to ${c.offeredTo.map(who).join(', ')}` : 'Caller hung up before an answer · no record of anyone being rung'
   if (cls === 'voicemail') return (c.notAnsweredBy || []).length ? `Left a voicemail · not answered by ${c.notAnsweredBy.map(who).join(', ')}` : 'Left a voicemail'
   if (cls === 'system') return 'Handled by the phone system'
+  if (cls === 'unknown' && (c.gaps || []).includes('forward_answer_unconfirmed')) return 'Not confirmed · accepted at a phone it was forwarded to'
   if (cls === 'unknown') return `Not confirmed${c.result ? ` · RingCentral’s result: ${c.result}` : ''}`
   return c.result || 'Call'
 }
@@ -88,6 +91,7 @@ export function factText(f) {
     case 'caller_hung_up': return `The caller hung up before the call was answered${f.level === 'leg' && f.to?.kind === 'extension' ? `, while it was offered to ${target}` : ''}.`
     case 'not_answered_by': return `${cap(target)} did not answer (${f.reason}).`
     case 'system_reason': return `${f.reason}.`
+    case 'accepted_by_forwarded_phone': return `The phone ending ${f.to?.numberEnd || '····'} that the call was forwarded to${f.onBehalfOf ? ` (${f.onBehalfOf}’s forwarding)` : ''} accepted it. That is either the person or that phone’s own voicemail, and the call log cannot tell which.`
     case 'stopped_ambiguous': return `${cap(target)}’s attempt was “Stopped”. RingCentral’s API reference says that means another phone answered, but no other phone on this call shows an answer, so it is not counted either way.`
     case 'connected_not_accepted': return `${cap(target)} picked up as a system that did not accept the call (reason “Connected”, for example a voicemail greeting).`
     default: return f.code

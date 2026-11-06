@@ -35,7 +35,7 @@
           </ul>
           <p v-else class="mt-1.5 text-gray-600">No step shows the call offered to a person. That does not prove nobody was rung.</p>
           <h4 class="mt-3 font-ui text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-600">Answered by</h4>
-          <p class="mt-1" :class="ev.answeredBy ? 'font-medium text-gray-900' : 'text-gray-600'">{{ ev.answeredBy ? who(ev.answeredBy) : 'Nobody, as far as RingCentral’s record shows' }}</p>
+          <p class="mt-1" :class="ev.answeredBy ? 'font-medium text-gray-900' : 'text-gray-600'">{{ ev.answeredBy ? who(ev.answeredBy) : ev.classification === 'unknown' ? 'Not confirmed: see the evidence' : 'Nobody, as far as RingCentral’s record shows' }}</p>
         </div>
       </div>
 

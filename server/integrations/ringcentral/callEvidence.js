@@ -21,7 +21,7 @@
 // Anything else is 'unknown', with the reason why.
 import { REASON_MEANING } from './reasonMeanings.js'
 
-export const CLASSIFIER_VERSION = 1
+export const CLASSIFIER_VERSION = 2
 
 const MAX_LEGS = 60
 const DROP_KEYS = new Set(['recording', 'billing', 'uri', 'contentUri'])
@@ -76,15 +76,19 @@ const str = (v) => (typeof v === 'string' && v.trim() ? v.trim() : typeof v === 
  * The extension a leg went to, completed from the directory when it knows
  * it. `person` is true or false when the directory says so, and null when it
  * cannot (directory unavailable, or no such extension in it).
+ *
+ * Only the extension id identifies an extension: a number can be given to
+ * someone else later, so a leg that names only a number (or an id the
+ * directory no longer has) is never matched to whoever has it now.
  */
 function targetExtension(to, directory) {
   if (!to || typeof to !== 'object') return null
   const id = str(to.extensionId)
   const number = str(to.extensionNumber)
   if (!id && !number) return null
-  const known = (id && directory?.byId?.get(id)) || (number && directory?.byNumber?.get(number)) || null
+  const known = (id && directory?.byId?.get(id)) || null
   return {
-    id: id || known?.id || null,
+    id,
     number: number || known?.number || null,
     name: str(to.name) || known?.name || null,
     type: known?.type || null,
@@ -94,10 +98,11 @@ function targetExtension(to, directory) {
 
 /** Every attempt RingCentral recorded for the call, oldest first: the records themselves, then their legs. */
 function readSteps(raws, directory) {
-  // A leg to the number the caller dialled, or back to the caller, is the
-  // line itself, not a forward to someone's phone.
-  const dialled = new Set(raws.map((r) => digits(r.to?.phoneNumber)).filter(Boolean))
-  const caller = new Set(raws.map((r) => digits(r.from?.phoneNumber)).filter(Boolean))
+  // A leg to the number the caller dialled is the line itself; one back to
+  // the caller is the caller. Neither is a forward to someone's phone.
+  const inbound = raws.filter((r) => r.direction !== 'Outbound')
+  const dialled = new Set(inbound.map((r) => digits(r.to?.phoneNumber)).filter(Boolean))
+  const caller = new Set(inbound.map((r) => digits(r.from?.phoneNumber)).filter(Boolean))
   const seen = new Set()
   const steps = []
   for (const rec of raws) {
@@ -112,8 +117,9 @@ function readSteps(raws, directory) {
       const toDigits = digits(l.to?.phoneNumber)
       let to
       if (ext) to = { kind: 'extension', ...ext }
-      else if (toDigits && !dialled.has(toDigits) && !caller.has(toDigits)) to = { kind: 'external', numberEnd: last4(toDigits) }
-      else if (toDigits) to = { kind: 'line', number: str(l.to.phoneNumber), name: str(l.to?.name) }
+      else if (toDigits && dialled.has(toDigits)) to = { kind: 'line', number: str(l.to.phoneNumber), name: str(l.to?.name) }
+      else if (toDigits && caller.has(toDigits)) to = { kind: 'caller', numberEnd: last4(toDigits) }
+      else if (toDigits) to = { kind: 'external', numberEnd: last4(toDigits) }
       else to = { kind: 'none', name: str(l.to?.name) }
       const reason = str(l.reason)
       steps.push({
@@ -173,7 +179,7 @@ export function classifyCall(records, { direction, directory = null } = {}) {
   if (!directory?.available) gaps.add('directory_unavailable')
   if (!legs.length) gaps.add('no_legs')
   const facts = []
-  const fact = (code, s) => facts.push({ code, ...brief(s) })
+  const fact = (code, s, extra = {}) => facts.push({ code, ...brief(s), ...extra })
 
   // Confirmed offers: a leg to a person's extension. Its reason says how that
   // attempt ended; an Accepted attempt wins over another one to the same person.
@@ -189,53 +195,83 @@ export function classifyCall(records, { direction, directory = null } = {}) {
     else if (entry.reason === 'Accepted' || !prev.reason) Object.assign(prev, entry)
   }
   const notAnsweredBy = attempts.filter((s) => isPerson(s) && NOT_ANSWERED_REASONS.has(s.reason))
+  // Someone is charged with not answering only when the call is proven not
+  // answered by anyone; on a call the evidence cannot settle, nobody is.
+  const PROVEN_UNANSWERED = ['not_answered', 'caller_hung_up', 'voicemail']
   const done = (classification, extra = {}) => ({
     ...out, classification, facts, steps, offeredTo, gaps: [...gaps],
-    notAnsweredBy: classification === 'answered' ? [] : dedupePeople(notAnsweredBy),
+    notAnsweredBy: PROVEN_UNANSWERED.includes(classification) ? dedupePeople(notAnsweredBy) : [],
     ...extra,
   })
 
-  // 1. Answered: a person's extension, or a phone the call was forwarded to,
-  //    accepted it ("The call was connected to and accepted by this number").
-  const accepted = attempts.filter((s) => s.reason === 'Accepted')
-  for (const s of accepted.filter((x) => x.to.kind === 'extension' && x.to.person === false)) fact('accepted_by_system', s)
-  // An attempt that carries a linked voicemail message was accepted by
-  // voicemail, not by the person.
-  const byPerson = accepted.filter((s) => !s.voicemailMessage && (isPerson(s) || s.to.kind === 'external'))
+  // 1. Answered: a person's extension accepted it ("The call was connected
+  //    to and accepted by this number"). An attempt that carries a voicemail
+  //    message was accepted by voicemail, not by the person.
+  const accepted = attempts.filter((s) => s.reason === 'Accepted' && !s.voicemailMessage)
+  const bySystem = accepted.filter((x) => x.to.kind === 'extension' && x.to.person === false)
+  for (const s of bySystem) fact('accepted_by_system', s)
+  const byPerson = accepted.filter(isPerson)
   if (byPerson.length) {
     const s = byPerson[byPerson.length - 1]
     fact('accepted', s)
-    const answeredBy = s.to.kind === 'external'
-      ? { kind: 'external', numberEnd: s.to.numberEnd, onBehalfOfId: s.onBehalfOf || null, onBehalfOf: (s.onBehalfOf && directory?.byId?.get(s.onBehalfOf)?.name) || null }
-      : { kind: 'extension', extensionId: s.to.id, extension: s.to.number, name: s.to.name }
-    return done('answered', { answeredBy })
+    return done('answered', { answeredBy: { kind: 'extension', extensionId: s.to.id, extension: s.to.number, name: s.to.name } })
   }
   // An extension the directory cannot place accepted it. It may have been a
   // person, so nothing below can be concluded.
-  const unsure = accepted.filter((s) => !s.voicemailMessage && isUnsure(s))
+  const unsure = accepted.filter(isUnsure)
   if (unsure.length) {
     for (const s of unsure) fact('accepted_by_unconfirmed_extension', s)
     gaps.add('extension_type_unknown')
     return done('unknown')
   }
-
-  for (const s of notAnsweredBy) fact('not_answered_by', s)
+  // A phone the call was forwarded to accepted it. That is either the person
+  // or that phone's own voicemail, which the call log cannot tell apart.
+  const forwarded = accepted.filter((s) => s.to.kind === 'external')
+  if (forwarded.length) {
+    for (const s of forwarded) fact('accepted_by_forwarded_phone', s, { onBehalfOf: (s.onBehalfOf && directory?.byId?.get(s.onBehalfOf)?.name) || null })
+    gaps.add('forward_answer_unconfirmed')
+    return done('unknown')
+  }
 
   // 2. Voicemail: a voicemail message is linked to the call.
   const vm = steps.find((s) => s.voicemailMessage)
-  if (vm) { fact('voicemail_message', vm); return done('voicemail') }
+  if (vm) {
+    for (const s of notAnsweredBy) fact('not_answered_by', s)
+    fact('voicemail_message', vm)
+    return done('voicemail')
+  }
+
+  // "Stopped": "This attempt was stopped because the call was answered by
+  // another phone". With no answer recorded anywhere, that contradicts both a
+  // hang-up and "nobody answered", so neither is concluded.
+  const stopped = attempts.filter((s) => s.reason === 'Stopped')
+  if (stopped.length) {
+    for (const s of stopped) fact('stopped_ambiguous', s)
+    return done('unknown')
+  }
 
   // 3. The caller hung up before the call was answered. Whether anyone was
   //    rung before that is only known when a leg shows it.
   const hangUps = steps.filter((s) => s.reason === 'Hang Up')
   if (hangUps.length) {
+    for (const s of notAnsweredBy) fact('not_answered_by', s)
     for (const s of hangUps) fact('caller_hung_up', s)
     if (!offeredTo.length) gaps.add('alerting_unknown')
     return done('caller_hung_up')
   }
 
-  // 4. Offered to a person whose leg says it was not answered (or was busy).
-  if (notAnsweredBy.length) return done('not_answered')
+  // 4. Offered to a person whose leg says it was not answered (or was busy),
+  //    and nothing else took the call: a queue or menu that accepted it may
+  //    have passed it to someone the log does not show.
+  if (notAnsweredBy.length && !bySystem.length) {
+    for (const s of notAnsweredBy) fact('not_answered_by', s)
+    return done('not_answered')
+  }
+  if (notAnsweredBy.length) {
+    for (const s of notAnsweredBy) fact('not_answered_by', s)
+    gaps.add('system_accepted')
+    return done('unknown')
+  }
 
   // 5. The phone system ended it (block list, account not accepting calls, a
   //    network or configuration error), and no person was offered it.
@@ -246,7 +282,6 @@ export function classifyCall(records, { direction, directory = null } = {}) {
   }
 
   // 6. Nothing documented settles it.
-  for (const s of attempts.filter((x) => x.reason === 'Stopped' && isPerson(x))) fact('stopped_ambiguous', s)
   for (const s of steps.filter((x) => x.reason === 'Connected')) fact('connected_not_accepted', s)
   if (!steps.some((s) => s.reason)) gaps.add('no_reason')
   if (steps.some(isUnsure)) gaps.add('extension_type_unknown')

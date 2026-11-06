@@ -55,3 +55,11 @@ test('targets and offsets', () => {
   assert.equal(offset('2026-10-26T15:00:09Z', '2026-10-26T15:00:00Z'), '+9s')
   assert.equal(offset(null, '2026-10-26T15:00:00Z'), '')
 })
+
+test('accepted at a forwarded phone reads as not confirmed, and says why', () => {
+  assert.equal(statusLine({ classification: 'unknown', gaps: ['forward_answer_unconfirmed'], result: 'Accepted' }), 'Not confirmed · accepted at a phone it was forwarded to')
+  assert.match(factText({ code: 'accepted_by_forwarded_phone', to: { kind: 'external', numberEnd: '9876' }, onBehalfOf: 'Yoletty' }),
+    /phone ending 9876 .*\(Yoletty’s forwarding\) accepted it\. That is either the person or that phone’s own voicemail/)
+  assert.equal(stepTarget({ kind: 'caller', numberEnd: '0142' }), 'Back to the caller (ending 0142)')
+  assert.match(gapText('system_accepted'), /may have been passed to someone/)
+})

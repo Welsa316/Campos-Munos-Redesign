@@ -68,7 +68,12 @@ export async function excludeCall(db, { callId, reason, note, scope = 'call', ac
  */
 export async function includeCall(db, { callId }) {
   const call = await loadCall(db, callId)
-  const own = await db.query('DELETE FROM rc_call_exclusions WHERE call_id = $1', [call.id])
+  // A mark on any RingCentral record of the same call counts for the call,
+  // so counting it again clears them all.
+  const own = await db.query(
+    'DELETE FROM rc_call_exclusions WHERE call_id IN (SELECT d.id FROM rc_calls d JOIN rc_calls c ON c.call_key = d.call_key WHERE c.id = $1)',
+    [call.id]
+  )
   const byNumber = call.counterpart_key
     ? await db.query('DELETE FROM rc_ignored_numbers WHERE counterpart_key = $1', [call.counterpart_key])
     : { rowCount: 0 }

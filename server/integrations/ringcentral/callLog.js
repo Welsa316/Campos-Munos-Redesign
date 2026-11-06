@@ -307,10 +307,14 @@ export async function classifyStored(db, { keys = [], all = false } = {}) {
   }
   const updates = []
   for (const group of groups.values()) {
+    // A session with an incoming record is an incoming call (an outgoing
+    // record beside it is a transfer out), read from its incoming records.
     // The company-wide record with the fullest evidence stands for the call.
+    const inbound = group.filter((r) => r.direction === 'inbound')
+    const own = inbound.length ? inbound : group
     const legsOf = (r) => (Array.isArray(r.rc_raw?.legs) ? r.rc_raw.legs.length : -1)
-    const primary = [...group].sort((a, b) => (a.scope === 'account' ? 0 : 1) - (b.scope === 'account' ? 0 : 1) || legsOf(b) - legsOf(a) || Number(a.id) - Number(b.id))[0]
-    const evidence = classifyCall(group.map((r) => r.rc_raw).filter(Boolean), { direction: primary.direction, directory })
+    const primary = [...own].sort((a, b) => (a.scope === 'account' ? 0 : 1) - (b.scope === 'account' ? 0 : 1) || legsOf(b) - legsOf(a) || Number(a.id) - Number(b.id))[0]
+    const evidence = classifyCall(own.map((r) => r.rc_raw).filter(Boolean), { direction: primary.direction, directory })
     for (const r of group) updates.push([r.id, evidence.classification, primary.direction === 'inbound' ? evidence : null, r.id === primary.id])
   }
   for (let i = 0; i < updates.length; i += 500) {
@@ -499,7 +503,7 @@ export async function summarizeMissed(db, { now = new Date(), days = 30, from: s
     `SELECT COUNT(*) FILTER (WHERE ${UNANSWERED_SQL('c.classification')} AND NOT ${EXCLUDED_SQL})::int AS total,
             COUNT(*) FILTER (WHERE c.classification = 'voicemail' AND NOT ${EXCLUDED_SQL})::int AS voicemail,
             COUNT(*) FILTER (WHERE ${UNANSWERED_SQL('c.classification')} AND NOT ${EXCLUDED_SQL} AND c.counterpart_key <> '' AND NOT ${RETURNED_SQL})::int AS not_returned,
-            COUNT(*) FILTER (WHERE c.classification = 'unknown')::int AS unconfirmed
+            COUNT(*) FILTER (WHERE c.classification = 'unknown' AND NOT ${EXCLUDED_SQL})::int AS unconfirmed
        FROM rc_calls c
       WHERE NOT c.is_internal AND c.direction = 'inbound' AND c.is_primary
         AND c.started_at >= $1 AND c.started_at < $2 AND ${businessHoursSql('c.started_at')}`,
@@ -626,7 +630,7 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
   const personCounts = personParam
     ? `,
         COUNT(*) FILTER (WHERE classification_evidence->'answeredBy'->>'extensionId' = (${personParam}::jsonb)->0->>'extensionId')::int AS person_answered,
-        COUNT(*) FILTER (WHERE classification_evidence->'notAnsweredBy' @> ${personParam}::jsonb AND ${kept})::int AS person_not_answered`
+        COUNT(*) FILTER (WHERE ${UNANSWERED_SQL('classification')} AND classification_evidence->'notAnsweredBy' @> ${personParam}::jsonb AND ${kept})::int AS person_not_answered`
     : ''
   const lim = Math.max(1, Math.min(1000, Math.trunc(Number(limit)) || 300))
   const [list, counts] = await Promise.all([

@@ -449,6 +449,62 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     await db.query(`DELETE FROM rc_calls WHERE call_key = 'ts-dup'`)
   })
 
+  await t.test('an incoming call whose session also holds an outgoing record still counts, read as incoming', async () => {
+    rc.records.push(
+      rec('m1', '2026-10-30T21:10:00Z', 'Inbound', 'Missed', { phoneNumber: '+15045550167' }, {
+        telephonySessionId: 'ts-mixed', sessionId: 's-mixed',
+        legs: [{ startTime: '2026-10-30T21:10:02Z', legType: 'Accept', reason: 'No Answer', to: { name: 'Yoletty', extensionNumber: '101', extensionId: '9101' } }],
+      }),
+      // A transfer out to a mobile, with more legs than the incoming record.
+      rec('m2', '2026-10-30T21:10:00Z', 'Outbound', 'Call connected', { phoneNumber: '+15049998877' }, {
+        telephonySessionId: 'ts-mixed', sessionId: 's-mixed',
+        legs: [1, 2, 3].map((i) => ({ startTime: `2026-10-30T21:10:1${i}Z`, legType: 'SipToPstnMetered', reason: 'Accepted', to: { phoneNumber: '+15049998877' } })),
+      }),
+    )
+    await db.query(`UPDATE rc_call_sync_state SET window_to = '2026-10-30T20:00:00Z'`)
+    const before = (await list()).json.counts
+    await sync()
+    const l = await list()
+    const mixed = l.json.calls.filter((c) => new Date(c.startedAt).toISOString() === '2026-10-30T21:10:00.000Z')
+    assert.equal(mixed.length, 1)
+    assert.equal(mixed[0].direction, 'inbound')
+    assert.equal(mixed[0].classification, 'not_answered')
+    assert.equal(l.json.counts.missed, before.missed + 1)
+    const ev = await call('GET', `/api/calls/${mixed[0].id}/evidence`)
+    assert.ok(!ev.text.includes('9998877'), 'the transfer target is never sent whole')
+    rc.records = rc.records.filter((r) => !['m1', 'm2'].includes(r.id))
+    await db.query(`DELETE FROM rc_calls WHERE call_key = 'ts-mixed'`)
+  })
+
+  await t.test('"count it again" clears a mark made on another record of the same call', async () => {
+    rc.records.push(rec('x1', '2026-10-30T21:20:00Z', 'Inbound', 'Missed', { phoneNumber: '+15045550168' }, {
+      telephonySessionId: 'ts-x', sessionId: 's-x',
+      legs: [{ startTime: '2026-10-30T21:20:02Z', legType: 'Accept', reason: 'No Answer', to: { name: 'Ciro', extensionNumber: '102', extensionId: '9102' } }],
+    }))
+    await db.query(`UPDATE rc_call_sync_state SET window_to = '2026-10-30T20:00:00Z'`)
+    await sync()
+    const first = Number((await db.query(`SELECT id FROM rc_calls WHERE rc_record_id = 'x1'`)).rows[0].id)
+    assert.equal((await send('POST', `/api/calls/${first}/exclusion`, { reason: 'spam' }, { cookie: users.desk.cookie })).status, 200)
+    // A second record of the same call arrives, with more evidence, and becomes the call.
+    rc.records.push(rec('x2', '2026-10-30T21:20:00Z', 'Inbound', 'Missed', { phoneNumber: '+15045550168' }, {
+      telephonySessionId: 'ts-x', sessionId: 's-x',
+      legs: [
+        { startTime: '2026-10-30T21:20:02Z', legType: 'Accept', reason: 'No Answer', to: { name: 'Ciro', extensionNumber: '102', extensionId: '9102' } },
+        { startTime: '2026-10-30T21:20:03Z', legType: 'Accept', reason: 'No Answer', to: { name: 'Yoletty', extensionNumber: '101', extensionId: '9101' } },
+      ],
+    }))
+    await db.query(`UPDATE rc_call_sync_state SET window_to = '2026-10-30T20:00:00Z'`)
+    await sync()
+    const shown = byId((await list()).json.calls, '2026-10-30T21:20:00Z')
+    assert.notEqual(shown.id, first, 'the fuller record now stands for the call')
+    assert.equal(shown.exclusion.reason, 'spam', 'the mark still applies')
+    const back = await send('DELETE', `/api/calls/${shown.id}/exclusion`, undefined, { cookie: users.desk.cookie })
+    assert.equal(back.json.removedCall, true)
+    assert.equal(byId((await list()).json.calls, '2026-10-30T21:20:00Z').exclusion, null)
+    rc.records = rc.records.filter((r) => !['x1', 'x2'].includes(r.id))
+    await db.query(`DELETE FROM rc_calls WHERE call_key = 'ts-x'`)
+  })
+
   await t.test('without the extension list nothing is confirmed as a person, and nothing is counted against anyone', async () => {
     rc.directoryForbidden = true
     await db.query(`DELETE FROM rc_extensions`)

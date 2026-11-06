@@ -203,14 +203,14 @@ test('a queue alone not answering is not an employee miss', () => {
   assert.deepEqual(c.notAnsweredBy, [])
 })
 
-test('forwarded to a phone outside the firm that accepted: answered there, only the last 4 digits kept', () => {
+test('forwarded to a phone outside the firm: only its last 4 digits are kept', () => {
   const c = classify(record([
     leg(0, LINE, null, { legType: 'PstnToSip', master: true }),
     leg(3, YOLETTY, 'No Answer'),
-    leg(25, { phoneNumber: '+15045559876' }, 'Accepted', { legType: 'FindMe', extension: { id: '9101' } }),
+    leg(25, { phoneNumber: '+15045559876' }, 'Not Answered', { legType: 'FindMe', extension: { id: '9101' } }),
   ]))
-  assert.equal(c.classification, 'answered')
-  assert.deepEqual(c.answeredBy, { kind: 'external', numberEnd: '9876', onBehalfOfId: '9101', onBehalfOf: 'Yoletty' })
+  assert.equal(c.classification, 'not_answered')
+  assert.equal(c.steps.find((s) => s.legType === 'FindMe').to.numberEnd, '9876')
   assert.ok(!JSON.stringify(c).includes('5559876'))
 })
 
@@ -270,4 +270,51 @@ test('a queue-only record (the call never reached anyone) is never charged to a 
   assert.equal(c.classification, 'unknown')
   assert.deepEqual(c.offeredTo, [])
   assert.deepEqual(c.notAnsweredBy, [])
+})
+
+// --- cases found in review: each must stay unknown, or not charge anyone ---
+
+test('an unplaced extension accepted it: nobody is charged with a miss', () => {
+  const c = classify(record([leg(0, LINE, null, { master: true }), leg(2, YOLETTY, 'No Answer'), leg(9, { extensionId: '77', extensionNumber: '7' }, 'Accepted')]))
+  assert.equal(c.classification, 'unknown')
+  assert.deepEqual(c.notAnsweredBy, [])
+})
+
+test('No Answer beside a Stopped attempt ("answered by another phone") is not "not answered"', () => {
+  const c = classify(record([leg(0, LINE, null, { master: true }), leg(2, YOLETTY, 'No Answer'), leg(2, CIRO, 'Stopped')]))
+  assert.equal(c.classification, 'unknown')
+  assert.deepEqual(c.notAnsweredBy, [])
+})
+
+test('a queue accepted it and her leg says No Answer: someone may have answered through the queue', () => {
+  const c = classify(record([leg(0, QUEUE, 'Accepted', { master: true }), leg(3, YOLETTY, 'No Answer')]))
+  assert.equal(c.classification, 'unknown')
+  assert.deepEqual(c.notAnsweredBy, [])
+})
+
+test('a hang-up with a Stopped attempt contradicts itself: unknown', () => {
+  const c = classify(record([leg(0, LINE, null, { master: true }), leg(2, YOLETTY, 'Stopped'), leg(9, CIRO, 'Hang Up')]))
+  assert.equal(c.classification, 'unknown')
+})
+
+test('a leg naming only an extension number is not pinned on whoever has that number now', () => {
+  const c = classify(record([leg(0, LINE, null, { master: true }), leg(3, { extensionNumber: '101', name: 'Old queue' }, 'No Answer')]))
+  assert.equal(c.classification, 'unknown')
+  assert.deepEqual(c.notAnsweredBy, [])
+  const d = classify(record([leg(0, LINE, null, { master: true }), leg(3, { extensionId: '555', extensionNumber: '102', name: 'Old queue' }, 'Accepted')]))
+  assert.equal(d.classification, 'unknown', 'a deleted extension whose number was reused')
+})
+
+test('accepted at a forwarded phone is not confirmed as an answer (its own voicemail could accept)', () => {
+  const c = classify(record([leg(0, LINE, null, { master: true }), leg(25, { phoneNumber: '+15045559876' }, 'Accepted', { legType: 'FindMe', extension: { id: '9101' } })]))
+  assert.equal(c.classification, 'unknown')
+  assert.ok(c.facts.some((f) => f.code === 'accepted_by_forwarded_phone'))
+  assert.equal(c.answeredBy, null)
+})
+
+test('a leg back to the caller’s own number never carries the whole number', () => {
+  const c = classify(record([leg(0, LINE, null, { master: true }), leg(5, { phoneNumber: CALLER.phoneNumber }, 'No Answer')]))
+  const s = c.steps.find((x) => x.level === 'leg' && x.to.kind !== 'line')
+  assert.equal(s.to.kind, 'caller')
+  assert.ok(!JSON.stringify(c).includes('5045550142'))
 })
