@@ -718,6 +718,22 @@ export async function listPeople(db) {
 }
 
 /**
+ * A key for each party in a call's live events, unique within the call and
+ * the same on every read: RingCentral's party id, or the party's place in the
+ * list when a stored record has none. An extension can appear as several
+ * parties (rung, then transferred to), so it is no key on its own.
+ */
+export function livePartyIds(parties) {
+  const used = new Set()
+  return parties.map((p, i) => {
+    let id = p?.partyId != null && String(p.partyId) !== '' ? String(p.partyId) : `party-${i + 1}`
+    if (used.has(id)) id = `${id}#${i + 1}`
+    used.add(id)
+    return id
+  })
+}
+
+/**
  * One call's evidence for the detail view: the classification, every step
  * RingCentral recorded (with each reason's documented meaning), who it was
  * confirmed offered to, who answered, and RingCentral's own result.
@@ -733,6 +749,7 @@ export async function callEvidence(db, id) {
   if (!r) return null
   const ev = r.classification_evidence || {}
   const names = await linkedNames(db)
+  const partyIds = ev.live ? livePartyIds(ev.live.parties) : []
   const toNamed = (to) => (to?.kind === 'extension' && to.id && names.has(to.id) ? { ...to, name: names.get(to.id), rcName: to.name ?? null } : to)
   return {
     id: Number(r.id),
@@ -755,7 +772,8 @@ export async function callEvidence(db, id) {
       ? {
           events: ev.live.events,
           complete: ev.live.complete,
-          parties: ev.live.parties.map((p) => ({
+          parties: ev.live.parties.map((p, i) => ({
+            partyId: partyIds[i],
             extensionId: p.extensionId, extension: p.extension, type: p.type, person: p.person,
             name: (p.extensionId && names.get(p.extensionId)) || p.name, rcName: p.name,
             rang: p.rang, answered: p.answered, voicemail: p.voicemail, missedCall: p.missedCall, endedAt: p.endedAt,

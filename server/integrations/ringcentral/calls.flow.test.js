@@ -884,6 +884,23 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.equal(ev.json.live.complete, true)
     assert.deepEqual(ev.json.live.parties.map((p) => p.states.map((x) => x.code)), [['Setup', 'Answered', 'Disconnected'], ['Answered', 'Disconnected']])
     assert.ok(!ev.text.includes('5550170'), 'no caller number in the live timeline')
+    // Each party has its own key for the portal: RingCentral's party id.
+    assert.deepEqual(ev.json.live.parties.map((p) => p.partyId), ['p-co', 'p-ivr'])
+    // A stored record where one party has no id, another id repeats and one
+    // extension is several parties: still one distinct key each, the same on
+    // every read.
+    const kept = (await db.query('SELECT classification_evidence AS e FROM rc_calls WHERE id = $1', [g.id])).rows[0].e
+    const [co, ivr] = kept.live.parties
+    const { partyId: _drop, ...noId } = co
+    const twice = { ...kept, live: { ...kept.live, parties: [{ ...noId, extensionId: '9001' }, ivr, { ...ivr }] } }
+    await db.query('UPDATE rc_calls SET classification_evidence = $2 WHERE id = $1', [g.id, JSON.stringify(twice)])
+    const keys = async () => (await call('GET', `/api/calls/${g.id}/evidence`)).json.live.parties.map((p) => p.partyId)
+    const first = await keys()
+    assert.equal(first.length, 3)
+    assert.equal(new Set(first).size, 3, first.join(','))
+    assert.ok(first.every((k) => typeof k === 'string' && k))
+    assert.deepEqual(await keys(), first, 'stable')
+    await db.query('UPDATE rc_calls SET classification_evidence = $2 WHERE id = $1', [g.id, JSON.stringify(kept)])
 
     // A hang-up imported first; its live events arrive later and the call is read again.
     const t2 = 'ts-late'
