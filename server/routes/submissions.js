@@ -15,7 +15,9 @@ import { sha256Hex, digestsEqual } from '../integrations/secretBox.js'
 import { notifyNewLead } from '../push/leadAlerts.js'
 import { verifyTestToken } from '../testChannel/token.js'
 import { storeTestSubmission, notifyTestSender } from '../testChannel/store.js'
-import { closeResolvedReminders } from '../reminders/reminders.js'
+import { closeResolvedReminders, reopenResolvedReminders } from '../reminders/reminders.js'
+
+const UNARCHIVE_REOPEN_DAYS = 30
 
 const router = Router()
 
@@ -543,10 +545,16 @@ router.patch(
       if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Submission not found' })
       }
-      // An archived lead needs nobody: its callback reminders close.
+      // An archived lead needs nobody: its callback reminders close. Taken
+      // out of the archive, the ones that closed come back (archiving is the
+      // only thing that closes a lead's reminder as resolved; a month back
+      // at most, so a long-forgotten one does not fire out of nowhere).
       if (result.rows[0].is_archived) {
         await closeResolvedReminders(getPool(), { submissionId: result.rows[0].id })
           .catch((err) => req.log.warn({ err: { name: err?.name, code: err?.code } }, 'Closing reminders on an archived lead failed'))
+      } else {
+        await reopenResolvedReminders(getPool(), { submissionId: result.rows[0].id, since: new Date(Date.now() - UNARCHIVE_REOPEN_DAYS * 864e5) })
+          .catch((err) => req.log.warn({ err: { name: err?.name, code: err?.code } }, 'Reopening reminders on a restored lead failed'))
       }
 
       res.json(result.rows[0])

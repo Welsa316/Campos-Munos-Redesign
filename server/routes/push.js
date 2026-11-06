@@ -10,39 +10,35 @@
 // The endpoint travels in the body, not the URL, so it never lands in an
 // access log: it is the address anyone could push to.
 import { Router } from 'express'
-import rateLimit from 'express-rate-limit'
 import crypto from 'crypto'
 import getPool from '../db/pool.js'
 import requireAuth from '../middleware/auth.js'
+import { route } from '../middleware/route.js'
+import { accountLimiter } from '../middleware/accountLimiter.js'
 import { pushConfig } from '../push/config.js'
-import { sendPush, TEST_NOTIFICATION } from '../push/send.js'
+import { sendPush, TEST_NOTIFICATION, TEST_LIMIT } from '../push/send.js'
 import {
   isPushEndpoint, parseSubscription, saveSubscription, findOwnSubscription, removeOwnSubscription, countOwnSubscriptions,
 } from '../push/subscriptions.js'
 
 const NOT_CONFIGURED = { error: 'Desktop notifications are not set up on the server yet. Ask the office administrator.', code: 'push_not_configured' }
 
-export function createPushRouter({ env = process.env, db = null, transport } = {}) {
+// Turning notifications on or off for a computer, per account in fifteen
+// minutes: a browser does this once, or after a reinstall.
+export const SUBSCRIPTION_WRITES_PER_15_MIN = 30
+
+export function createPushRouter({ env = process.env, db = null, transport, writeLimit = SUBSCRIPTION_WRITES_PER_15_MIN } = {}) {
   const router = Router()
   const pool = () => db || getPool()
-  const wrap = (fn) => async (req, res) => {
-    try {
-      await fn(req, res)
-    } catch (err) {
-      req.log?.error({ err: { name: err?.name, code: err?.code } }, 'Push route error')
-      res.status(500).json({ error: 'Internal server error' })
-    }
-  }
+  // Brief: an error here could carry a push endpoint, which must not reach the logs.
+  const wrap = route('Push route error', { brief: true })
   const endpointOf = (req) => (isPushEndpoint(req.body?.endpoint) ? req.body.endpoint : null)
 
   // A test is for checking this computer works, not for sending many.
-  const testLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 5,
-    keyGenerator: (req) => `push-test:${req.account?.id}`,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: 'Too many test notifications. Wait a few minutes and try again.', code: 'too_many_tests' },
+  const testLimiter = accountLimiter(TEST_LIMIT('push-test'))
+  const writes = accountLimiter({
+    name: 'push-subscriptions', windowMs: 15 * 60 * 1000, max: writeLimit,
+    error: 'Too many changes to notifications in a few minutes. Wait a moment and try again.', code: 'too_many_changes',
   })
 
   router.use(requireAuth)
@@ -52,7 +48,7 @@ export function createPushRouter({ env = process.env, db = null, transport } = {
     res.json({ configured: cfg.configured, publicKey: cfg.publicKey })
   })
 
-  router.post('/subscriptions', wrap(async (req, res) => {
+  router.post('/subscriptions', writes, wrap(async (req, res) => {
     if (!pushConfig(env).configured) return res.status(503).json(NOT_CONFIGURED)
     const sub = parseSubscription(req.body?.subscription)
     if (!sub) return res.status(400).json({ error: 'This browser sent a subscription the portal cannot use.', code: 'invalid_subscription' })
@@ -74,7 +70,7 @@ export function createPushRouter({ env = process.env, db = null, transport } = {
     })
   }))
 
-  router.delete('/subscriptions', wrap(async (req, res) => {
+  router.delete('/subscriptions', writes, wrap(async (req, res) => {
     const endpoint = endpointOf(req)
     if (!endpoint) return res.status(400).json({ error: 'No subscription given.', code: 'invalid_subscription' })
     const removed = await removeOwnSubscription(pool(), req.account.id, endpoint)

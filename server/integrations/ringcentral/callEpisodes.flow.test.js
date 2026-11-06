@@ -13,6 +13,15 @@ import { execFileSync } from 'child_process'
 import pg from 'pg'
 import jwt from 'jsonwebtoken'
 import { CLASSIFIER_VERSION } from './callEvidence.js'
+import { followUpDecision } from './callLog.js'
+
+// The JS follow-up rule applied to a call as the API presents it, so the
+// SQL columns (needsAttention, needsReview) and the rule are held together.
+const decisionOf = (c) => followUpDecision({
+  direction: c.direction, is_internal: false, is_primary: true, classification: c.classification,
+  counterpart_key: String(c.number || '').replace(/\D/g, ''),
+  handled_at: c.handled?.at ?? null, excluded_kind: c.exclusion?.scope ?? null, connected_followup_at: c.connectedFollowUp?.at ?? null,
+})
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const BASE_URL = process.env.TEST_DATABASE_URL || ''
@@ -142,7 +151,7 @@ test('callback episodes', { skip: SKIP }, async (t) => {
     assert.equal(a.calls.length, 3)
     assert.equal(a.counts.attention, 3)
     assert.equal(a.kpis.needsAttention, 1)
-    assert.equal(a.kpis.openEpisodes, 1)
+    assert.equal(a.kpis.needsAttention, 1)
     assert.equal(a.kpis.openCalls, 3)
     const all = await allCalls()
     assert.equal(all.counts.missed + all.counts.voicemail + all.counts.hung_up, 3, 'the missed counts are per call')
@@ -169,7 +178,7 @@ test('callback episodes', { skip: SKIP }, async (t) => {
     // All three calls show as dealt with, each on its own.
     const handled = (await send('GET', `/api/calls?${range()}&outcome=handled`)).json
     assert.deepEqual(handled.calls.map((c) => c.id).sort((x, y) => x - y), maria)
-    assert.ok(handled.calls.every((c) => c.decision === 'resolved'))
+    assert.ok(handled.calls.every((c) => decisionOf(c) === 'resolved'))
   })
 
   await t.test('a new unanswered call after that starts a new episode', async () => {
@@ -272,7 +281,7 @@ test('callback episodes', { skip: SKIP }, async (t) => {
     assert.equal(a.kpis.review, 1)
     const rc = a.reviewCalls.find((c) => c.id === unknown)
     assert.equal(rc.classification, 'unknown')
-    assert.equal(rc.decision, 'review')
+    assert.equal(decisionOf(rc), 'review')
     assert.equal(rc.needsReview, true)
     assert.deepEqual(rc.notAnsweredBy, [], 'never attributed to anyone')
     const after = await person()
@@ -299,16 +308,16 @@ test('callback episodes', { skip: SKIP }, async (t) => {
     const all = await allCalls()
     assert.ok(all.calls.length > 10)
     for (const c of all.calls) {
-      assert.equal(c.decision === 'confirmed_unanswered', c.needsAttention, `call ${c.id}`)
-      assert.equal(c.decision === 'review', c.needsReview, `call ${c.id}`)
+      assert.equal(decisionOf(c) === 'confirmed_unanswered', c.needsAttention, `call ${c.id}`)
+      assert.equal(decisionOf(c) === 'review', c.needsReview, `call ${c.id}`)
     }
   })
 
   await t.test('clear the list: episodes counted as people; the review group stays unless asked', async () => {
     const a = await attention()
     const preview = (await send('GET', '/api/calls/handled/bulk')).json
-    assert.deepEqual(preview, { count: a.kpis.openCalls, people: a.kpis.openEpisodes, review: 1 })
-    assert.deepEqual((await send('GET', '/api/calls/handled/bulk?review=1')).json, { count: a.kpis.openCalls + 1, people: a.kpis.openEpisodes + 1, review: 1 })
+    assert.deepEqual(preview, { count: a.kpis.openCalls, people: a.kpis.needsAttention, review: 1 })
+    assert.deepEqual((await send('GET', '/api/calls/handled/bulk?review=1')).json, { count: a.kpis.openCalls + 1, people: a.kpis.needsAttention + 1, review: 1 })
 
     let out = await send('POST', '/api/calls/handled/bulk', { note: 'Routing fixed' })
     assert.equal(out.json.cleared, a.kpis.openCalls)
@@ -323,7 +332,7 @@ test('callback episodes', { skip: SKIP }, async (t) => {
     assert.deepEqual(after.review, [])
     await send('DELETE', `/api/calls/handled/bulk/${out.json.batch}`)
     after = await attention()
-    assert.equal(after.kpis.openEpisodes, a.kpis.openEpisodes)
+    assert.equal(after.kpis.needsAttention, a.kpis.needsAttention)
     assert.equal(after.review.length, 1)
   })
 })

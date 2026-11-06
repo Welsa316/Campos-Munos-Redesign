@@ -19,3 +19,13 @@ export default function requireCapability(...names) {
 
 /** True when the signed-in account has the capability (for shaping a response). */
 export const can = (req, name) => Boolean(req.capabilities?.has(name))
+
+/** The account needs at least one of these capabilities. */
+export function requireAnyCapability(...names) {
+  for (const n of names) {
+    if (!isCapability(n)) throw new Error(`Unknown capability: ${n}`)
+  }
+  return (req, res, next) => (names.some((n) => can(req, n))
+    ? next()
+    : res.status(403).json({ error: 'Your account cannot perform this action', code: 'forbidden' }))
+}

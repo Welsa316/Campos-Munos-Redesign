@@ -11,14 +11,20 @@
 //
 // Notes are internal and stay in the portal: they are never put in an email
 // or a notification.
-import { resolveCapabilities } from '../auth/capabilities.js'
-import { displayName } from '../auth/account.js'
+import { displayName, capsOfRow } from '../auth/account.js'
+import { inTransaction } from '../db/transaction.js'
 import { episodeOpen } from '../integrations/ringcentral/callLog.js'
 import { parseDue } from './dueTime.js'
 
 export const NOTE_MAX = 500
 export const OPEN_STATUSES = Object.freeze(['open', 'due'])
+// The same list for SQL (constants only, never input).
+const OPEN_SQL = `status IN (${OPEN_STATUSES.map((st) => `'${st}'`).join(', ')})`
 const SNOOZE_MAX_MINUTES = 7 * 24 * 60
+// Open reminders one person may have set for one assignee (themselves
+// included) at once: far above a real follow-up list, low enough that a
+// slip or a script cannot bury a colleague in reminder emails.
+export const MAX_OPEN_PER_ASSIGNEE = 50
 
 export class ReminderError extends Error {
   constructor(code, message, status = 400, extra = {}) {
@@ -40,15 +46,13 @@ export function canActOnKind(caps, kind) {
   return false
 }
 
-const capsOf = (r) => resolveCapabilities({ role: r.role, grants: r.capability_grants, revokes: r.capability_revokes })
-
 /** Active accounts that can see a target of this kind (who a reminder can be assigned to). */
 export async function assignableAccounts(db, kind) {
   const rows = (await db.query(
     `SELECT id, email, display_name, role, capability_grants, capability_revokes FROM admin_users
       WHERE disabled_at IS NULL ORDER BY COALESCE(NULLIF(display_name, ''), email)`
   )).rows
-  return rows.filter((r) => canSeeKind(capsOf(r), kind)).map((r) => ({ id: Number(r.id), name: displayName(r) }))
+  return rows.filter((r) => canSeeKind(capsOfRow(r), kind)).map((r) => ({ id: Number(r.id), name: displayName(r) }))
 }
 
 async function checkAssignee(db, kind, id) {
@@ -56,7 +60,7 @@ async function checkAssignee(db, kind, id) {
     'SELECT id, email, display_name, role, capability_grants, capability_revokes, disabled_at FROM admin_users WHERE id = $1',
     [id]
   )).rows[0]
-  if (!r || r.disabled_at || !canSeeKind(capsOf(r), kind)) {
+  if (!r || r.disabled_at || !canSeeKind(capsOfRow(r), kind)) {
     throw new ReminderError('invalid_assignee', 'That person cannot see this follow-up, so it cannot be assigned to them', 400)
   }
   return Number(r.id)
@@ -160,7 +164,7 @@ export async function getReminder(db, id) {
 
 /** Open and due reminders assigned to an account, soonest first, on targets it can still see. */
 export async function listMine(db, { accountId, caps }) {
-  const rows = (await db.query(`${SELECT} WHERE r.assigned_to = $1 AND r.status IN ('open', 'due') ORDER BY r.due_at, r.id`, [accountId])).rows
+  const rows = (await db.query(`${SELECT} WHERE r.assigned_to = $1 AND r.${OPEN_SQL} ORDER BY r.due_at, r.id`, [accountId])).rows
   return rows.filter((r) => canSeeKind(caps, r.target_kind)).map(present)
 }
 
@@ -172,14 +176,14 @@ export async function listForTargets(db, { kind, callIds = null, submissionId = 
   if (kind === 'call') {
     const ids = Array.isArray(callIds) ? callIds : null
     const rows = (await db.query(
-      `${SELECT} WHERE r.target_kind = 'call' AND r.status IN ('open', 'due') AND ($1::bigint[] IS NULL OR r.call_id = ANY($1::bigint[]))
+      `${SELECT} WHERE r.target_kind = 'call' AND r.${OPEN_SQL} AND ($1::bigint[] IS NULL OR r.call_id = ANY($1::bigint[]))
        ORDER BY r.due_at, r.id`,
       [ids]
     )).rows
     return rows.map(present)
   }
   const rows = (await db.query(
-    `${SELECT} WHERE r.target_kind = 'submission' AND r.submission_id = $1 AND r.status IN ('open', 'due') ORDER BY r.due_at, r.id`,
+    `${SELECT} WHERE r.target_kind = 'submission' AND r.submission_id = $1 AND r.${OPEN_SQL} ORDER BY r.due_at, r.id`,
     [submissionId]
   )).rows
   return rows.map(present)
@@ -215,37 +219,40 @@ export async function createReminder(db, { target, dueAt, assignee, note, allowD
   const assignedTo = assignee == null || assignee === '' ? accountId : await checkAssignee(db, t.kind, Number(assignee))
   const tgt = await loadTarget(db, t)
 
-  const client = await db.connect()
-  try {
-    await client.query('BEGIN')
-    // One at a time per (target, person), so two quick clicks cannot both pass the duplicate check.
+  const id = await inTransaction(db, async (client) => {
+    // One at a time per (setter, person), so two at once cannot both pass the
+    // cap, then per (target, person) for the duplicate check. Always in this
+    // order, so two requests never wait on each other's second lock.
+    await client.query("SELECT pg_advisory_xact_lock(hashtext('cm_follow_up_cap:' || $1 || ':' || $2))", [String(accountId), String(assignedTo)])
+    const open = (await client.query(
+      `SELECT COUNT(*)::int AS n FROM follow_up_reminders WHERE created_by = $1 AND assigned_to = $2 AND ${OPEN_SQL}`,
+      [accountId, assignedTo]
+    )).rows[0].n
+    if (open >= MAX_OPEN_PER_ASSIGNEE) return { tooMany: true }
     const lockKey = tgt.kind === 'call' ? `call:${tgt.phoneKey}` : `submission:${tgt.submissionId}`
     await client.query("SELECT pg_advisory_xact_lock(hashtext('cm_follow_up_reminder:' || $1 || ':' || $2))", [lockKey, String(assignedTo)])
     if (!allowDuplicate) {
       const dup = (await client.query(
-        `SELECT id FROM follow_up_reminders WHERE assigned_to = $1 AND status IN ('open', 'due')
+        `SELECT id FROM follow_up_reminders WHERE assigned_to = $1 AND ${OPEN_SQL}
            AND ${tgt.kind === 'call' ? "target_kind = 'call' AND phone_key = $2" : "target_kind = 'submission' AND submission_id = $2::int"}
          ORDER BY due_at LIMIT 1`,
         [assignedTo, tgt.kind === 'call' ? tgt.phoneKey : tgt.submissionId]
       )).rows[0]
-      if (dup) {
-        await client.query('ROLLBACK')
-        throw new ReminderError('duplicate', 'There is already a reminder for this person on this follow-up', 409, { reminder: await getReminder(db, dup.id) })
-      }
+      if (dup) return { duplicateOf: dup.id }
     }
-    const id = (await client.query(
+    return (await client.query(
       `INSERT INTO follow_up_reminders (target_kind, call_id, call_key, phone_key, submission_id, assigned_to, created_by, due_at, note)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
       [tgt.kind, tgt.callId ?? null, tgt.callKey ?? null, tgt.phoneKey ?? null, tgt.submissionId ?? null, assignedTo, accountId, at, text]
     )).rows[0].id
-    await client.query('COMMIT')
-    return getReminder(db, id)
-  } catch (err) {
-    await client.query('ROLLBACK').catch(() => {})
-    throw err
-  } finally {
-    client.release()
+  })
+  if (id?.tooMany) {
+    throw new ReminderError('too_many_open', `There are already ${MAX_OPEN_PER_ASSIGNEE} open reminders from you for this person. Finish or cancel some first.`, 409)
   }
+  if (id?.duplicateOf) {
+    throw new ReminderError('duplicate', 'There is already a reminder for this person on this follow-up', 409, { reminder: await getReminder(db, id.duplicateOf) })
+  }
+  return getReminder(db, id)
 }
 
 async function loadForChange(db, id, caps) {
@@ -284,14 +291,21 @@ export async function updateReminder(db, { id, version, dueAt, assignee, note, c
   if (assignee !== undefined) set('assigned_to = ?', await checkAssignee(db, r.target_kind, Number(assignee)))
   if (note !== undefined) set('note = ?', cleanNote(note))
   if (!sets.length) throw new ReminderError('nothing_to_change', 'Nothing to change')
-  const out = await db.query(
-    `UPDATE follow_up_reminders SET ${sets.join(', ')}, version = version + 1, updated_at = NOW()
-      WHERE id = $1 AND version = $2 AND status IN ('open', 'due') RETURNING id`,
-    params
-  )
-  if (!out.rowCount) throw (OPEN_STATUSES.includes(r.status) ? await conflict(db, id) : await closedError(db, id))
-  // Retries still waiting for the old due time are not sent.
-  if (dueAt !== undefined) await cancelPendingDeliveries(db, id, 'rescheduled')
+  const changed = await inTransaction(db, async (c) => {
+    // The row stays locked until COMMIT, so the worker cannot claim the new
+    // due time in between (claimDue skips locked rows).
+    const out = await c.query(
+      `UPDATE follow_up_reminders SET ${sets.join(', ')}, version = version + 1, updated_at = NOW()
+        WHERE id = $1 AND version = $2 AND ${OPEN_SQL} RETURNING cycle`,
+      params
+    )
+    if (!out.rowCount) return false
+    // Retries still waiting for the old due time are not sent: only that
+    // cycle's (the cycle is only bumped when the worker claims it again).
+    if (dueAt !== undefined) await cancelPendingDeliveries(c, id, 'rescheduled', { cycle: out.rows[0].cycle })
+    return true
+  })
+  if (!changed) throw (OPEN_STATUSES.includes(r.status) ? await conflict(db, id) : await closedError(db, id))
   return getReminder(db, id)
 }
 
@@ -306,38 +320,38 @@ export async function snoozeReminder(db, { id, version, minutes, until, caps, no
   return updateReminder(db, { id, version: version ?? (await loadForChange(db, id, caps)).version, dueAt, caps, now })
 }
 
-/** Done: the follow-up happened. version is optional (finishing twice is harmless). */
-export async function completeReminder(db, { id, version, accountId, caps }) {
+// Done (the follow-up happened) or cancelled (nobody needs it): the same
+// change apart from what is recorded. version is optional (closing twice
+// is harmless).
+const CLOSE = {
+  done: "status = 'done', completion_reason = 'completed', completed_at = NOW(), completed_by = $3",
+  cancelled: "status = 'cancelled', cancelled_at = NOW(), cancelled_by = $3",
+}
+async function closeReminder(db, { id, version, accountId, caps }, to) {
   const r = await loadForChange(db, id, caps)
   const v = version == null ? r.version : versionOf(version)
-  const out = await db.query(
-    `UPDATE follow_up_reminders SET status = 'done', completion_reason = 'completed', completed_at = NOW(), completed_by = $3,
-            version = version + 1, updated_at = NOW()
-      WHERE id = $1 AND version = $2 AND status IN ('open', 'due') RETURNING id`,
-    [id, v, accountId]
-  )
-  if (!out.rowCount) throw (OPEN_STATUSES.includes(r.status) ? await conflict(db, id) : await closedError(db, id))
-  await cancelPendingDeliveries(db, id)
+  const closed = await inTransaction(db, async (c) => {
+    const out = await c.query(
+      `UPDATE follow_up_reminders SET ${CLOSE[to]}, version = version + 1, updated_at = NOW()
+        WHERE id = $1 AND version = $2 AND ${OPEN_SQL} RETURNING id`,
+      [id, v, accountId]
+    )
+    if (out.rowCount) await cancelPendingDeliveries(c, id)
+    return out.rowCount > 0
+  })
+  if (!closed) throw (OPEN_STATUSES.includes(r.status) ? await conflict(db, id) : await closedError(db, id))
   return getReminder(db, id)
 }
 
-export async function cancelReminder(db, { id, version, accountId, caps }) {
-  const r = await loadForChange(db, id, caps)
-  const v = version == null ? r.version : versionOf(version)
-  const out = await db.query(
-    `UPDATE follow_up_reminders SET status = 'cancelled', cancelled_at = NOW(), cancelled_by = $3, version = version + 1, updated_at = NOW()
-      WHERE id = $1 AND version = $2 AND status IN ('open', 'due') RETURNING id`,
-    [id, v, accountId]
-  )
-  if (!out.rowCount) throw (OPEN_STATUSES.includes(r.status) ? await conflict(db, id) : await closedError(db, id))
-  await cancelPendingDeliveries(db, id)
-  return getReminder(db, id)
-}
+export const completeReminder = (db, opts) => closeReminder(db, opts, 'done')
+export const cancelReminder = (db, opts) => closeReminder(db, opts, 'cancelled')
 
-export async function cancelPendingDeliveries(db, reminderId, error = null) {
+/** Pending deliveries of a reminder (of one cycle, or every cycle) are not sent. */
+export async function cancelPendingDeliveries(db, reminderId, error = null, { cycle = null } = {}) {
   await db.query(
-    "UPDATE reminder_deliveries SET status = 'cancelled', error = COALESCE($2, error), finished_at = NOW() WHERE reminder_id = $1 AND status = 'pending'",
-    [reminderId, error]
+    `UPDATE reminder_deliveries SET status = 'cancelled', error = COALESCE($2, error), finished_at = NOW()
+      WHERE reminder_id = $1 AND status = 'pending' AND ($3::int IS NULL OR cycle = $3::int)`,
+    [reminderId, error, cycle]
   )
 }
 
@@ -352,7 +366,7 @@ export async function cancelPendingDeliveries(db, reminderId, error = null) {
  * Returns the ids it closed.
  */
 export async function closeResolvedReminders(db, { phoneKeys = null, submissionId = null, limit = 500 } = {}) {
-  const where = ["status IN ('open', 'due')"]
+  const where = [OPEN_SQL]
   const params = []
   if (phoneKeys) { params.push(phoneKeys); where.push(`target_kind = 'call' AND phone_key = ANY($${params.length}::text[])`) }
   if (submissionId != null) { params.push(submissionId); where.push(`target_kind = 'submission' AND submission_id = $${params.length}`) }
@@ -372,15 +386,136 @@ export async function closeResolvedReminders(db, { phoneKeys = null, submissionI
 
 /** One reminder closed by the server (only while it is still open or due). */
 export async function markResolved(db, id) {
-  const out = await db.query(
-    `UPDATE follow_up_reminders SET status = 'done', completion_reason = 'resolved', completed_at = NOW(), completed_by = NULL,
-            version = version + 1, updated_at = NOW()
-      WHERE id = $1 AND status IN ('open', 'due') RETURNING id`,
-    [id]
-  )
-  if (out.rowCount) await cancelPendingDeliveries(db, id, 'resolved')
-  return out.rowCount > 0
+  return inTransaction(db, async (c) => {
+    const out = await c.query(
+      `UPDATE follow_up_reminders SET status = 'done', completion_reason = 'resolved', completed_at = NOW(), completed_by = NULL,
+              version = version + 1, updated_at = NOW()
+        WHERE id = $1 AND ${OPEN_SQL} RETURNING id`,
+      [id]
+    )
+    if (out.rowCount) await cancelPendingDeliveries(c, id, 'resolved')
+    return out.rowCount > 0
+  })
 }
+
+/**
+ * Undo of an action that closed reminders as resolved (Undo after marking a
+ * caller handled, Reopen, Count it again, undoing Clear the list, a lead
+ * taken out of the archive): the reminders on those callers (phoneKeys) or
+ * that lead (submissionId) that the server closed as resolved at or after
+ * `since` come back, when their caller or lead needs someone again. Anything
+ * closed by a person, or still dealt with another way (a connected
+ * callback), stays closed.
+ *
+ * A reminder whose time is still to come waits again ('open'). One whose
+ * time has passed is 'due': if nothing was delivered for it yet, as a new
+ * cycle with its email and notification queued for the worker; if its
+ * person was already told, it just goes back on their list.
+ * Returns the ids it reopened.
+ */
+export async function reopenResolvedReminders(db, { phoneKeys = null, submissionId = null, since, now = new Date() }) {
+  if (!since || (!phoneKeys?.length && submissionId == null)) return []
+  const rows = (await db.query(
+    `SELECT * FROM follow_up_reminders
+      WHERE status = 'done' AND completion_reason = 'resolved' AND completed_at >= $1
+        AND (($2::text[] IS NOT NULL AND target_kind = 'call' AND phone_key = ANY($2::text[]))
+          OR ($3::int IS NOT NULL AND target_kind = 'submission' AND submission_id = $3::int))
+      ORDER BY due_at, id LIMIT 500`,
+    [since, phoneKeys?.length ? phoneKeys : null, submissionId]
+  )).rows
+  const reopened = []
+  const seen = new Map()
+  for (const r of rows) {
+    const key = r.target_kind === 'call' ? `c${r.call_id}` : `s${r.submission_id}`
+    if (!seen.has(key)) seen.set(key, await targetStillOpen(db, r))
+    if (!seen.get(key)) continue
+    if (await reopenOne(db, r.id, now)) reopened.push(Number(r.id))
+  }
+  return reopened
+}
+
+async function reopenOne(db, id, now) {
+  return inTransaction(db, async (c) => {
+    const r = (await c.query(
+      `SELECT id, cycle, due_at <= $2 AS past,
+              EXISTS (SELECT 1 FROM reminder_deliveries d WHERE d.reminder_id = r.id AND d.cycle = r.cycle AND d.kind = 'due' AND d.status = 'sent') AS told
+         FROM follow_up_reminders r WHERE id = $1 AND status = 'done' AND completion_reason = 'resolved' FOR UPDATE`,
+      [id, now]
+    )).rows[0]
+    if (!r) return false
+    const newCycle = r.past && !(r.cycle > 0 && r.told)
+    const out = await c.query(
+      `UPDATE follow_up_reminders SET status = $2, cycle = cycle + $3::int, completion_reason = NULL, completed_at = NULL, completed_by = NULL,
+              version = version + 1, updated_at = NOW()
+        WHERE id = $1 RETURNING cycle`,
+      [id, r.past ? 'due' : 'open', newCycle ? 1 : 0]
+    )
+    if (newCycle) {
+      await c.query(
+        `INSERT INTO reminder_deliveries (reminder_id, cycle, kind, channel, attempt, status, next_attempt_at)
+         SELECT $1, $2, 'due', ch, 1, 'pending', $3 FROM unnest(ARRAY['email', 'push']) AS ch ON CONFLICT DO NOTHING`,
+        [id, out.rows[0].cycle, now]
+      )
+    }
+    return true
+  })
+}
+
+/**
+ * An account is being disabled: its open and due reminders go to someone
+ * who can still act on them, instead of waiting for nobody. To `toId` (the
+ * person disabling it) when they can see that kind of follow-up, else to
+ * whoever set the reminder when they are active and can; otherwise it stays
+ * (and shows as assigned to a disabled account). A due one goes back to
+ * waiting with its time unchanged, so the worker delivers it to its new
+ * person on its next run. Run inside the disabling transaction (`db` is its
+ * client). Returns { reassigned, left, to: { accountId: count } }.
+ */
+export async function reassignFromDisabled(db, { accountId, toId = null }) {
+  const rows = (await db.query(
+    `SELECT id, target_kind, created_by, status FROM follow_up_reminders WHERE assigned_to = $1 AND ${OPEN_SQL} ORDER BY id FOR UPDATE`,
+    [accountId]
+  )).rows
+  if (!rows.length) return { reassigned: 0, left: 0, to: {} }
+  const ids = [...new Set([toId, ...rows.map((r) => r.created_by)].filter((id) => id != null && Number(id) !== Number(accountId)))]
+  const people = new Map((await db.query(
+    'SELECT id, role, capability_grants, capability_revokes FROM admin_users WHERE id = ANY($1::int[]) AND disabled_at IS NULL',
+    [ids]
+  )).rows.map((p) => [Number(p.id), capsOfRow(p)]))
+  const able = (id, kind) => id != null && people.has(Number(id)) && canSeeKind(people.get(Number(id)), kind)
+  const byPerson = new Map()
+  let left = 0
+  for (const r of rows) {
+    const to = able(toId, r.target_kind) ? Number(toId) : able(r.created_by, r.target_kind) ? Number(r.created_by) : null
+    if (to == null) { left++; continue }
+    if (!byPerson.has(to)) byPerson.set(to, [])
+    byPerson.get(to).push(Number(r.id))
+  }
+  const out = {}
+  for (const [to, list] of byPerson) {
+    await db.query(
+      `UPDATE follow_up_reminders SET assigned_to = $2, status = 'open', version = version + 1, updated_at = NOW() WHERE id = ANY($1::bigint[])`,
+      [list, to]
+    )
+    await db.query(
+      "UPDATE reminder_deliveries SET status = 'cancelled', error = 'reassigned', finished_at = NOW() WHERE reminder_id = ANY($1::bigint[]) AND status = 'pending'",
+      [list]
+    )
+    out[to] = list.length
+  }
+  return { reassigned: rows.length - left, left, to: out }
+}
+
+/**
+ * Done and cancelled reminders are kept REMINDER_RETENTION_DAYS (180) after
+ * they last changed, with their delivery history (ON DELETE CASCADE); open
+ * and due ones are never purged.
+ */
+export const REMINDER_RETENTION_DAYS = 180
+export const purgeClosedReminders = (db, days = REMINDER_RETENTION_DAYS) => db.query(
+  "DELETE FROM follow_up_reminders WHERE status IN ('done', 'cancelled') AND updated_at < NOW() - make_interval(days => $1::int)",
+  [days]
+)
 
 /** The numbers (phone keys) of some calls, for closing reminders after they were marked. */
 export async function phoneKeysOf(db, callIds) {

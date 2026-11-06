@@ -401,7 +401,7 @@ async function runSync(db, config, { trigger, backfillDays, retentionDays, deps,
   // evidence: the ones just imported, or all of them when the directory changed.
   const directory = await refreshDirectory(db, config, { token, now, deps })
   await classifyStored(db, { keys: result.rows.map(callKeyOf), all: directory.changed })
-  await db.query(`DELETE FROM rc_calls WHERE started_at < $1::timestamptz - make_interval(days => $2)`, [now, Math.max(30, retentionDays)])
+  await purgeOldCalls(db, { now, retentionDays })
   await purgeOldEvents(db, now)
   // Portal-placed calls are only needed while they ring; the call itself is in the call log.
   await db.query(`DELETE FROM rc_ringouts WHERE created_at < $1::timestamptz - INTERVAL '90 days'`, [now])
@@ -419,6 +419,20 @@ async function runSync(db, config, { trigger, backfillDays, retentionDays, deps,
     [scope, scopeCheckedAt, dateTo, trigger, result.fetched, inserted, result.truncated, complete]
   )
   return { status: 'ok', scope, fetched: result.fetched, new: inserted, truncated: result.truncated, directory: directory.status, directoryCode: directory.code }
+}
+
+/**
+ * The call log keeps retentionDays (at least 30). A call with an open
+ * callback reminder stays until the reminder is finished: the reminder points
+ * at it, and deleting the call would delete the reminder with it.
+ */
+export async function purgeOldCalls(db, { now = new Date(), retentionDays = DEFAULT_RETENTION_DAYS } = {}) {
+  const r = await db.query(
+    `DELETE FROM rc_calls c WHERE c.started_at < $1::timestamptz - make_interval(days => $2)
+       AND NOT EXISTS (SELECT 1 FROM follow_up_reminders r WHERE r.call_id = c.id AND r.status IN ('open', 'due'))`,
+    [now, Math.max(30, retentionDays)]
+  )
+  return r.rowCount
 }
 
 export async function getSyncState(db) {
@@ -518,6 +532,9 @@ export function callerLocation(name) {
 }
 
 const titleCase = (s) => String(s).toLowerCase().replace(/(^|[\s'-])(\p{L})/gu, (_m, p, c) => p + c.toUpperCase())
+
+/** RingCentral's caller ID as a name to show ("MARIA LOPEZ" → "Maria Lopez"), or null when it is generic. */
+export const callerIdName = (raw) => (raw && !isGenericCallerId(raw) ? titleCase(raw) : null)
 
 
 // The calls query: every call with the firm's own name for the caller, its
@@ -644,6 +661,21 @@ export function followUpDecision(r) {
   return 'not_actionable'
 }
 
+/**
+ * May staff mark this call (handled, no callback needed, cleared)? An
+ * incoming outside call that Needs attention or the review group could list:
+ * proven unanswered (UNANSWERED_CLASSES) or with no recorded outcome
+ * ('unknown'), the same classes followUpDecision treats as open. 'system'
+ * (a blocked number, a network error) and answered calls are not. A call not
+ * classified yet falls back to RingCentral's own missed and voicemail
+ * results. `call` is an rc_calls row.
+ */
+export function unansweredInbound(call) {
+  if (call.direction !== 'inbound' || call.is_internal) return false
+  if (!call.classification) return ['missed', 'voicemail'].includes(call.outcome)
+  return UNANSWERED_CLASSES.includes(call.classification) || call.classification === 'unknown'
+}
+
 // Callback episodes: Needs attention lists one item per person waiting for a
 // call back, not one per call. The open calls from one number belong to the
 // same episode unless something closed the earlier ones in between: a
@@ -720,9 +752,8 @@ export function groupEpisodes(rows, { names = new Map(), now = new Date(), kind 
       lastCallbackAttemptAt: tries ? first.attempt_at ?? null : null,
       latestCallId: Number(last.id),
       callIds: calls.map((r) => Number(r.id)),
-      // From the first unanswered call: waiting since an earlier day, tried
-      // without connecting, or new today.
-      attentionGroup: kind === 'attention' ? (at(first) < startOfToday(now).getTime() ? 'waiting' : tries ? 'try_again' : 'new') : null,
+      // From the first unanswered call, by the same rule as each call's.
+      attentionGroup: kind === 'attention' ? attentionGroup(first, now) : null,
       offeredTo,
     }
   })
@@ -955,7 +986,8 @@ export function startOfToday(now = new Date()) {
 }
 
 // Oldest first in Needs attention: waiting since before today, then callbacks
-// tried without connecting, then today's.
+// tried without connecting (attempt_at: the latest one after the call), then
+// today's. For one call, and for an episode by its first call.
 function attentionGroup(r, now = new Date()) {
   if (new Date(r.started_at) < startOfToday(now)) return 'waiting'
   if (r.attempt_at) return 'try_again'
@@ -972,8 +1004,8 @@ export const ATTENTION_DAYS = 90
  * today), and every call today. "No callback needed" marks are not counted
  * as handled.
  *
- * needsAttention and openEpisodes are the same number (open episodes);
- * openCalls is the unanswered calls behind them. review counts the quiet
+ * needsAttention is the open episodes; openCalls is the unanswered calls
+ * behind them. review counts the quiet
  * review group's episodes, which are in neither.
  */
 export async function callKpis(db, { now = new Date() } = {}) {
@@ -990,7 +1022,7 @@ export async function callKpis(db, { now = new Date() } = {}) {
     [from, new Date(now.getTime() + 60 * 1000), today]
   )).rows[0]
   return {
-    needsAttention: row.open_episodes, openEpisodes: row.open_episodes, openCalls: row.open_calls, review: row.review,
+    needsAttention: row.open_episodes, openCalls: row.open_calls, review: row.review,
     handledToday: row.handled_today, totalToday: row.total_today, since: from, today,
   }
 }
@@ -1057,15 +1089,17 @@ export async function callsStamp(db) {
             (SELECT COUNT(*) || ':' || COALESCE(MAX(created_at)::text, '') FROM rc_call_resolutions) AS handled,
             (SELECT COUNT(*) || ':' || COALESCE(MAX(created_at)::text, '') FROM rc_call_exclusions) AS excluded,
             (SELECT COUNT(*) || ':' || COALESCE(MAX(created_at)::text, '') FROM rc_ignored_numbers) AS numbers,
-            -- Callback reminders on callers, so a reminder someone else set shows on the row.
-            (SELECT COUNT(*) || ':' || COALESCE(MAX(updated_at)::text, '') FROM follow_up_reminders WHERE target_kind = 'call') AS reminders`
+            -- Callback reminders on callers, so a reminder someone else set shows
+            -- on the row. Every change to one moves updated_at (indexed), and
+            -- only finished ones are ever deleted.
+            (SELECT COALESCE(MAX(updated_at)::text, '') FROM follow_up_reminders WHERE target_kind = 'call') AS reminders`
   )).rows[0]
   return [r.calls?.toISOString?.() ?? '', r.handled, r.excluded, r.numbers, r.reminders].join('|')
 }
 
 function present(r, names = new Map(), now = new Date()) {
   const leadName = r.lead_id ? `${r.lead_first || ''} ${r.lead_last || ''}`.trim() : null
-  const callerId = r.caller_id_name && !isGenericCallerId(r.caller_id_name) ? titleCase(r.caller_id_name) : null
+  const callerId = callerIdName(r.caller_id_name)
   let name = null
   let nameSource = null
   if (r.client_name) { name = r.client_name; nameSource = 'client' } else if (leadName) { name = leadName; nameSource = 'lead' } else if (callerId) { name = callerId; nameSource = 'caller_id' }
@@ -1113,7 +1147,6 @@ function present(r, names = new Map(), now = new Date()) {
     attentionGroup: r.needs_attention ? attentionGroup(r, now) : null,
     // No recorded outcome, and nothing since shows the person reached us.
     needsReview: Boolean(r.needs_review),
-    decision: followUpDecision(r),
     attemptAt: r.attempt_at ?? null,
     connectedFollowUp: r.connected_followup_at ? { at: r.connected_followup_at, kind: r.connected_followup_direction === 'outbound' ? 'called_back' : 'answered_later' } : null,
     handled: r.handled_at ? { at: r.handled_at, by: r.handled_by, note: r.handled_note, bulk: Boolean(r.handled_batch) } : null,

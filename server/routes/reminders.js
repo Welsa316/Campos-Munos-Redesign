@@ -23,27 +23,29 @@
 import { Router } from 'express'
 import getPool from '../db/pool.js'
 import requireAuth from '../middleware/auth.js'
+import { route } from '../middleware/route.js'
+import { accountLimiter } from '../middleware/accountLimiter.js'
 import {
   ReminderError, createReminder, updateReminder, completeReminder, cancelReminder, snoozeReminder,
   listMine, listForTargets, assignableAccounts, canSeeKind, getReminder,
 } from '../reminders/reminders.js'
 
-export function createRemindersRouter({ db = null, now } = {}) {
+// Changes per account in ten minutes: far more than anyone sets, snoozes
+// and finishes by hand, few enough that a script cannot flood a colleague.
+export const REMINDER_WRITES_PER_10_MIN = 120
+
+export function createRemindersRouter({ db = null, now, writeLimit = REMINDER_WRITES_PER_10_MIN } = {}) {
   const router = Router()
   const pool = () => db || getPool()
   const clock = () => (now ? now() : new Date())
 
   router.use(requireAuth)
+  const writes = accountLimiter({
+    name: 'reminder-writes', windowMs: 10 * 60 * 1000, max: writeLimit,
+    error: 'Too many reminder changes in a few minutes. Wait a moment and try again.', code: 'too_many_changes',
+  })
 
-  const wrap = (fn) => async (req, res) => {
-    try {
-      await fn(req, res)
-    } catch (err) {
-      if (err instanceof ReminderError) return res.status(err.status).json({ error: err.message, code: err.code, ...err.extra })
-      req.log?.error({ err }, 'Reminder error')
-      res.status(500).json({ error: 'Internal server error' })
-    }
-  }
+  const wrap = route('Reminder error', { errors: [ReminderError] })
   const forbidden = () => new ReminderError('forbidden', 'Your account cannot see these reminders', 403)
   const idOf = (v) => {
     const n = Number(v)
@@ -76,7 +78,7 @@ export function createRemindersRouter({ db = null, now } = {}) {
     res.json({ reminders: await listForTargets(pool(), { kind: 'call' }) })
   }))
 
-  router.post('/', wrap(async (req, res) => {
+  router.post('/', writes, wrap(async (req, res) => {
     const b = req.body || {}
     const reminder = await createReminder(pool(), {
       target: b.target, dueAt: b.dueAt, assignee: b.assignee, note: b.note, allowDuplicate: b.allowDuplicate === true,
@@ -85,7 +87,7 @@ export function createRemindersRouter({ db = null, now } = {}) {
     res.status(201).json({ reminder })
   }))
 
-  router.patch('/:id(\\d{1,15})', wrap(async (req, res) => {
+  router.patch('/:id(\\d{1,15})', writes, wrap(async (req, res) => {
     const b = req.body || {}
     const pick = (k) => (Object.hasOwn(b, k) ? b[k] : undefined)
     const reminder = await updateReminder(pool(), {
@@ -95,15 +97,15 @@ export function createRemindersRouter({ db = null, now } = {}) {
     res.json({ reminder })
   }))
 
-  router.post('/:id(\\d{1,15})/complete', wrap(async (req, res) => {
+  router.post('/:id(\\d{1,15})/complete', writes, wrap(async (req, res) => {
     res.json({ reminder: await completeReminder(pool(), { id: Number(req.params.id), version: req.body?.version, accountId: req.account.id, caps: req.capabilities }) })
   }))
 
-  router.post('/:id(\\d{1,15})/cancel', wrap(async (req, res) => {
+  router.post('/:id(\\d{1,15})/cancel', writes, wrap(async (req, res) => {
     res.json({ reminder: await cancelReminder(pool(), { id: Number(req.params.id), version: req.body?.version, accountId: req.account.id, caps: req.capabilities }) })
   }))
 
-  router.post('/:id(\\d{1,15})/snooze', wrap(async (req, res) => {
+  router.post('/:id(\\d{1,15})/snooze', writes, wrap(async (req, res) => {
     const b = req.body || {}
     res.json({ reminder: await snoozeReminder(pool(), { id: Number(req.params.id), version: b.version, minutes: b.minutes, until: b.until, caps: req.capabilities, now: clock() }) })
   }))

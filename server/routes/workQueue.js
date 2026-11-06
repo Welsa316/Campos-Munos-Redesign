@@ -4,23 +4,17 @@
 import { Router } from 'express'
 import getPool from '../db/pool.js'
 import requireAuth from '../middleware/auth.js'
+import { requireAnyCapability } from '../middleware/requireCapability.js'
+import { route } from '../middleware/route.js'
 import { workQueue } from '../reminders/workQueue.js'
 
 export function createWorkQueueRouter({ db = null, now } = {}) {
   const router = Router()
   const pool = () => db || getPool()
   router.use(requireAuth)
-  router.get('/', async (req, res) => {
-    if (!req.capabilities.has('calls.view') && !req.capabilities.has('crm.view')) {
-      return res.status(403).json({ error: 'Your account cannot perform this action', code: 'forbidden' })
-    }
-    try {
-      res.json(await workQueue(pool(), { accountId: req.account.id, caps: req.capabilities, now: now ? now() : new Date() }))
-    } catch (err) {
-      req.log?.error({ err }, 'Work queue error')
-      res.status(500).json({ error: 'Internal server error' })
-    }
-  })
+  router.get('/', requireAnyCapability('calls.view', 'crm.view'), route('Work queue error')(async (req, res) => {
+    res.json(await workQueue(pool(), { accountId: req.account.id, caps: req.capabilities, now: now ? now() : new Date() }))
+  }))
   return router
 }
 

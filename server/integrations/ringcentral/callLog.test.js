@@ -1,7 +1,7 @@
 // Reading RingCentral call log records, without a database.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { classifyOutcome, isGenericCallerId, normalizeRecord, groupEpisodes, followUpDecision } from './callLog.js'
+import { classifyOutcome, isGenericCallerId, normalizeRecord, groupEpisodes, followUpDecision, unansweredInbound } from './callLog.js'
 
 test('outcomes: answered, missed, voicemail; outgoing connected or not', () => {
   assert.equal(classifyOutcome('inbound', 'Accepted'), 'answered')
@@ -109,7 +109,7 @@ test('episodes: something that closed the earlier calls splits them; withheld nu
   assert.deepEqual(eps.map((e) => e.callIds), [[1], [2], [3], [4]])
   assert.equal(eps[1].attentionGroup, 'new')
   // Today's first call, with a callback tried since: try again.
-  assert.equal(groupEpisodes([openRow({ started_at: '2026-11-04T15:00:00Z', episode_tries: 1 })], { now: NOON })[0].attentionGroup, 'try_again')
+  assert.equal(groupEpisodes([openRow({ started_at: '2026-11-04T15:00:00Z', episode_tries: 1, attempt_at: '2026-11-04T16:30:00Z' })], { now: NOON })[0].attentionGroup, 'try_again')
   assert.equal(groupEpisodes([openRow({})], { kind: 'review', now: NOON })[0].attentionGroup, null)
 })
 
@@ -131,4 +131,23 @@ test('follow-up decision: kept apart from the classification', () => {
   assert.equal(d({ direction: 'outbound', classification: null }), 'not_actionable')
   assert.equal(d({ is_internal: true }), 'not_actionable')
   assert.equal(d({ is_primary: false }), 'not_actionable')
+})
+
+test('what staff may mark (handled, no callback needed, cleared) is what the lists can show', () => {
+  const ok = (over) => unansweredInbound({ direction: 'inbound', is_internal: false, classification: 'not_answered', outcome: 'missed', ...over })
+  // Every class Needs attention or the review group lists.
+  for (const c of ['not_answered', 'caller_hung_up', 'ended_before_ringing', 'voicemail', 'unknown']) assert.equal(ok({ classification: c }), true, c)
+  // A blocked number or network error, and answered calls, are never listed.
+  assert.equal(ok({ classification: 'system' }), false)
+  assert.equal(ok({ classification: 'answered' }), false)
+  assert.equal(ok({ direction: 'outbound' }), false)
+  assert.equal(ok({ is_internal: true }), false)
+  // Not classified yet: RingCentral's own result decides.
+  assert.equal(ok({ classification: null, outcome: 'voicemail' }), true)
+  assert.equal(ok({ classification: null, outcome: 'answered' }), false)
+  // Consistent with the follow-up rule: whatever it treats as open can be marked.
+  for (const c of ['not_answered', 'caller_hung_up', 'ended_before_ringing', 'voicemail', 'unknown', 'system', 'answered']) {
+    const open = ['confirmed_unanswered', 'review'].includes(followUpDecision(openRow({ classification: c })))
+    assert.equal(ok({ classification: c }), open, c)
+  }
 })

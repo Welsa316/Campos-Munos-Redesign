@@ -1,15 +1,16 @@
 // The notifications meant for each account, as a feed the desktop app reads
 // (it cannot receive browser push). Same generic text as the push payloads.
-import { portalPath } from './send.js'
+import { notificationFields } from './send.js'
 
 const FEED_PAGE = 50
 const KEEP_DAYS = 30
 
 export async function recordNotification(db, { accountId, eventKey, title, body, url = '/', tag = null }) {
+  const n = notificationFields({ title, body, url, tag })
   const r = await db.query(
     `INSERT INTO account_notifications (account_id, event_key, title, body, url, tag)
      VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (account_id, event_key) DO NOTHING RETURNING id`,
-    [accountId, eventKey, String(title).slice(0, 120), String(body).slice(0, 240), portalPath(url), tag ? String(tag).slice(0, 120) : null]
+    [accountId, eventKey, n.title, n.body, n.url, n.tag]
   )
   return r.rowCount ? Number(r.rows[0].id) : null
 }
@@ -36,3 +37,10 @@ export async function feedFor(db, { accountId, after = null }) {
 
 /** Old notifications prove nothing; keep a month. */
 export const purgeOldNotifications = (db) => db.query(`DELETE FROM account_notifications WHERE created_at < NOW() - INTERVAL '${KEEP_DAYS} days'`)
+
+/**
+ * The per-computer send records (push_deliveries) only matter while their
+ * event can come round again (a reminder's retries, a fresh missed call):
+ * a month, like the feed.
+ */
+export const purgeOldPushDeliveries = (db) => db.query(`DELETE FROM push_deliveries WHERE created_at < NOW() - INTERVAL '${KEEP_DAYS} days'`)

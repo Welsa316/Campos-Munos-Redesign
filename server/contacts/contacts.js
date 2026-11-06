@@ -7,6 +7,8 @@
 // a possible match until someone confirms it, and one marked as someone else
 // (a shared family phone, a reassigned number) leaves the history.
 
+import { inTransaction } from '../db/transaction.js'
+
 export class ContactError extends Error {
   constructor(code, message, status = 400) {
     super(message)
@@ -18,12 +20,6 @@ export class ContactError extends Error {
 const NOTE_MAX = 5000
 const PAGE_MAX = 100
 
-/** "+1 (504) 555-0101" → "5045550101": the same as cm_phone_key() in SQL. */
-export function phoneKey(raw) {
-  const d = String(raw ?? '').replace(/\D/g, '')
-  return /^1\d{10}$/.test(d) ? d.slice(1) : d
-}
-
 const cleanBody = (body) => {
   const text = typeof body === 'string' ? body.replace(/\r\n/g, '\n').trim() : ''
   if (!text) throw new ContactError('note_required', 'Write something first')
@@ -31,7 +27,8 @@ const cleanBody = (body) => {
   return text
 }
 
-const authorSql = `COALESCE(NULLIF(u.display_name, ''), split_part(u.email, '@', 1))`
+// The name shown for an admin_users row joined as `alias`.
+const authorSql = (alias = 'u') => `COALESCE(NULLIF(${alias}.display_name, ''), split_part(${alias}.email, '@', 1))`
 
 function presentNote(r) {
   return {
@@ -57,7 +54,7 @@ async function loadCall(db, callId) {
 export async function listCallNotes(db, { callId, accountId = null }) {
   const call = await loadCall(db, callId)
   const rows = (await db.query(
-    `SELECT n.*, ${authorSql} AS author, c.id AS call_id
+    `SELECT n.*, ${authorSql()} AS author, c.id AS call_id
        FROM call_notes n
        LEFT JOIN admin_users u ON u.id = n.author_id
        LEFT JOIN LATERAL (SELECT id FROM rc_calls WHERE call_key = n.call_key ORDER BY is_primary DESC, id LIMIT 1) c ON TRUE
@@ -84,9 +81,7 @@ export async function addCallNote(db, { callId, body, accountId }) {
  * The text it replaced is kept in call_note_revisions.
  */
 export async function changeCallNote(db, { noteId, body, accountId, mayDeleteAny = false, remove = false }) {
-  const client = await db.connect()
-  try {
-    await client.query('BEGIN')
+  return inTransaction(db, async (client) => {
     const note = (await client.query('SELECT * FROM call_notes WHERE id = $1 AND deleted_at IS NULL FOR UPDATE', [noteId])).rows[0]
     if (!note) throw new ContactError('not_found', 'Note not found', 404)
     const own = note.author_id != null && Number(note.author_id) === Number(accountId)
@@ -102,14 +97,8 @@ export async function changeCallNote(db, { noteId, body, accountId, mayDeleteAny
         updated = (await client.query('UPDATE call_notes SET body = $2, updated_at = NOW() WHERE id = $1 RETURNING *', [note.id, text])).rows[0]
       } else updated = note
     }
-    await client.query('COMMIT')
     return { ...presentNote({ ...updated, author: null, call_id: null }), mine: own }
-  } catch (err) {
-    await client.query('ROLLBACK').catch(() => {})
-    throw err
-  } finally {
-    client.release()
-  }
+  })
 }
 
 /**
@@ -154,15 +143,35 @@ export async function decideMatch(db, { key, submissionId, state, accountId }) {
   return { submissionId: Number(submissionId), state }
 }
 
+// Paging: events are ordered (at DESC, type, ref DESC), and `next` names
+// the last one returned, so the following page starts right after it even
+// when several events share a timestamp. Opaque to the portal.
+const encodeCursor = (r) => Buffer.from(JSON.stringify([r.cur_at, r.type, String(r.ref)])).toString('base64url')
+export function decodeCursor(raw) {
+  if (typeof raw !== 'string' || !raw || raw.length > 200) return null
+  try {
+    const [at, type, ref] = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8'))
+    if (typeof at !== 'string' || Number.isNaN(Date.parse(at)) || typeof type !== 'string' || !/^[a-z_]{1,20}$/.test(type) || !/^\d{1,18}$/.test(String(ref))) return null
+    return { at, type, ref: String(ref) }
+  } catch {
+    return null
+  }
+}
+
 /**
  * One page of a number's history, newest first, as one list of events:
  * calls (calls.view), website leads with their replies and notes (crm.view)
  * and call notes (either). Each source is read only when the account may
  * see it, so a matching number never shows someone a section they cannot
  * open. Leads marked as someone else are left out.
+ *
+ * The next page: `cursor` (the `next` this returned). `before` (an event's
+ * `at`, what the portal sends today) still works: it includes events at that
+ * same millisecond again, so none sharing it is skipped, and the portal
+ * drops the ones it already has by id.
  */
-export async function contactHistory(db, { key, can, before = null, limit = 30 }) {
-  if (!key) return { events: [], more: false }
+export async function contactHistory(db, { key, can, cursor = null, before = null, limit = 30 }) {
+  if (!key) return { events: [], more: false, next: null }
   const lim = Math.max(1, Math.min(PAGE_MAX, Math.trunc(Number(limit)) || 30))
   const parts = []
   const seeCalls = can('calls.view')
@@ -182,35 +191,42 @@ export async function contactHistory(db, { key, can, before = null, limit = 30 }
         FROM submissions s LEFT JOIN contact_links l ON l.phone_key = $1 AND l.submission_id = s.id
        WHERE ${kept}`)
     parts.push(`
-      SELECT 'reply', r.sent_at, r.id, NULL, NULL, NULL, ${authorSql.replace(/u\./g, 'ru.')}, NULL, s.id
+      SELECT 'reply', r.sent_at, r.id, NULL, NULL, NULL, ${authorSql('ru')}, NULL, s.id
         FROM replies r JOIN submissions s ON s.id = r.submission_id LEFT JOIN admin_users ru ON ru.id = r.sent_by
        WHERE ${kept}`)
     parts.push(`
-      SELECT 'lead_note', n.created_at, n.id, NULL, NULL, NULL, ${authorSql.replace(/u\./g, 'nu.')}, NULL, s.id
+      SELECT 'lead_note', n.created_at, n.id, NULL, NULL, NULL, ${authorSql('nu')}, NULL, s.id
         FROM lead_notes n JOIN submissions s ON s.id = n.submission_id LEFT JOIN admin_users nu ON nu.id = n.author_id
        WHERE ${kept}`)
   }
   if (seeCalls || seeLeads) {
     parts.push(`
-      SELECT 'call_note', n.created_at, n.id, NULL, NULL, NULL, ${authorSql.replace(/u\./g, 'cu.')}, NULL, NULL
+      SELECT 'call_note', n.created_at, n.id, NULL, NULL, NULL, ${authorSql('cu')}, NULL, NULL
         FROM call_notes n LEFT JOIN admin_users cu ON cu.id = n.author_id
        WHERE n.phone_key = $1 AND n.deleted_at IS NULL`)
   }
-  if (!parts.length) return { events: [], more: false }
+  if (!parts.length) return { events: [], more: false, next: null }
   const params = [key]
-  let cursor = ''
-  if (before) {
+  let where = ''
+  const after = decodeCursor(cursor)
+  if (after) {
+    params.push(after.at, after.type, after.ref)
+    const [a, t, r] = [params.length - 2, params.length - 1, params.length].map((n) => `$${n}`)
+    where = `WHERE at < ${a}::timestamptz OR (at = ${a}::timestamptz AND (type > ${t} OR (type = ${t} AND ref < ${r}::bigint)))`
+  } else if (before) {
     params.push(new Date(before))
-    cursor = `WHERE at < $${params.length}`
+    where = `WHERE at < $${params.length}::timestamptz + INTERVAL '1 millisecond'`
   }
   params.push(lim + 1)
   const rows = (await db.query(
-    `SELECT * FROM (${parts.join(' UNION ALL ')}) e(type, at, ref, a, b, c3, person, d, sub) ${cursor}
+    `SELECT *, to_char(at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cur_at
+       FROM (${parts.join(' UNION ALL ')}) e(type, at, ref, a, b, c3, person, d, sub) ${where}
       ORDER BY at DESC, type, ref DESC LIMIT $${params.length}`,
     params
   )).rows
   const more = rows.length > lim
-  return { events: rows.slice(0, lim).map(presentEvent), more }
+  const page = rows.slice(0, lim)
+  return { events: page.map(presentEvent), more, next: more ? encodeCursor(page[page.length - 1]) : null }
 }
 
 function presentEvent(r) {

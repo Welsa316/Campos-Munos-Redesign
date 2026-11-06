@@ -33,10 +33,16 @@ export function parseSubscription(sub) {
   return { endpoint, p256dh, auth }
 }
 
+// Computers per account. Past this, registering one more drops the one
+// longest without a delivery (an old browser profile, a reinstalled laptop),
+// so nobody is ever refused and the list cannot grow without end.
+export const MAX_DEVICES = 10
+
 /**
  * Register this browser for the account, or refresh its keys. An endpoint
  * another account registered moves to this one: re-subscribing needs this
- * browser, so whoever is signed in on it now is who it notifies.
+ * browser, so whoever is signed in on it now is who it notifies. Keeps at
+ * most MAX_DEVICES per account, this one always among them.
  */
 export async function saveSubscription(db, accountId, { endpoint, p256dh, auth }, userAgent) {
   const { rows } = await db.query(
@@ -47,6 +53,12 @@ export async function saveSubscription(db, accountId, { endpoint, p256dh, auth }
        user_agent = EXCLUDED.user_agent, updated_at = NOW(), failures = 0, last_failure_at = NULL
      RETURNING id, created_at, (xmax = 0) AS inserted`,
     [accountId, endpoint, p256dh, auth, userAgent ? String(userAgent).slice(0, 300) : null]
+  )
+  await db.query(
+    `DELETE FROM push_subscriptions WHERE account_id = $1 AND id IN (
+       SELECT id FROM push_subscriptions WHERE account_id = $1 AND id <> $2
+        ORDER BY GREATEST(last_success_at, updated_at) DESC NULLS LAST, id DESC OFFSET $3)`,
+    [accountId, rows[0].id, MAX_DEVICES - 1]
   )
   return rows[0]
 }

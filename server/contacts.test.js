@@ -13,7 +13,6 @@ import cookieParser from 'cookie-parser'
 import pg from 'pg'
 import jwt from 'jsonwebtoken'
 import { createContactsRouter } from './routes/contacts.js'
-import { phoneKey } from './contacts/contacts.js'
 import getPool from './db/pool.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -93,6 +92,7 @@ before(async () => {
   app.use(express.json())
   app.use(cookieParser())
   app.use('/api/contacts', createContactsRouter({ db }))
+  app.use('/api/contacts-limited', createContactsRouter({ db, writeLimit: 2 }))
   await new Promise((resolve) => { server = app.listen(0, resolve) })
   base = `http://127.0.0.1:${server.address().port}`
 })
@@ -104,12 +104,13 @@ after(async () => {
   await getPool().end().catch(() => {})
 })
 
-test('phone numbers in any format are one contact', () => {
-  assert.equal(phoneKey('(504) 555-0101'), '5045550101')
-  assert.equal(phoneKey('+1 504.555.0101'), '5045550101')
-  assert.equal(phoneKey('15045550101'), '5045550101')
-  assert.equal(phoneKey(''), '')
-  assert.equal(phoneKey('+52 55 1234 5678'), '525512345678')
+test('phone numbers in any format are one contact (cm_phone_key, the key every lookup uses)', { skip: SKIP }, async () => {
+  const key = async (raw) => (await db.query('SELECT cm_phone_key($1) AS k', [raw])).rows[0].k
+  assert.equal(await key('(504) 555-0101'), '5045550101')
+  assert.equal(await key('+1 504.555.0101'), '5045550101')
+  assert.equal(await key('15045550101'), '5045550101')
+  assert.equal(await key(''), '')
+  assert.equal(await key('+52 55 1234 5678'), '525512345678')
 })
 
 test('a note written on a call is kept with its author and time, and follows the number', { skip: SKIP }, async () => {
@@ -209,17 +210,71 @@ test('one number, two people: possible matches, never merged; staff can confirm 
   assert.deepEqual(leads, [{ first_name: 'Maria', phone: '(504) 555-0101' }, { first_name: 'Jose', phone: '504.555.0101' }, { first_name: 'Ana', phone: '504-555-0199' }])
 })
 
-test('history pages back through older events', { skip: SKIP }, async () => {
-  const all = (await call('GET', `/api/contacts/history?callId=${ids.call1}&limit=100`)).json.events
-  const first = (await call('GET', `/api/contacts/history?callId=${ids.call1}&limit=2`)).json
-  assert.equal(first.events.length, 2)
-  assert.equal(first.more, true)
-  const next = (await call('GET', `/api/contacts/history?callId=${ids.call1}&limit=100&before=${encodeURIComponent(first.events[1].at)}`)).json
-  assert.equal(first.events.length + next.events.length, all.filter((e) => Date.parse(e.at) !== Date.parse(first.events[1].at)).length + 1)
+test('history pages back through older events, none skipped or repeated when several share a time', { skip: SKIP }, async () => {
+  // Three notes written in the same instant (microseconds apart from nothing):
+  // a page boundary falls among them.
+  const key = (await db.query('SELECT counterpart_key FROM rc_calls WHERE id = $1', [ids.call1])).rows[0].counterpart_key
+  const tied = []
+  for (const body of ['tie one', 'tie two', 'tie three']) {
+    tied.push((await db.query(
+      `INSERT INTO call_notes (phone_key, call_key, body, author_id, created_at, updated_at)
+       VALUES ($1, NULL, $2, $3, '2026-11-03T18:00:00.123456Z', '2026-11-03T18:00:00.123456Z') RETURNING id`,
+      [key, body, u.desk.id]
+    )).rows[0].id)
+  }
+  try {
+    const all = (await call('GET', `/api/contacts/history?callId=${ids.call1}&limit=100`)).json.events.map((e) => e.id)
+    assert.ok(tied.every((id) => all.includes(`call_note:${id}`)))
+
+    // Following `next`: every event exactly once, in the same order.
+    const seen = []
+    let cursor = ''
+    for (let i = 0; i < 50; i++) {
+      const page = (await call('GET', `/api/contacts/history?callId=${ids.call1}&limit=2${cursor}`)).json
+      seen.push(...page.events.map((e) => e.id))
+      if (!page.more) { assert.equal(page.next, null); break }
+      assert.ok(page.next)
+      cursor = `&cursor=${encodeURIComponent(page.next)}`
+    }
+    assert.deepEqual(seen, all)
+
+    // What the portal does today: `before` = the last event's time, keeping
+    // the ones it has not got yet. With pages of four the first ends among
+    // the three tied notes; nothing is skipped. (The portal pages 20 at a
+    // time; this needs fewer than a page sharing one millisecond.)
+    const kept = []
+    let before = ''
+    for (let i = 0; i < 50; i++) {
+      const page = (await call('GET', `/api/contacts/history?callId=${ids.call1}&limit=4${before}`)).json
+      const fresh = page.events.filter((e) => !kept.some((k) => k.id === e.id))
+      kept.push(...fresh)
+      if (!page.more || !fresh.length) break
+      before = `&before=${encodeURIComponent(kept[kept.length - 1].at)}`
+    }
+    assert.deepEqual(kept.map((e) => e.id).sort(), [...all].sort())
+
+    // A cursor that is not ours is ignored: the first page.
+    const junk = (await call('GET', `/api/contacts/history?callId=${ids.call1}&limit=2&cursor=bm9wZQ`)).json
+    assert.deepEqual(junk.events.map((e) => e.id), all.slice(0, 2))
+  } finally {
+    await db.query('DELETE FROM call_notes WHERE id = ANY($1::bigint[])', [tied])
+  }
 })
 
 test('a withheld number has no history to match on', { skip: SKIP }, async () => {
   const h = (await call('GET', `/api/contacts/history?callId=${ids.withheld}`)).json
   assert.equal(h.hasNumber, false)
   assert.deepEqual(h.events, [])
+})
+
+test('note writes and match decisions are limited per person', { skip: SKIP }, async () => {
+  const note = (as) => call('POST', '/api/contacts-limited/notes', { as, body: { callId: ids.call2, body: 'Left a voicemail' } })
+  assert.equal((await note()).status, 201)
+  assert.equal((await note()).status, 201)
+  const over = await note()
+  assert.equal(over.status, 429)
+  assert.equal(over.json.code, 'too_many_changes')
+  assert.equal((await call('PUT', '/api/contacts-limited/matches', { body: { callId: ids.call1, lead: ids.jose, state: 'possible' } })).status, 429, 'match decisions count too')
+  assert.equal((await call('GET', `/api/contacts-limited/notes?callId=${ids.call2}`)).status, 200, 'reading is not limited')
+  assert.equal((await note(u.ciro)).status, 201, 'per person, not shared')
 })

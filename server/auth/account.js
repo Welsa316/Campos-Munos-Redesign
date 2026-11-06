@@ -25,8 +25,23 @@ export async function loadAccount(db, id) {
     disabled: Boolean(r.disabled_at),
     avatar: avatarFor(r),
     theme: themeFor(r.theme),
-    capabilities: resolveCapabilities({ role: r.role, grants: r.capability_grants, revokes: r.capability_revokes }),
+    capabilities: capsOfRow(r),
   }
+}
+
+/** The capabilities an admin_users row (role, capability_grants, capability_revokes) resolves to. */
+export const capsOfRow = (r) => resolveCapabilities({ role: r.role, grants: r.capability_grants, revokes: r.capability_revokes })
+
+/**
+ * Active accounts holding a capability: their ids, or the rows themselves
+ * (id, email, display_name) with { rows: true }, in name order.
+ */
+export async function accountsWith(db, capability, { rows: wantRows = false } = {}) {
+  const rows = (await db.query(
+    `SELECT id, email, display_name, role, capability_grants, capability_revokes FROM admin_users
+      WHERE disabled_at IS NULL ORDER BY COALESCE(NULLIF(TRIM(display_name), ''), email), id`
+  )).rows.filter((r) => capsOfRow(r).has(capability))
+  return wantRows ? rows : rows.map((r) => Number(r.id))
 }
 
 /** The name colleagues see beside a message or note: "Yoletty", else the email's first part. */
@@ -59,4 +74,4 @@ export function profileJson(account) {
   }
 }
 
-export default { loadAccount, displayName, tokenMatches, profileJson }
+export default { loadAccount, displayName, tokenMatches, profileJson, capsOfRow, accountsWith }

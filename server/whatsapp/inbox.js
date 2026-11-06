@@ -21,8 +21,7 @@
 import { audit } from '../billing/audit.js'
 import { classifyInbound, phoneVariants } from '../billing/whatsappInbound.js'
 import { whatsappSendingEnabled } from '../billing/providers/whatsapp/index.js'
-import { resolveCapabilities } from '../auth/capabilities.js'
-import { displayName } from '../auth/account.js'
+import { displayName, accountsWith } from '../auth/account.js'
 
 export const WINDOW_HOURS = 24
 export const MAX_NOTE_LENGTH = 2000
@@ -329,13 +328,7 @@ export async function addNote(db, conversationId, body, { account }) {
 
 /** Accounts a conversation can be assigned to: enabled, and able to read WhatsApp. */
 export async function listAssignees(db) {
-  const { rows } = await db.query(
-    `SELECT id, email, display_name, role, capability_grants, capability_revokes FROM admin_users
-      WHERE disabled_at IS NULL ORDER BY COALESCE(NULLIF(TRIM(display_name), ''), email)`
-  )
-  return rows
-    .filter((r) => resolveCapabilities({ role: r.role, grants: r.capability_grants, revokes: r.capability_revokes }).has('whatsapp.view'))
-    .map((r) => ({ id: r.id, name: displayName(r) }))
+  return (await accountsWith(db, 'whatsapp.view', { rows: true })).map((r) => ({ id: r.id, name: displayName(r) }))
 }
 
 export async function assign(db, conversationId, assigneeId, { account }) {

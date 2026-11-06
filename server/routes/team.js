@@ -88,7 +88,12 @@ export function createTeamRouter({ db = null } = {}) {
   }))
 
   router.post('/:id/disable', idParam, validate, wrap(async (req, res) => {
-    res.json(team.accountJson(await team.setDisabled(pool(), await target(req), true, actor(req))))
+    const row = await team.setDisabled(pool(), await target(req), true, actor(req))
+    // In the activity log: how many of their callback reminders moved to someone active.
+    if (row.reminders?.reassigned || row.reminders?.left) {
+      Object.assign(req.activityDetails, { remindersReassigned: row.reminders.reassigned, remindersLeft: row.reminders.left })
+    }
+    res.json(team.accountJson(row))
   }))
 
   router.post('/:id/enable', idParam, validate, wrap(async (req, res) => {

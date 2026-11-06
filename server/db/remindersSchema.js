@@ -50,6 +50,13 @@ export const REMINDERS_SCHEMA_SQL = `
   CREATE INDEX IF NOT EXISTS idx_follow_up_reminders_assignee ON follow_up_reminders(assigned_to, status);
   CREATE INDEX IF NOT EXISTS idx_follow_up_reminders_phone ON follow_up_reminders(phone_key) WHERE status IN ('open', 'due');
   CREATE INDEX IF NOT EXISTS idx_follow_up_reminders_submission ON follow_up_reminders(submission_id) WHERE status IN ('open', 'due');
+  -- The call log's retention skips a call with an open reminder, and
+  -- deleting a call looks for its reminders (ON DELETE CASCADE).
+  CREATE INDEX IF NOT EXISTS idx_follow_up_reminders_call ON follow_up_reminders(call_id) WHERE call_id IS NOT NULL;
+  -- The Calls page's change stamp reads MAX(updated_at) of caller reminders.
+  CREATE INDEX IF NOT EXISTS idx_follow_up_reminders_call_updated ON follow_up_reminders(updated_at) WHERE target_kind = 'call';
+  -- Finished reminders are purged after REMINDER_RETENTION_DAYS.
+  CREATE INDEX IF NOT EXISTS idx_follow_up_reminders_closed ON follow_up_reminders(updated_at) WHERE status IN ('done', 'cancelled');
 
   -- One row per attempt to deliver one reminder on one channel, written
   -- before the attempt. The UNIQUE key is what stops two workers (or a

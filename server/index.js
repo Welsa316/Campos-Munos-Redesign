@@ -17,7 +17,9 @@ import { emailConfigProblems } from './utils/emailConfig.js'
 import { pushConfig } from './push/config.js'
 import { isProductionEnv, bootEnvProblems } from './utils/productionEnv.js'
 import { notifyNewMissedCallers } from './push/missedCallAlerts.js'
-import { purgeOldNotifications } from './push/feed.js'
+import { purgeOldNotifications, purgeOldPushDeliveries } from './push/feed.js'
+import { purgeOldAnnouncements } from './push/missedCallAlerts.js'
+import { purgeClosedReminders, REMINDER_RETENTION_DAYS } from './reminders/reminders.js'
 
 const isProduction = isProductionEnv(process.env)
 
@@ -98,15 +100,28 @@ async function purgeOldActivity() {
 }
 schedule(purgeOldActivity, 60 * 1000, 24 * 60 * 60 * 1000)
 
-// The desktop app's notification feed keeps a month (push/feed.js). Its own
-// daily timer, so the purge does not wait on a new missed caller.
+// The desktop app's notification feed and the per-computer push records
+// keep a month (push/feed.js), missed-call announcements a week, finished
+// callback reminders REMINDER_RETENTION_DAYS (180) with their delivery
+// history. Their own daily timer, so the purge does not wait on a new
+// missed caller. Each is tried on its own.
 async function purgeNotificationFeed() {
-  try {
-    const r = await purgeOldNotifications(getPool())
-    if (r.rowCount) logger.info({ purged: r.rowCount }, 'Purged old desktop notifications')
-  } catch (err) {
-    logger.warn({ err: err.message }, 'Desktop notification purge failed')
+  const steps = [
+    ['notifications', purgeOldNotifications],
+    ['pushDeliveries', purgeOldPushDeliveries],
+    ['missedCallAnnouncements', purgeOldAnnouncements],
+    ['closedReminders', purgeClosedReminders],
+  ]
+  const purged = {}
+  for (const [name, purge] of steps) {
+    try {
+      const r = await purge(getPool())
+      if (r.rowCount) purged[name] = r.rowCount
+    } catch (err) {
+      logger.warn({ err: err.message, step: name }, 'Notification history purge failed')
+    }
   }
+  if (Object.keys(purged).length) logger.info({ purged, reminderRetentionDays: REMINDER_RETENTION_DAYS }, 'Purged old notification history')
 }
 schedule(purgeNotificationFeed, 90 * 1000, 24 * 60 * 60 * 1000)
 
@@ -140,11 +155,18 @@ if (process.env.REMINDER_WORKER !== 'false') {
     else logger.warn('Callback reminder emails are off: set REMINDER_EMAIL_ALLOWLIST outside production')
   }
   let running = false
+  // The sweep that closes reminders whose caller was dealt with (one query
+  // per open episode) runs every ten minutes; each reminder is checked again
+  // right before it is sent, and portal actions close theirs at once.
+  const SWEEP_EVERY_MS = 10 * 60 * 1000
+  let lastSweep = 0
   const runReminders = async () => {
     if (running) return
     running = true
     try {
-      const r = await runReminderWorker(getPool(), { mailer, env: process.env, log: logger })
+      const sweep = Date.now() - lastSweep >= SWEEP_EVERY_MS
+      const r = await runReminderWorker(getPool(), { mailer, env: process.env, log: logger, sweep })
+      if (sweep) lastSweep = Date.now()
       if (r.claimed.length || r.delivered.length || r.resolved.length) {
         logger.info({ claimed: r.claimed.length, delivered: r.delivered.length, resolved: r.resolved.length, recovered: r.recovered }, 'Callback reminders processed')
       }
