@@ -21,6 +21,10 @@ export const OPEN_STATUSES = Object.freeze(['open', 'due'])
 // The same list for SQL (constants only, never input).
 const OPEN_SQL = `status IN (${OPEN_STATUSES.map((st) => `'${st}'`).join(', ')})`
 const SNOOZE_MAX_MINUTES = 7 * 24 * 60
+// Open reminders one person may have set for one assignee (themselves
+// included) at once: far above a real follow-up list, low enough that a
+// slip or a script cannot bury a colleague in reminder emails.
+export const MAX_OPEN_PER_ASSIGNEE = 50
 
 export class ReminderError extends Error {
   constructor(code, message, status = 400, extra = {}) {
@@ -216,7 +220,15 @@ export async function createReminder(db, { target, dueAt, assignee, note, allowD
   const tgt = await loadTarget(db, t)
 
   const id = await inTransaction(db, async (client) => {
-    // One at a time per (target, person), so two quick clicks cannot both pass the duplicate check.
+    // One at a time per (setter, person), so two at once cannot both pass the
+    // cap, then per (target, person) for the duplicate check. Always in this
+    // order, so two requests never wait on each other's second lock.
+    await client.query("SELECT pg_advisory_xact_lock(hashtext('cm_follow_up_cap:' || $1 || ':' || $2))", [String(accountId), String(assignedTo)])
+    const open = (await client.query(
+      `SELECT COUNT(*)::int AS n FROM follow_up_reminders WHERE created_by = $1 AND assigned_to = $2 AND ${OPEN_SQL}`,
+      [accountId, assignedTo]
+    )).rows[0].n
+    if (open >= MAX_OPEN_PER_ASSIGNEE) return { tooMany: true }
     const lockKey = tgt.kind === 'call' ? `call:${tgt.phoneKey}` : `submission:${tgt.submissionId}`
     await client.query("SELECT pg_advisory_xact_lock(hashtext('cm_follow_up_reminder:' || $1 || ':' || $2))", [lockKey, String(assignedTo)])
     if (!allowDuplicate) {
@@ -234,6 +246,9 @@ export async function createReminder(db, { target, dueAt, assignee, note, allowD
       [tgt.kind, tgt.callId ?? null, tgt.callKey ?? null, tgt.phoneKey ?? null, tgt.submissionId ?? null, assignedTo, accountId, at, text]
     )).rows[0].id
   })
+  if (id?.tooMany) {
+    throw new ReminderError('too_many_open', `There are already ${MAX_OPEN_PER_ASSIGNEE} open reminders from you for this person. Finish or cancel some first.`, 409)
+  }
   if (id?.duplicateOf) {
     throw new ReminderError('duplicate', 'There is already a reminder for this person on this follow-up', 409, { reminder: await getReminder(db, id.duplicateOf) })
   }

@@ -119,7 +119,10 @@ before(async () => {
   const app = express()
   app.use(cookieParser())
   app.use(express.json())
-  app.use('/api/reminders', createRemindersRouter({ db, now: () => clock.t }))
+  // This file makes far more changes as one person than anyone would by hand.
+  app.use('/api/reminders', createRemindersRouter({ db, now: () => clock.t, writeLimit: 10000 }))
+  // The same router with a small limit, for the limit itself.
+  app.use('/api/reminders-limited', createRemindersRouter({ db, now: () => clock.t, writeLimit: 3 }))
   app.use('/api/calls', createCallsRouter({ db, env: { NODE_ENV: 'test' }, now: () => clock.t }))
   app.use('/api/submissions', submissions)
   const { createWorkQueueRouter } = await import('./routes/workQueue.js')
@@ -967,6 +970,41 @@ test('callback reminders', { skip: SKIP }, async (t) => {
     await send('POST', `/api/reminders/${onOld.id}/complete`, {})
     await purgeOldCalls(db, { now: clock.t, retentionDays: 365 })
     assert.equal((await db.query('SELECT 1 FROM rc_calls WHERE id = $1', [kept])).rowCount, 0, 'once it is finished, the call goes')
+    await closeAll()
+  })
+
+  await t.test('a flood of reminders is stopped: changes per person are limited, and so are open ones for one colleague', async () => {
+    await closeAll()
+    const body = { target: { kind: 'call', id: episode }, dueAt: 'in_60', allowDuplicate: true }
+    for (let i = 0; i < 3; i++) assert.equal((await send('POST', '/api/reminders-limited', body)).status, 201)
+    const over = await send('POST', '/api/reminders-limited', body)
+    assert.equal(over.status, 429)
+    assert.equal(over.json.code, 'too_many_changes')
+    assert.equal((await send('POST', '/api/reminders-limited/1/complete', {})).status, 429, 'every kind of change counts')
+    assert.equal((await send('GET', '/api/reminders-limited/mine')).status, 200, 'reading is not limited')
+    assert.equal((await send('POST', '/api/reminders-limited', body, u.ciro)).status, 201, 'per person, not shared')
+
+    // At most 50 open reminders from one person for one colleague.
+    await closeAll()
+    const callKey = (await db.query('SELECT call_key, counterpart_key FROM rc_calls WHERE id = $1', [episode])).rows[0]
+    await db.query(
+      `INSERT INTO follow_up_reminders (target_kind, call_id, call_key, phone_key, assigned_to, created_by, due_at)
+       SELECT 'call', $1, $2, $3, $4, $5, $6 FROM generate_series(1, 49)`,
+      [episode, callKey.call_key, callKey.counterpart_key, u.ciro.id, u.desk.id, later(60)]
+    )
+    const forCiro = { ...body, assignee: u.ciro.id }
+    const fiftieth = await send('POST', '/api/reminders', forCiro)
+    assert.equal(fiftieth.status, 201)
+    const fiftyFirst = await send('POST', '/api/reminders', forCiro)
+    assert.equal(fiftyFirst.status, 409)
+    assert.equal(fiftyFirst.json.code, 'too_many_open')
+    // Two at once cannot both slip in as the fiftieth.
+    await send('POST', `/api/reminders/${fiftieth.json.reminder.id}/cancel`, {})
+    const race = await Promise.all([send('POST', '/api/reminders', forCiro), send('POST', '/api/reminders', forCiro)])
+    assert.deepEqual(race.map((r) => r.status).sort(), [201, 409])
+    // For someone else, or set by someone else, it is a different count.
+    assert.equal((await send('POST', '/api/reminders', { ...body, assignee: u.owner.id })).status, 201)
+    assert.equal((await send('POST', '/api/reminders', forCiro, u.owner)).status, 201)
     await closeAll()
   })
 })

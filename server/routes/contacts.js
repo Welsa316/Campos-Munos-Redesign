@@ -19,14 +19,23 @@ import getPool from '../db/pool.js'
 import requireAuth from '../middleware/auth.js'
 import { can, requireAnyCapability as any } from '../middleware/requireCapability.js'
 import { route } from '../middleware/route.js'
+import { accountLimiter } from '../middleware/accountLimiter.js'
 import { contactHistory, contactMatches, decideMatch, listCallNotes, addCallNote, changeCallNote, ContactError } from '../contacts/contacts.js'
 
 const ID = /^\d{1,15}$/
 
-export function createContactsRouter({ db = null } = {}) {
+// Note writes and match decisions per account in ten minutes (the portal
+// sends one decision per lead of a person, so a few at once is normal).
+export const CONTACT_WRITES_PER_10_MIN = 120
+
+export function createContactsRouter({ db = null, writeLimit = CONTACT_WRITES_PER_10_MIN } = {}) {
   const router = Router()
   const pool = () => db || getPool()
   router.use(requireAuth)
+  const writes = accountLimiter({
+    name: 'contact-writes', windowMs: 10 * 60 * 1000, max: writeLimit,
+    error: 'Too many changes in a few minutes. Wait a moment and try again.', code: 'too_many_changes',
+  })
 
   const wrap = route('Contacts error', { errors: [ContactError] })
 
@@ -61,7 +70,7 @@ export function createContactsRouter({ db = null } = {}) {
   }))
 
   // "Same person" / "someone else" / undecided, for a lead sharing the number.
-  router.put('/matches', any('calls.exclude', 'crm.manage'), wrap(async (req, res) => {
+  router.put('/matches', any('calls.exclude', 'crm.manage'), writes, wrap(async (req, res) => {
     const b = req.body || {}
     if (!can(req, 'crm.view')) throw new ContactError('forbidden', 'Your account cannot perform this action', 403)
     const key = await keyFor(req, { callId: b.callId, submissionId: b.submissionId })
@@ -75,18 +84,18 @@ export function createContactsRouter({ db = null } = {}) {
     res.json({ notes: await listCallNotes(pool(), { callId: Number(req.query.callId), accountId: req.account.id }) })
   }))
 
-  router.post('/notes', any('calls.exclude'), wrap(async (req, res) => {
+  router.post('/notes', any('calls.exclude'), writes, wrap(async (req, res) => {
     const b = req.body || {}
     if (!ID.test(String(b.callId ?? ''))) throw new ContactError('not_found', 'Call not found', 404)
     const note = await addCallNote(pool(), { callId: Number(b.callId), body: b.body, accountId: req.account.id })
     res.status(201).json({ ...note, author: req.account.name || null })
   }))
 
-  router.patch('/notes/:id(\\d{1,15})', any('calls.exclude'), wrap(async (req, res) => {
+  router.patch('/notes/:id(\\d{1,15})', any('calls.exclude'), writes, wrap(async (req, res) => {
     res.json(await changeCallNote(pool(), { noteId: Number(req.params.id), body: req.body?.body, accountId: req.account.id }))
   }))
 
-  router.delete('/notes/:id(\\d{1,15})', any('calls.exclude', 'team.manage'), wrap(async (req, res) => {
+  router.delete('/notes/:id(\\d{1,15})', any('calls.exclude', 'team.manage'), writes, wrap(async (req, res) => {
     await changeCallNote(pool(), { noteId: Number(req.params.id), accountId: req.account.id, remove: true, mayDeleteAny: can(req, 'team.manage') })
     res.json({ ok: true })
   }))

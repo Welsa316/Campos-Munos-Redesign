@@ -446,3 +446,32 @@ test('a new missed caller is announced once, to people who can see Calls — not
   assert.deepEqual(both, [Number(second)], 'one of the two imports announced it')
   assert.deepEqual((await feed(joined)).map((f) => f.event_key), [`missed-call:${second}`])
 })
+
+test('notification sign-ups are capped: ten computers per person, and a limit on changes', { skip: SKIP }, async () => {
+  let pass
+  await staffCli.run(db, 'create', { email: 'many@example.test', name: 'Many', role: 'front_desk' }, (line) => { const m = /^[A-Za-z0-9_-]{24}$/.exec(line.trim().split('\n').pop()); if (m) pass = m[0] })
+  const cookie = await signIn('many@example.test', pass)
+  const id = (await db.query("SELECT id FROM admin_users WHERE email = 'many@example.test'")).rows[0].id
+  const subs = Array.from({ length: 12 }, () => fakeSub())
+  for (const sub of subs) assert.equal((await call('POST', '/api/push/subscriptions', { body: { subscription: sub }, cookie })).status, 201)
+  const kept = (await subsOf(id)).map((r) => r.endpoint)
+  assert.equal(kept.length, 10)
+  assert.ok(kept.includes(subs[11].endpoint), 'the computer just turned on is always kept')
+  assert.ok(!kept.includes(subs[0].endpoint) && !kept.includes(subs[1].endpoint), 'the ones longest unused made room')
+  // One that has been receiving notifications is kept over newer idle ones.
+  await db.query('UPDATE push_subscriptions SET last_success_at = NOW() + INTERVAL \'1 minute\' WHERE endpoint = $1', [subs[2].endpoint])
+  await call('POST', '/api/push/subscriptions', { body: { subscription: fakeSub() }, cookie })
+  const after = (await subsOf(id)).map((r) => r.endpoint)
+  assert.ok(after.includes(subs[2].endpoint))
+  assert.ok(!after.includes(subs[3].endpoint))
+
+  // Thirty changes in fifteen minutes, then a pause; someone else is unaffected.
+  for (let i = 13; i < 30; i++) assert.equal((await call('POST', '/api/push/subscriptions', { body: { subscription: fakeSub() }, cookie })).status, 201, `change ${i + 1}`)
+  const over = await call('POST', '/api/push/subscriptions', { body: { subscription: fakeSub() }, cookie })
+  assert.equal(over.status, 429)
+  assert.equal(over.json.code, 'too_many_changes')
+  assert.equal((await call('DELETE', '/api/push/subscriptions', { body: { endpoint: subs[11].endpoint }, cookie })).status, 429)
+  assert.equal((await call('POST', '/api/push/subscriptions/status', { body: { endpoint: subs[11].endpoint }, cookie })).status, 200, 'checking is not limited')
+  const other = await signIn('ciro@example.test', pw.b)
+  assert.ok([200, 201].includes((await call('POST', '/api/push/subscriptions', { body: { subscription: fakeSub() }, cookie: other })).status))
+})

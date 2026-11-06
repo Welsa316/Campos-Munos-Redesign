@@ -23,7 +23,11 @@ import {
 
 const NOT_CONFIGURED = { error: 'Desktop notifications are not set up on the server yet. Ask the office administrator.', code: 'push_not_configured' }
 
-export function createPushRouter({ env = process.env, db = null, transport } = {}) {
+// Turning notifications on or off for a computer, per account in fifteen
+// minutes: a browser does this once, or after a reinstall.
+export const SUBSCRIPTION_WRITES_PER_15_MIN = 30
+
+export function createPushRouter({ env = process.env, db = null, transport, writeLimit = SUBSCRIPTION_WRITES_PER_15_MIN } = {}) {
   const router = Router()
   const pool = () => db || getPool()
   // Brief: an error here could carry a push endpoint, which must not reach the logs.
@@ -32,6 +36,10 @@ export function createPushRouter({ env = process.env, db = null, transport } = {
 
   // A test is for checking this computer works, not for sending many.
   const testLimiter = accountLimiter(TEST_LIMIT('push-test'))
+  const writes = accountLimiter({
+    name: 'push-subscriptions', windowMs: 15 * 60 * 1000, max: writeLimit,
+    error: 'Too many changes to notifications in a few minutes. Wait a moment and try again.', code: 'too_many_changes',
+  })
 
   router.use(requireAuth)
 
@@ -40,7 +48,7 @@ export function createPushRouter({ env = process.env, db = null, transport } = {
     res.json({ configured: cfg.configured, publicKey: cfg.publicKey })
   })
 
-  router.post('/subscriptions', wrap(async (req, res) => {
+  router.post('/subscriptions', writes, wrap(async (req, res) => {
     if (!pushConfig(env).configured) return res.status(503).json(NOT_CONFIGURED)
     const sub = parseSubscription(req.body?.subscription)
     if (!sub) return res.status(400).json({ error: 'This browser sent a subscription the portal cannot use.', code: 'invalid_subscription' })
@@ -62,7 +70,7 @@ export function createPushRouter({ env = process.env, db = null, transport } = {
     })
   }))
 
-  router.delete('/subscriptions', wrap(async (req, res) => {
+  router.delete('/subscriptions', writes, wrap(async (req, res) => {
     const endpoint = endpointOf(req)
     if (!endpoint) return res.status(400).json({ error: 'No subscription given.', code: 'invalid_subscription' })
     const removed = await removeOwnSubscription(pool(), req.account.id, endpoint)

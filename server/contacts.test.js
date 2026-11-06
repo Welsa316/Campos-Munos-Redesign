@@ -92,6 +92,7 @@ before(async () => {
   app.use(express.json())
   app.use(cookieParser())
   app.use('/api/contacts', createContactsRouter({ db }))
+  app.use('/api/contacts-limited', createContactsRouter({ db, writeLimit: 2 }))
   await new Promise((resolve) => { server = app.listen(0, resolve) })
   base = `http://127.0.0.1:${server.address().port}`
 })
@@ -264,4 +265,16 @@ test('a withheld number has no history to match on', { skip: SKIP }, async () =>
   const h = (await call('GET', `/api/contacts/history?callId=${ids.withheld}`)).json
   assert.equal(h.hasNumber, false)
   assert.deepEqual(h.events, [])
+})
+
+test('note writes and match decisions are limited per person', { skip: SKIP }, async () => {
+  const note = (as) => call('POST', '/api/contacts-limited/notes', { as, body: { callId: ids.call2, body: 'Left a voicemail' } })
+  assert.equal((await note()).status, 201)
+  assert.equal((await note()).status, 201)
+  const over = await note()
+  assert.equal(over.status, 429)
+  assert.equal(over.json.code, 'too_many_changes')
+  assert.equal((await call('PUT', '/api/contacts-limited/matches', { body: { callId: ids.call1, lead: ids.jose, state: 'possible' } })).status, 429, 'match decisions count too')
+  assert.equal((await call('GET', `/api/contacts-limited/notes?callId=${ids.call2}`)).status, 200, 'reading is not limited')
+  assert.equal((await note(u.ciro)).status, 201, 'per person, not shared')
 })
