@@ -77,7 +77,7 @@
 // permission prompt appears only after "Enable notifications" is clicked.
 import { ref, computed, watch, nextTick } from 'vue'
 import { rawFetch, goToLogin } from '../../composables/useApi.js'
-import { pushSupport, permissionState, currentSubscription, subscribeThisBrowser, blockedHelp } from '../../utils/push.js'
+import { pushSupport, permissionState, currentSubscription, subscribeThisBrowser, blockedHelp, testSentHelp } from '../../utils/push.js'
 import FaIcon from '../FaIcon.vue'
 
 const props = defineProps({
@@ -200,8 +200,8 @@ async function sendTest() {
     const sub = await currentSubscription()
     if (!sub) { state.value = 'off'; throw new Error('Notifications are not turned on on this computer.') }
     await api('/api/push/test', 'POST', { endpoint: sub.endpoint })
-    // Accepted by the push service; whether it shows is up to the browser and Windows.
-    notice.value = 'Test sent. It should appear in a few seconds. If it does not, check that Windows notifications are on for your browser and Focus assist is off.'
+    // Accepted by the push service; whether it shows is up to the browser and the operating system.
+    notice.value = testSentHelp()
   } catch (e) {
     if (e.code === 'expired' || e.code === 'not_subscribed') state.value = 'off'
     error.value = e.message
