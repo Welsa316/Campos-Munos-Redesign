@@ -439,3 +439,46 @@ test('reminder flow, end to end, with simulated WhatsApp', { skip: SKIP }, async
     assert.ok(!/Prueba|504555|15045/.test(dump))
   })
 })
+
+test('reminder settings, rules and templates keep only known, typed values', { skip: SKIP }, async (t) => {
+  await t.test('settings: unknown keys are dropped, not stored', async () => {
+    const saved = await call('PUT', '/api/billing/reminders/settings', { body: { startHour: 8, endHour: 17, days: [1, 2, 3], injected: 'x', __proto__: { y: 1 } } })
+    assert.equal(saved.status, 200, saved.text)
+    assert.equal(saved.json.startHour, 8)
+    assert.equal('injected' in saved.json, false)
+    const stored = (await db.query("SELECT value FROM billing_settings WHERE key = 'reminders'")).rows[0].value
+    assert.deepEqual(Object.keys(stored).sort(), ['days', 'endHour', 'staleAfterDays', 'startHour', 'timeZone'])
+  })
+
+  await t.test('rules: enabled is a boolean and the name is one short line', async () => {
+    for (const body of [{ enabled: 'yes' }, { enabled: 1 }, { label: 'a\nb' }, { label: { x: 1 } }, { label: 'x'.repeat(81) }, { label: '  ' }]) {
+      assert.equal((await call('PUT', '/api/billing/reminders/rules/due_tomorrow', { body })).status, 400, JSON.stringify(body))
+    }
+    assert.equal((await call('PUT', '/api/billing/reminders/rules/due_tomorrow', { body: { label: 'Due tomorrow' } })).status, 200)
+  })
+
+  await t.test('templates: approval is strictly true/false, names and codes as Meta has them, nothing extra kept', async () => {
+    const cfg = await call('GET', '/api/billing/reminders/config')
+    const tpl = cfg.json.templates.find((x) => x.key === 'payment_due_soon')
+    for (const body of [{ metaApproved: 'true' }, { metaApproved: 1 }, { metaName: 'Payment Due!' }, { metaName: 42 }, { languages: [] },
+      { languages: { ...tpl.languages, es: { ...tpl.languages.es, code: 'es-<x>' } } }, { languages: { es: { code: 'es', body: '{{1}}{{2}}{{3}}'.padEnd(1025, '.') } } }]) {
+      assert.equal((await call('PUT', '/api/billing/reminders/templates/payment_due_soon', { body })).status, 400, JSON.stringify(body).slice(0, 80))
+    }
+    const ok = await call('PUT', '/api/billing/reminders/templates/payment_due_soon', { body: { metaApproved: false, languages: { ...tpl.languages, es: { ...tpl.languages.es, extra: 'x' } } } })
+    assert.equal(ok.status, 200, ok.text)
+    const stored = (await db.query("SELECT languages FROM billing_message_templates WHERE key = 'payment_due_soon'")).rows[0].languages
+    assert.deepEqual(Object.keys(stored.es).sort(), ['body', 'code'])
+  })
+
+  await t.test('reading the reminders pages writes nothing', async () => {
+    const row = (await db.query("SELECT * FROM billing_reminder_rules WHERE key = 'overdue_7'")).rows[0]
+    await db.query("DELETE FROM billing_reminder_rules WHERE key = 'overdue_7'")
+    try {
+      assert.equal((await call('GET', '/api/billing/reminders')).status, 200)
+      assert.equal((await call('GET', '/api/billing/reminders/config')).status, 200)
+      assert.equal((await db.query("SELECT 1 FROM billing_reminder_rules WHERE key = 'overdue_7'")).rowCount, 0, 'not re-seeded by a read')
+    } finally {
+      await db.query('INSERT INTO billing_reminder_rules SELECT (json_populate_record(NULL::billing_reminder_rules, $1::json)).*', [JSON.stringify(row)])
+    }
+  })
+})

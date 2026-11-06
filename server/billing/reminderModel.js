@@ -149,3 +149,23 @@ export default {
   REMINDER_STATES, PENDING_STATES, TRANSITIONS, DEFAULT_RULES, DEFAULT_TEMPLATES,
   SUPPRESSION_REASONS, CANCEL_REASONS, obligationKey,
 }
+
+/**
+ * Seed the example rules and templates (switched off) where missing. Run by
+ * db/migrate.js on every deploy and before an evaluation, never by a read.
+ */
+export async function seedReminderDefaults(db) {
+  for (const r of DEFAULT_RULES) {
+    await db.query(
+      `INSERT INTO billing_reminder_rules (key, label, trigger, days, action, template_key, enabled)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (key) DO NOTHING`,
+      [r.key, r.label, r.trigger, r.days, r.action, r.templateKey, r.enabled]
+    )
+  }
+  for (const t of DEFAULT_TEMPLATES) {
+    await db.query(
+      `INSERT INTO billing_message_templates (key, meta_name, params, languages) VALUES ($1, $2, $3, $4) ON CONFLICT (key) DO NOTHING`,
+      [t.key, t.metaName, JSON.stringify(t.params), JSON.stringify(t.languages)]
+    )
+  }
+}

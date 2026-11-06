@@ -27,7 +27,7 @@ import { createFileImportBillingProvider, createEImmigrationApiProvider } from '
 import { audit } from '../billing/audit.js'
 import {
   evaluate as evaluateReminders, cancelIneligible, approveReminders, cancelReminder, retryReminder, resolveUnknown, dispatch,
-  upsertContact, recordOptIn, recordOptOut, saveRule, saveTemplate, loadRules, loadTemplates, ensureDefaults,
+  upsertContact, recordOptIn, recordOptOut, saveRule, saveTemplate, loadRules, loadTemplates,
   getReminderSettings, saveReminderSettings, getConsentPolicy, saveConsentPolicy, ReminderError,
 } from '../billing/reminderService.js'
 import { createWhatsAppProvider, whatsappSendingEnabled } from '../billing/providers/whatsapp/index.js'
@@ -468,7 +468,6 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
 
   router.get('/reminders', need('billing.view'), wrap(async (req, res) => {
     const db = pool()
-    await ensureDefaults(db)
     const state = String(req.query.state || '')
     const groups = {
       drafts: ["state = 'draft'"], approved: ["state IN ('approved', 'queued')"], sent: ["state IN ('sent', 'delivered', 'read')"],
@@ -532,9 +531,9 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     res.json(await dispatch(pool(), getWhatsApp(), { now: now(), env, log: req.log }))
   }))
 
+  // Reads only: the default rules and templates are seeded by db/migrate.js.
   router.get('/reminders/config', need('billing.view'), wrap(async (_req, res) => {
     const db = pool()
-    await ensureDefaults(db)
     res.json({ rules: await loadRules(db), templates: await loadTemplates(db), settings: await getReminderSettings(db), consent: await getConsentPolicy(db) })
   }))
 
