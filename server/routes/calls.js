@@ -33,6 +33,7 @@ import { queryCalls, syncCallLog, getSyncState, summarizeMissed, OUTCOME_FILTERS
 import { UNANSWERED_CLASSES } from '../integrations/ringcentral/callEvidence.js'
 import { excludeCall, includeCall, markHandled, unmarkHandled, markEpisodeHandled, reopenEpisode, clearOpenCalls, undoClear, CallExclusionError } from '../integrations/ringcentral/callExclusions.js'
 import { placeRingOut, ringOutStatus, cancelRingOut, getMyPhone, setMyPhone, RingOutError } from '../integrations/ringcentral/ringout.js'
+import { notifyNewMissedCallers } from '../push/missedCallAlerts.js'
 
 const MANUAL_SYNC_MIN_INTERVAL_MS = 30 * 1000
 const MAX_RANGE_MS = 400 * 24 * 60 * 60 * 1000
@@ -147,6 +148,8 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
           ...(sleep ? { sleep } : {}), ...(pageDelayMs != null ? { pageDelayMs } : {}),
         })
         req.log?.info({ provider: 'ringcentral', sync: result.status, code: result.code, fetched: result.fetched, new: result.new }, 'Call log import')
+        // A new caller waiting for a call back is announced once; not waited for.
+        if (result.status === 'ok') notifyNewMissedCallers(pool(), { now: clock() }).catch((err) => req.log?.warn({ err: { name: err?.name } }, 'Missed call notifications failed'))
       }
       res.json({ result, ...(await status(req)) })
     } catch (err) {

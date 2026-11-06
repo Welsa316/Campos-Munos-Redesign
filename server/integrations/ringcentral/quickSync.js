@@ -12,6 +12,7 @@ import logger from '../../logger.js'
 import { loadRingCentralConfig } from './config.js'
 import { syncCallLog } from './callLog.js'
 import { isProductionEnv } from '../../utils/productionEnv.js'
+import { notifyNewMissedCallers } from '../../push/missedCallAlerts.js'
 
 export const QUICK_DELAYS_MS = [25 * 1000, 90 * 1000]
 const timers = new Map()
@@ -38,6 +39,7 @@ async function defaultRun(env) {
   if (!cfg.configured) return
   const r = await syncCallLog(getPool(), cfg, { trigger: 'live' })
   if (r.status === 'ok' && r.new) logger.info({ provider: 'ringcentral', new: r.new }, 'Call log imported after a call ended')
+  if (r.status === 'ok') await notifyNewMissedCallers(getPool()).catch((err) => logger.warn({ err: { name: err?.name, code: err?.code } }, 'Missed call notifications failed'))
 }
 
 /** Whether a live delivery says this party left the call. */

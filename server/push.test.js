@@ -346,3 +346,69 @@ test('a new website lead notifies, once, the people who may read leads — with 
   await notifyNewLead(db, { submissionId: lead, source: 'contact' }, { env: PUSH_ENV, transport })
   assert.equal(to(subs.desk).length, 1)
 })
+
+test('the desktop app feed: every notification for an account, its own only, never replayed', { skip: SKIP }, async () => {
+  const { feedFor } = await import('./push/feed.js')
+  const make = async (email, role) => (await db.query(`INSERT INTO admin_users (email, password_hash, role) VALUES ($1, 'x', $2) RETURNING id`, [email, role])).rows[0].id
+  const me = await make('feed-me@example.test', 'receptionist')
+  const other = await make('feed-other@example.test', 'receptionist')
+  const gone = await make('feed-gone@example.test', 'receptionist')
+  await db.query('UPDATE admin_users SET disabled_at = NOW() WHERE id = $1', [gone])
+  const start = await feedFor(db, { accountId: me })
+  assert.deepEqual(start.items, [], 'starting up replays nothing')
+
+  // Kept even with no browser notifications on, and with push not set up at all.
+  const r = await sendPush(db, { accountId: me, eventKey: 'feed:1', ...CALLBACK_REMINDER, url: '/calls' }, { env: {}, transport })
+  assert.equal(r.status, 'not_configured')
+  await sendPush(db, { accountId: other, eventKey: 'feed:2', ...CALLBACK_REMINDER }, { env: {}, transport })
+  await sendPush(db, { accountId: gone, eventKey: 'feed:3', ...CALLBACK_REMINDER }, { env: {}, transport })
+  // The same event twice is one item.
+  await sendPush(db, { accountId: me, eventKey: 'feed:1', ...CALLBACK_REMINDER, url: '/calls' }, { env: {}, transport })
+
+  const page = await feedFor(db, { accountId: me, after: start.cursor })
+  assert.deepEqual(page.items.map((i) => [i.title, i.url]), [['Callback reminder', '/calls']])
+  assert.equal((await feedFor(db, { accountId: me, after: page.cursor })).items.length, 0, 'the cursor moves past what was read')
+  assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM account_notifications WHERE account_id = $1', [gone])).rows[0].n, 0, 'a disabled account gets none')
+})
+
+test('the feed route serves only the signed-in account, and the test button adds one', { skip: SKIP }, async () => {
+  const yoletty = await signIn('yoletty@example.test', pw.a)
+  const ciro = await signIn('ciro@example.test', pw.b)
+  assert.equal((await call('GET', '/api/notifications/feed')).status, 401)
+  const first = await call('GET', '/api/notifications/feed', { cookie: yoletty })
+  assert.equal(first.status, 200)
+  assert.deepEqual(first.json.items, [])
+  assert.equal((await call('POST', '/api/notifications/test', { cookie: yoletty, body: {} })).status, 201)
+  const mine = await call('GET', `/api/notifications/feed?after=${first.json.cursor}`, { cookie: yoletty })
+  assert.deepEqual(mine.json.items.map((i) => i.title), ['Test notification'])
+  const theirs = await call('GET', `/api/notifications/feed?after=${first.json.cursor}`, { cookie: ciro })
+  assert.ok(!theirs.json.items.some((i) => i.id === mine.json.items[0].id), 'not another account’s')
+})
+
+test('a new missed caller is announced once, to people who can see Calls — not for repeat calls or old ones', { skip: SKIP }, async () => {
+  const { notifyNewMissedCallers } = await import('./push/missedCallAlerts.js')
+  const make = async (email, role) => (await db.query(`INSERT INTO admin_users (email, password_hash, role) VALUES ($1, 'x', $2) RETURNING id`, [email, role])).rows[0].id
+  const desk = await make('missed-desk@example.test', 'receptionist')
+  const para = await make('missed-para@example.test', 'billing_paralegal')
+  const now = new Date('2026-11-06T16:00:00Z')
+  const calls = async (rec, minutesAgo, number) => (await db.query(
+    `INSERT INTO rc_calls (rc_record_id, direction, started_at, outcome, classification, classifier_version, scope, counterpart_number, counterpart_key, is_primary)
+     VALUES ($1, 'inbound', $2, 'other', 'not_answered', 99, 'account', $3, cm_phone_key($3), TRUE) RETURNING id`,
+    [rec, new Date(now.getTime() - minutesAgo * 60000), number]
+  )).rows[0].id
+  const fresh = await calls('mc-1', 20, '+15045550301')
+  await calls('mc-old', 300, '+15045550302')
+  const feed = async (id) => (await db.query(`SELECT event_key, title, body, url FROM account_notifications WHERE account_id = $1 AND event_key LIKE 'missed-call:%' ORDER BY id`, [id])).rows
+
+  sent.length = 0
+  const announced = await notifyNewMissedCallers(db, { now }, { env: PUSH_ENV, transport })
+  assert.deepEqual(announced, [Number(fresh)], 'only the caller from the last two hours')
+  assert.deepEqual(await feed(desk), [{ event_key: `missed-call:${fresh}`, title: 'New missed call', body: 'Someone is waiting for a call back. Open Calls to see who.', url: '/calls' }])
+  assert.deepEqual(await feed(para), [], 'billing staff cannot see Calls')
+  for (const s of sent) assert.ok(!JSON.stringify(s.payload).includes('0301'), 'no number in the notification')
+
+  // The same person calls again: their open callback is not news.
+  await calls('mc-2', 5, '+15045550301')
+  await notifyNewMissedCallers(db, { now }, { env: PUSH_ENV, transport })
+  assert.equal((await feed(desk)).length, 1)
+})

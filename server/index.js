@@ -16,6 +16,7 @@ import logger from './logger.js'
 import { emailConfigProblems } from './utils/emailConfig.js'
 import { pushConfig } from './push/config.js'
 import { isProductionEnv, bootEnvProblems } from './utils/productionEnv.js'
+import { notifyNewMissedCallers } from './push/missedCallAlerts.js'
 
 const isProduction = isProductionEnv(process.env)
 
@@ -151,6 +152,8 @@ if (flag('RINGCENTRAL_CALL_SYNC')) {
       })
       if (r.status === 'error' && r.code !== 'not_connected') logger.warn({ provider: 'ringcentral', code: r.code }, 'Call log import failed')
       else if (r.status === 'ok' && r.new) logger.info({ provider: 'ringcentral', new: r.new }, 'Call log imported')
+      // A new caller waiting for a call back is announced once (push/missedCallAlerts.js).
+      if (r.status === 'ok') await notifyNewMissedCallers(getPool()).catch((err) => logger.warn({ err: { name: err?.name, code: err?.code } }, 'Missed call notifications failed'))
     } catch (err) {
       logger.warn({ provider: 'ringcentral', err: { name: err?.name, code: err?.code } }, 'Call log import error')
     } finally {

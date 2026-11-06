@@ -38,6 +38,23 @@ export const PUSH_SCHEMA_SQL = `
     UNIQUE (event_key, subscription_id)
   );
   CREATE INDEX IF NOT EXISTS idx_push_deliveries_account ON push_deliveries(account_id, created_at DESC);
+
+  -- Every notification meant for an account, whether or not it turned on
+  -- browser notifications: the desktop app reads these (GET
+  -- /api/notifications/feed), since it cannot receive browser push. One per
+  -- (account, event), so a repeated event is never listed twice.
+  CREATE TABLE IF NOT EXISTS account_notifications (
+    id BIGSERIAL PRIMARY KEY,
+    account_id INTEGER NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+    event_key TEXT NOT NULL,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    url TEXT NOT NULL DEFAULT '/',
+    tag TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (account_id, event_key)
+  );
+  CREATE INDEX IF NOT EXISTS idx_account_notifications_feed ON account_notifications (account_id, id);
 `
 
 export async function applyPushSchema(db) {

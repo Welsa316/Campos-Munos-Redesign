@@ -1,5 +1,5 @@
 // A desktop notification when someone writes in through the website: to
-// every account that turned notifications on and may open Messages
+// every account that may open Messages (browser push where it is on, and the desktop app's feed)
 // (crm.view). Generic text only — no name, number or message: notifications
 // show on screens others may see, and pass through the browser's push
 // service. Clicking it opens that lead.
@@ -11,21 +11,23 @@ export const LEAD_ALERT = Object.freeze({
   chat: { title: 'New website chat', body: 'Someone started a chat on the website. Open Messages to reply.' },
 })
 
-/** Accounts with notifications on that may read website leads. */
-export async function leadAlertAccounts(db) {
+/**
+ * Active accounts holding a capability. All of them, not only those with
+ * browser notifications on: the desktop app reads the same notifications
+ * from its feed (push/feed.js).
+ */
+export async function accountsWith(db, capability) {
   const rows = (await db.query(
-    `SELECT DISTINCT u.id, u.role, u.capability_grants, u.capability_revokes
-       FROM admin_users u JOIN push_subscriptions s ON s.account_id = u.id
-      WHERE u.disabled_at IS NULL`
+    'SELECT id, role, capability_grants, capability_revokes FROM admin_users WHERE disabled_at IS NULL'
   )).rows
   return rows
-    .filter((r) => resolveCapabilities({ role: r.role, grants: r.capability_grants, revokes: r.capability_revokes }).has('crm.view'))
+    .filter((r) => resolveCapabilities({ role: r.role, grants: r.capability_grants, revokes: r.capability_revokes }).has(capability))
     .map((r) => Number(r.id))
 }
 
 export async function notifyNewLead(db, { submissionId, source = 'contact' }, opts = {}) {
   const text = LEAD_ALERT[source === 'chat' ? 'chat' : 'contact']
-  const accounts = await leadAlertAccounts(db)
+  const accounts = await accountsWith(db, 'crm.view')
   const results = []
   for (const accountId of accounts) {
     results.push(await sendPush(db, {

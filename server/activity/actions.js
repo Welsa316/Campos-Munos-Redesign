@@ -29,6 +29,7 @@ export const ACTIONS = {
   // A read sent as POST (the endpoint stays out of the URL); not worth a line.
   'POST /api/push/subscriptions/status': { skip: true },
   'POST /api/push/test': { key: 'push.tested', label: 'Sent themselves a test notification', entity: 'account' },
+  'POST /api/notifications/test': { key: 'notifications.tested', label: 'Sent themselves a test notification in the desktop app', entity: 'account' },
 
   // Website leads (Messages)
   'PATCH /api/submissions/:id/read': { key: 'lead.read', label: 'Marked a lead read or unread', entity: 'lead',
