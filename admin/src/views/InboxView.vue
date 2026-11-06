@@ -275,6 +275,7 @@ import ChangePasswordModal from '../components/messages/ChangePasswordModal.vue'
 import ContactsTable from '../components/messages/ContactsTable.vue'
 import SectionLinks from '../components/portal/SectionLinks.vue'
 import FaIcon from '../components/FaIcon.vue'
+import { signOutAndLeave } from '../utils/signOut.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -703,8 +704,5 @@ async function exportCsv() {
   }
 }
 
-async function handleLogout() {
-  await logout()
-  router.push({ name: 'Login' })
-}
+const handleLogout = () => signOutAndLeave(logout, router)
 </script>

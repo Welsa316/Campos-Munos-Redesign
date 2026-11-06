@@ -1,29 +1,6 @@
 <template>
   <div class="h-dvh flex flex-col bg-brand-surface overflow-hidden">
-    <!-- Same shell as the other sections. -->
-    <header class="nav-chrome h-16 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 gap-3 z-10">
-      <div class="flex items-center gap-3 sm:gap-4 min-w-0">
-        <img :src="LOGO_SRC" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
-        <div class="w-px h-8 bg-gray-200 hidden sm:block" aria-hidden="true"></div>
-        <h1 class="font-heading text-lg text-brand-navy tracking-tight">Calls</h1>
-      </div>
-      <div class="ml-auto flex items-center gap-1 sm:gap-3">
-        <SectionLinks current="calls" />
-        <span class="text-xs text-gray-500 font-ui hidden lg:inline">{{ adminEmail }}</span>
-        <button @click="showChangePassword = true" aria-label="Change password" title="Change password"
-          class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors">
-          <i class="fa-solid fa-key text-xs" aria-hidden="true"></i>
-          <span class="hidden lg:inline">Password</span>
-        </button>
-        <button @click="handleLogout" aria-label="Sign out"
-          class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-gray-500 hover:text-brand-red hover:bg-red-50 text-sm font-ui font-medium transition-colors">
-          <i class="fa-solid fa-arrow-right-from-bracket text-xs" aria-hidden="true"></i>
-          <span class="hidden sm:inline">Sign Out</span>
-        </button>
-      </div>
-    </header>
-
-    <ChangePasswordModal :visible="showChangePassword" @close="showChangePassword = false" />
+    <PortalHeader title="Calls" current="calls" label-at="xl" actions-label-at="lg" show-email :notifications="false" />
     <CallDialog :visible="dialog.open" :number="dialog.number" :name="dialog.name" @close="dialog.open = false" />
     <ExcludeCallDialog :call="excluding" @close="excluding = null" @saved="afterExclude" />
     <ClearCallsDialog :open="clearing" @close="clearing = false" @cleared="afterClear" />
@@ -264,13 +241,11 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
-import { LOGO_SRC } from '../../data/brand.js'
 import { zoneMidnight, zoneMidnightDaysAgo } from '../../utils/firmTime.js'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../../composables/useAuth.js'
 import { useApi, latestOnly } from '../../composables/useApi.js'
-import SectionLinks from '../../components/portal/SectionLinks.vue'
-import ChangePasswordModal from '../../components/messages/ChangePasswordModal.vue'
+import PortalHeader from '../../components/portal/PortalHeader.vue'
 import FaIcon from '../../components/FaIcon.vue'
 import RollingNumber from '../../components/RollingNumber.vue'
 import CallDialog from './CallDialog.vue'
@@ -286,7 +261,7 @@ import { dueLine } from '../reminders/dueChoices.js'
 
 const router = useRouter()
 const route = useRoute()
-const { adminEmail, logout, can } = useAuth()
+const { can } = useAuth()
 const { get, post, del } = useApi()
 
 const TABS = [
@@ -355,7 +330,6 @@ const loading = ref(false)
 const refreshing = ref(null)
 const error = ref('')
 const now = ref(Date.now())
-const showChangePassword = ref(false)
 const canSeeLeads = computed(() => can('crm.view'))
 // RingOut (calls.place): your own phone rings first, then the client.
 const canCall = computed(() => can('calls.place') && connection.value === 'connected')
@@ -928,9 +902,6 @@ const emptyText = computed(() => {
   return sync.value?.lastSuccessAt ? 'No calls in this range.' : 'Calls appear here after the first update from RingCentral. Press Refresh to fetch them now.'
 })
 
-async function handleLogout() {
-  if (await logout()) router.push({ name: 'Login' })
-}
 </script>
 
 <style scoped>

@@ -1,34 +1,6 @@
 <template>
   <div class="h-dvh flex flex-col bg-brand-surface overflow-hidden">
-    <!-- Same shell as every section. -->
-    <header class="nav-chrome h-16 flex-shrink-0 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 gap-3 z-10">
-      <div class="flex items-center gap-3 sm:gap-4 min-w-0">
-        <img :src="LOGO_SRC" alt="Campos Muños Law" class="hidden min-[420px]:block h-7 sm:h-9 flex-shrink-0" />
-        <div class="w-px h-8 bg-gray-200 hidden sm:block" aria-hidden="true"></div>
-        <h1 class="font-heading text-lg text-brand-navy tracking-tight">Home</h1>
-      </div>
-      <div class="ml-auto flex items-center gap-1 sm:gap-3">
-        <SectionLinks current="home" />
-        <button @click="showChangePassword = true" aria-label="Change password" title="Change password"
-          class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors">
-          <i class="fa-solid fa-key text-xs" aria-hidden="true"></i>
-          <span class="hidden lg:inline">Password</span>
-        </button>
-        <button @click="showNotifications = true" aria-label="Desktop notifications" title="Desktop notifications"
-          class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors">
-          <FaIcon name="bell" class="text-xs" />
-          <span class="hidden lg:inline">Notifications</span>
-        </button>
-        <button @click="handleLogout" aria-label="Sign out"
-          class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-gray-500 hover:text-brand-red hover:bg-red-50 text-sm font-ui font-medium transition-colors">
-          <i class="fa-solid fa-arrow-right-from-bracket text-xs" aria-hidden="true"></i>
-          <span class="hidden sm:inline">Sign Out</span>
-        </button>
-      </div>
-    </header>
-
-    <ChangePasswordModal :visible="showChangePassword" @close="showChangePassword = false" />
-    <NotificationsModal :visible="showNotifications" @close="showNotifications = false" />
+    <PortalHeader title="Home" current="home" label-at="xl" actions-label-at="lg" />
 
     <div class="flex-1 overflow-y-auto overflow-x-hidden">
       <div class="min-h-full relative max-w-[1120px] mx-auto px-4 sm:px-8 pt-6 sm:pt-10 pb-10 flex flex-col gap-4 sm:gap-5 font-ui">
@@ -129,15 +101,11 @@
 
 <script setup>
 import { ref, computed, onMounted, onActivated } from 'vue'
-import { LOGO_SRC } from '../data/brand.js'
 import { zoneMidnightDaysAgo } from '../utils/firmTime.js'
 import { daysAgo, toDate } from '../utils/text.js'
-import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 import { useApi } from '../composables/useApi.js'
-import SectionLinks from '../components/portal/SectionLinks.vue'
-import ChangePasswordModal from '../components/messages/ChangePasswordModal.vue'
-import NotificationsModal from '../components/portal/NotificationsModal.vue'
+import PortalHeader from '../components/portal/PortalHeader.vue'
 import FaIcon from '../components/FaIcon.vue'
 import { money } from '../modules/billing/api.js'
 import SplitText from '../components/SplitText.vue'
@@ -149,11 +117,8 @@ import UserAvatar from '../components/UserAvatar.vue'
 import AvatarPicker from '../components/AvatarPicker.vue'
 import MyFollowUps from '../modules/reminders/MyFollowUps.vue'
 
-const router = useRouter()
-const { adminEmail, profile, logout, can, canAny, updateProfile } = useAuth()
+const { adminEmail, profile, can, canAny, updateProfile } = useAuth()
 const { get } = useApi()
-const showChangePassword = ref(false)
-const showNotifications = ref(false)
 const showAvatarPicker = ref(false)
 const avatarSize = typeof window !== 'undefined' && window.innerWidth >= 640 ? 64 : 56
 
@@ -370,8 +335,4 @@ let activations = 0
 onMounted(() => loadFigures())
 onActivated(() => { if (activations++) loadFigures({ quiet: true }) })
 
-async function handleLogout() {
-  await logout()
-  router.push({ name: 'Login' })
-}
 </script>

@@ -30,7 +30,7 @@ test('an unknown label-at shows icons only, never every label at once', () => {
 test('every label-at a header uses is one the links know', () => {
   const used = new Set()
   for (const f of walk(SRC).filter((f) => f.endsWith('.vue'))) {
-    for (const m of fs.readFileSync(f, 'utf8').matchAll(/label-at="([^"]+)"/g)) used.add(m[1])
+    for (const m of fs.readFileSync(f, 'utf8').matchAll(/(?<![:\w-])label-at="([^"]+)"/g)) used.add(m[1])
   }
   assert.ok(used.has('never'), 'the Messages header is found')
   for (const v of used) assert.ok(LABEL_WIDTHS.includes(v), `${v} is known`)
