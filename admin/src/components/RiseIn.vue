@@ -12,9 +12,8 @@
 
 <script setup>
 // Lift-and-settle entrance with GSAP: each direct child moves up a little,
-// grows from 96 % and fades in, staggered, with a soft overshoot. Different
-// from FadeContent's texture-based reveals on purpose. Skipped (content just
-// appears) when the visitor prefers reduced motion.
+// grows from 96 % and fades in, staggered, with a soft overshoot. Skipped
+// (content just appears) when the visitor prefers reduced motion.
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { gsap } from 'gsap'
 

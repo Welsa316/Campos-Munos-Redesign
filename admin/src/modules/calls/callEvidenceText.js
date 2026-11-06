@@ -32,6 +32,8 @@ const GAP_TEXT = {
   system_accepted: 'A queue or menu accepted the call, so it may have been passed to someone this record does not show.',
 }
 export const gapText = (g) => GAP_TEXT[g] || null
+/** The gaps worth a sentence, in order (codes with no wording are left out). */
+export const gapLines = (gaps) => (gaps || []).map(gapText).filter(Boolean)
 
 /** "Yoletty, ext. 101" */
 export function who(p) {
@@ -57,10 +59,11 @@ export function stepTarget(to) {
   return to.name || '—'
 }
 
-// RingCentral extension types, in the words its admin portal uses.
+// RingCentral extension types, in the words its admin portal uses. The
+// routing steps and the live timeline both read them from here.
 const TYPE_LABEL = {
   User: 'person', DigitalUser: 'person', VirtualUser: 'person', FlexibleUser: 'person',
-  Department: 'call queue', IvrMenu: 'IVR menu', Announcement: 'announcement', Voicemail: 'voicemail box',
+  Department: 'call queue', IvrMenu: 'IVR menu', Announcement: 'announcement', Voicemail: 'voicemail box', CompanyExtension: 'company line',
   SharedLinesGroup: 'shared lines', PagingOnly: 'paging', ParkLocation: 'park location', Limited: 'common phone',
   ApplicationExtension: 'app', Site: 'site', Bot: 'bot', FaxUser: 'fax', ProxyAdmin: 'admin', DelegatedLinesGroup: 'delegated lines',
 }
@@ -131,7 +134,8 @@ export const stateText = (code, party = null) => (code === 'Answered' && party &
 /** One party in the live timeline: "Yoletty, ext. 101" or "CML call queue". */
 export function partyLabel(p) {
   if (p.person) return who({ name: p.name, extension: p.extension })
-  const type = { Department: 'call queue', IvrMenu: 'menu', Voicemail: 'voicemail box', CompanyExtension: 'company line' }[p.type]
+  // A party not confirmed as a person is never labelled as one.
+  const type = TYPE_LABEL[p.type] === 'person' ? null : TYPE_LABEL[p.type]
   if (p.name || p.extension) return `${p.name || `ext. ${p.extension}`}${type ? ` (${type})` : ''}`
   return 'The firm’s line'
 }

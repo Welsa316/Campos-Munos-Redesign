@@ -93,3 +93,18 @@ test('an offer seen only in the live events reads "phone rang"', async () => {
   assert.equal(offerShort({ reason: 'No Answer' }), 'no answer')
   assert.equal(offerShort({ reason: null }), 'no reason given')
 })
+
+test('the live timeline and the routing steps name an extension type the same way', async () => {
+  const { partyLabel } = await import('../src/modules/calls/callEvidenceText.js')
+  assert.equal(partyLabel({ person: false, name: 'Main menu', extension: '2', type: 'IvrMenu' }), 'Main menu (IVR menu)')
+  assert.equal(stepTarget({ kind: 'extension', name: 'Main menu', number: '2', type: 'IvrMenu' }), 'Main menu, ext. 2 (IVR menu)')
+  assert.equal(stepTarget({ kind: 'extension', name: 'Front', number: '0', type: 'CompanyExtension' }), 'Front, ext. 0 (company line)')
+  // An extension not confirmed as a person is not called one.
+  assert.equal(partyLabel({ person: null, name: 'Ciro', type: 'User' }), 'Ciro')
+})
+
+test('gap lines leave out codes that have no wording', async () => {
+  const { gapLines } = await import('../src/modules/calls/callEvidenceText.js')
+  assert.deepEqual(gapLines(['no_reason', 'made_up', 'no_legs']), [gapText('no_reason'), gapText('no_legs')])
+  assert.deepEqual(gapLines(undefined), [])
+})

@@ -19,9 +19,9 @@
       <div v-if="ev.classification" class="mt-3 grid gap-4 lg:grid-cols-2">
         <div>
           <h4 class="font-ui text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-600">Evidence</h4>
-          <ul v-if="ev.facts.length || ev.gaps.length" class="mt-1.5 space-y-1 list-disc pl-4 marker:text-gray-400">
+          <ul v-if="ev.facts.length || gaps.length" class="mt-1.5 space-y-1 list-disc pl-4 marker:text-gray-400">
             <li v-for="(f, i) in ev.facts" :key="`f${i}`">{{ factText(f) }}</li>
-            <li v-for="g in ev.gaps.filter(gapText)" :key="g" class="text-gray-600">{{ gapText(g) }}</li>
+            <li v-for="g in gaps" :key="g" class="text-gray-600">{{ g }}</li>
           </ul>
           <p v-else class="mt-1.5 text-gray-600">Nothing RingCentral documents settles how this call ended.</p>
         </div>
@@ -110,10 +110,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useApi } from '../../composables/useApi.js'
 import FaIcon from '../../components/FaIcon.vue'
-import { CLASS_LABEL, CLASS_EXPLAINED, gapText, who, stepTarget, offerShort, factText, offset, stateText, partyLabel } from './callEvidenceText.js'
+import { CLASS_LABEL, CLASS_EXPLAINED, gapLines, who, stepTarget, offerShort, factText, offset, stateText, partyLabel } from './callEvidenceText.js'
 
 const props = defineProps({
   callId: { type: Number, required: true },
@@ -125,6 +125,7 @@ const { get } = useApi()
 const ev = ref(null)
 const loading = ref(true)
 const error = ref('')
+const gaps = computed(() => gapLines(ev.value?.gaps))
 
 onMounted(async () => {
   try {
