@@ -16,7 +16,7 @@
 // next one picks up from the same place.
 import { getAccessToken, maintainConnection, RingCentralNotConnectedError } from './service.js'
 import { rcGet, RingCentralApiError } from './api.js'
-import { sanitizeRecord, classifyCall, CLASSIFIER_VERSION, UNANSWERED_CLASSES } from './callEvidence.js'
+import { sanitizeRecord, classifyCall, CLASSIFIER_VERSION, UNANSWERED_CLASSES, systemOnlyPlaces } from './callEvidence.js'
 import { refreshDirectory, loadDirectory } from './extensionDirectory.js'
 
 export const ACCOUNT_PATH = '/restapi/v1.0/account/~/call-log'
@@ -762,6 +762,8 @@ function present(r, names = new Map()) {
     offeredTo: (ev?.offeredTo || []).map((p) => named(p, names)),
     notAnsweredBy: (ev?.notAnsweredBy || []).map((p) => named(p, names)),
     gaps: ev?.gaps || [],
+    // Not confirmed, and every recorded step went to the phone system: where it got to.
+    systemOnly: systemOnlyPlaces(ev),
     followUp,
     // Marked as needing no callback: this call alone, or every call from its number.
     exclusion: r.excluded_kind

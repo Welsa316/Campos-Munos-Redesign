@@ -76,6 +76,7 @@ export function statusLine(c) {
   if (cls === 'voicemail') return (c.notAnsweredBy || []).length ? `Left a voicemail · not answered by ${c.notAnsweredBy.map(who).join(', ')}` : 'Left a voicemail'
   if (cls === 'system') return 'Handled by the phone system'
   if (cls === 'unknown' && (c.gaps || []).includes('forward_answer_unconfirmed')) return 'Not confirmed · accepted at a phone it was forwarded to'
+  if (cls === 'unknown' && (c.systemOnly || []).length) return `Not confirmed · reached only the phone system (${c.systemOnly.join(', ')}); no one was shown as rung`
   if (cls === 'unknown') return `Not confirmed${c.result ? ` · RingCentral’s result: ${c.result}` : ''}`
   return c.result || 'Call'
 }

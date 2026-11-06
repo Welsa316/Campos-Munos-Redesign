@@ -63,3 +63,9 @@ test('accepted at a forwarded phone reads as not confirmed, and says why', () =>
   assert.equal(stepTarget({ kind: 'caller', numberEnd: '0142' }), 'Back to the caller (ending 0142)')
   assert.match(gapText('system_accepted'), /may have been passed to someone/)
 })
+
+test('a not-confirmed call that reached only the phone system says so, and claims nothing more', () => {
+  const line = statusLine({ classification: 'unknown', result: 'Missed', systemOnly: ['the main line', 'the voicemail box'], offeredTo: [] })
+  assert.equal(line, 'Not confirmed · reached only the phone system (the main line, the voicemail box); no one was shown as rung')
+  assert.doesNotMatch(line, /hung up|abandon|missed/i)
+})

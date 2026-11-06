@@ -353,3 +353,31 @@ test('real shape: a queue-only call RingCentral logs as Missed with no reason st
   assert.equal(c.classification, 'unknown')
   assert.deepEqual(c.notAnsweredBy, [])
 })
+
+// What a not-confirmed call did reach, stated as a fact about the record,
+// never as a classification.
+import { systemOnlyPlaces } from './callEvidence.js'
+
+test('a call that reached only the phone system lists those places', () => {
+  const c = classify(record([
+    leg(0, LINE, null, { legType: 'Accept', master: true, result: 'Missed' }),
+    leg(0, { extensionId: '9005', extensionNumber: '5', name: 'Office voicemail' }, null, { legType: 'Accept', result: 'Missed' }),
+  ], { result: 'Missed' }), dir([...DIRECTORY.byId.values(), { id: '9005', number: '5', name: 'Office voicemail', type: 'Voicemail' }]))
+  assert.equal(c.classification, 'unknown')
+  assert.deepEqual(systemOnlyPlaces(c), ['the main line', 'the voicemail box'])
+})
+
+test('a queue counts as the phone system; a person or an unplaced extension does not', () => {
+  const q = classify(record([leg(0, LINE, null, { master: true }), leg(0, QUEUE, null, { result: 'Missed' })], { result: 'Missed' }))
+  assert.deepEqual(systemOnlyPlaces(q), ['the main line', 'the Front desk queue call queue'])
+  const p = classify(record([leg(0, LINE, null, { master: true }), leg(2, YOLETTY, null, { result: 'Missed' })], { result: 'Missed' }))
+  assert.equal(systemOnlyPlaces(p), null)
+  const u = classify(record([leg(0, LINE, null, { master: true }), leg(2, { extensionId: '77', extensionNumber: '7' }, null)], { result: 'Missed' }))
+  assert.equal(systemOnlyPlaces(u), null, 'an extension the directory cannot place may be a person')
+})
+
+test('only for not-confirmed calls with steps', () => {
+  const a = classify(record([leg(0, LINE, null, { master: true }), leg(2, YOLETTY, 'Accepted')]))
+  assert.equal(systemOnlyPlaces(a), null)
+  assert.equal(systemOnlyPlaces(null), null)
+})

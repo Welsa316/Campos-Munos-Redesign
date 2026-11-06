@@ -305,6 +305,36 @@ function dedupePeople(steps) {
   return out
 }
 
+// Non-person extension types, as places a caller can reach.
+const SYSTEM_PLACE = {
+  Voicemail: () => 'the voicemail box',
+  IvrMenu: (n) => (n ? `the ${n} menu` : 'a phone menu'),
+  Department: (n) => (n ? `the ${n} call queue` : 'a call queue'),
+  Announcement: (n) => (n ? `the ${n} announcement` : 'an announcement'),
+}
+
+/**
+ * For a call the evidence cannot settle: when every step RingCentral recorded
+ * went to the phone system (the line dialled, a queue, a menu, a voicemail
+ * box) and none to a person, the places it reached; otherwise null. A fact
+ * about the record, not a classification: it says nothing about how the call
+ * ended, only that no step shows anyone being rung.
+ */
+export function systemOnlyPlaces(evidence) {
+  if (!evidence || evidence.classification !== 'unknown' || !Array.isArray(evidence.steps) || !evidence.steps.length) return null
+  const places = []
+  for (const s of evidence.steps) {
+    const to = s.to || {}
+    let place
+    if (to.kind === 'line') place = 'the main line'
+    else if (to.kind === 'none') continue
+    else if (to.kind === 'extension' && to.person === false) place = (SYSTEM_PLACE[to.type] || ((n) => (n ? `the ${n} extension` : 'a system extension')))(to.name)
+    else return null // a person, an extension that cannot be placed, a forward, the caller
+    if (!places.includes(place)) places.push(place)
+  }
+  return places.length ? places : null
+}
+
 export const CLASSIFICATIONS = Object.freeze(['answered', 'not_answered', 'caller_hung_up', 'voicemail', 'system', 'unknown'])
 // Proven not answered by anyone: these are the missed calls that need a
 // callback. 'unknown' is never counted as missed (nothing proves it was), and
