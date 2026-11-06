@@ -1,7 +1,7 @@
 // Reading RingCentral call log records, without a database.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { classifyOutcome, isGenericCallerId, normalizeRecord } from './callLog.js'
+import { classifyOutcome, isGenericCallerId, normalizeRecord, groupEpisodes, followUpDecision } from './callLog.js'
 
 test('outcomes: answered, missed, voicemail; outgoing connected or not', () => {
   assert.equal(classifyOutcome('inbound', 'Accepted'), 'answered')
@@ -72,4 +72,63 @@ test('exclusion reasons agree across the API, the database and the portal', asyn
   const checks = [...INTEGRATIONS_SCHEMA_SQL.matchAll(/reason IN \(([^)]*)\)/g)].map((m) => m[1].match(/'([^']+)'/g).map((q) => q.slice(1, -1)))
   assert.equal(checks.length, 2, 'rc_call_exclusions and rc_ignored_numbers')
   for (const c of checks) assert.deepEqual(c, [...EXCLUSION_REASONS])
+})
+
+// --- callback episodes and the follow-up decision ----------------------------------
+
+const openRow = (over) => ({
+  id: 1, direction: 'inbound', is_internal: false, is_primary: true, classification: 'not_answered', counterpart_key: '5045550101',
+  counterpart_number: '+15045550101', started_at: '2026-11-03T15:00:00Z', needs_attention: true, episode_after: null, episode_tries: 0,
+  classification_evidence: { offeredTo: [{ kind: 'extension', extensionId: '9102', name: 'Ciro' }] }, ...over,
+})
+const NOON = new Date('2026-11-04T18:00:00Z')
+
+test('episodes: open calls from one number group, oldest first, named by the first call', () => {
+  const eps = groupEpisodes([
+    openRow({ id: 3, started_at: '2026-11-04T15:00:00Z' }),
+    openRow({ id: 1, started_at: '2026-11-02T15:15:00Z', episode_tries: 2, attempt_at: '2026-11-04T16:00:00Z' }),
+    openRow({ id: 2, started_at: '2026-11-03T16:05:00Z' }),
+  ], { now: NOON })
+  assert.equal(eps.length, 1)
+  assert.deepEqual(eps[0].callIds, [1, 2, 3])
+  assert.equal(eps[0].id, 1)
+  assert.equal(eps[0].latestCallId, 3)
+  assert.equal(eps[0].attempts, 3)
+  assert.equal(eps[0].callbackAttempts, 2, 'counted from the first call')
+  assert.equal(eps[0].attentionGroup, 'waiting')
+  assert.deepEqual(eps[0].offeredTo.map((p) => p.name), ['Ciro'])
+})
+
+test('episodes: something that closed the earlier calls splits them; withheld numbers never group', () => {
+  const eps = groupEpisodes([
+    openRow({ id: 1 }),
+    openRow({ id: 2, started_at: '2026-11-04T15:00:00Z', episode_after: '2026-11-03T20:00:00Z' }),
+    openRow({ id: 3, counterpart_key: '', counterpart_number: null }),
+    openRow({ id: 4, counterpart_key: '', counterpart_number: null }),
+  ], { now: NOON })
+  assert.deepEqual(eps.map((e) => e.callIds), [[1], [2], [3], [4]])
+  assert.equal(eps[1].attentionGroup, 'new')
+  // Today's first call, with a callback tried since: try again.
+  assert.equal(groupEpisodes([openRow({ started_at: '2026-11-04T15:00:00Z', episode_tries: 1 })], { now: NOON })[0].attentionGroup, 'try_again')
+  assert.equal(groupEpisodes([openRow({})], { kind: 'review', now: NOON })[0].attentionGroup, null)
+})
+
+test('follow-up decision: kept apart from the classification', () => {
+  const d = (over) => followUpDecision(openRow(over))
+  assert.equal(d({}), 'confirmed_unanswered')
+  for (const c of ['caller_hung_up', 'ended_before_ringing', 'voicemail']) assert.equal(d({ classification: c }), 'confirmed_unanswered', c)
+  assert.equal(d({ classification: 'answered' }), 'confirmed_answered')
+  assert.equal(d({ classification: 'unknown' }), 'review')
+  assert.equal(d({ classification: 'unknown', connected_followup_at: '2026-11-04T16:00:00Z' }), 'resolved')
+  assert.equal(d({ handled_at: '2026-11-04T16:00:00Z' }), 'resolved')
+  assert.equal(d({ excluded_kind: 'call' }), 'resolved')
+  assert.equal(d({ connected_followup_at: '2026-11-04T16:00:00Z' }), 'resolved')
+  // Nothing to do: withheld, phone system, not classified, outgoing, internal, a duplicate record.
+  assert.equal(d({ counterpart_key: '' }), 'not_actionable')
+  assert.equal(d({ classification: 'unknown', counterpart_key: '' }), 'not_actionable')
+  assert.equal(d({ classification: 'system' }), 'not_actionable')
+  assert.equal(d({ classification: null }), 'not_actionable')
+  assert.equal(d({ direction: 'outbound', classification: null }), 'not_actionable')
+  assert.equal(d({ is_internal: true }), 'not_actionable')
+  assert.equal(d({ is_primary: false }), 'not_actionable')
 })

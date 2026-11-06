@@ -14,6 +14,11 @@
 //                          callback, or count it again (calls.exclude)
 //   POST|DELETE /api/calls/:id/handled  dealt with another way, or reopened
 //                          (calls.exclude)
+//   POST /api/calls/episodes/handled  { callIds, note }: every call of one
+//                          callback episode handled (calls.exclude)
+//   POST /api/calls/episodes/reopen   { callIds }: undo that (calls.exclude)
+//   GET|POST /api/calls/handled/bulk  Clear the list (calls.clear); review=1
+//                          includes the review group's calls
 //   GET|PUT /api/calls/ringout/me       the phone RingCentral rings for me first
 //   POST    /api/calls/ringout          call a number (RingOut; calls.place)
 //   GET|DELETE /api/calls/ringout/:id   progress / cancel (own calls only)
@@ -24,9 +29,9 @@ import requireAuth from '../middleware/auth.js'
 import requireCapability, { can } from '../middleware/requireCapability.js'
 import { loadRingCentralConfig } from '../integrations/ringcentral/config.js'
 import { getConnectionStatus } from '../integrations/ringcentral/service.js'
-import { queryCalls, syncCallLog, getSyncState, summarizeMissed, OUTCOME_FILTERS, callEvidence, listPeople, callKpis, callsStamp, openCallKeys } from '../integrations/ringcentral/callLog.js'
+import { queryCalls, syncCallLog, getSyncState, summarizeMissed, OUTCOME_FILTERS, callEvidence, listPeople, callKpis, callsStamp, openCalls } from '../integrations/ringcentral/callLog.js'
 import { UNANSWERED_CLASSES } from '../integrations/ringcentral/callEvidence.js'
-import { excludeCall, includeCall, markHandled, unmarkHandled, clearOpenCalls, undoClear, CallExclusionError } from '../integrations/ringcentral/callExclusions.js'
+import { excludeCall, includeCall, markHandled, unmarkHandled, markEpisodeHandled, reopenEpisode, clearOpenCalls, undoClear, CallExclusionError } from '../integrations/ringcentral/callExclusions.js'
 import { placeRingOut, ringOutStatus, cancelRingOut, getMyPhone, setMyPhone, RingOutError } from '../integrations/ringcentral/ringout.js'
 
 const MANUAL_SYNC_MIN_INTERVAL_MS = 30 * 1000
@@ -74,7 +79,7 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
       // Independent reads run together: each costs a database round trip.
       const withKpis = ['1', 'true'].includes(String(req.query.kpis || ''))
       const [result, people, st, kpis, stamp] = await Promise.all([
-        queryCalls(pool(), { from, to, outcome, q, limit: req.query.limit, businessHours, person }),
+        queryCalls(pool(), { from, to, outcome, q, limit: req.query.limit, businessHours, person, now: n }),
         listPeople(pool()),
         status(req),
         withKpis ? callKpis(pool(), { now: n }) : null,
@@ -165,7 +170,8 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
 
   router.post('/:id(\\d{1,15})/exclusion', exclude, exclusionWrap(async (req, res) => {
     const b = req.body || {}
-    const out = await excludeCall(pool(), { callId: Number(req.params.id), reason: b.reason, note: b.note, scope: b.scope, accountId: req.account.id })
+    // callIds: the rest of the call's callback episode, marked with it.
+    const out = await excludeCall(pool(), { callId: Number(req.params.id), callIds: b.callIds, reason: b.reason, note: b.note, scope: b.scope, accountId: req.account.id })
     req.log?.info({ call: out.callId, scope: out.scope, reason: out.reason }, 'Missed call marked as needing no callback')
     res.json(out)
   }))
@@ -186,6 +192,14 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
     res.json(await unmarkHandled(pool(), { callId: Number(req.params.id) }))
   }))
 
+  // One person's callback episode at once: the ids the page listed for it.
+  router.post('/episodes/handled', exclude, exclusionWrap(async (req, res) => {
+    res.json(await markEpisodeHandled(pool(), { callIds: req.body?.callIds, note: req.body?.note, accountId: req.account.id }))
+  }))
+  router.post('/episodes/reopen', exclude, exclusionWrap(async (req, res) => {
+    res.json(await reopenEpisode(pool(), { callIds: req.body?.callIds }))
+  }))
+
   // Clear the list: every open call received before `before` (default now)
   // marked handled at once, with one note. Administrators only (calls.clear).
   const clear = requireCapability('calls.clear')
@@ -194,16 +208,19 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
     const d = new Date(v)
     return Number.isNaN(d.getTime()) ? null : d
   }
-  // How many it would clear, for the confirmation.
+  const flag = (v) => v === true || ['1', 'true'].includes(String(v ?? ''))
+  // How many it would clear, for the confirmation: calls, the people they
+  // are from, and the review group's calls (cleared only when asked).
   router.get('/handled/bulk', clear, exclusionWrap(async (req, res) => {
     const before = cutoff(req.query.before)
     if (!before) return res.status(400).json({ error: 'Invalid date', code: 'invalid_date' })
-    res.json({ count: (await openCallKeys(pool(), { before, now: clock() })).length })
+    const open = await openCalls(pool(), { before, now: clock(), review: flag(req.query.review) })
+    res.json({ count: open.keys.length, people: open.people, review: open.review })
   }))
   router.post('/handled/bulk', clear, exclusionWrap(async (req, res) => {
     const before = cutoff(req.body?.before)
     if (!before) return res.status(400).json({ error: 'Invalid date', code: 'invalid_date' })
-    const out = await clearOpenCalls(pool(), { before, note: req.body?.note, accountId: req.account.id, now: clock() })
+    const out = await clearOpenCalls(pool(), { before, note: req.body?.note, accountId: req.account.id, now: clock(), review: flag(req.body?.review) })
     req.log?.info({ cleared: out.cleared, batch: out.batch }, 'Needs attention cleared')
     res.json(out)
   }))

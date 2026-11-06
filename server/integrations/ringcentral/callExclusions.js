@@ -29,12 +29,46 @@ async function loadCall(db, callId) {
   return call
 }
 
+// Up to this many calls in one episode action: far more than any one
+// person's unanswered calls, few enough to check one by one.
+const MAX_EPISODE_CALLS = 200
+
+/**
+ * The calls of one callback episode, as the page listed them: ids, checked
+ * to be calls nobody answered from one number (or a single call). Throws
+ * when any is missing or does not qualify.
+ */
+async function loadEpisode(db, callIds) {
+  const ids = Array.isArray(callIds) ? [...new Set(callIds.map(Number))] : []
+  if (!ids.length || ids.length > MAX_EPISODE_CALLS || !ids.every((n) => Number.isSafeInteger(n) && n > 0)) {
+    throw new CallExclusionError('invalid_calls', 'Choose the calls to mark')
+  }
+  const calls = (await db.query(
+    'SELECT id, call_key, direction, outcome, classification, counterpart_key, is_internal FROM rc_calls WHERE id = ANY($1::bigint[])',
+    [ids]
+  )).rows
+  if (calls.length !== ids.length) throw new CallExclusionError('not_found', 'Call not found', 404)
+  for (const call of calls) {
+    const open = call.classification ? call.classification !== 'answered' : ['missed', 'voicemail'].includes(call.outcome)
+    if (call.direction !== 'inbound' || !open || call.is_internal) {
+      throw new CallExclusionError('not_unanswered', 'Only calls nobody answered can be marked', 409)
+    }
+  }
+  // One person's calls only: a withheld number is never grouped.
+  if (calls.length > 1 && (!calls[0].counterpart_key || calls.some((c) => c.counterpart_key !== calls[0].counterpart_key))) {
+    throw new CallExclusionError('mixed_numbers', 'These calls are not from one number', 409)
+  }
+  return calls
+}
+
 /**
  * Mark a missed call or voicemail as needing no callback.
- * scope 'call': this call only. scope 'number': every call from its number,
- * past and future. Marking again replaces the reason and note.
+ * scope 'call': this call only, or with `callIds` every call of its callback
+ * episode (each one marked on its own, so each can be counted again).
+ * scope 'number': every call from its number, past and future. Marking
+ * again replaces the reason and note.
  */
-export async function excludeCall(db, { callId, reason, note, scope = 'call', accountId }) {
+export async function excludeCall(db, { callId, callIds = null, reason, note, scope = 'call', accountId }) {
   if (!EXCLUSION_REASONS.includes(reason)) throw new CallExclusionError('invalid_reason', 'Choose why this call needs no callback')
   if (scope !== 'call' && scope !== 'number') throw new CallExclusionError('invalid_scope', 'Invalid scope')
   const text = typeof note === 'string' ? note.trim().slice(0, NOTE_MAX) : ''
@@ -56,11 +90,17 @@ export async function excludeCall(db, { callId, reason, note, scope = 'call', ac
       [call.counterpart_key, call.counterpart_number, reason, text || null, accountId]
     )
   } else {
+    let ids = [Number(call.id)]
+    if (Array.isArray(callIds) && callIds.length) {
+      const episode = await loadEpisode(db, [...callIds, call.id])
+      ids = episode.map((c) => Number(c.id))
+    }
     await db.query(
-      `INSERT INTO rc_call_exclusions (call_id, reason, note, created_by) VALUES ($1, $2, $3, $4)
+      `INSERT INTO rc_call_exclusions (call_id, reason, note, created_by) SELECT id, $2, $3, $4 FROM unnest($1::bigint[]) AS id
        ON CONFLICT (call_id) DO UPDATE SET reason = EXCLUDED.reason, note = EXCLUDED.note, created_by = EXCLUDED.created_by, created_at = NOW()`,
-      [call.id, reason, text || null, accountId]
+      [ids, reason, text || null, accountId]
     )
+    if (ids.length > 1) return { callId: Number(call.id), callIds: ids, scope, reason }
   }
   return { callId: Number(call.id), scope, reason }
 }
@@ -83,7 +123,7 @@ export async function includeCall(db, { callId }) {
   return { callId: Number(call.id), removedCall: own.rowCount > 0, removedNumber: byNumber.rowCount > 0 }
 }
 
-export default { excludeCall, includeCall, markHandled, unmarkHandled, EXCLUSION_REASONS }
+export default { excludeCall, includeCall, markHandled, unmarkHandled, markEpisodeHandled, reopenEpisode, EXCLUSION_REASONS }
 
 // --- handled: dealt with another way ----------------------------------------------
 
@@ -120,16 +160,47 @@ export async function unmarkHandled(db, { callId }) {
 }
 
 /**
+ * Mark every call of one callback episode handled (Needs attention → Handled
+ * on a person's row): one mark per call, as if each were marked on its own,
+ * so the per-call counts and "Handled today" stay per call. A call someone
+ * else marked meanwhile keeps their mark. Returns the ids this marked, which
+ * is what Undo reopens.
+ */
+export async function markEpisodeHandled(db, { callIds, note, accountId }) {
+  const calls = await loadEpisode(db, callIds)
+  const text = typeof note === 'string' ? note.trim().slice(0, NOTE_MAX) : ''
+  const r = await db.query(
+    `INSERT INTO rc_call_resolutions (call_key, note, created_by)
+     SELECT DISTINCT k, $2::text, $3::int FROM unnest($1::text[]) AS k
+     ON CONFLICT (call_key) DO NOTHING RETURNING call_key`,
+    [calls.map((c) => c.call_key), text || null, accountId]
+  )
+  const marked = new Set(r.rows.map((x) => x.call_key))
+  return { handled: true, callIds: calls.filter((c) => marked.has(c.call_key)).map((c) => Number(c.id)) }
+}
+
+/** Undo marking an episode handled: those calls go back to Needs attention. A bulk clear is left alone. */
+export async function reopenEpisode(db, { callIds }) {
+  const calls = await loadEpisode(db, callIds)
+  const r = await db.query(
+    'DELETE FROM rc_call_resolutions WHERE batch_id IS NULL AND call_key = ANY($1::text[])',
+    [calls.map((c) => c.call_key)]
+  )
+  return { removed: r.rowCount }
+}
+
+/**
  * Mark every call Needs attention lists (received before `before`) as
  * handled in one batch, with one note: for clearing the list after a fix
- * to the phone system's routing made the old calls moot. Classification and
+ * to the phone system's routing made the old calls moot. `review`: the
+ * review group's calls too (by default they stay). Classification and
  * attribution are untouched, the batch is not counted as "Handled today",
  * and it can be undone as one.
  */
-export async function clearOpenCalls(db, { before = new Date(), note, accountId, now = new Date() }) {
+export async function clearOpenCalls(db, { before = new Date(), note, accountId, now = new Date(), review = false }) {
   const text = typeof note === 'string' ? note.trim().slice(0, NOTE_MAX) : ''
   if (!text) throw new CallExclusionError('note_required', 'Say why these calls are being cleared', 400)
-  const keys = await openCallKeys(db, { before, now })
+  const keys = await openCallKeys(db, { before, now, review })
   if (!keys.length) return { cleared: 0, batch: null }
   const batch = crypto.randomUUID()
   const r = await db.query(
