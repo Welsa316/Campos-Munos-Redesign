@@ -13,6 +13,8 @@ import { clientKey } from '../httpSecurity.js'
 import { emailConfigProblems } from '../utils/emailConfig.js'
 import { sha256Hex, digestsEqual } from '../integrations/secretBox.js'
 import { notifyNewLead } from '../push/leadAlerts.js'
+import { verifyTestToken } from '../testChannel/token.js'
+import { storeTestSubmission, notifyTestSender } from '../testChannel/store.js'
 
 const router = Router()
 
@@ -101,6 +103,54 @@ const honeypot = (req, res, next) => {
   return res.status(201).json({ created_at: new Date().toISOString() })
 }
 
+// A validated form body, cleaned the way it is stored.
+function submittedFields(b) {
+  return {
+    firstName: stripHtml(b.firstName),
+    lastName: stripHtml(b.lastName),
+    email: b.email,
+    phone: stripHtml(b.phone),
+    // Optional fields on the contact form — coerce to the columns' NOT NULL defaults
+    // ('' for message/location, 'other' for consultation_type per its CHECK constraint).
+    message: stripHtml(b.message || ''),
+    source: b.source === 'chat' ? 'chat' : 'contact',
+    consultationType: b.consultationType || 'other',
+    location: stripHtml(b.location || ''),
+  }
+}
+
+const TEST_LINK_INVALID = { error: 'This test link has expired or is not valid. Get a new one from the Test channel.', code: 'test_link_invalid' }
+
+async function handleTestSubmission(req, res) {
+  const account = await verifyTestToken(getPool(), req.body.testToken)
+  if (!account) return res.status(400).json(TEST_LINK_INVALID)
+  const fields = submittedFields(req.body)
+  const stored = await storeTestSubmission(getPool(), fields, { sentBy: account.id })
+  const out = { id: stored.id, created_at: stored.created_at, test: true }
+  if (fields.source === 'chat' && stored.chat_token) out.chat_token = stored.chat_token
+  res.status(201).json(out)
+  if (stored.duplicate) return
+  notifyTestSender(getPool(), { accountId: account.id, testId: stored.id, source: fields.source })
+    .catch((err) => req.log.warn({ err, testId: stored.id }, 'Test form notification failed'))
+}
+
+async function handleTestChatMessage(req, res) {
+  const account = await verifyTestToken(getPool(), req.body.testToken)
+  if (!account) return res.status(400).json(TEST_LINK_INVALID)
+  const sub = (await getPool().query(
+    "SELECT id, chat_token FROM test_submissions WHERE id = $1 AND source = 'chat'", [req.params.id]
+  )).rows[0]
+  if (!sub) return res.status(404).json({ error: 'Chat session not found' })
+  if (!sub.chat_token || !digestsEqual(sha256Hex(sub.chat_token), sha256Hex(req.body.chatToken))) {
+    return res.status(403).json({ error: 'Invalid chat session' })
+  }
+  const row = (await getPool().query(
+    'INSERT INTO test_chat_messages (test_submission_id, body) VALUES ($1, $2) RETURNING id, body, sent_at',
+    [sub.id, stripHtml(req.body.body)]
+  )).rows[0]
+  res.status(201).json({ ...row, test: true })
+}
+
 // Public — contact form submission
 router.post(
   '/',
@@ -118,19 +168,19 @@ router.post(
   body('location').optional({ values: 'falsy' }).trim().matches(COUNTRY_CODE_REGEX).withMessage('Invalid country'),
   // Shared with the browser pixel so OpenAI deduplicates the two lead_created events.
   body('conversionEventId').optional({ values: 'falsy' }).isUUID().withMessage('Invalid conversion event id'),
+  // The administrator's test link (testChannel/token.js). Checked after all
+  // of the above, so a test goes through the same validation as a lead.
+  body('testToken').optional({ values: 'falsy' }).isString().isLength({ max: 200 }).withMessage('Invalid test link'),
   validate,
   async (req, res) => {
     try {
-      const firstName = stripHtml(req.body.firstName)
-      const lastName = stripHtml(req.body.lastName)
-      const email = req.body.email
-      const phone = stripHtml(req.body.phone)
-      // Optional fields on the contact form — coerce to the columns' NOT NULL defaults
-      // ('' for message/location, 'other' for consultation_type per its CHECK constraint).
-      const message = stripHtml(req.body.message || '')
-      const source = req.body.source === 'chat' ? 'chat' : 'contact'
-      const consultationType = req.body.consultationType || 'other'
-      const location = stripHtml(req.body.location || '')
+      // A test form: kept in the test channel, never in the inbox; no office
+      // email, no staff notification, no conversion. A token that does not
+      // check out is refused rather than stored as a lead, so a stale test
+      // link never turns into one.
+      if (req.body.testToken) return await handleTestSubmission(req, res)
+
+      const { firstName, lastName, email, phone, message, source, consultationType, location } = submittedFields(req.body)
 
       const duplicate = (await getPool().query(
         `SELECT id, created_at, chat_token FROM submissions
@@ -355,8 +405,18 @@ router.post(
   param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid session ID'),
   body('body').trim().notEmpty().isLength({ max: 5000 }).withMessage('Message is required (max 5000 chars)'),
   body('chatToken').isString().isLength({ min: 16, max: 64 }).withMessage('Valid chat token is required'),
+  body('testToken').optional({ values: 'falsy' }).isString().isLength({ max: 200 }).withMessage('Invalid test link'),
   validate,
   async (req, res) => {
+    // A follow-up in a test chat: the id is a test channel id, not a lead's.
+    if (req.body.testToken) {
+      try {
+        return await handleTestChatMessage(req, res)
+      } catch (err) {
+        req.log.error({ err }, 'Test chat message error')
+        return res.status(500).json({ error: 'Failed to send message. Please try again.' })
+      }
+    }
     const pool = getPool()
     let client
     try {

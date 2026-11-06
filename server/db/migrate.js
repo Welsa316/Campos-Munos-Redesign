@@ -13,6 +13,7 @@ import { applyIntegrationsSchema } from './integrationsSchema.js'
 import { applyPushSchema } from './pushSchema.js'
 import { seedReminderDefaults } from '../billing/reminderModel.js'
 import { applyContactsSchema } from './contactsSchema.js'
+import { applyTestChannelSchema } from './testChannelSchema.js'
 
 async function migrate() {
   const pool = getPool()
@@ -181,6 +182,9 @@ async function migrate() {
     await applyContactsSchema(client)
     // Desktop notifications (Web Push). Needs admin_users.
     await applyPushSchema(client)
+    // The administrator's test channel (test forms kept apart from leads).
+    // Needs admin_users.
+    await applyTestChannelSchema(client)
     logger.info('Migration complete — tables created.')
   } finally {
     client.release()
