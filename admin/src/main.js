@@ -5,6 +5,7 @@ import { startFontAwesome } from './icons.js'
 import './style.css'
 import { applyTheme, cachedTheme, DEFAULT_THEME } from './data/themes.js'
 import { renderError } from './composables/appStatus.js'
+import { listenForNotificationClicks } from './utils/push.js'
 
 // Theme before the first paint: the last one this browser showed (replaced
 // by the account's saved theme as soon as the profile loads), else Classic.
@@ -17,5 +18,7 @@ app.config.errorHandler = (err) => {
   console.error(err)
 }
 app.use(router).mount('#app')
+// A desktop notification clicked while the portal is open moves it in place.
+listenForNotificationClicks(router)
 
 startFontAwesome()
