@@ -4,11 +4,16 @@
 //
 //   GET  /api/calls        calls in a time range, with counts and import status
 //                          (businessHours=1: Mon–Fri 9–5 New Orleans time only)
+//   GET  /api/calls/changes a stamp that moves when anything on the page changes
+//   GET  /api/calls/:id/evidence  one call's steps, facts and live timeline
+//                          (each live party has a partyId unique in the call)
 //   GET  /api/calls/summary unanswered business-hours calls, last 30 days
 //   POST /api/calls/sync   import now (at most every 30 seconds; otherwise the
 //                          last result is returned)
 //   POST|DELETE /api/calls/:id/exclusion  mark a missed call as needing no
 //                          callback, or count it again (calls.exclude)
+//   POST|DELETE /api/calls/:id/handled  dealt with another way, or reopened
+//                          (calls.exclude)
 //   GET|PUT /api/calls/ringout/me       the phone RingCentral rings for me first
 //   POST    /api/calls/ringout          call a number (RingOut; calls.place)
 //   GET|DELETE /api/calls/ringout/:id   progress / cancel (own calls only)
