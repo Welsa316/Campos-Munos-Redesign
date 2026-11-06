@@ -37,5 +37,27 @@ wake from sleep, network back and window focus, using the window's sign-in
 cookie. Signed out, it checks once a minute; on network errors it backs off to
 at most every 5 minutes. When the app is fully quit, nothing arrives.
 
+When notifications stop, the app says so: the tray tooltip and menu read
+"Signed out" or "Can't reach the portal" (after three failed checks in a row),
+the Dock icon gets a badge, and a session that ends while signed in posts one
+"Signed out of Campos Muños" notification. If the portal can't load at all,
+the window shows a "Can't reach the portal" page and retries every 15 seconds
+and as soon as the network comes back.
+
+## Security settings
+
+- The window is sandboxed with context isolation and no Node; the preload
+  exposes only `window.campos = { desktop: true, version }`, and there is no IPC.
+- Electron fuses (`build.electronFuses`): cookies are encrypted with the macOS
+  Keychain / Windows DPAPI; `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS` and
+  `--inspect` are ignored; the app only loads its own integrity-checked
+  `app.asar`. A sign-in saved by an older build stays readable but is only
+  stored encrypted once it is written again, so sign out and back in once
+  after updating. Cookie encryption cannot be turned off again later without
+  losing every saved sign-in.
+- `CM_PORTAL_URL` / `CM_API_URL` only work when running from source
+  (`npm start`, `npm run start:local`); an installed app always uses the
+  production portal and API.
+
 There is no auto-update for the shell: install the new version over the old
 one. The portal inside it is always the live site.
