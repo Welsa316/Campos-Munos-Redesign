@@ -13,6 +13,7 @@ import { clientKey } from '../httpSecurity.js'
 import { emailConfigProblems } from '../utils/emailConfig.js'
 import { sha256Hex, digestsEqual } from '../integrations/secretBox.js'
 import { notifyNewLead } from '../push/leadAlerts.js'
+import { closeResolvedReminders } from '../reminders/reminders.js'
 
 const router = Router()
 
@@ -481,6 +482,11 @@ router.patch(
 
       if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Submission not found' })
+      }
+      // An archived lead needs nobody: its callback reminders close.
+      if (result.rows[0].is_archived) {
+        await closeResolvedReminders(getPool(), { submissionId: result.rows[0].id })
+          .catch((err) => req.log.warn({ err: { name: err?.name, code: err?.code } }, 'Closing reminders on an archived lead failed'))
       }
 
       res.json(result.rows[0])

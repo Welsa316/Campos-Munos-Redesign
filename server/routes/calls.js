@@ -32,6 +32,7 @@ import { getConnectionStatus } from '../integrations/ringcentral/service.js'
 import { queryCalls, syncCallLog, getSyncState, summarizeMissed, OUTCOME_FILTERS, callEvidence, listPeople, callKpis, callsStamp, openCalls } from '../integrations/ringcentral/callLog.js'
 import { UNANSWERED_CLASSES } from '../integrations/ringcentral/callEvidence.js'
 import { excludeCall, includeCall, markHandled, unmarkHandled, markEpisodeHandled, reopenEpisode, clearOpenCalls, undoClear, CallExclusionError } from '../integrations/ringcentral/callExclusions.js'
+import { closeResolvedReminders, phoneKeysOf } from '../reminders/reminders.js'
 import { placeRingOut, ringOutStatus, cancelRingOut, getMyPhone, setMyPhone, RingOutError } from '../integrations/ringcentral/ringout.js'
 import { notifyNewMissedCallers } from '../push/missedCallAlerts.js'
 
@@ -171,11 +172,25 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
     }
   }
 
+  // Callback reminders on a caller close once their calls are dealt with
+  // (the worker checks again before sending anything). Never fails the
+  // action itself: the reminder is closed on the next worker run instead.
+  async function closeReminders(req, callIds) {
+    try {
+      const keys = callIds === 'all' ? null : await phoneKeysOf(pool(), callIds)
+      if (keys && !keys.length) return
+      await closeResolvedReminders(pool(), keys ? { phoneKeys: keys } : {})
+    } catch (err) {
+      req.log?.warn({ err: { name: err?.name, code: err?.code } }, 'Closing callback reminders failed')
+    }
+  }
+
   router.post('/:id(\\d{1,15})/exclusion', exclude, exclusionWrap(async (req, res) => {
     const b = req.body || {}
     // callIds: the rest of the call's callback episode, marked with it.
     const out = await excludeCall(pool(), { callId: Number(req.params.id), callIds: b.callIds, reason: b.reason, note: b.note, scope: b.scope, accountId: req.account.id })
     req.log?.info({ call: out.callId, scope: out.scope, reason: out.reason }, 'Missed call marked as needing no callback')
+    await closeReminders(req, [out.callId])
     res.json(out)
   }))
 
@@ -188,7 +203,9 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
   // Dealt with another way (a callback from a mobile, an email): it leaves
   // Needs attention. Same permission as marking a call as needing no callback.
   router.post('/:id(\\d{1,15})/handled', exclude, exclusionWrap(async (req, res) => {
-    res.json(await markHandled(pool(), { callId: Number(req.params.id), note: req.body?.note, accountId: req.account.id }))
+    const out = await markHandled(pool(), { callId: Number(req.params.id), note: req.body?.note, accountId: req.account.id })
+    await closeReminders(req, [out.callId])
+    res.json(out)
   }))
 
   router.delete('/:id(\\d{1,15})/handled', exclude, exclusionWrap(async (req, res) => {
@@ -197,7 +214,9 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
 
   // One person's callback episode at once: the ids the page listed for it.
   router.post('/episodes/handled', exclude, exclusionWrap(async (req, res) => {
-    res.json(await markEpisodeHandled(pool(), { callIds: req.body?.callIds, note: req.body?.note, accountId: req.account.id }))
+    const out = await markEpisodeHandled(pool(), { callIds: req.body?.callIds, note: req.body?.note, accountId: req.account.id })
+    await closeReminders(req, req.body?.callIds)
+    res.json(out)
   }))
   router.post('/episodes/reopen', exclude, exclusionWrap(async (req, res) => {
     res.json(await reopenEpisode(pool(), { callIds: req.body?.callIds }))
@@ -225,6 +244,7 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
     if (!before) return res.status(400).json({ error: 'Invalid date', code: 'invalid_date' })
     const out = await clearOpenCalls(pool(), { before, note: req.body?.note, accountId: req.account.id, now: clock(), review: flag(req.body?.review) })
     req.log?.info({ cleared: out.cleared, batch: out.batch }, 'Needs attention cleared')
+    if (out.cleared) await closeReminders(req, 'all')
     res.json(out)
   }))
   router.delete('/handled/bulk/:batch([0-9a-f-]{36})', clear, exclusionWrap(async (req, res) => {

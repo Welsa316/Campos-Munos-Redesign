@@ -26,6 +26,7 @@ import { createTeamRouter } from './routes/team.js'
 import { createActivityRouter } from './routes/activity.js'
 import { createPushRouter } from './routes/push.js'
 import { createNotificationsRouter } from './routes/notifications.js'
+import { createRemindersRouter } from './routes/reminders.js'
 import { createRingCentralWebhookRouter } from './routes/ringcentralWebhook.js'
 import { activityRecorder } from './activity/recorder.js'
 import {
@@ -155,6 +156,8 @@ export function createApp({ env = process.env, log = logger, beforeFallback, rea
   // Desktop notifications for the signed-in account's own computers.
   app.use('/api/push', createPushRouter({ env, transport: pushTransport }))
   app.use('/api/notifications', createNotificationsRouter())
+  // Callback reminders on callers and website leads (server/reminders/).
+  app.use('/api/reminders', createRemindersRouter())
 
   // API 404s — registered before any frontend fallback so an unknown /api/*
   // path returns JSON instead of a page.

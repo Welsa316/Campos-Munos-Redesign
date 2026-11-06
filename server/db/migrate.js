@@ -13,6 +13,7 @@ import { applyIntegrationsSchema } from './integrationsSchema.js'
 import { applyPushSchema } from './pushSchema.js'
 import { seedReminderDefaults } from '../billing/reminderModel.js'
 import { applyContactsSchema } from './contactsSchema.js'
+import { applyRemindersSchema } from './remindersSchema.js'
 
 async function migrate() {
   const pool = getPool()
@@ -181,6 +182,9 @@ async function migrate() {
     await applyContactsSchema(client)
     // Desktop notifications (Web Push). Needs admin_users.
     await applyPushSchema(client)
+    // Callback reminders (db/remindersSchema.js). Needs admin_users,
+    // submissions and rc_calls.
+    await applyRemindersSchema(client)
     logger.info('Migration complete — tables created.')
   } finally {
     client.release()
