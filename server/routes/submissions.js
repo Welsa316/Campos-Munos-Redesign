@@ -570,6 +570,7 @@ router.post(
   requireCapability('crm.manage'),
   param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid submission ID'),
   body('body').trim().notEmpty().isLength({ max: 10000 }).withMessage('Reply body is required (max 10000 chars)'),
+  body('clientKey').optional({ values: 'null' }).isUUID().withMessage('clientKey must be a UUID'),
   validate,
   async (req, res) => {
     try {
@@ -586,11 +587,27 @@ router.post(
       const submission = subResult.rows[0]
       const replyBody = stripHtml(req.body.body)
 
-      // Save reply to DB first
+      // Save reply to DB first. With a clientKey, a repeat of a send that
+      // already happened inserts nothing and gets the first reply back
+      // (200, duplicate: true) without emailing the client again.
+      const clientKey = req.body.clientKey ?? null
       const replyResult = await getPool().query(
-        'INSERT INTO replies (submission_id, body, sent_by) VALUES ($1, $2, $3) RETURNING id, body, sent_at',
-        [submission.id, replyBody, req.account.id]
+        `INSERT INTO replies (submission_id, body, sent_by, client_key) VALUES ($1, $2, $3, $4)
+         ON CONFLICT (submission_id, client_key) WHERE client_key IS NOT NULL DO NOTHING
+         RETURNING id, body, sent_at`,
+        [submission.id, replyBody, req.account.id, clientKey]
       )
+      if (!replyResult.rows.length) {
+        const existing = (await getPool().query(
+          `SELECT r.id, r.body, r.sent_at, COALESCE(NULLIF(TRIM(u.display_name), ''), split_part(u.email, '@', 1)) AS sent_by_name, s.status
+             FROM replies r JOIN submissions s ON s.id = r.submission_id LEFT JOIN admin_users u ON u.id = r.sent_by
+            WHERE r.submission_id = $1 AND r.client_key = $2`,
+          [submission.id, clientKey]
+        )).rows[0]
+        // In the activity log, so a repeat does not read as a second email.
+        req.activityDetails = { duplicate: true }
+        return res.status(200).json({ ...existing, duplicate: true })
+      }
 
       const reply = { ...replyResult.rows[0], sent_by_name: req.account.name }
       let emailFailed = false
