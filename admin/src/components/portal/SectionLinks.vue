@@ -4,20 +4,21 @@
   <nav aria-label="Portal sections" class="flex items-center gap-1 lg:gap-2">
   <router-link v-for="s in visible" :key="s.key" :to="s.to"
     :class="[LINK, s.admin && adminLinks.length > 1 ? 'hidden lg:flex' : '']"
-    :aria-label="s.label" :title="s.label">
+    :aria-label="linkName(s, updatesNew)" :title="s.label">
     <span class="relative inline-flex">
       <FaIcon :name="s.icon" class="text-xs" />
       <!-- Updates: something changed in the last 48 hours for this account.
            A dot on the icon where it has no label, so nothing beside it is
-           covered; a "New" tag after the label where it has one. -->
+           covered; a "New" tag after the label where it has one. Both take
+           the navigation's own colours (style.css), so they show on the
+           header in every theme. -->
       <span v-if="s.key === 'updates' && updatesNew" :class="unlabelledClass(labelAt)"
-        class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-brand-navy ring-2 ring-white" aria-hidden="true"></span>
+        class="updates-dot absolute -top-1 -right-1 w-2 h-2 rounded-full" data-updates-dot aria-hidden="true"></span>
     </span>
     <!-- Labelled only where this header has room for every action. -->
     <span :class="labelClass(labelAt)">{{ s.label }}</span>
     <span v-if="s.key === 'updates' && updatesNew" :class="labelClass(labelAt)"
-      class="px-1.5 rounded bg-brand-navy text-white text-[10px] font-bold leading-[16px] uppercase tracking-wide" aria-hidden="true">New</span>
-    <span v-if="s.key === 'updates' && updatesNew" class="sr-only">, new</span>
+      class="updates-tag px-1.5 rounded text-[10px] font-bold leading-[16px] uppercase tracking-wide" aria-hidden="true">New</span>
   </router-link>
 
   <!-- Below lg the administrator's own sections share one menu, so a phone
@@ -43,6 +44,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { canAny } from '../../composables/useAuth.js'
 import FaIcon from '../FaIcon.vue'
 import { UPDATES, hasNew } from '../../data/updates.js'
+import { visibleSections, labelClass, unlabelledClass, linkName } from './sectionLinks.js'
 
 const props = defineProps({
   // The section this header belongs to; it is not linked to itself.
@@ -51,36 +53,10 @@ const props = defineProps({
   labelAt: { type: String, default: 'xl' },
 })
 
-// Whole class names, so Tailwind sees them.
-// 'never': icons only (the Messages header, the busiest in the portal).
-const LABEL_AT = { sm: 'hidden sm:inline', lg: 'hidden lg:inline', xl: 'hidden xl:inline', '2xl': 'hidden 2xl:inline', never: 'hidden' }
-const UNLABELLED_AT = { sm: 'sm:hidden', lg: 'lg:hidden', xl: 'xl:hidden', '2xl': '2xl:hidden', never: '' }
-// An unknown value shows icons only rather than every label at once.
-const labelClass = (at) => LABEL_AT[at] ?? LABEL_AT.never
-const unlabelledClass = (at) => UNLABELLED_AT[at] ?? UNLABELLED_AT.never
 const LINK = 'flex items-center gap-2 px-2.5 sm:px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors'
 
-const SECTIONS = [
-  { key: 'home', label: 'Home', icon: 'house', to: { name: 'Home' }, any: [] },
-  // What changed, for everyone (each sees the entries for what they can open).
-  { key: 'updates', label: 'Updates', icon: 'bullhorn', to: { name: 'Updates' }, any: [] },
-  { key: 'messages', label: 'Messages', icon: 'inbox', to: { name: 'Inbox' }, any: ['crm.view'] },
-  { key: 'whatsapp', label: 'WhatsApp', icon: 'comments', to: { name: 'WhatsApp' }, any: ['whatsapp.view'] },
-  // The router moves an account without billing.view to the first billing
-  // tab it may open.
-  { key: 'billing', label: 'Billing', icon: 'file-invoice-dollar', to: { name: 'BillingOverview' }, any: ['billing.view', 'billing.status', 'whatsapp.contacts'] },
-  { key: 'calls', label: 'Calls', icon: 'phone-volume', to: { name: 'Calls' }, any: ['calls.view'] },
-  // Administrators only: connecting RingCentral, accounts, the activity log,
-  // test forms.
-  { key: 'integrations', label: 'Integrations', icon: 'plug', to: { name: 'Integrations' }, any: ['integrations.manage'], admin: true },
-  { key: 'team', label: 'Team', icon: 'users', to: { name: 'Team' }, any: ['team.manage'], admin: true },
-  { key: 'activity', label: 'Activity', icon: 'clock-rotate-left', to: { name: 'Activity' }, any: ['activity.view'], admin: true },
-  { key: 'test-channel', label: 'Test channel', icon: 'flask', to: { name: 'TestChannel' }, any: ['forms.test'], admin: true },
-]
-
-// An empty list means every signed-in account (Home).
 const updatesNew = computed(() => hasNew(UPDATES, canAny))
-const visible = computed(() => SECTIONS.filter((s) => s.key !== props.current && (!s.any.length || canAny(...s.any))))
+const visible = computed(() => visibleSections(props.current, canAny))
 const adminLinks = computed(() => visible.value.filter((s) => s.admin))
 
 const menu = ref(null)
