@@ -7,17 +7,16 @@
 // only says what is left to do about it.
 
 import { who } from './callEvidenceText.js'
-import { FIRM_TIME_ZONE } from '../../utils/firmTime.js'
+import { FIRM_TIME_ZONE, firmDateKey } from '../../utils/firmTime.js'
 
 export const TIME_ZONE = FIRM_TIME_ZONE
 
 const fmt = (opts) => new Intl.DateTimeFormat('en-US', { timeZone: TIME_ZONE, ...opts })
-const KEY = new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' })
 const TIME = fmt({ hour: 'numeric', minute: '2-digit' })
 const DAY = fmt({ weekday: 'short', month: 'short', day: 'numeric' })
 
 /** "2026-11-05" in the firm's time zone. */
-export const dateKey = (d) => KEY.format(new Date(d))
+export const dateKey = firmDateKey
 export const timeOf = (d) => TIME.format(new Date(d))
 
 /** "Today", "Yesterday", or "Tue, Nov 3", in the firm's time zone. */
