@@ -9,3 +9,7 @@ dist/
 *.log
 *.tmp
 *.bak
+
+# Desktop app build output
+desktop/dist/
+desktop/node_modules/
