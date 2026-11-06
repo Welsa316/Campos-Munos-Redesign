@@ -9,7 +9,7 @@ const {
   app, BrowserWindow, Menu, Tray, Notification, clipboard, nativeImage, net, powerMonitor, screen, session, shell,
 } = require('electron')
 
-const { resolveConfig, isPortalUrl, externalUrl, portalPathUrl } = require('./src/urls')
+const { resolveConfig, isPortalUrl, externalUrl, portalPathUrl, isReloadShortcut } = require('./src/urls')
 const { createPoller } = require('./src/poller')
 const { createNotifier } = require('./src/notifier')
 const { createStore, cursorFor } = require('./src/store')
@@ -88,6 +88,11 @@ function createWindow() {
   win.once('ready-to-show', () => win.show())
 
   guardNavigation(win.webContents)
+  // An app, not a browser tab: Cmd/Ctrl+R, Cmd/Ctrl+Shift+R and F5 do nothing
+  // (Help → Reload is there if a page ever gets stuck).
+  win.webContents.on('before-input-event', (event, input) => {
+    if (isReloadShortcut(input)) event.preventDefault()
+  })
   addContextMenu(win.webContents)
 
   // Keep the page title in the title bar, falling back to the app name.
@@ -269,9 +274,6 @@ function buildMenu() {
     {
       label: 'View',
       submenu: [
-        { role: 'reload' },
-        { role: 'forceReload' },
-        { type: 'separator' },
         { role: 'resetZoom' },
         { role: 'zoomIn' },
         { role: 'zoomOut' },
@@ -281,6 +283,8 @@ function buildMenu() {
       ],
     },
     { role: 'windowMenu' },
+    // A way out if a page ever gets stuck, without a browser's shortcut.
+    { role: 'help', submenu: [{ label: 'Reload Campos Muños', click: () => win?.webContents.reload() }] },
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }

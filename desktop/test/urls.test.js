@@ -1,7 +1,7 @@
 'use strict'
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { resolveConfig, isPortalUrl, externalUrl, portalPathUrl } = require('../src/urls')
+const { resolveConfig, isPortalUrl, externalUrl, portalPathUrl, isReloadShortcut } = require('../src/urls')
 
 const PORTAL = 'https://admin.camulaw.com'
 
@@ -39,4 +39,16 @@ test('notification paths stay on the portal', () => {
   for (const bad of ['//evil.com/x', '/\\evil.com', '/\t/evil.com', 'https://evil.com', 'calls', '', null, 42, '/' + 'a'.repeat(600)]) {
     assert.equal(portalPathUrl(bad, PORTAL), null, JSON.stringify(bad))
   }
+})
+
+test('the browser reload keys do nothing in the app; ordinary typing still does', () => {
+  const key = (k, mods = {}) => ({ type: 'keyDown', key: k, ...mods })
+  assert.equal(isReloadShortcut(key('r', { meta: true })), true, 'Cmd+R')
+  assert.equal(isReloadShortcut(key('R', { meta: true, shift: true })), true, 'Cmd+Shift+R')
+  assert.equal(isReloadShortcut(key('r', { control: true })), true, 'Ctrl+R on Windows')
+  assert.equal(isReloadShortcut(key('F5')), true)
+  assert.equal(isReloadShortcut(key('r')), false, 'typing r')
+  assert.equal(isReloadShortcut(key('R', { shift: true })), false, 'typing R')
+  assert.equal(isReloadShortcut(key('r', { meta: true, alt: true })), false)
+  assert.equal(isReloadShortcut({ type: 'keyUp', key: 'r', meta: true }), false)
 })

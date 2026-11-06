@@ -61,4 +61,12 @@ function portalPathUrl(path, portalOrigin) {
   return u.href
 }
 
-module.exports = { resolveConfig, isPortalUrl, externalUrl, portalPathUrl, DEFAULT_PORTAL, DEFAULT_API }
+/** The browser reload keys: Cmd/Ctrl+R (with or without Shift) and F5. */
+function isReloadShortcut(input) {
+  if (!input || input.type !== 'keyDown') return false
+  const key = String(input.key || '').toLowerCase()
+  if (key === 'f5') return true
+  return key === 'r' && Boolean(input.meta || input.control) && !input.alt
+}
+
+module.exports = { resolveConfig, isPortalUrl, externalUrl, portalPathUrl, isReloadShortcut, DEFAULT_PORTAL, DEFAULT_API }
