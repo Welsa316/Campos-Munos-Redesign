@@ -5,6 +5,9 @@
 // handler once the object is garbage collected.
 
 const MAX_UNTAGGED = 20
+// Each tag is its own caller or reminder, so a busy day adds up; the oldest
+// go first (it only means a very old one is not replaced by a newer twin).
+const MAX_TAGGED = 50
 
 /**
  * @param {object} deps
@@ -45,6 +48,7 @@ function createNotifier({ create, onClick }) {
 
     if (tag) {
       byTag.set(tag, n)
+      if (byTag.size > MAX_TAGGED) byTag.delete(byTag.keys().next().value)
     } else {
       untagged.push(n)
       if (untagged.length > MAX_UNTAGGED) untagged.shift()
@@ -56,4 +60,4 @@ function createNotifier({ create, onClick }) {
   return { show, get size() { return byTag.size + untagged.length } }
 }
 
-module.exports = { createNotifier }
+module.exports = { createNotifier, MAX_TAGGED }

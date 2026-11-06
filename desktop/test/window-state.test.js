@@ -27,3 +27,19 @@ test('a tiny saved size is raised to the minimum', () => {
   assert.equal(r.width, MIN_SIZE.width)
   assert.equal(r.height, MIN_SIZE.height)
 })
+
+test('a window saved on a big monitor is cut down to fit the laptop it opens on', () => {
+  // Saved at 2400×1500 on a 27" screen, now opened on the laptop alone.
+  const r = restoreBounds({ x: 50, y: 40, width: 2400, height: 1500 }, laptop)
+  assert.deepEqual(r, { x: 0, y: 25, width: 1512, height: 920, maximized: false })
+})
+
+test('a window hanging off the bottom-right edge is moved back fully on screen', () => {
+  const r = restoreBounds({ x: 900, y: 500, width: 1000, height: 700 }, laptop)
+  assert.deepEqual(r, { x: 512, y: 245, width: 1000, height: 700, maximized: false })
+})
+
+test('off-screen bounds keep a size that fits the screen it will open on', () => {
+  const r = restoreBounds({ x: 5000, y: 100, width: 2400, height: 1500 }, laptop)
+  assert.deepEqual(r, { width: 1512, height: 920, maximized: false })
+})

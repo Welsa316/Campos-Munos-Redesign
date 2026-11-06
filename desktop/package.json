@@ -8,7 +8,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "start:local": "CM_PORTAL_URL=http://localhost:5420 CM_API_URL=http://localhost:3410 electron .",
+    "start:local": "node scripts/start-local.js",
     "test": "node --test \"test/**/*.test.js\"",
     "dist:mac": "electron-builder --mac --universal",
     "dist:win": "electron-builder --win --x64",
@@ -22,6 +22,10 @@
     "appId": "com.camulaw.portal",
     "productName": "Campos Munos",
     "artifactName": "Campos-Munos-${version}-${arch}.${ext}",
+    "electronLanguages": [
+      "en",
+      "es"
+    ],
     "directories": {
       "output": "dist",
       "buildResources": "build"
@@ -44,7 +48,11 @@
       "hardenedRuntime": false,
       "gatekeeperAssess": false,
       "extendInfo": {
-        "CFBundleDisplayName": "Campos Muños"
+        "CFBundleDisplayName": "Campos Muños",
+        "NSCameraUsageDescription": "Campos Muños does not use the camera.",
+        "NSMicrophoneUsageDescription": "Campos Muños does not use the microphone.",
+        "NSBluetoothAlwaysUsageDescription": "Campos Muños does not use Bluetooth.",
+        "NSBluetoothPeripheralUsageDescription": "Campos Muños does not use Bluetooth."
       }
     },
     "dmg": {

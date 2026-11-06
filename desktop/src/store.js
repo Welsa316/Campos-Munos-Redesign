@@ -31,12 +31,38 @@ function createStore(file) {
   }
 }
 
-/** The feed cursor for one API origin, as the poller wants it. */
+const UNKNOWN = '?'
+
+/**
+ * The feed cursor for one API origin, as the poller wants it, kept per
+ * account: whoever signs in on this computer resumes from their own place,
+ * never from someone else's. `account` is the feed's own answer of whose
+ * feed it is: null until it first says (and after a reset), and for an API
+ * too old to say, whose cursor is then kept under UNKNOWN.
+ */
 function cursorFor(store, apiOrigin) {
-  const key = `feedCursor:${apiOrigin}`
+  const key = `feedCursors:${apiOrigin}`
+  const read = () => {
+    const v = store.get(key)
+    const ok = v && typeof v === 'object' && v.byAccount && typeof v.byAccount === 'object' && !Array.isArray(v.byAccount)
+    return ok ? { account: typeof v.account === 'string' ? v.account : null, byAccount: v.byAccount } : { account: null, byAccount: {} }
+  }
   return {
-    get: () => store.get(key) ?? null,
-    set: (value) => store.set(key, value),
+    get() {
+      const s = read()
+      return s.byAccount[s.account ?? UNKNOWN] ?? null
+    },
+    set(value) {
+      const s = read()
+      store.set(key, { account: s.account, byAccount: { ...s.byAccount, [s.account ?? UNKNOWN]: value } })
+    },
+    account: () => read().account,
+    switchTo(account) {
+      const s = read()
+      store.set(key, { account: String(account), byAccount: s.byAccount })
+    },
+    // Signed out: forget every cursor, so nothing about who used the app stays.
+    reset() { store.set(key, { account: null, byAccount: {} }) },
   }
 }
 

@@ -204,3 +204,100 @@ test('against a mock feed server, a restart neither replays nor skips', async (t
   assert.equal(seen[0].origin, 'http://localhost:5420')
   assert.deepEqual(seen.map((s) => s.after), [null, '3', '5'])
 })
+
+// A store-backed cursor in a temp folder, so the per-account bookkeeping is real.
+function diskCursor(t) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cm-cursor-'))
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }))
+  return cursorFor(createStore(path.join(dir, 'settings.json')), 'https://api.example.test')
+}
+
+test('someone else signing in starts from their own place, never from the last person’s', async (t) => {
+  const cursor = diskCursor(t)
+  const { poller, timers, calls, shown } = setup([
+    reply(200, { items: [], cursor: '40', account: '7' }), // Yoletty, first run
+    reply(200, { items: [{ id: '41', title: 'for Yoletty', createdAt: new Date().toISOString() }], cursor: '41', account: '7' }),
+    // Ciro signs in on the same computer. This answer was read against
+    // Yoletty's cursor, so it is thrown away, not shown.
+    reply(200, { items: [{ id: '55', title: 'read against the wrong cursor' }], cursor: '55', account: '9' }),
+    reply(200, { items: [], cursor: '60', account: '9' }), // Ciro's own first call
+    reply(200, { items: [{ id: '61', title: 'for Ciro', createdAt: new Date().toISOString() }], cursor: '61', account: '9' }),
+    // Yoletty again: picks up where she left off.
+    reply(200, { items: [], cursor: '61', account: '7' }),
+    reply(200, { items: [{ id: '42', title: 'for Yoletty, while Ciro used it', createdAt: new Date().toISOString() }], cursor: '42', account: '7' }),
+  ], cursor)
+  poller.start()
+  await settle()
+  for (let i = 0; i < 6; i++) await timers.fire()
+  assert.deepEqual(calls, [null, '40', '41', null, '60', '61', '41'])
+  assert.deepEqual(shown.map((i) => i.title), ['for Yoletty', 'for Ciro', 'for Yoletty, while Ciro used it'])
+  assert.equal(cursor.account(), '7')
+  assert.equal(cursor.get(), '42')
+  poller.stop()
+})
+
+test('an answer that keeps flipping accounts does not spin', async (t) => {
+  const cursor = diskCursor(t)
+  cursor.switchTo('2'); cursor.set('8')
+  cursor.switchTo('1'); cursor.set('5')
+  const as = (a) => reply(200, { items: [], cursor: '9', account: a })
+  const { poller, timers, calls } = setup([as('2'), as('1'), as('2'), as('1')], cursor)
+  poller.start()
+  await settle()
+  await timers.fire()
+  await timers.fire()
+  // One immediate retry after a switch; while it keeps switching, the normal pace.
+  assert.deepEqual(calls, ['5', '8', '5'])
+  assert.deepEqual(timers.delays, [0, NORMAL_MS, NORMAL_MS])
+  poller.stop()
+})
+
+test('signing out forgets every cursor', async (t) => {
+  const cursor = diskCursor(t)
+  cursor.switchTo('7')
+  cursor.set('41')
+  cursor.reset()
+  assert.equal(cursor.account(), null)
+  assert.equal(cursor.get(), null)
+  cursor.switchTo('7')
+  assert.equal(cursor.get(), null, 'not kept under the account either')
+})
+
+test('items older than a day become one "while you were away" notification', async () => {
+  const NOW = Date.parse('2026-11-06T12:00:00Z')
+  const ago = (h) => new Date(NOW - h * 60 * 60 * 1000).toISOString()
+  const old = Array.from({ length: 50 }, (_, i) => ({ id: String(i + 2), title: `old ${i}`, createdAt: ago(48) }))
+  const timers = manualTimers()
+  const shown = []
+  const responses = [
+    reply(200, { items: old, cursor: '51' }),
+    reply(200, { items: [{ id: '52', title: 'old too', createdAt: ago(25) }, { id: '53', title: 'fresh', createdAt: ago(2) }, { id: '54', title: 'no date' }], cursor: '54' }),
+  ]
+  const poller = createPoller({
+    fetchFeed: async () => responses.shift(),
+    cursor: memoryCursor('1'),
+    notify: (item) => shown.push(item),
+    setTimer: timers.setTimer.bind(timers),
+    clearTimer: timers.clearTimer.bind(timers),
+    now: () => NOW,
+  })
+  poller.start()
+  await settle()
+  await timers.fire()
+  assert.deepEqual(shown.map((i) => i.title), ['fresh', 'no date', '51 notifications while you were away'])
+  assert.equal(shown.at(-1).url, '/')
+  poller.stop()
+})
+
+test('the state starts as starting and follows each answer', async () => {
+  const { poller, timers } = setup([reply(401, {}), new Error('offline'), reply(200, { items: [], cursor: '1' })], memoryCursor('1'))
+  assert.equal(poller.state, 'starting')
+  poller.start()
+  await settle()
+  assert.equal(poller.state, 'signed-out')
+  await timers.fire()
+  assert.equal(poller.state, 'error')
+  await timers.fire()
+  assert.equal(poller.state, 'ok')
+  poller.stop()
+})
