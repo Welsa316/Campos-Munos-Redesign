@@ -11,7 +11,6 @@ import { classifyCall, sanitizeRecord, UNANSWERED_CLASSES } from './callEvidence
 const dir = (entries, available = true) => ({
   available,
   byId: new Map(entries.map((e) => [e.id, e])),
-  byNumber: new Map(entries.map((e) => [e.number, e])),
 })
 const DIRECTORY = dir([
   { id: '9101', number: '101', name: 'Yoletty', type: 'User' },

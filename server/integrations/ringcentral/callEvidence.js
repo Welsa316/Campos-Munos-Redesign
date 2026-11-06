@@ -222,7 +222,7 @@ export function readLive(events, directory) {
 /**
  * Classify one call from every RingCentral record of it (the records that
  * share its telephony session) and the extension directory
- * ({ available, byId: Map, byNumber: Map } of { id, number, name, type }).
+ * ({ available, byId: Map } of { id, number, name, type }).
  *
  * Returns { classification, answeredBy, offeredTo, notAnsweredBy, facts,
  * gaps, steps, rcResults, recordCount, version }. classification is null for
@@ -260,11 +260,12 @@ export function classifyCall(records, { direction, directory = null, events = nu
   const offeredTo = []
   for (const s of attempts.filter((x) => isPerson(x) && !x.voicemailMessage && !SYSTEM_REASONS.has(x.reason))) {
     const entry = { extensionId: s.to.id, extension: s.to.number, name: s.to.name, reason: s.reason, at: s.at }
-    const prev = offeredTo.find((o) => (o.extensionId && o.extensionId === entry.extensionId) || (!o.extensionId && o.extension === entry.extension))
+    const prev = offeredTo.find((o) => samePerson(o, entry))
     if (!prev) offeredTo.push(entry)
     else if (entry.reason === 'Accepted' || !prev.reason) Object.assign(prev, entry)
   }
   const notAnsweredBy = attempts.filter((s) => isPerson(s) && NOT_ANSWERED_REASONS.has(s.reason))
+  const noteNotAnswered = () => { for (const s of notAnsweredBy) fact('not_answered_by', s) }
   // Someone is charged with not answering only when the call is proven not
   // answered by anyone; on a call the evidence cannot settle, nobody is.
   // Live events: whose phones were being offered the call, and whether any
@@ -320,7 +321,7 @@ export function classifyCall(records, { direction, directory = null, events = nu
   // 2. Voicemail: a voicemail message is linked to the call.
   const vm = steps.find((s) => s.voicemailMessage)
   if (vm) {
-    for (const s of notAnsweredBy) fact('not_answered_by', s)
+    noteNotAnswered()
     fact('voicemail_message', vm)
     return done('voicemail')
   }
@@ -340,11 +341,12 @@ export function classifyCall(records, { direction, directory = null, events = nu
   //    rung before that is only known when a leg shows it.
   const hangUps = steps.filter((s) => s.reason === 'Hang Up')
   if (hangUps.length) {
-    for (const s of notAnsweredBy) fact('not_answered_by', s)
+    noteNotAnswered()
     for (const s of hangUps) fact('caller_hung_up', s)
     // When the call was seen live to its end, whether anyone was rung first is known.
     let stage = null
-    if (seenToEnd) stage = liveRang.length ? 'while_ringing' : !offeredTo.length ? 'before_ringing' : null
+    if (seenToEnd && liveRang.length) stage = 'while_ringing'
+    else if (seenToEnd && !offeredTo.length) stage = 'before_ringing'
     if (!offeredTo.length && stage !== 'before_ringing') gaps.add('alerting_unknown')
     return done('caller_hung_up', { stage })
   }
@@ -353,11 +355,11 @@ export function classifyCall(records, { direction, directory = null, events = nu
   //    and nothing else took the call: a queue or menu that accepted it may
   //    have passed it to someone the log does not show.
   if (notAnsweredBy.length && (!bySystem.length || (seenToEnd && !liveAnswered.length))) {
-    for (const s of notAnsweredBy) fact('not_answered_by', s)
+    noteNotAnswered()
     return done('not_answered')
   }
   if (notAnsweredBy.length) {
-    for (const s of notAnsweredBy) fact('not_answered_by', s)
+    noteNotAnswered()
     gaps.add('system_accepted')
     return done('unknown')
   }
@@ -387,11 +389,15 @@ export function classifyCall(records, { direction, directory = null, events = nu
   return done('unknown')
 }
 
+// Two entries are the same person: the same extension id, or, without one,
+// the same extension number.
+const samePerson = (a, b) => (a.extensionId && a.extensionId === b.extensionId) || (!a.extensionId && a.extension === b.extension)
+
 function dedupePeople(steps) {
   const out = []
   for (const s of steps) {
-    if (out.some((o) => (o.extensionId && o.extensionId === s.to.id) || (!o.extensionId && o.extension === s.to.number))) continue
-    out.push({ extensionId: s.to.id, extension: s.to.number, name: s.to.name, reason: s.reason })
+    const entry = { extensionId: s.to.id, extension: s.to.number, name: s.to.name, reason: s.reason }
+    if (!out.some((o) => samePerson(o, entry))) out.push(entry)
   }
   return out
 }
@@ -431,5 +437,3 @@ export const CLASSIFICATIONS = Object.freeze(['answered', 'not_answered', 'calle
 // callback. 'unknown' is never counted as missed (nothing proves it was), and
 // 'system' (a blocked number, a network error) needs no callback.
 export const UNANSWERED_CLASSES = Object.freeze(['not_answered', 'caller_hung_up', 'ended_before_ringing', 'voicemail'])
-
-export default { sanitizeRecord, classifyCall, CLASSIFIER_VERSION, PERSON_TYPES, CLASSIFICATIONS, UNANSWERED_CLASSES }

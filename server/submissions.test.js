@@ -180,3 +180,72 @@ test('the list with withTotal=1: the same rows, plus a total that ignores limit 
   const past = await call('GET', '/api/submissions?offset=50&withTotal=1')
   assert.deepEqual(past.json, { rows: [], total: 7 }, 'past the end: no rows, the total still known')
 })
+
+// --- public submissions: flood guards ---------------------------------------
+
+const publicPost = async (path, body) => {
+  const res = await fetch(base + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  return { status: res.status, json: await res.json().catch(() => null) }
+}
+const inquiry = (extra = {}) => ({ firstName: 'Rosa', lastName: 'Prueba', email: 'rosa@example.test', phone: '504-555-0123', message: 'Necesito ayuda con mi caso', ...extra })
+const settleEmails = () => new Promise((r) => setTimeout(r, 150))
+
+test('a form with the hidden field filled in looks sent, but nothing is stored or emailed', { skip: SKIP }, async () => {
+  await db.query('TRUNCATE submissions RESTART IDENTITY CASCADE')
+  const before = emails.length
+  const res = await publicPost('/api/submissions', inquiry({ website: 'http://spam.example' }))
+  assert.equal(res.status, 201)
+  await settleEmails()
+  assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM submissions')).rows[0].n, 0)
+  assert.equal(emails.length, before)
+})
+
+test('the same inquiry sent again within minutes is stored and emailed once', { skip: SKIP }, async () => {
+  await db.query('TRUNCATE submissions RESTART IDENTITY CASCADE')
+  const before = emails.length
+  const first = await publicPost('/api/submissions', inquiry({ website: '' }))
+  const again = await publicPost('/api/submissions', inquiry({ email: 'ROSA@example.test' }))
+  assert.equal(first.status, 201)
+  assert.equal(again.status, 201)
+  assert.equal(again.json.id, first.json.id, 'answered with the first one')
+  const other = await publicPost('/api/submissions', inquiry({ message: 'Otra pregunta distinta' }))
+  assert.notEqual(other.json.id, first.json.id, 'a different message is a new inquiry')
+  await settleEmails()
+  assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM submissions')).rows[0].n, 2)
+  assert.equal(emails.length - before, 2, 'one email per inquiry')
+  // Outside the window it counts again.
+  await db.query("UPDATE submissions SET created_at = NOW() - INTERVAL '11 minutes'")
+  const later = await publicPost('/api/submissions', inquiry())
+  assert.notEqual(later.json.id, first.json.id)
+})
+
+test('a repeated chat start keeps its session; a follow-up needs the exact token', { skip: SKIP }, async () => {
+  await db.query('TRUNCATE submissions RESTART IDENTITY CASCADE')
+  const chat = inquiry({ source: 'chat', consultationType: 'asilo', location: 'HN' })
+  const first = await publicPost('/api/submissions', chat)
+  const again = await publicPost('/api/submissions', chat)
+  assert.equal(again.json.id, first.json.id)
+  assert.equal(again.json.chat_token, first.json.chat_token, 'the widget can carry on with the same session')
+  const token = first.json.chat_token
+  const wrong = token.slice(0, -1) + (token.endsWith('A') ? 'B' : 'A')
+  assert.equal((await publicPost(`/api/submissions/${first.json.id}/chat-message`, { body: 'hola', chatToken: wrong })).status, 403)
+  assert.equal((await publicPost(`/api/submissions/${first.json.id}/chat-message`, { body: 'hola', chatToken: token })).status, 201)
+})
+
+test('unread count: inbox leads not yet read, and the oldest of them', { skip: SKIP }, async () => {
+  await db.query('TRUNCATE submissions RESTART IDENTITY CASCADE')
+  assert.deepEqual((await call('GET', '/api/submissions/unread-count')).json, { count: 0, oldest: null })
+  const day = 24 * 60 * 60 * 1000
+  const oldest = new Date(Date.now() - 3 * day)
+  await lead('Vieja', { createdAt: oldest })
+  await lead('Nueva', { createdAt: new Date(Date.now() - day) })
+  const read = await lead('Leida', { createdAt: new Date(Date.now() - 5 * day) })
+  await db.query('UPDATE submissions SET is_read = true WHERE id = $1', [read])
+  await lead('Archivada', { createdAt: new Date(Date.now() - 9 * day), archived: true })
+  const res = await call('GET', '/api/submissions/unread-count')
+  assert.equal(res.status, 200)
+  assert.deepEqual(res.json, { count: 2, oldest: oldest.toISOString() })
+  // Same gate as the list.
+  const anon = await fetch(`${base}/api/submissions/unread-count`)
+  assert.equal(anon.status, 401)
+})

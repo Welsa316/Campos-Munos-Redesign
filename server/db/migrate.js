@@ -10,6 +10,7 @@ import logger from '../logger.js'
 import { applyBillingSchema } from './billingSchema.js'
 import { applyStaffSchema } from './staffSchema.js'
 import { applyIntegrationsSchema } from './integrationsSchema.js'
+import { seedReminderDefaults } from '../billing/reminderModel.js'
 
 async function migrate() {
   const pool = getPool()
@@ -165,6 +166,9 @@ async function migrate() {
     `)
     // Billing tables (additive; see db/billingSchema.js).
     await applyBillingSchema(client)
+    // The example reminder rules and templates (switched off), where missing,
+    // so reading the reminders page never has to write them.
+    await seedReminderDefaults(client)
     // Roles, capabilities and the WhatsApp inbox (needs admin_users.role,
     // which the billing schema adds).
     await applyStaffSchema(client)

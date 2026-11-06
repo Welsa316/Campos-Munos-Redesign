@@ -4,11 +4,16 @@
 //
 //   GET  /api/calls        calls in a time range, with counts and import status
 //                          (businessHours=1: Mon–Fri 9–5 New Orleans time only)
+//   GET  /api/calls/changes a stamp that moves when anything on the page changes
+//   GET  /api/calls/:id/evidence  one call's steps, facts and live timeline
+//                          (each live party has a partyId unique in the call)
 //   GET  /api/calls/summary unanswered business-hours calls, last 30 days
 //   POST /api/calls/sync   import now (at most every 30 seconds; otherwise the
 //                          last result is returned)
 //   POST|DELETE /api/calls/:id/exclusion  mark a missed call as needing no
 //                          callback, or count it again (calls.exclude)
+//   POST|DELETE /api/calls/:id/handled  dealt with another way, or reopened
+//                          (calls.exclude)
 //   GET|PUT /api/calls/ringout/me       the phone RingCentral rings for me first
 //   POST    /api/calls/ringout          call a number (RingOut; calls.place)
 //   GET|DELETE /api/calls/ringout/:id   progress / cancel (own calls only)
@@ -97,7 +102,7 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
 
   // One call's evidence: every step RingCentral recorded, what each reason
   // means, who it was confirmed offered to, and why it is classified as it is.
-  router.get('/:id(\\d+)/evidence', async (req, res) => {
+  router.get('/:id(\\d{1,15})/evidence', async (req, res) => {
     try {
       const ev = await callEvidence(pool(), Number(req.params.id))
       if (!ev) return res.status(404).json({ error: 'Call not found' })
@@ -158,14 +163,14 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
     }
   }
 
-  router.post('/:id(\\d+)/exclusion', exclude, exclusionWrap(async (req, res) => {
+  router.post('/:id(\\d{1,15})/exclusion', exclude, exclusionWrap(async (req, res) => {
     const b = req.body || {}
     const out = await excludeCall(pool(), { callId: Number(req.params.id), reason: b.reason, note: b.note, scope: b.scope, accountId: req.account.id })
     req.log?.info({ call: out.callId, scope: out.scope, reason: out.reason }, 'Missed call marked as needing no callback')
     res.json(out)
   }))
 
-  router.delete('/:id(\\d+)/exclusion', exclude, exclusionWrap(async (req, res) => {
+  router.delete('/:id(\\d{1,15})/exclusion', exclude, exclusionWrap(async (req, res) => {
     const out = await includeCall(pool(), { callId: Number(req.params.id) })
     req.log?.info({ call: out.callId, removedCall: out.removedCall, removedNumber: out.removedNumber }, 'Missed call counted again')
     res.json(out)
@@ -173,11 +178,11 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
 
   // Dealt with another way (a callback from a mobile, an email): it leaves
   // Needs attention. Same permission as marking a call as needing no callback.
-  router.post('/:id(\\d+)/handled', exclude, exclusionWrap(async (req, res) => {
+  router.post('/:id(\\d{1,15})/handled', exclude, exclusionWrap(async (req, res) => {
     res.json(await markHandled(pool(), { callId: Number(req.params.id), note: req.body?.note, accountId: req.account.id }))
   }))
 
-  router.delete('/:id(\\d+)/handled', exclude, exclusionWrap(async (req, res) => {
+  router.delete('/:id(\\d{1,15})/handled', exclude, exclusionWrap(async (req, res) => {
     res.json(await unmarkHandled(pool(), { callId: Number(req.params.id) }))
   }))
 
@@ -234,7 +239,7 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
   }))
 
   router.put('/ringout/me', place, ringWrap(async (req, res) => {
-    const phone = await setMyPhone(pool(), req.account.id, typeof req.body?.phone === 'string' ? req.body.phone : null)
+    const phone = await setMyPhone(pool(), req.account.id, typeof req.body?.phone === 'string' ? req.body.phone : null, env)
     res.json({ phone })
   }))
 
@@ -246,11 +251,11 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
     res.status(201).json(out)
   }))
 
-  router.get('/ringout/:id(\\d+)', place, ringWrap(async (req, res) => {
+  router.get('/ringout/:id(\\d{1,15})', place, ringWrap(async (req, res) => {
     res.json(await ringOutStatus(pool(), config(), { id: Number(req.params.id), accountId: req.account.id }, deps))
   }))
 
-  router.delete('/ringout/:id(\\d+)', place, ringWrap(async (req, res) => {
+  router.delete('/ringout/:id(\\d{1,15})', place, ringWrap(async (req, res) => {
     res.json(await cancelRingOut(pool(), config(), { id: Number(req.params.id), accountId: req.account.id }, deps))
   }))
 

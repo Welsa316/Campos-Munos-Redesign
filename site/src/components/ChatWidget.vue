@@ -72,6 +72,12 @@
             </div>
 
             <form @submit.prevent="startChat" class="space-y-3">
+              <!-- Left empty by people (they never see it); bots that fill every field
+                   are answered as if sent and nothing is stored (server/routes/submissions.js). -->
+              <div aria-hidden="true" style="position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden;">
+                <label for="chat-website">Website</label>
+                <input id="chat-website" v-model="form.website" type="text" name="website" tabindex="-1" autocomplete="off" />
+              </div>
               <div class="grid grid-cols-2 gap-2">
                 <input v-model="form.firstName" type="text" required maxlength="255"
                   :placeholder="$t('chat.firstName')"
@@ -242,6 +248,7 @@ const form = ref({
   consultationType: '',
   location: '',
   message: '',
+  website: '',
 })
 
 const session = ref(null) // { id, firstName, lastName, email, phone, startedAt }
@@ -377,6 +384,7 @@ async function startChat() {
         location: f.location.trim(),
         message: f.message.trim(),
         source: 'chat',
+        website: f.website,
       }),
     })
 
@@ -402,7 +410,7 @@ async function startChat() {
     }
     messages.value = [{ id: `m-${data.id}`, body: firstMessageBody, sent_at: data.created_at }]
     saveSession()
-    form.value = { firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '' }
+    form.value = { firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '', website: '' }
     nextTick(scrollThreadToBottom)
   } catch (err) {
     formError.value = t('chat.sendError')

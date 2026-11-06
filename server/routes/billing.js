@@ -27,7 +27,7 @@ import { createFileImportBillingProvider, createEImmigrationApiProvider } from '
 import { audit } from '../billing/audit.js'
 import {
   evaluate as evaluateReminders, cancelIneligible, approveReminders, cancelReminder, retryReminder, resolveUnknown, dispatch,
-  upsertContact, recordOptIn, recordOptOut, saveRule, saveTemplate, loadRules, loadTemplates, ensureDefaults,
+  upsertContact, recordOptIn, recordOptOut, saveRule, saveTemplate, loadRules, loadTemplates,
   getReminderSettings, saveReminderSettings, getConsentPolicy, saveConsentPolicy, ReminderError,
 } from '../billing/reminderService.js'
 import { createWhatsAppProvider, whatsappSendingEnabled } from '../billing/providers/whatsapp/index.js'
@@ -54,7 +54,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
       monday = createMondayProvider(env)
     } catch (err) {
       mondayError = err.message
-      throw Object.assign(new SyncError(`monday.com is misconfigured: ${err.message}`, 503, 'monday_config'), {})
+      throw new SyncError(`monday.com is misconfigured: ${err.message}`, 503, 'monday_config')
     }
     return monday
   }
@@ -338,6 +338,39 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     })
   }))
 
+  // The board's items, for checking a link made by hand. Walking the board
+  // costs monday.com a request per page, so clicks within a minute reuse the
+  // last walk; an item missing from it is looked up afresh before the link
+  // is refused (it may have just been added).
+  const ITEMS_TTL_MS = 60 * 1000
+  let boardItems = null
+  const findBoardItem = async (db, itemId, log) => {
+    const boardId = (await getMondayConfig(db))?.boardId ?? null
+    if (boardItems && boardItems.boardId === boardId && Date.now() - boardItems.at < ITEMS_TTL_MS) {
+      const hit = boardItems.items.get(itemId)
+      if (hit) return hit
+    }
+    const ctx = await loadMatchContext(db, safeMonday(), log)
+    boardItems = ctx.available ? { boardId, at: Date.now(), items: new Map(ctx.items.map((it) => [it.id, it])) } : null
+    return boardItems?.items.get(itemId) ?? null
+  }
+
+  // The link, the decision and the audit row are written together or not at all.
+  const inTransaction = async (fn) => {
+    const client = await pool().connect()
+    try {
+      await client.query('BEGIN')
+      const out = await fn(client)
+      await client.query('COMMIT')
+      return out
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {})
+      throw err
+    } finally {
+      client.release()
+    }
+  }
+
   router.post('/matching/:clientId', need('billing.reconcile'), idParam('clientId'), validate, wrap(async (req, res) => {
     const db = pool()
     const itemId = String(req.body?.mondayItemId || '').trim()
@@ -345,47 +378,49 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     const client = (await db.query('SELECT id FROM billing_clients WHERE id = $1', [req.params.clientId])).rows[0]
     if (!client) return res.status(404).json({ error: 'Client not found' })
     // The item must really exist on the configured board.
-    const ctx = await loadMatchContext(db, safeMonday(), req.log)
-    const item = ctx.items.find((it) => it.id === itemId)
+    const item = await findBoardItem(db, itemId, req.log)
     if (!item) return res.status(422).json({ error: 'That item is not on the configured monday.com board' })
-    const existing = (await db.query("SELECT client_id FROM billing_client_links WHERE system = 'monday' AND external_id = $1", [itemId])).rows[0]
-    if (existing && Number(existing.client_id) !== Number(client.id)) {
-      return res.status(409).json({ error: 'That monday.com item is already linked to another client. Unlink it first.' })
-    }
-    const inserted = await db.query(
-      `INSERT INTO billing_client_links (client_id, system, external_id, external_label, method, approved_by)
-       VALUES ($1, 'monday', $2, $3, 'manual', $4) ON CONFLICT (system, external_id) DO NOTHING`,
-      [client.id, itemId, item.name, actor(req)]
-    )
-    if (!inserted.rowCount) {
-      // Someone linked this item between our check and the insert.
-      const owner = (await db.query("SELECT client_id FROM billing_client_links WHERE system = 'monday' AND external_id = $1", [itemId])).rows[0]
-      if (owner && Number(owner.client_id) !== Number(client.id)) {
-        return res.status(409).json({ error: 'That monday.com item was just linked to another client.' })
+    const outcome = await inTransaction(async (tx) => {
+      const inserted = await tx.query(
+        `INSERT INTO billing_client_links (client_id, system, external_id, external_label, method, approved_by)
+         VALUES ($1, 'monday', $2, $3, 'manual', $4) ON CONFLICT (system, external_id) DO NOTHING`,
+        [client.id, itemId, item.name, actor(req)]
+      )
+      if (!inserted.rowCount) {
+        const owner = (await tx.query("SELECT client_id FROM billing_client_links WHERE system = 'monday' AND external_id = $1", [itemId])).rows[0]
+        return owner && Number(owner.client_id) !== Number(client.id) ? 'taken' : 'already'
       }
-      return res.json({ ok: true, alreadyLinked: true })
-    }
-    await db.query(
-      `INSERT INTO billing_match_decisions (client_id, decision, system, external_id, decided_by) VALUES ($1, 'approve', 'monday', $2, $3)`,
-      [client.id, itemId, actor(req)]
-    )
-    await audit(db, { actorId: actor(req), action: 'match.approved', entityType: 'client', entityId: client.id, details: { mondayItemId: itemId } })
+      await tx.query(
+        `INSERT INTO billing_match_decisions (client_id, decision, system, external_id, decided_by) VALUES ($1, 'approve', 'monday', $2, $3)`,
+        [client.id, itemId, actor(req)]
+      )
+      await audit(tx, { actorId: actor(req), action: 'match.approved', entityType: 'client', entityId: client.id, details: { mondayItemId: itemId } })
+      return 'linked'
+    })
+    if (outcome === 'taken') return res.status(409).json({ error: 'That monday.com item is already linked to another client. Unlink it first.' })
+    if (outcome === 'already') return res.json({ ok: true, alreadyLinked: true })
     res.status(201).json({ ok: true })
   }))
 
   router.delete('/matching/:clientId/:itemId', need('billing.reconcile'), idParam('clientId'), validate, wrap(async (req, res) => {
     const db = pool()
-    const { rowCount } = await db.query(
-      "DELETE FROM billing_client_links WHERE client_id = $1 AND system = 'monday' AND external_id = $2",
-      [req.params.clientId, req.params.itemId]
-    )
-    if (!rowCount) return res.status(404).json({ error: 'Link not found' })
-    await db.query(
-      `INSERT INTO billing_match_decisions (client_id, decision, system, external_id, decided_by) VALUES ($1, 'unlink', 'monday', $2, $3)`,
-      [req.params.clientId, req.params.itemId, actor(req)]
-    )
+    const removed = await inTransaction(async (tx) => {
+      const { rowCount } = await tx.query(
+        "DELETE FROM billing_client_links WHERE client_id = $1 AND system = 'monday' AND external_id = $2",
+        [req.params.clientId, req.params.itemId]
+      )
+      if (!rowCount) return false
+      await tx.query(
+        `INSERT INTO billing_match_decisions (client_id, decision, system, external_id, decided_by) VALUES ($1, 'unlink', 'monday', $2, $3)`,
+        [req.params.clientId, req.params.itemId, actor(req)]
+      )
+      await audit(tx, { actorId: actor(req), action: 'match.unlinked', entityType: 'client', entityId: req.params.clientId, details: { mondayItemId: req.params.itemId } })
+      return true
+    })
+    if (!removed) return res.status(404).json({ error: 'Link not found' })
+    // After the commit: pending reminders for the unlinked client are
+    // cancelled now; the dispatcher re-checks before any send regardless.
     await cancelIneligible(db, { now: now(), actorId: actor(req) })
-    await audit(db, { actorId: actor(req), action: 'match.unlinked', entityType: 'client', entityId: req.params.clientId, details: { mondayItemId: req.params.itemId } })
     res.json({ ok: true })
   }))
 
@@ -468,7 +503,6 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
 
   router.get('/reminders', need('billing.view'), wrap(async (req, res) => {
     const db = pool()
-    await ensureDefaults(db)
     const state = String(req.query.state || '')
     const groups = {
       drafts: ["state = 'draft'"], approved: ["state IN ('approved', 'queued')"], sent: ["state IN ('sent', 'delivered', 'read')"],
@@ -532,9 +566,9 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     res.json(await dispatch(pool(), getWhatsApp(), { now: now(), env, log: req.log }))
   }))
 
+  // Reads only: the default rules and templates are seeded by db/migrate.js.
   router.get('/reminders/config', need('billing.view'), wrap(async (_req, res) => {
     const db = pool()
-    await ensureDefaults(db)
     res.json({ rules: await loadRules(db), templates: await loadTemplates(db), settings: await getReminderSettings(db), consent: await getConsentPolicy(db) })
   }))
 

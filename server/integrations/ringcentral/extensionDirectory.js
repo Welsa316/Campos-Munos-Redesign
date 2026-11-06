@@ -63,7 +63,6 @@ export async function loadDirectory(db) {
     available: Boolean(state?.directory_refreshed_at) && rows.length > 0,
     refreshedAt: state?.directory_refreshed_at ?? null,
     byId: new Map(rows.map((r) => [r.id, r])),
-    byNumber: new Map(rows.filter((r) => r.number).map((r) => [r.number, r])),
     people: rows.filter((r) => PERSON_TYPES.includes(r.type)),
   }
 }
@@ -91,5 +90,3 @@ export async function refreshDirectory(db, config, { token, now = new Date(), fo
     return { status: 'error', changed: false, code }
   }
 }
-
-export default { fetchDirectory, saveDirectory, loadDirectory, refreshDirectory, DIRECTORY_PATH }

@@ -18,6 +18,9 @@ export class TeamError extends Error {
   }
 }
 
+// bcrypt reads only the first 72 bytes of a password.
+export const PASSWORD_MAX_BYTES = 72
+
 export function generatePassword() {
   // 18 random bytes → 24 URL-safe characters.
   return crypto.randomBytes(18).toString('base64url')

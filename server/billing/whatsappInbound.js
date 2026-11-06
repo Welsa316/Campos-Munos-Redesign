@@ -117,8 +117,9 @@ async function handleInbound(db, evt, { log }) {
       `UPDATE billing_client_contacts SET opted_out_at = NOW(), opt_out_source = 'whatsapp_reply', updated_at = NOW() WHERE client_id = ANY($1)`,
       [clientIds]
     )
-    // Including 'queued': the dispatcher re-checks consent right before
-    // sending, and its own UPDATEs are guarded, so this cannot be undone.
+    // Not 'queued': once the dispatcher has claimed a reminder only it moves
+    // it (reminderService.js, CANCELLABLE), and it re-checks the opt-out
+    // right before sending, so a queued one to this client is not sent.
     const cancelled = await db.query(
       `UPDATE billing_reminders SET state = 'cancelled', cancel_reason = 'opted_out', cancelled_at = NOW(), updated_at = NOW()
         WHERE client_id = ANY($1) AND action = 'whatsapp' AND state IN ('draft', 'approved')`,

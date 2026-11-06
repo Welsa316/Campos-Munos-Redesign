@@ -11,11 +11,21 @@ import getPool from './db/pool.js'
 import { purgeExpiredUploads } from './billing/importService.js'
 import { purgeActivity, ACTIVITY_RETENTION_DAYS } from './activity/recorder.js'
 import { startReminderScheduler } from './billing/scheduler.js'
+import { sweepPendingReplies } from './whatsapp/inbox.js'
 import logger from './logger.js'
 import { emailConfigProblems } from './utils/emailConfig.js'
 import { isProductionEnv, bootEnvProblems } from './utils/productionEnv.js'
 
 const isProduction = isProductionEnv(process.env)
+
+// Run fn after firstMs, then every everyMs, without keeping the process alive.
+function schedule(fn, firstMs, everyMs) {
+  setTimeout(fn, firstMs).unref()
+  setInterval(fn, everyMs).unref()
+}
+
+// 'true' / 'false' in the variable, or on in production only.
+const flag = (name) => (process.env[name] ? process.env[name] === 'true' : isProduction)
 
 // Fatal only under NODE_ENV=production; when Railway alone says production
 // the same problems are logged as warnings (utils/productionEnv.js).
@@ -66,8 +76,7 @@ async function purgeUploads() {
     logger.warn({ err: err.message }, 'Billing upload purge failed')
   }
 }
-setTimeout(purgeUploads, 60 * 1000).unref()
-setInterval(purgeUploads, 24 * 60 * 60 * 1000).unref()
+schedule(purgeUploads, 60 * 1000, 24 * 60 * 60 * 1000)
 
 // The activity log keeps ACTIVITY_RETENTION_DAYS (400): a full year to look
 // back on, with some margin. Older rows are deleted once a day.
@@ -79,8 +88,18 @@ async function purgeOldActivity() {
     logger.warn({ err: err.message }, 'Activity log purge failed')
   }
 }
-setTimeout(purgeOldActivity, 60 * 1000).unref()
-setInterval(purgeOldActivity, 24 * 60 * 60 * 1000).unref()
+schedule(purgeOldActivity, 60 * 1000, 24 * 60 * 60 * 1000)
+
+// Staff WhatsApp replies cut off mid-send become 'unknown' (whatsapp/inbox.js).
+async function sweepReplies() {
+  try {
+    const n = await sweepPendingReplies(getPool())
+    if (n) logger.warn({ replies: n }, 'WhatsApp replies left pending were marked unknown')
+  } catch (err) {
+    logger.warn({ err: err.message }, 'WhatsApp pending reply sweep failed')
+  }
+}
+schedule(sweepReplies, 2 * 60 * 1000, 5 * 60 * 1000)
 
 // Payment reminders: drafts + sending of approved reminders (never unapproved).
 startReminderScheduler({ pool: getPool(), env: process.env, log: logger })
@@ -89,10 +108,7 @@ startReminderScheduler({ pool: getPool(), env: process.env, log: logger })
 // by default) unless used, so refresh before that. Only in production by
 // default (a developer machine must not rotate the firm's tokens), and only
 // when the integration is configured and connected. Never logs a token.
-const ringcentralKeepalive = process.env.RINGCENTRAL_KEEPALIVE
-  ? process.env.RINGCENTRAL_KEEPALIVE === 'true'
-  : isProduction
-if (ringcentralKeepalive) {
+if (flag('RINGCENTRAL_KEEPALIVE')) {
   const { loadRingCentralConfig } = await import('./integrations/ringcentral/config.js')
   const { maintainConnection, RingCentralNotConnectedError } = await import('./integrations/ringcentral/service.js')
   const keepAlive = async () => {
@@ -106,17 +122,13 @@ if (ringcentralKeepalive) {
       logger.warn({ provider: 'ringcentral', code: err.code }, 'RingCentral keep-alive could not refresh')
     }
   }
-  setTimeout(keepAlive, 2 * 60 * 1000).unref()
-  setInterval(keepAlive, 6 * 60 * 60 * 1000).unref()
+  schedule(keepAlive, 2 * 60 * 1000, 6 * 60 * 60 * 1000)
 }
 
 // RingCentral call log import every 5 minutes (read-only; docs/ringcentral-call-log.md).
 // Same default as the keep-alive: production only unless RINGCENTRAL_CALL_SYNC
 // says otherwise. One run at a time across instances (advisory lock).
-const callSyncOn = process.env.RINGCENTRAL_CALL_SYNC
-  ? process.env.RINGCENTRAL_CALL_SYNC === 'true'
-  : isProduction
-if (callSyncOn) {
+if (flag('RINGCENTRAL_CALL_SYNC')) {
   const { loadRingCentralConfig } = await import('./integrations/ringcentral/config.js')
   const { syncCallLog } = await import('./integrations/ringcentral/callLog.js')
   let running = false
@@ -139,11 +151,15 @@ if (callSyncOn) {
       running = false
     }
   }
-  setTimeout(syncCalls, 90 * 1000).unref()
-  setInterval(syncCalls, 5 * 60 * 1000).unref()
+  schedule(syncCalls, 90 * 1000, 5 * 60 * 1000)
+}
 
-  // The live call-event subscription, once a day: its state, and a renewal a
-  // month before it would expire. Never creates one (an administrator does).
+// The live call-event subscription, once a day: its state, and a renewal a
+// month before it would expire. Never creates one (an administrator does).
+// Its own switch, RINGCENTRAL_EVENT_CHECK (it used to run only with the call
+// import on); same production-only default.
+if (flag('RINGCENTRAL_EVENT_CHECK')) {
+  const { loadRingCentralConfig } = await import('./integrations/ringcentral/config.js')
   const { checkSubscription } = await import('./integrations/ringcentral/telephonyEvents.js')
   const { getAccessToken } = await import('./integrations/ringcentral/service.js')
   const checkEvents = async () => {
@@ -156,8 +172,7 @@ if (callSyncOn) {
       logger.warn({ provider: 'ringcentral', err: { name: err?.name, code: err?.code } }, 'Live call-event subscription check failed')
     }
   }
-  setTimeout(checkEvents, 10 * 60 * 1000).unref()
-  setInterval(checkEvents, 24 * 60 * 60 * 1000).unref()
+  schedule(checkEvents, 10 * 60 * 1000, 24 * 60 * 60 * 1000)
 }
 
 const server = app.listen(PORT, () => {

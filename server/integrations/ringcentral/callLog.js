@@ -29,6 +29,10 @@ export const DEFAULT_RETENTION_DAYS = 365
 export const EVIDENCE_BACKFILL_DAYS = 90
 const PER_PAGE = 250
 const MAX_PAGES = 20
+// RingCentral sends the newest calls first, so a window cut off at MAX_PAGES
+// is missing its oldest calls. The import then reads again from the start of
+// the window up to the oldest call it got, at most this many times per run.
+const MAX_WINDOWS = 5
 const PAGE_DELAY_MS = 6500
 const LOCK_KEY = 'cm_rc_call_sync'
 
@@ -119,99 +123,10 @@ export function normalizeRecord(rec, scope) {
     is_internal: !counterpart.phoneNumber && Boolean(counterpart.extensionNumber || counterpart.extensionId),
     scope,
     rc_last_modified_at: rec.lastModifiedTime && !Number.isNaN(new Date(rec.lastModifiedTime).getTime()) ? new Date(rec.lastModifiedTime) : null,
-    legs: compactLegs(rec.legs),
     rc_raw: sanitizeRecord(rec),
   }
 }
 
-const MAX_LEGS = 30
-const party = (p) => {
-  if (!p || typeof p !== 'object') return null
-  const out = { name: cap(p.name), ext: cap(p.extensionNumber, 20), number: cap(p.phoneNumber, 40) }
-  return out.name || out.ext || out.number ? out : null
-}
-
-/**
- * The steps RingCentral recorded for a call (Detailed view: each ring,
- * forward, transfer and voicemail), kept small: who each step went to and
- * how it ended. No recordings, voicemail links or billing.
- */
-export function compactLegs(legs) {
-  if (!Array.isArray(legs)) return []
-  return legs.slice(0, MAX_LEGS).filter((l) => l && typeof l === 'object').map((l) => ({
-    type: cap(l.legType, 40),
-    action: cap(l.action, 40),
-    result: cap(l.result, 60),
-    reason: cap(l.reason, 60),
-    at: cap(l.startTime, 40),
-    seconds: Math.max(0, Math.trunc(Number(l.duration) || 0)),
-    master: l.master === true,
-    from: party(l.from),
-    to: party(l.to),
-  }))
-}
-
-const LEG_RESULT = (result) => {
-  const r = norm(result)
-  if (ANSWERED.has(r)) return 'answered'
-  if (r === 'voicemail') return 'voicemail'
-  if (r === 'busy') return 'busy'
-  if (INBOUND_MISSED.has(r)) return 'no_answer'
-  return null
-}
-
-/**
- * Where an incoming call went, in order: the line the caller dialled, then
- * each extension, forward, transfer or voicemail it reached, with how that
- * step ended. A number outside the firm (a forward to someone's mobile) is
- * shown by its last 4 digits only. null when the call was imported before
- * steps were kept, or is not incoming.
- */
-export function callPath(legs, direction) {
-  if (direction !== 'inbound' || !Array.isArray(legs) || !legs.length) return null
-  const time = (l) => Date.parse(l.at) || 0
-  const ordered = legs.map((l, i) => ({ l, i })).sort((a, b) => time(a.l) - time(b.l) || a.i - b.i).map((x) => x.l)
-  const steps = []
-  let prevKey = null
-  for (const leg of ordered) {
-    const to = leg.to
-    if (!to) continue
-    const key = [to.name, to.ext, String(to.number || '').replace(/\D/g, '')].join('|')
-    const hint = `${leg.type || ''} ${leg.action || ''}`
-    const result = LEG_RESULT(leg.result)
-    const kind = steps.length === 0 && !to.ext
-      ? 'line'
-      : /voicemail/i.test(hint) || result === 'voicemail' ? 'voicemail'
-        : /transfer/i.test(hint) ? 'transferred'
-          : /find ?me|follow ?me|forward/i.test(hint) ? 'forwarded'
-            : 'rang'
-    const step = {
-      kind,
-      name: to.name || null,
-      extension: to.ext || null,
-      // The firm's own line is shown whole; anyone else's number only by its end.
-      number: kind === 'line' ? to.number || null : null,
-      numberEnd: kind !== 'line' && !to.ext && to.number ? to.number.replace(/\D/g, '').slice(-4) : null,
-      result: kind === 'line' ? null : result,
-      seconds: leg.seconds || 0,
-    }
-    const prev = steps[steps.length - 1]
-    const same = prev && key === prevKey
-    prevKey = key
-    // RingCentral often records the same place twice (the line, then the line
-    // picking up; an extension, then its voicemail): keep one step, with the
-    // more telling kind and outcome. The dialled line has no outcome.
-    if (same) {
-      if (prev.kind === 'line') continue
-      if (step.kind !== 'rang') prev.kind = step.kind
-      if (step.result) prev.result = step.result
-      prev.seconds = Math.max(prev.seconds, step.seconds)
-      continue
-    }
-    steps.push(step)
-  }
-  return steps.length ? steps : null
-}
 
 // --- import ----------------------------------------------------------------------
 
@@ -224,7 +139,7 @@ export class CallSyncError extends Error {
   }
 }
 
-async function fetchWindow({ config, token, path, scope, dateFrom, dateTo, deps, sleep, pageDelayMs }) {
+async function fetchWindow({ config, token, path, scope, dateFrom, dateTo, deps, sleep, pageDelayMs, maxPages = MAX_PAGES }) {
   const rows = []
   let fetched = 0
   let truncated = false
@@ -241,9 +156,33 @@ async function fetchWindow({ config, token, path, scope, dateFrom, dateTo, deps,
     }
     const more = Boolean(body?.navigation?.nextPage) && records.length > 0
     if (!more) break
-    if (page >= MAX_PAGES) { truncated = true; break }
+    if (page >= maxPages) { truncated = true; break }
   }
   return { rows, fetched, truncated }
+}
+
+/**
+ * The whole of [dateFrom, dateTo], in as many windows as it takes (up to
+ * maxWindows): each truncated window is followed by one ending at the oldest
+ * call it returned. truncated: the oldest part is still unread.
+ */
+async function fetchRange({ dateFrom, dateTo, maxWindows = MAX_WINDOWS, ...args }) {
+  const rows = []
+  let fetched = 0
+  let to = dateTo
+  for (let w = 0; w < maxWindows; w++) {
+    const got = await fetchWindow({ ...args, dateFrom, dateTo: to })
+    rows.push(...got.rows)
+    fetched += got.fetched
+    if (!got.truncated) return { rows, fetched, truncated: false }
+    const oldest = Math.min(...got.rows.map((r) => r.started_at.getTime()))
+    // A second past the oldest call: calls in that same second are read
+    // again rather than skipped (the import is idempotent).
+    const next = new Date(oldest + 1000)
+    if (!Number.isFinite(oldest) || next >= to || next <= dateFrom) break
+    to = next
+  }
+  return { rows, fetched, truncated: true }
 }
 
 async function upsertCalls(db, rows) {
@@ -252,8 +191,8 @@ async function upsertCalls(db, rows) {
     const res = await db.query(
       `INSERT INTO rc_calls (rc_record_id, telephony_session_id, session_id, direction, started_at, duration_seconds, result_raw, outcome,
               counterpart_number, counterpart_key, caller_id_name, firm_number, firm_name, firm_extension,
-              answered_by_name, answered_by_extension, is_internal, scope, rc_last_modified_at, legs, rc_raw)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, cm_phone_key($9), $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+              answered_by_name, answered_by_extension, is_internal, scope, rc_last_modified_at, rc_raw)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, cm_phone_key($9), $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
        ON CONFLICT (rc_record_id) DO UPDATE SET
               telephony_session_id = EXCLUDED.telephony_session_id, session_id = EXCLUDED.session_id,
               direction = EXCLUDED.direction, started_at = EXCLUDED.started_at, duration_seconds = EXCLUDED.duration_seconds,
@@ -261,13 +200,13 @@ async function upsertCalls(db, rows) {
               counterpart_key = EXCLUDED.counterpart_key, caller_id_name = EXCLUDED.caller_id_name,
               firm_number = EXCLUDED.firm_number, firm_name = EXCLUDED.firm_name, firm_extension = EXCLUDED.firm_extension,
               answered_by_name = EXCLUDED.answered_by_name, answered_by_extension = EXCLUDED.answered_by_extension,
-              is_internal = EXCLUDED.is_internal, rc_last_modified_at = EXCLUDED.rc_last_modified_at, legs = EXCLUDED.legs, rc_raw = EXCLUDED.rc_raw, updated_at = NOW()
+              is_internal = EXCLUDED.is_internal, rc_last_modified_at = EXCLUDED.rc_last_modified_at, rc_raw = EXCLUDED.rc_raw, updated_at = NOW()
               -- A company-wide record is never replaced by the narrower per-user copy.
         WHERE rc_calls.scope = EXCLUDED.scope OR EXCLUDED.scope = 'account'
        RETURNING (xmax = 0) AS inserted`,
       [r.rc_record_id, r.telephony_session_id, r.session_id, r.direction, r.started_at, r.duration_seconds, r.result_raw, r.outcome,
         r.counterpart_number, r.caller_id_name, r.firm_number, r.firm_name, r.firm_extension,
-        r.answered_by_name, r.answered_by_extension, r.is_internal, r.scope, r.rc_last_modified_at, JSON.stringify(r.legs ?? []), r.rc_raw ? JSON.stringify(r.rc_raw) : null]
+        r.answered_by_name, r.answered_by_extension, r.is_internal, r.scope, r.rc_last_modified_at, r.rc_raw ? JSON.stringify(r.rc_raw) : null]
     )
     if (res.rows[0]?.inserted) inserted++
   }
@@ -373,6 +312,7 @@ async function classifyCalls(db, keys, ctx) {
 export async function syncCallLog(db, config, {
   trigger = 'manual', backfillDays = DEFAULT_BACKFILL_DAYS, retentionDays = DEFAULT_RETENTION_DAYS,
   deps = {}, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), pageDelayMs = PAGE_DELAY_MS,
+  maxPages = MAX_PAGES, maxWindows = MAX_WINDOWS,
 } = {}) {
   const now = deps.now ? deps.now() : new Date()
   const lockClient = typeof db.totalCount === 'number' ? await db.connect() : db
@@ -380,7 +320,7 @@ export async function syncCallLog(db, config, {
     const got = (await lockClient.query('SELECT pg_try_advisory_lock(hashtext($1)) AS ok', [LOCK_KEY])).rows[0]?.ok
     if (!got) return { status: 'busy' }
     try {
-      return await runSync(db, config, { trigger, backfillDays, retentionDays, deps, sleep, pageDelayMs, now })
+      return await runSync(db, config, { trigger, backfillDays, retentionDays, deps, sleep, pageDelayMs, maxPages, maxWindows, now })
     } finally {
       await lockClient.query('SELECT pg_advisory_unlock(hashtext($1))', [LOCK_KEY]).catch(() => {})
     }
@@ -389,7 +329,7 @@ export async function syncCallLog(db, config, {
   }
 }
 
-async function runSync(db, config, { trigger, backfillDays, retentionDays, deps, sleep, pageDelayMs, now }) {
+async function runSync(db, config, { trigger, backfillDays, retentionDays, deps, sleep, pageDelayMs, maxPages, maxWindows, now }) {
   await db.query(`INSERT INTO rc_call_sync_state (key) VALUES ('ringcentral') ON CONFLICT (key) DO NOTHING`)
   const state = (await db.query(`SELECT * FROM rc_call_sync_state WHERE key = 'ringcentral'`)).rows[0]
   // Calls classified by older rules (or not yet) are read again first, even
@@ -435,7 +375,7 @@ async function runSync(db, config, { trigger, backfillDays, retentionDays, deps,
     }
   }
 
-  const fetchArgs = { config, dateFrom, dateTo, deps, sleep, pageDelayMs }
+  const fetchArgs = { config, dateFrom, dateTo, deps, sleep, pageDelayMs, maxPages, maxWindows }
   const recentlyExtension = state.scope === 'extension' && state.scope_checked_at
     && now.getTime() - new Date(state.scope_checked_at).getTime() < SCOPE_RECHECK_MS
   let scope = recentlyExtension ? 'extension' : 'account'
@@ -443,14 +383,14 @@ async function runSync(db, config, { trigger, backfillDays, retentionDays, deps,
   let result
   try {
     try {
-      result = await withToken((t) => fetchWindow({ ...fetchArgs, token: t, path: scope === 'account' ? ACCOUNT_PATH : EXTENSION_PATH, scope }))
+      result = await withToken((t) => fetchRange({ ...fetchArgs, token: t, path: scope === 'account' ? ACCOUNT_PATH : EXTENSION_PATH, scope }))
     } catch (err) {
       // The connecting user may read only their own calls; RingCentral says
       // so with a 403 on the company log.
       if (scope !== 'account' || !(err instanceof RingCentralApiError) || err.status !== 403) throw err
       scope = 'extension'
       scopeCheckedAt = now
-      result = await withToken((t) => fetchWindow({ ...fetchArgs, token: t, path: EXTENSION_PATH, scope }))
+      result = await withToken((t) => fetchRange({ ...fetchArgs, token: t, path: EXTENSION_PATH, scope }))
     }
   } catch (err) {
     return recordError(errorCodeOf(err))
@@ -465,12 +405,18 @@ async function runSync(db, config, { trigger, backfillDays, retentionDays, deps,
   await purgeOldEvents(db, now)
   // Portal-placed calls are only needed while they ring; the call itself is in the call log.
   await db.query(`DELETE FROM rc_ringouts WHERE created_at < $1::timestamptz - INTERVAL '90 days'`, [now])
+  // Still cut off after every window: the oldest calls are unread, so the
+  // window stays where it was and the next run reads it again, instead of
+  // moving on and leaving them behind for good.
+  const complete = !result.truncated
   await db.query(
-    `UPDATE rc_call_sync_state SET scope = $1, scope_checked_at = $2, window_to = $3, last_run_at = $3, last_success_at = $3,
+    `UPDATE rc_call_sync_state SET scope = $1, scope_checked_at = $2, window_to = CASE WHEN $8 THEN $3 ELSE window_to END,
+            last_run_at = $3, last_success_at = $3,
             last_trigger = $4, last_fetched = $5, last_new = $6, last_truncated = $7, last_error_code = NULL, last_error_at = NULL,
-            legs_backfilled_at = COALESCE(legs_backfilled_at, $3), raw_backfilled_at = COALESCE(raw_backfilled_at, $3)
+            legs_backfilled_at = CASE WHEN $8 THEN COALESCE(legs_backfilled_at, $3) ELSE legs_backfilled_at END,
+            raw_backfilled_at = CASE WHEN $8 THEN COALESCE(raw_backfilled_at, $3) ELSE raw_backfilled_at END
       WHERE key = 'ringcentral'`,
-    [scope, scopeCheckedAt, dateTo, trigger, result.fetched, inserted, result.truncated]
+    [scope, scopeCheckedAt, dateTo, trigger, result.fetched, inserted, result.truncated, complete]
   )
   return { status: 'ok', scope, fetched: result.fetched, new: inserted, truncated: result.truncated, directory: directory.status, directoryCode: directory.code }
 }
@@ -583,7 +529,12 @@ const titleCase = (s) => String(s).toLowerCase().replace(/(^|[\s'-])(\p{L})/gu, 
 function baseSql(where, searchSql = '') {
   return `
     WITH base AS (
-      SELECT c.*,
+      -- Every column but RingCentral's raw record and the old legs copy: a
+      -- page of up to a thousand calls never needs them.
+      SELECT c.id, c.rc_record_id, c.telephony_session_id, c.session_id, c.direction, c.started_at, c.duration_seconds,
+             c.result_raw, c.outcome, c.counterpart_number, c.counterpart_key, c.caller_id_name, c.firm_number, c.firm_name,
+             c.firm_extension, c.answered_by_name, c.answered_by_extension, c.is_internal, c.scope, c.rc_last_modified_at,
+             c.first_seen_at, c.updated_at, c.call_key, c.is_primary, c.classification, c.classification_evidence, c.classifier_version,
              lead.id AS lead_id, lead.first_name AS lead_first, lead.last_name AS lead_last, lead.n AS lead_count,
              cl.client_id, cl.client_name,
              -- Marked "someone from the firm" for every call from the number:
@@ -780,6 +731,22 @@ export async function listPeople(db) {
 }
 
 /**
+ * A key for each party in a call's live events, unique within the call and
+ * the same on every read: RingCentral's party id, or the party's place in the
+ * list when a stored record has none. An extension can appear as several
+ * parties (rung, then transferred to), so it is no key on its own.
+ */
+export function livePartyIds(parties) {
+  const used = new Set()
+  return parties.map((p, i) => {
+    let id = p?.partyId != null && String(p.partyId) !== '' ? String(p.partyId) : `party-${i + 1}`
+    if (used.has(id)) id = `${id}#${i + 1}`
+    used.add(id)
+    return id
+  })
+}
+
+/**
  * One call's evidence for the detail view: the classification, every step
  * RingCentral recorded (with each reason's documented meaning), who it was
  * confirmed offered to, who answered, and RingCentral's own result.
@@ -795,6 +762,7 @@ export async function callEvidence(db, id) {
   if (!r) return null
   const ev = r.classification_evidence || {}
   const names = await linkedNames(db)
+  const partyIds = ev.live ? livePartyIds(ev.live.parties) : []
   const toNamed = (to) => (to?.kind === 'extension' && to.id && names.has(to.id) ? { ...to, name: names.get(to.id), rcName: to.name ?? null } : to)
   return {
     id: Number(r.id),
@@ -817,7 +785,8 @@ export async function callEvidence(db, id) {
       ? {
           events: ev.live.events,
           complete: ev.live.complete,
-          parties: ev.live.parties.map((p) => ({
+          parties: ev.live.parties.map((p, i) => ({
+            partyId: partyIds[i],
             extensionId: p.extensionId, extension: p.extension, type: p.type, person: p.person,
             name: (p.extensionId && names.get(p.extensionId)) || p.name, rcName: p.name,
             rang: p.rang, answered: p.answered, voicemail: p.voicemail, missedCall: p.missedCall, endedAt: p.endedAt,
@@ -956,5 +925,3 @@ function present(r, names = new Map()) {
       : null,
   }
 }
-
-export default { syncCallLog, queryCalls, getSyncState, normalizeRecord, classifyOutcome, isGenericCallerId, compactLegs, callPath, classifyStored, callEvidence, listPeople }
