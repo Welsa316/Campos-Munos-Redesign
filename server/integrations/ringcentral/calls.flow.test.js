@@ -995,6 +995,55 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     await db.query(`DELETE FROM rc_calls WHERE rc_record_id = 'try-1'`)
   })
 
+  await t.test('clear the list: administrators only; every open call handled in one batch; not counted as handled today; undone as one', async () => {
+    const att = async () => (await list('&outcome=attention&kpis=1')).json
+    const before = await att()
+    assert.equal(before.calls.length, 2)
+    const handledToday = before.kpis.handledToday
+    const missedBefore = (await list()).json.counts.missed
+    const desk = { cookie: users.desk.cookie }
+    // The front desk may mark one call handled, not clear the list.
+    assert.equal((await call('GET', '/api/calls/handled/bulk', desk)).status, 403)
+    assert.equal((await send('POST', '/api/calls/handled/bulk', { note: 'x' }, desk)).status, 403)
+    // A reason is required.
+    assert.equal((await send('POST', '/api/calls/handled/bulk', { note: '  ' })).status, 400)
+    // A cutoff before both calls clears nothing; the preview says so.
+    assert.equal((await call('GET', `/api/calls/handled/bulk?before=${encodeURIComponent('2026-10-30T16:59:00Z')}`)).json.count, 0)
+    // Only calls received before the cutoff: c4 (17:00) but not c8 (19:30).
+    assert.equal((await call('GET', `/api/calls/handled/bulk?before=${encodeURIComponent('2026-10-30T18:00:00Z')}`)).json.count, 1)
+    assert.equal((await call('GET', '/api/calls/handled/bulk')).json.count, 2)
+
+    // c4 dealt with on its own first: the clear takes only c8, and undoing
+    // the clear leaves c4's own mark alone.
+    const c4 = before.calls.find((c) => new Date(c.startedAt).toISOString() === '2026-10-30T17:00:00.000Z')
+    assert.equal((await send('POST', `/api/calls/${c4.id}/handled`, { note: 'Called back from my mobile' }, desk)).status, 200)
+    const handledBefore = (await att()).kpis.handledToday
+    assert.equal(handledBefore, handledToday + 1)
+
+    const out = await send('POST', '/api/calls/handled/bulk', { note: 'Missed before voicemail routing was set up' })
+    assert.equal(out.status, 200, out.text)
+    assert.equal(out.json.cleared, 1)
+    let a = await att()
+    assert.equal(a.calls.length, 0)
+    assert.equal(a.kpis.needsAttention, 0)
+    assert.equal(a.kpis.handledToday, handledBefore, 'a bulk clear is not handled today')
+    const cleared = (await list('&outcome=handled')).json.calls.filter((c) => c.handled?.bulk)
+    assert.equal(cleared.length, 1)
+    assert.equal(cleared[0].handled.note, 'Missed before voicemail routing was set up')
+    const c8 = byId((await list()).json.calls, '2026-10-30T19:30:00Z')
+    assert.equal(c8.classification, 'not_answered', 'the classification is untouched')
+    assert.deepEqual(c8.notAnsweredBy.map((p) => p.name), ['Ciro'], 'and so is who it is attributed to')
+    assert.equal((await list()).json.counts.missed, missedBefore, 'the missed counts are untouched')
+
+    // Undone as one: c8 is open again; c4 stays handled by its own mark.
+    assert.equal((await send('DELETE', `/api/calls/handled/bulk/${out.json.batch}`, undefined, desk)).status, 403)
+    assert.equal((await send('DELETE', `/api/calls/handled/bulk/${out.json.batch}`)).json.removed, 1)
+    a = await att()
+    assert.deepEqual(a.calls.map((c) => new Date(c.startedAt).toISOString()), ['2026-10-30T19:30:00.000Z'])
+    assert.equal((await send('DELETE', `/api/calls/${c4.id}/handled`, undefined, desk)).json.removed, true)
+    assert.equal((await att()).calls.length, 2)
+  })
+
   await t.test('RingOut: who may call, saving "ring me at", refusing numbers that must never be dialled', async () => {
     assert.equal((await call('GET', '/api/calls/ringout/me', { cookie: users.para.cookie })).status, 403)
     assert.equal((await call('POST', '/api/calls/ringout', { cookie: users.para.cookie })).status, 403)

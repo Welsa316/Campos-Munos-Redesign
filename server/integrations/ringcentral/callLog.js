@@ -515,10 +515,13 @@ const UNANSWERED_SQL = (col) => `${col} IN (${UNANSWERED_CLASSES.map((c) => `'${
 
 // Dealt with (Calls → Handled, and "Handled today" when given a since): an
 // unanswered call marked handled, or closed by a connected callback or a
-// later answered call. One marked as needing no callback is not counted.
+// later answered call. One marked as needing no callback is not counted,
+// and neither is a bulk clear in "Handled today" (nobody dealt with those
+// calls today; the list was emptied).
 const DEALT_WITH_SQL = (since = null) => {
   const at = (col) => (since ? `${col} >= ${since}` : `${col} IS NOT NULL`)
-  return `direction = 'inbound' AND excluded_kind IS NULL AND (${at('handled_at')} OR (${at('connected_followup_at')} AND ${UNANSWERED_SQL('classification')} AND counterpart_key <> ''))`
+  const marked = since ? `(${at('handled_at')} AND handled_batch IS NULL)` : at('handled_at')
+  return `direction = 'inbound' AND excluded_kind IS NULL AND (${marked} OR (${at('connected_followup_at')} AND ${UNANSWERED_SQL('classification')} AND counterpart_key <> ''))`
 }
 
 // A missed call or voicemail counts as returned once the firm called that
@@ -594,7 +597,7 @@ function baseSql(where, searchSql = '') {
              -- connect leaves it open ("try again").
              fc.started_at AS connected_followup_at, fc.direction AS connected_followup_direction,
              fa.started_at AS attempt_at,
-             hd.created_at AS handled_at, hd.note AS handled_note, COALESCE(NULLIF(hdu.display_name, ''), split_part(hdu.email, '@', 1)) AS handled_by,
+             hd.created_at AS handled_at, hd.note AS handled_note, hd.batch_id AS handled_batch, COALESCE(NULLIF(hdu.display_name, ''), split_part(hdu.email, '@', 1)) AS handled_by,
              (c.direction = 'inbound' AND ${UNANSWERED_SQL('c.classification')} AND c.counterpart_key <> ''
               AND fc.started_at IS NULL AND hd.call_key IS NULL AND ex.kind IS NULL) AS needs_attention,
              ex.kind AS excluded_kind, ex.reason AS excluded_reason, ex.note AS excluded_note, ex.created_at AS excluded_at,
@@ -867,6 +870,21 @@ export async function callKpis(db, { now = new Date() } = {}) {
 }
 
 /**
+ * The calls Needs attention lists now that came in before `before`, by
+ * call_key (Calls → Clear the list). Same rows, same rules as the list.
+ */
+export async function openCallKeys(db, { before = new Date(), now = new Date() } = {}) {
+  const from = new Date(now.getTime() - ATTENTION_DAYS * 24 * 60 * 60 * 1000)
+  const to = before < now ? before : new Date(now.getTime() + 60 * 1000)
+  const rows = (await db.query(
+    `${baseSql(['c.started_at >= $1', 'c.started_at < $2', 'NOT c.is_internal', 'c.is_primary'])}
+     SELECT call_key FROM filtered WHERE needs_attention`,
+    [from, to]
+  )).rows
+  return rows.map((r) => r.call_key)
+}
+
+/**
  * A cheap fingerprint of everything the Calls page shows: it changes when a
  * call is imported or re-read, or a call is marked or unmarked. The page
  * polls this and reloads the list only when it moves.
@@ -931,7 +949,7 @@ function present(r, names = new Map()) {
     attentionGroup: r.needs_attention ? attentionGroup(r) : null,
     attemptAt: r.attempt_at ?? null,
     connectedFollowUp: r.connected_followup_at ? { at: r.connected_followup_at, kind: r.connected_followup_direction === 'outbound' ? 'called_back' : 'answered_later' } : null,
-    handled: r.handled_at ? { at: r.handled_at, by: r.handled_by, note: r.handled_note } : null,
+    handled: r.handled_at ? { at: r.handled_at, by: r.handled_by, note: r.handled_note, bulk: Boolean(r.handled_batch) } : null,
     // Marked as needing no callback: this call alone, or every call from its number.
     exclusion: r.excluded_kind
       ? { scope: r.excluded_kind, reason: r.excluded_reason, note: r.excluded_note, by: r.excluded_by, at: r.excluded_at }

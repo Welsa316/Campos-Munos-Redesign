@@ -34,13 +34,14 @@ export const CAPABILITIES = {
   'integrations.manage': "Connect, check or disconnect the firm's RingCentral account (OAuth)",
   'monday.configure': 'monday.com board and column mapping, status labels and connection check',
   'activity.view': 'Read the activity log: every change made in the portal, by whom and when',
+  'calls.clear': 'Calls: mark every open call in Needs attention as handled at once (for example after fixing the phone system’s routing)',
   'team.manage': 'Team: create accounts, change roles and single permissions, revoke or restore access, sign people out, reset passwords',
 }
 
 // Held by the admin role and nobody else: no other role includes them and a
 // per-account grant of one is ignored, so the only way to hold one is to be
 // an administrator.
-export const ADMIN_ONLY = Object.freeze(['integrations.view', 'integrations.manage', 'monday.configure', 'activity.view', 'team.manage'])
+export const ADMIN_ONLY = Object.freeze(['integrations.view', 'integrations.manage', 'monday.configure', 'activity.view', 'team.manage', 'calls.clear'])
 
 export const ALL_CAPABILITIES = Object.freeze(Object.keys(CAPABILITIES))
 
