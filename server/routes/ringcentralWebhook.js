@@ -17,12 +17,26 @@ import { clientKey } from '../httpSecurity.js'
 
 const TOKEN_RE = /^[A-Za-z0-9._~+/=-]{1,256}$/
 
+// RingCentral refuses an address whose answer to its check is over 1024
+// bytes, headers included (SUB-525), and Railway adds about 150 of its own.
+// The browser-only headers helmet sets on every response mean nothing to
+// RingCentral's server, so the webhook answers without them.
+const BROWSER_HEADERS = [
+  'Content-Security-Policy', 'Cross-Origin-Opener-Policy', 'Cross-Origin-Resource-Policy', 'Cross-Origin-Embedder-Policy',
+  'Origin-Agent-Cluster', 'Referrer-Policy', 'X-DNS-Prefetch-Control', 'X-Download-Options', 'X-Frame-Options',
+  'X-Permitted-Cross-Domain-Policies', 'X-XSS-Protection',
+]
+
 export function createRingCentralWebhookRouter({ db = null } = {}) {
   const router = Router()
   const pool = () => db || getPool()
 
   // A busy office makes a few events a second; this only stops floods.
-  router.use(rateLimit({ windowMs: 60 * 1000, max: 1200, standardHeaders: true, legacyHeaders: false, keyGenerator: clientKey }))
+  router.use((_req, res, next) => {
+    for (const h of BROWSER_HEADERS) res.removeHeader(h)
+    next()
+  })
+  router.use(rateLimit({ windowMs: 60 * 1000, max: 1200, standardHeaders: false, legacyHeaders: false, keyGenerator: clientKey }))
 
   router.post('/', express.json({ limit: '256kb' }), async (req, res) => {
     const validation = req.get('Validation-Token')
