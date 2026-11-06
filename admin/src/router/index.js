@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 import { routes } from './routes.js'
 import { reloadForStaleBuild, clearStaleBuildMark } from './staleBuild.js'
+import { prefetchSections } from './prefetch.js'
 
 const BRAND = 'Campos Muños Law'
 
@@ -52,6 +53,9 @@ router.afterEach((to, _from, failure) => {
   if (!failure) clearStaleBuildMark(window.sessionStorage)
   // Views that own a live title (the inbox's unread count) set their own.
   if (to.meta?.title) document.title = `${to.meta.title} | ${BRAND}`
+  // Signed in: fetch the other sections' code while the browser is idle.
+  const { isAuthenticated, canAny } = useAuth()
+  if (!failure && isAuthenticated.value) prefetchSections(routes, (meta) => canAny(...[].concat(meta.capability)))
 })
 
 export default router

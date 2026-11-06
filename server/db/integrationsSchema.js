@@ -167,6 +167,16 @@ export const INTEGRATIONS_SCHEMA_SQL = `
     created_by INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
+  -- Calls someone has dealt with outside the portal's own follow-up (a
+  -- callback from a mobile, an email): they leave Needs attention. A
+  -- workflow mark only: the call's classification and attribution are
+  -- untouched. One per call (all of its RingCentral records).
+  CREATE TABLE IF NOT EXISTS rc_call_resolutions (
+    call_key TEXT PRIMARY KEY,
+    note TEXT,
+    created_by INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
   CREATE TABLE IF NOT EXISTS rc_ignored_numbers (
     counterpart_key TEXT PRIMARY KEY CHECK (counterpart_key <> ''),
     number TEXT,

@@ -13,6 +13,7 @@ import rateLimit from 'express-rate-limit'
 import getPool from '../db/pool.js'
 import { isTrustedDelivery, storeNotification } from '../integrations/ringcentral/telephonyEvents.js'
 import { classifyStored } from '../integrations/ringcentral/callLog.js'
+import { requestQuickSync, endsCall } from '../integrations/ringcentral/quickSync.js'
 import { clientKey } from '../httpSecurity.js'
 
 const TOKEN_RE = /^[A-Za-z0-9._~+/=-]{1,256}$/
@@ -27,7 +28,9 @@ const BROWSER_HEADERS = [
   'X-Permitted-Cross-Domain-Policies', 'X-XSS-Protection',
 ]
 
-export function createRingCentralWebhookRouter({ db = null } = {}) {
+// onCallEnded: what to do when a party leaves a call (default: import the call
+// log soon, so the call reaches Calls within about a minute).
+export function createRingCentralWebhookRouter({ db = null, onCallEnded = () => requestQuickSync() } = {}) {
   const router = Router()
   const pool = () => db || getPool()
 
@@ -49,6 +52,7 @@ export function createRingCentralWebhookRouter({ db = null } = {}) {
       if (!(await isTrustedDelivery(pool(), req.headers, req.body))) return res.status(401).end()
       const { stored, sessionId } = await storeNotification(pool(), req.body)
       res.status(200).type('application/json').end()
+      if (stored && endsCall(req.body)) onCallEnded()
       if (stored && sessionId) {
         classifyStored(pool(), { keys: [sessionId], onlyKeys: true }).catch((err) => req.log?.warn({ err: { name: err?.name, code: err?.code } }, 'Call re-read after live event failed'))
       }

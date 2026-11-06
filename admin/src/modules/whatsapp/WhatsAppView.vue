@@ -231,7 +231,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../../composables/useAuth.js'
 import { useApi, rawFetch, goToLogin, latestOnly } from '../../composables/useApi.js'
@@ -442,24 +442,49 @@ async function poll() {
 const onVisible = () => { if (!document.hidden) poll() }
 
 watch(() => route.params.id, (id) => {
+  // Kept alive: leaving for another section is not closing the thread.
+  if (route.name !== 'WhatsApp') return
   const n = id ? Number(id) : null
   if (n !== selectedId.value) { if (n) select(n); else closeThread() }
 })
 
-watch(title, (t) => { document.title = `${t ? t + ' · ' : ''}WhatsApp | Campos Muños Law` }, { immediate: true })
+const active = ref(true)
+const setTitle = () => { document.title = `${title.value ? title.value + ' · ' : ''}WhatsApp | Campos Muños Law` }
+watch(title, () => { if (active.value) setTitle() }, { immediate: true })
+
+function listen() {
+  unlisten()
+  timer = setInterval(poll, POLL_INTERVAL_MS)
+  document.addEventListener('visibilitychange', onVisible)
+}
+function unlisten() {
+  clearInterval(timer)
+  timer = null
+  document.removeEventListener('visibilitychange', onVisible)
+}
 
 onMounted(async () => {
   get('/api/whatsapp/status').then((s) => { status.value = s }).catch(() => {})
   if (can('whatsapp.manage')) get('/api/whatsapp/assignees').then((a) => { assignees.value = a }).catch(() => {})
+  listen()
   await loadList()
   if (selectedId.value) loadDetail({ scroll: true })
-  timer = setInterval(poll, POLL_INTERVAL_MS)
-  document.addEventListener('visibilitychange', onVisible)
 })
-onUnmounted(() => {
-  clearInterval(timer)
-  document.removeEventListener('visibilitychange', onVisible)
+// Kept alive between sections (App.vue): coming back shows the inbox at
+// once and refreshes it in the background; while away it does not poll.
+let activations = 0
+onActivated(() => {
+  active.value = true
+  if (activations++ === 0) return
+  setTitle()
+  // Returning by a link to another conversation opens that one.
+  const n = route.params.id ? Number(route.params.id) : null
+  if (n !== selectedId.value) { if (n) select(n); else closeThread() }
+  listen()
+  poll()
 })
+onDeactivated(() => { active.value = false; unlisten() })
+onUnmounted(unlisten)
 
 async function handleLogout() {
   await logout()

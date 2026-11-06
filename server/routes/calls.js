@@ -19,9 +19,9 @@ import requireAuth from '../middleware/auth.js'
 import requireCapability, { can } from '../middleware/requireCapability.js'
 import { loadRingCentralConfig } from '../integrations/ringcentral/config.js'
 import { getConnectionStatus } from '../integrations/ringcentral/service.js'
-import { queryCalls, syncCallLog, getSyncState, summarizeMissed, OUTCOME_FILTERS, callEvidence, listPeople } from '../integrations/ringcentral/callLog.js'
+import { queryCalls, syncCallLog, getSyncState, summarizeMissed, OUTCOME_FILTERS, callEvidence, listPeople, callKpis, callsStamp } from '../integrations/ringcentral/callLog.js'
 import { UNANSWERED_CLASSES } from '../integrations/ringcentral/callEvidence.js'
-import { excludeCall, includeCall, CallExclusionError } from '../integrations/ringcentral/callExclusions.js'
+import { excludeCall, includeCall, markHandled, unmarkHandled, CallExclusionError } from '../integrations/ringcentral/callExclusions.js'
 import { placeRingOut, ringOutStatus, cancelRingOut, getMyPhone, setMyPhone, RingOutError } from '../integrations/ringcentral/ringout.js'
 
 const MANUAL_SYNC_MIN_INTERVAL_MS = 30 * 1000
@@ -42,12 +42,12 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
 
   async function status(req) {
     const cfg = config()
-    const conn = await getConnectionStatus(pool(), cfg)
+    const [conn, sync] = await Promise.all([getConnectionStatus(pool(), cfg), getSyncState(pool())])
     return {
       configured: cfg.configured,
       connection: conn.status,
       canManageConnection: can(req, 'integrations.manage'),
-      sync: await getSyncState(pool()),
+      sync,
     }
   }
 
@@ -66,12 +66,31 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
       const businessHours = ['1', 'true'].includes(String(req.query.businessHours || ''))
       // A RingCentral extension id (digits): calls proven offered to that person.
       const person = typeof req.query.person === 'string' && /^\d{1,20}$/.test(req.query.person) ? req.query.person : null
-      const result = await queryCalls(pool(), { from, to, outcome, q, limit: req.query.limit, businessHours, person })
+      // Independent reads run together: each costs a database round trip.
+      const withKpis = ['1', 'true'].includes(String(req.query.kpis || ''))
+      const [result, people, st, kpis, stamp] = await Promise.all([
+        queryCalls(pool(), { from, to, outcome, q, limit: req.query.limit, businessHours, person }),
+        listPeople(pool()),
+        status(req),
+        withKpis ? callKpis(pool(), { now: n }) : null,
+        callsStamp(pool()),
+      ])
       // The vocabulary the page works with comes from here, not from copies in the page.
       const vocabulary = { unansweredClasses: UNANSWERED_CLASSES, outcomeFilters: OUTCOME_FILTERS }
-      res.json({ ...result, people: await listPeople(pool()), ...vocabulary, ...(await status(req)) })
+      res.json({ ...result, people, ...vocabulary, ...(kpis ? { kpis } : {}), stamp, ...st })
     } catch (err) {
       req.log?.error({ err }, 'List calls error')
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  })
+
+  // Has anything on the Calls page changed? One cheap query; the page polls it
+  // every few seconds and reloads the list only when the answer moves.
+  router.get('/changes', async (req, res) => {
+    try {
+      res.json({ stamp: await callsStamp(pool()) })
+    } catch (err) {
+      req.log?.error({ err }, 'Calls change check error')
       res.status(500).json({ error: 'Internal server error' })
     }
   })
@@ -150,6 +169,16 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
     const out = await includeCall(pool(), { callId: Number(req.params.id) })
     req.log?.info({ call: out.callId, removedCall: out.removedCall, removedNumber: out.removedNumber }, 'Missed call counted again')
     res.json(out)
+  }))
+
+  // Dealt with another way (a callback from a mobile, an email): it leaves
+  // Needs attention. Same permission as marking a call as needing no callback.
+  router.post('/:id(\\d+)/handled', exclude, exclusionWrap(async (req, res) => {
+    res.json(await markHandled(pool(), { callId: Number(req.params.id), note: req.body?.note, accountId: req.account.id }))
+  }))
+
+  router.delete('/:id(\\d+)/handled', exclude, exclusionWrap(async (req, res) => {
+    res.json(await unmarkHandled(pool(), { callId: Number(req.params.id) }))
   }))
 
   // --- RingOut: call a number from the portal (calls.place) ---------------------

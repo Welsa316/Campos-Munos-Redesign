@@ -47,6 +47,8 @@ export const ACTIONS = {
   'POST /api/calls/sync': { key: 'calls.refreshed', label: 'Refreshed the call log' },
   'POST /api/calls/:id/exclusion': { key: 'calls.excluded', label: 'Marked a missed call as needing no callback', entity: 'call',
     details: (req) => ({ reason: body(req).reason, scope: body(req).scope }) },
+  'POST /api/calls/:id/handled': { key: 'calls.handled', label: 'Marked a call handled', entity: 'call' },
+  'DELETE /api/calls/:id/handled': { key: 'calls.reopened', label: 'Reopened a handled call', entity: 'call' },
   'DELETE /api/calls/:id/exclusion': { key: 'calls.included', label: 'Put a missed call back in the counts', entity: 'call' },
   'PUT /api/calls/ringout/me': { key: 'calls.own_phone', label: 'Changed the phone their calls ring first' },
   'POST /api/calls/ringout': { key: 'calls.placed', label: 'Placed a call from the portal',

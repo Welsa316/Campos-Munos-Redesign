@@ -80,4 +80,38 @@ export async function includeCall(db, { callId }) {
   return { callId: Number(call.id), removedCall: own.rowCount > 0, removedNumber: byNumber.rowCount > 0 }
 }
 
-export default { excludeCall, includeCall, EXCLUSION_REASONS }
+export default { excludeCall, includeCall, markHandled, unmarkHandled, EXCLUSION_REASONS }
+
+// --- handled: dealt with another way ----------------------------------------------
+
+/**
+ * Mark a call that needed someone as dealt with another way (called back from
+ * a mobile, answered by email, sorted out in person). It leaves Needs
+ * attention; its classification and who it is attributed to do not change.
+ * Marking again replaces the note.
+ */
+export async function markHandled(db, { callId, note, accountId }) {
+  const call = await loadCall(db, callId)
+  const open = call.classification ? call.classification !== 'answered' : ['missed', 'voicemail'].includes(call.outcome)
+  if (call.direction !== 'inbound' || !open || call.is_internal) {
+    throw new CallExclusionError('not_unanswered', 'Only calls nobody answered can be marked handled', 409)
+  }
+  const text = typeof note === 'string' ? note.trim().slice(0, NOTE_MAX) : ''
+  const key = (await db.query('SELECT call_key FROM rc_calls WHERE id = $1', [call.id])).rows[0].call_key
+  await db.query(
+    `INSERT INTO rc_call_resolutions (call_key, note, created_by) VALUES ($1, $2, $3)
+     ON CONFLICT (call_key) DO UPDATE SET note = EXCLUDED.note, created_by = EXCLUDED.created_by, created_at = NOW()`,
+    [key, text || null, accountId]
+  )
+  return { callId: Number(call.id), handled: true }
+}
+
+/** Open the call again: it goes back to Needs attention if it still qualifies. */
+export async function unmarkHandled(db, { callId }) {
+  const call = await loadCall(db, callId)
+  const r = await db.query(
+    'DELETE FROM rc_call_resolutions WHERE call_key = (SELECT call_key FROM rc_calls WHERE id = $1)',
+    [call.id]
+  )
+  return { callId: Number(call.id), removed: r.rowCount > 0 }
+}

@@ -356,7 +356,8 @@ async function classifyCalls(db, keys, ctx) {
   for (let i = 0; i < updates.length; i += 500) {
     const chunk = updates.slice(i, i + 500)
     await db.query(
-      `UPDATE rc_calls c SET classification = v.cls, classification_evidence = v.ev, classifier_version = $5, is_primary = v.prim
+      `UPDATE rc_calls c SET classification = v.cls, classification_evidence = v.ev, classifier_version = $5, is_primary = v.prim,
+              updated_at = CASE WHEN c.classification IS DISTINCT FROM v.cls OR c.is_primary IS DISTINCT FROM v.prim THEN NOW() ELSE c.updated_at END
          FROM (SELECT unnest($1::bigint[]) AS id, unnest($2::text[]) AS cls, unnest($3::jsonb[]) AS ev, unnest($4::boolean[]) AS prim) v
         WHERE c.id = v.id`,
       [chunk.map((u) => u[0]), chunk.map((u) => u[1]), chunk.map((u) => (u[2] ? JSON.stringify(u[2]) : null)), chunk.map((u) => u[3]), CLASSIFIER_VERSION]
@@ -495,7 +496,7 @@ export async function getSyncState(db) {
 // --- the list the portal shows ------------------------------------------------------
 
 export const OUTCOME_FILTERS = Object.freeze([
-  'all', 'answered', 'missed', 'hung_up', 'ended', 'voicemail', 'unconfirmed', 'system', 'unanswered', 'outgoing', 'not_returned', 'excluded',
+  'all', 'answered', 'missed', 'hung_up', 'ended', 'voicemail', 'unconfirmed', 'system', 'unanswered', 'outgoing', 'not_returned', 'excluded', 'attention',
 ])
 
 // The firm's opening hours, as published on the website (site/index.html,
@@ -560,6 +561,87 @@ export function callerLocation(name) {
 
 const titleCase = (s) => String(s).toLowerCase().replace(/(^|[\s'-])(\p{L})/gu, (_m, p, c) => p + c.toUpperCase())
 
+
+// The calls query: every call with the firm's own name for the caller, its
+// follow-ups, any mark it carries, and whether it still needs someone.
+// "Needs attention" is a workflow state, never a classification: an incoming
+// call proven not answered by anyone (UNANSWERED_CLASSES), from a number that
+// can be called back, that nobody has dealt with yet: no connected callback
+// or later answered call, not marked handled, not marked as needing no
+// callback. It says nothing about who missed it.
+function baseSql(where, searchSql = '') {
+  return `
+    WITH base AS (
+      SELECT c.*,
+             lead.id AS lead_id, lead.first_name AS lead_first, lead.last_name AS lead_last, lead.n AS lead_count,
+             cl.client_id, cl.client_name,
+             -- Marked "someone from the firm" for every call from the number:
+             -- a colleague's own phone, so not a website lead even when they
+             -- once tried the contact form with it.
+             EXISTS (SELECT 1 FROM rc_ignored_numbers fn
+                      WHERE c.counterpart_key <> '' AND fn.counterpart_key = c.counterpart_key AND fn.reason = 'staff_test') AS from_firm,
+             fu.started_at AS followup_at, fu.direction AS followup_direction, fu.outcome AS followup_outcome,
+             -- The follow-up that closes a call: a connected callback, or the
+             -- caller getting through later. A callback attempt that did not
+             -- connect leaves it open ("try again").
+             fc.started_at AS connected_followup_at, fc.direction AS connected_followup_direction,
+             fa.started_at AS attempt_at,
+             hd.created_at AS handled_at, hd.note AS handled_note, COALESCE(NULLIF(hdu.display_name, ''), split_part(hdu.email, '@', 1)) AS handled_by,
+             (c.direction = 'inbound' AND ${UNANSWERED_SQL('c.classification')} AND c.counterpart_key <> ''
+              AND fc.started_at IS NULL AND hd.call_key IS NULL AND ex.kind IS NULL) AS needs_attention,
+             ex.kind AS excluded_kind, ex.reason AS excluded_reason, ex.note AS excluded_note, ex.created_at AS excluded_at,
+             COALESCE(NULLIF(exu.display_name, ''), exu.email) AS excluded_by
+        FROM rc_calls c
+        LEFT JOIN LATERAL (
+          SELECT s.id, s.first_name, s.last_name, COUNT(*) OVER () AS n
+            FROM submissions s
+           WHERE c.counterpart_key <> '' AND cm_phone_key(s.phone) = c.counterpart_key
+           ORDER BY s.created_at DESC LIMIT 1) lead ON TRUE
+        LEFT JOIN LATERAL (
+          SELECT bc.id AS client_id, bc.display_name AS client_name
+            FROM billing_client_contacts cc JOIN billing_clients bc ON bc.id = cc.client_id
+           WHERE c.counterpart_key <> '' AND cm_phone_key(cc.phone_e164) = c.counterpart_key
+           ORDER BY cc.updated_at DESC LIMIT 1) cl ON TRUE
+        LEFT JOIN LATERAL (
+          SELECT r.started_at, r.direction, r.outcome
+            FROM rc_calls r
+           WHERE c.direction = 'inbound' AND ${UNANSWERED_SQL('c.classification')} AND c.counterpart_key <> ''
+             AND r.counterpart_key = c.counterpart_key AND r.started_at > c.started_at AND NOT r.is_internal AND r.is_primary
+             AND (r.direction = 'outbound' OR r.classification = 'answered')
+           ORDER BY r.started_at LIMIT 1) fu ON TRUE
+        LEFT JOIN LATERAL (
+          SELECT r.started_at, r.direction
+            FROM rc_calls r
+           WHERE c.direction = 'inbound' AND c.counterpart_key <> ''
+             AND r.counterpart_key = c.counterpart_key AND r.started_at > c.started_at AND NOT r.is_internal AND r.is_primary
+             AND ((r.direction = 'outbound' AND r.outcome = 'connected') OR r.classification = 'answered')
+           ORDER BY r.started_at LIMIT 1) fc ON TRUE
+        LEFT JOIN LATERAL (
+          SELECT r.started_at
+            FROM rc_calls r
+           WHERE c.direction = 'inbound' AND c.counterpart_key <> ''
+             AND r.counterpart_key = c.counterpart_key AND r.started_at > c.started_at AND NOT r.is_internal AND r.is_primary
+             AND r.direction = 'outbound' AND r.outcome <> 'connected'
+           ORDER BY r.started_at DESC LIMIT 1) fa ON TRUE
+        LEFT JOIN rc_call_resolutions hd ON hd.call_key = c.call_key
+        LEFT JOIN admin_users hdu ON hdu.id = hd.created_by
+        -- A number rule wins over a single-call exclusion: it is the broader one.
+        LEFT JOIN LATERAL (
+          SELECT e.kind, e.reason, e.note, e.created_at, e.created_by FROM (
+            SELECT 'number' AS kind, ig.reason, ig.note, ig.created_at, ig.created_by, 1 AS rank
+              FROM rc_ignored_numbers ig WHERE c.counterpart_key <> '' AND ig.counterpart_key = c.counterpart_key
+            UNION ALL
+            SELECT 'call', x.reason, x.note, x.created_at, x.created_by, 2
+              FROM rc_call_exclusions x JOIN rc_calls d ON d.id = x.call_id WHERE d.call_key = c.call_key) e
+           WHERE c.direction = 'inbound' AND c.classification IS DISTINCT FROM 'answered'
+           ORDER BY e.rank LIMIT 1) ex ON TRUE
+        LEFT JOIN admin_users exu ON exu.id = ex.created_by
+       WHERE ${where.join(' AND ')}
+    ), filtered AS (
+      SELECT * FROM base b ${searchSql ? `WHERE ${searchSql}` : ''}
+    )`
+}
+
 /**
  * Calls in [from, to), newest first, one row per call, with the name from the
  * firm's own records when the number matches one, and for missed calls
@@ -601,52 +683,7 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
     }
   }
 
-  const base = `
-    WITH base AS (
-      SELECT c.*,
-             lead.id AS lead_id, lead.first_name AS lead_first, lead.last_name AS lead_last, lead.n AS lead_count,
-             cl.client_id, cl.client_name,
-             -- Marked "someone from the firm" for every call from the number:
-             -- a colleague's own phone, so not a website lead even when they
-             -- once tried the contact form with it.
-             EXISTS (SELECT 1 FROM rc_ignored_numbers fn
-                      WHERE c.counterpart_key <> '' AND fn.counterpart_key = c.counterpart_key AND fn.reason = 'staff_test') AS from_firm,
-             fu.started_at AS followup_at, fu.direction AS followup_direction, fu.outcome AS followup_outcome,
-             ex.kind AS excluded_kind, ex.reason AS excluded_reason, ex.note AS excluded_note, ex.created_at AS excluded_at,
-             COALESCE(NULLIF(exu.display_name, ''), exu.email) AS excluded_by
-        FROM rc_calls c
-        LEFT JOIN LATERAL (
-          SELECT s.id, s.first_name, s.last_name, COUNT(*) OVER () AS n
-            FROM submissions s
-           WHERE c.counterpart_key <> '' AND cm_phone_key(s.phone) = c.counterpart_key
-           ORDER BY s.created_at DESC LIMIT 1) lead ON TRUE
-        LEFT JOIN LATERAL (
-          SELECT bc.id AS client_id, bc.display_name AS client_name
-            FROM billing_client_contacts cc JOIN billing_clients bc ON bc.id = cc.client_id
-           WHERE c.counterpart_key <> '' AND cm_phone_key(cc.phone_e164) = c.counterpart_key
-           ORDER BY cc.updated_at DESC LIMIT 1) cl ON TRUE
-        LEFT JOIN LATERAL (
-          SELECT r.started_at, r.direction, r.outcome
-            FROM rc_calls r
-           WHERE c.direction = 'inbound' AND ${UNANSWERED_SQL('c.classification')} AND c.counterpart_key <> ''
-             AND r.counterpart_key = c.counterpart_key AND r.started_at > c.started_at AND NOT r.is_internal AND r.is_primary
-             AND (r.direction = 'outbound' OR r.classification = 'answered')
-           ORDER BY r.started_at LIMIT 1) fu ON TRUE
-        -- A number rule wins over a single-call exclusion: it is the broader one.
-        LEFT JOIN LATERAL (
-          SELECT e.kind, e.reason, e.note, e.created_at, e.created_by FROM (
-            SELECT 'number' AS kind, ig.reason, ig.note, ig.created_at, ig.created_by, 1 AS rank
-              FROM rc_ignored_numbers ig WHERE c.counterpart_key <> '' AND ig.counterpart_key = c.counterpart_key
-            UNION ALL
-            SELECT 'call', x.reason, x.note, x.created_at, x.created_by, 2
-              FROM rc_call_exclusions x JOIN rc_calls d ON d.id = x.call_id WHERE d.call_key = c.call_key) e
-           WHERE c.direction = 'inbound' AND c.classification IS DISTINCT FROM 'answered'
-           ORDER BY e.rank LIMIT 1) ex ON TRUE
-        LEFT JOIN admin_users exu ON exu.id = ex.created_by
-       WHERE ${where.join(' AND ')}
-    ), filtered AS (
-      SELECT * FROM base b ${searchSql ? `WHERE ${searchSql}` : ''}
-    )`
+  const base = baseSql(where, searchSql)
 
   const inbound = "direction = 'inbound'"
   const kept = 'excluded_kind IS NULL'
@@ -663,6 +700,7 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
     outgoing: "direction = 'outbound'",
     not_returned: `${inbound} AND ${UNANSWERED_SQL('classification')} AND followup_at IS NULL AND counterpart_key <> '' AND ${kept}`,
     excluded: 'excluded_kind IS NOT NULL',
+    attention: 'needs_attention',
   }[OUTCOME_FILTERS.includes(outcome) ? outcome : 'all']
 
   const personCounts = personParam
@@ -671,7 +709,7 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
         COUNT(*) FILTER (WHERE ${UNANSWERED_SQL('classification')} AND classification_evidence->'notAnsweredBy' @> ${personParam}::jsonb AND ${kept})::int AS person_not_answered`
     : ''
   const lim = Math.max(1, Math.min(1000, Math.trunc(Number(limit)) || 300))
-  const [list, counts] = await Promise.all([
+  const [list, counts, names] = await Promise.all([
     db.query(`${base} SELECT * FROM filtered WHERE ${outcomeSql} ORDER BY started_at DESC, id DESC LIMIT ${lim + 1}`, params),
     db.query(`${base} SELECT
         COUNT(*) FILTER (WHERE ${inbound})::int AS incoming,
@@ -684,12 +722,13 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
         COUNT(*) FILTER (WHERE ${inbound} AND classification = 'system')::int AS system,
         COUNT(*) FILTER (WHERE direction = 'outbound')::int AS outgoing,
         COUNT(*) FILTER (WHERE ${inbound} AND ${UNANSWERED_SQL('classification')} AND followup_at IS NULL AND counterpart_key <> '' AND ${kept})::int AS not_returned,
-        COUNT(*) FILTER (WHERE excluded_kind IS NOT NULL)::int AS excluded${personCounts}
+        COUNT(*) FILTER (WHERE excluded_kind IS NOT NULL)::int AS excluded,
+        COUNT(*) FILTER (WHERE needs_attention)::int AS attention${personCounts}
       FROM filtered`, params),
+    linkedNames(db),
   ])
 
   const rows = list.rows.slice(0, lim)
-  const names = await linkedNames(db)
   return {
     calls: rows.map((r) => present(r, names)),
     counts: counts.rows[0],
@@ -720,8 +759,7 @@ const named = (p, names) => {
 
 /** The people calls can be offered to (extension directory, person types only), for the filter. */
 export async function listPeople(db) {
-  const d = await loadDirectory(db)
-  const names = await linkedNames(db)
+  const [d, names] = await Promise.all([loadDirectory(db), linkedNames(db)])
   return d.people
     .filter((p) => p.status !== 'Disabled')
     .map((p) => ({ extensionId: p.id, extension: p.number, name: names.get(p.id) || p.name, rcName: p.name }))
@@ -777,6 +815,63 @@ export async function callEvidence(db, id) {
   }
 }
 
+// Local midnight in the firm's time zone, today.
+export function startOfToday(now = new Date()) {
+  const tz = BUSINESS_HOURS.timeZone
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' })
+    .formatToParts(now).map((p) => [p.type, p.value]))
+  const asUtc = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second)
+  const offset = asUtc - Math.floor(now.getTime() / 1000) * 1000
+  return new Date(Date.UTC(+parts.year, +parts.month - 1, +parts.day) - offset)
+}
+
+// Oldest first in Needs attention: waiting since before today, then callbacks
+// tried without connecting, then today's.
+function attentionGroup(r) {
+  if (new Date(r.started_at) < startOfToday()) return 'waiting'
+  if (r.attempt_at) return 'try_again'
+  return 'new'
+}
+
+/** How far back Needs attention looks (older open calls are left in All calls). */
+export const ATTENTION_DAYS = 90
+
+/**
+ * The three counts at the top of Calls: calls that still need someone (last
+ * ATTENTION_DAYS days), calls dealt with today (marked handled today, or a
+ * connected callback or later answered call today), and every call today.
+ * "No callback needed" marks are not counted as handled.
+ */
+export async function callKpis(db, { now = new Date() } = {}) {
+  const today = startOfToday(now)
+  const from = new Date(now.getTime() - ATTENTION_DAYS * 24 * 60 * 60 * 1000)
+  const row = (await db.query(
+    `${baseSql(['c.started_at >= $1', 'c.started_at < $2', 'NOT c.is_internal', 'c.is_primary'])}
+     SELECT COUNT(*) FILTER (WHERE needs_attention)::int AS needs_attention,
+            COUNT(*) FILTER (WHERE direction = 'inbound' AND excluded_kind IS NULL AND (
+              handled_at >= $3 OR (connected_followup_at >= $3 AND ${UNANSWERED_SQL('classification')} AND counterpart_key <> '')))::int AS handled_today,
+            COUNT(*) FILTER (WHERE started_at >= $3)::int AS total_today
+       FROM filtered`,
+    [from, new Date(now.getTime() + 60 * 1000), today]
+  )).rows[0]
+  return { needsAttention: row.needs_attention, handledToday: row.handled_today, totalToday: row.total_today, since: from, today }
+}
+
+/**
+ * A cheap fingerprint of everything the Calls page shows: it changes when a
+ * call is imported or re-read, or a call is marked or unmarked. The page
+ * polls this and reloads the list only when it moves.
+ */
+export async function callsStamp(db) {
+  const r = (await db.query(
+    `SELECT (SELECT MAX(updated_at) FROM rc_calls) AS calls,
+            (SELECT COUNT(*) || ':' || COALESCE(MAX(created_at)::text, '') FROM rc_call_resolutions) AS handled,
+            (SELECT COUNT(*) || ':' || COALESCE(MAX(created_at)::text, '') FROM rc_call_exclusions) AS excluded,
+            (SELECT COUNT(*) || ':' || COALESCE(MAX(created_at)::text, '') FROM rc_ignored_numbers) AS numbers`
+  )).rows[0]
+  return [r.calls?.toISOString?.() ?? '', r.handled, r.excluded, r.numbers].join('|')
+}
+
 function present(r, names = new Map()) {
   const leadName = r.lead_id ? `${r.lead_first || ''} ${r.lead_last || ''}`.trim() : null
   const callerId = r.caller_id_name && !isGenericCallerId(r.caller_id_name) ? titleCase(r.caller_id_name) : null
@@ -821,6 +916,13 @@ function present(r, names = new Map()) {
     stage: ev?.stage ?? null,
     rang: ev?.live ? ev.live.parties.filter((p) => p.person && p.rang).map((p) => named({ extensionId: p.extensionId, extension: p.extension, name: p.name, seconds: p.rang.seconds }, names)) : [],
     followUp,
+    // The workflow around the call (Calls → Needs attention). None of it
+    // changes how the call is classified or who it is attributed to.
+    needsAttention: Boolean(r.needs_attention),
+    attentionGroup: r.needs_attention ? attentionGroup(r) : null,
+    attemptAt: r.attempt_at ?? null,
+    connectedFollowUp: r.connected_followup_at ? { at: r.connected_followup_at, kind: r.connected_followup_direction === 'outbound' ? 'called_back' : 'answered_later' } : null,
+    handled: r.handled_at ? { at: r.handled_at, by: r.handled_by, note: r.handled_note } : null,
     // Marked as needing no callback: this call alone, or every call from its number.
     exclusion: r.excluded_kind
       ? { scope: r.excluded_kind, reason: r.excluded_reason, note: r.excluded_note, by: r.excluded_by, at: r.excluded_at }

@@ -346,7 +346,7 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.equal(byId(calls, '2026-10-30T15:00:00Z').systemOnly, null)
     assert.equal(byId(calls, '2026-10-30T19:00:00Z').classification, 'caller_hung_up')
     assert.deepEqual(r.json.counts, {
-      incoming: 6, answered: 1, missed: 2, hung_up: 1, ended: 0, voicemail: 1, unconfirmed: 1, system: 0, outgoing: 1, not_returned: 2, excluded: 0,
+      incoming: 6, answered: 1, missed: 2, hung_up: 1, ended: 0, voicemail: 1, unconfirmed: 1, system: 0, outgoing: 1, not_returned: 2, excluded: 0, attention: 2,
     })
     assert.deepEqual(calls.map((c) => c.startedAt), [...calls.map((c) => c.startedAt)].sort().reverse(), 'newest first')
     // The page takes its vocabulary from here instead of keeping copies.
@@ -709,7 +709,7 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     const r = await mark('c8', { reason: 'verification', scope: 'call' })
     assert.equal(r.status, 200)
     let l = await list()
-    assert.deepEqual(l.json.counts, { ...base, missed: base.missed - 1, not_returned: base.not_returned - 1, excluded: 1 })
+    assert.deepEqual(l.json.counts, { ...base, missed: base.missed - 1, not_returned: base.not_returned - 1, excluded: 1, attention: base.attention - 1 })
     const c8 = byId(l.json.calls, '2026-10-30T19:30:00Z')
     assert.equal(c8.exclusion.scope, 'call')
     assert.equal(c8.exclusion.reason, 'verification')
@@ -728,7 +728,7 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     await db.query(`INSERT INTO rc_calls (rc_record_id, direction, started_at, outcome, classification, classifier_version, scope, counterpart_number, counterpart_key)
       VALUES ('later-test', 'inbound', '2026-10-30T20:15:00Z', 'missed', 'not_answered', 1, 'account', '+15045550177', '5045550177')`)
     l = await list()
-    assert.deepEqual(l.json.counts, { ...base, incoming: base.incoming + 1, voicemail: base.voicemail - 1, missed: base.missed - 1, not_returned: base.not_returned - 2, excluded: 3 })
+    assert.deepEqual(l.json.counts, { ...base, incoming: base.incoming + 1, voicemail: base.voicemail - 1, missed: base.missed - 1, not_returned: base.not_returned - 2, excluded: 3, attention: base.attention - 2 })
     const later = byId(l.json.calls, '2026-10-30T20:15:00Z')
     assert.deepEqual({ ...later.exclusion, at: undefined }, { scope: 'number', reason: 'staff_test', note: 'Ana testing the line', by: 'owner@example.test', at: undefined })
     assert.equal(byId(l.json.calls, '2026-10-30T15:00:00Z').exclusion, null, 'an answered call is never shown as excluded')
@@ -933,6 +933,53 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     rc.validate = null
     rc.records = rc.records.filter((r) => !['g1', 'h1'].includes(r.id))
     await db.query(`DELETE FROM rc_calls WHERE call_key IN ('ts-greeting', 'ts-late')`)
+  })
+
+  await t.test('needs attention: open calls nobody has dealt with, grouped; handled and reopened; counters', async () => {
+    const att = async () => (await list('&outcome=attention&kpis=1')).json
+    let a = await att()
+    // c4 voicemail and c8 not answered, both with numbers. Not c2 (called back
+    // and connected), c5 (not confirmed), c7 (withheld number), c1 (answered).
+    assert.deepEqual(a.calls.map((c) => new Date(c.startedAt).toISOString()).sort(),
+      ['2026-10-30T17:00:00.000Z', '2026-10-30T19:30:00.000Z'])
+    assert.ok(a.calls.every((c) => c.needsAttention))
+    assert.equal(a.counts.attention, 2)
+    // The test clock is the next day: both are waiting since before today.
+    assert.deepEqual([...new Set(a.calls.map((c) => c.attentionGroup))], ['waiting'])
+    assert.equal(a.kpis.needsAttention, 2)
+    assert.equal(byId((await list()).json.calls, '2026-10-30T16:00:00Z').connectedFollowUp.kind, 'called_back')
+
+    // A callback attempt that did not connect keeps the call open ("try again").
+    await db.query(`INSERT INTO rc_calls (rc_record_id, direction, started_at, outcome, classification, classifier_version, scope, counterpart_number, counterpart_key)
+      VALUES ('try-1', 'outbound', '2026-10-30T19:45:00Z', 'no_answer', NULL, 1, 'account', '+15045550188', '5045550188')`)
+    a = await att()
+    const c8 = a.calls.find((c) => new Date(c.startedAt).toISOString() === '2026-10-30T19:30:00.000Z')
+    assert.ok(c8, 'still needs attention')
+    assert.equal(new Date(c8.attemptAt).toISOString(), '2026-10-30T19:45:00.000Z')
+
+    // Marked handled: it leaves Needs attention, keeps its classification, and counts as handled today.
+    const stampBefore = (await call('GET', '/api/calls/changes')).json.stamp
+    assert.equal((await send('POST', `/api/calls/${c8.id}/handled`, { note: 'Called from my mobile' }, { cookie: users.para.cookie })).status, 403)
+    const h = await send('POST', `/api/calls/${c8.id}/handled`, { note: '  Called from my mobile ' }, { cookie: users.desk.cookie })
+    assert.equal(h.status, 200, h.text)
+    a = await att()
+    assert.equal(a.calls.length, 1)
+    assert.equal(a.kpis.needsAttention, 1)
+    assert.equal(a.kpis.handledToday, 1)
+    const all = byId((await list()).json.calls, '2026-10-30T19:30:00Z')
+    assert.equal(all.classification, 'not_answered', 'the classification is untouched')
+    assert.deepEqual(all.notAnsweredBy.map((p) => p.name), ['Ciro'], 'and so is who it is attributed to')
+    assert.equal(all.handled.note, 'Called from my mobile')
+    assert.equal(all.handled.by, 'desk')
+    assert.notEqual((await call('GET', '/api/calls/changes')).json.stamp, stampBefore, 'the change check moves')
+    // An answered call cannot be marked handled.
+    const answered = byId((await list()).json.calls, '2026-10-30T15:00:00Z')
+    assert.equal((await send('POST', `/api/calls/${answered.id}/handled`, {}, { cookie: users.desk.cookie })).status, 409)
+
+    // Reopened: back in Needs attention.
+    assert.equal((await send('DELETE', `/api/calls/${c8.id}/handled`, undefined, { cookie: users.desk.cookie })).json.removed, true)
+    assert.equal((await att()).calls.length, 2)
+    await db.query(`DELETE FROM rc_calls WHERE rc_record_id = 'try-1'`)
   })
 
   await t.test('RingOut: who may call, saving "ring me at", refusing numbers that must never be dialled', async () => {
