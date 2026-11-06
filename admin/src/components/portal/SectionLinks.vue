@@ -4,9 +4,14 @@
   <router-link v-for="s in visible" :key="s.key" :to="s.to"
     :class="[LINK, s.admin && adminLinks.length > 1 ? 'hidden lg:flex' : '']"
     :aria-label="s.label" :title="s.label">
-    <FaIcon :name="s.icon" class="text-xs" />
+    <span class="relative inline-flex">
+      <FaIcon :name="s.icon" class="text-xs" />
+      <!-- Updates: something changed in the last 48 hours for this account. -->
+      <span v-if="s.key === 'updates' && updatesNew" class="absolute -top-2 -right-3.5 px-1 rounded bg-brand-navy text-white text-[9px] font-bold leading-[14px] uppercase tracking-wide" aria-hidden="true">New</span>
+    </span>
     <!-- Labelled only where this header has room for every action. -->
     <span :class="LABEL_AT[labelAt]">{{ s.label }}</span>
+    <span v-if="s.key === 'updates' && updatesNew" class="sr-only">, new</span>
   </router-link>
 
   <!-- Below lg the administrator's own sections share one menu, so a phone
@@ -30,6 +35,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { canAny } from '../../composables/useAuth.js'
 import FaIcon from '../FaIcon.vue'
+import { UPDATES, hasNew } from '../../data/updates.js'
 
 const props = defineProps({
   // The section this header belongs to; it is not linked to itself.
@@ -40,10 +46,12 @@ const props = defineProps({
 
 // Whole class names, so Tailwind sees them.
 const LABEL_AT = { sm: 'hidden sm:inline', lg: 'hidden lg:inline', xl: 'hidden xl:inline', '2xl': 'hidden 2xl:inline' }
-const LINK = 'flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors'
+const LINK = 'flex items-center gap-2 px-2.5 sm:px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors'
 
 const SECTIONS = [
   { key: 'home', label: 'Home', icon: 'house', to: { name: 'Home' }, any: [] },
+  // What changed, for everyone (each sees the entries for what they can open).
+  { key: 'updates', label: 'Updates', icon: 'bullhorn', to: { name: 'Updates' }, any: [] },
   { key: 'messages', label: 'Messages', icon: 'inbox', to: { name: 'Inbox' }, any: ['crm.view'] },
   { key: 'whatsapp', label: 'WhatsApp', icon: 'comments', to: { name: 'WhatsApp' }, any: ['whatsapp.view'] },
   // The router moves an account without billing.view to the first billing
@@ -57,6 +65,7 @@ const SECTIONS = [
 ]
 
 // An empty list means every signed-in account (Home).
+const updatesNew = computed(() => hasNew(UPDATES, canAny))
 const visible = computed(() => SECTIONS.filter((s) => s.key !== props.current && (!s.any.length || canAny(...s.any))))
 const adminLinks = computed(() => visible.value.filter((s) => s.admin))
 
