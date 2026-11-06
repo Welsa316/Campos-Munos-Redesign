@@ -2,7 +2,7 @@
   <!-- Clear Needs attention (administrators, calls.clear): every open call
        received before a time marked handled at once, with one reason. -->
   <transition name="fade">
-    <div v-if="open" ref="overlayRef" class="fixed inset-0 z-[200] flex items-center justify-center p-4"
+    <div v-if="open" ref="overlayRef" class="fixed inset-0 z-(--z-dialog) flex items-center justify-center p-4"
       role="dialog" aria-modal="true" aria-labelledby="clear-calls-title" aria-describedby="clear-calls-what"
       @keydown.esc="close" @keydown.tab="trapFocus" @click.self="close">
       <div class="absolute inset-0 bg-black/50" aria-hidden="true"></div>

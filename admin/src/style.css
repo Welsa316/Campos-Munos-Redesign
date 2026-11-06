@@ -19,6 +19,18 @@
   --font-ui: "Inter", system-ui, sans-serif;
 }
 
+/* The stacking order of everything that floats over a page, in one place
+   (used as z-(--z-toast) and so on). Toasts sit above dialogs, because a
+   toast fired from inside one (Reminder set, Note saved, an error) must be
+   seen and its Undo or Dismiss clicked while the dialog is still open. */
+:root {
+  --z-scrim: 190;
+  --z-dialog: 200;
+  --z-toast: 210;
+  --z-banner: 250;
+  --z-skip: 300;
+}
+
 @layer base {
   body {
     margin: 0;

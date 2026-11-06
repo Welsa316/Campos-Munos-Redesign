@@ -2,7 +2,7 @@
   <transition name="fade">
     <div v-if="visible"
       ref="overlayRef"
-      class="fixed inset-0 z-[200] flex items-center justify-center dialog-frame"
+      class="fixed inset-0 z-(--z-dialog) flex items-center justify-center dialog-frame"
       role="dialog"
       aria-modal="true"
       aria-labelledby="change-password-title"

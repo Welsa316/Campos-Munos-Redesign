@@ -687,7 +687,7 @@ async function afterExclude() {
   const c = excluding.value
   excluding.value = null
   await load({ quiet: true })
-  if (c) showToast(`${c.name || 'The call'} marked as needing no callback.`)
+  if (c) toast(`${c.name || 'The call'} marked as needing no callback.`)
   if (excludedFrom) focusAfter(excludedFrom.id, excludedFrom.index)
 }
 
@@ -697,9 +697,12 @@ async function afterClear(out) {
   // The button that opened the dialog goes with the list; the tab keeps focus.
   nextTick(() => document.getElementById(`calls-tab-${tab.value}`)?.focus())
   if (!out?.cleared) return
-  showToast(`${out.cleared} ${out.cleared === 1 ? 'call' : 'calls'} cleared from Needs attention.`, async () => {
-    await del(`/api/calls/handled/bulk/${out.batch}`)
-    await load({ quiet: true })
+  toast({
+    text: `${out.cleared} ${out.cleared === 1 ? 'call' : 'calls'} cleared from Needs attention.`,
+    undo: async () => {
+      await del(`/api/calls/handled/bulk/${out.batch}`)
+      await load({ quiet: true })
+    },
   })
 }
 
@@ -718,21 +721,27 @@ async function markHandled(c, episode = null) {
       await load({ quiet: true })
       const marked = out.callIds || []
       const name = c.name || 'The caller'
-      showToast(`${name} marked handled${marked.length > 1 ? ` (${marked.length} calls)` : ''}.`, marked.length ? async () => {
-        await post('/api/calls/episodes/reopen', { callIds: marked })
-        await load({ quiet: true })
-        focusAfter(c.id, index)
-      } : null)
+      toast({
+        text: `${name} marked handled${marked.length > 1 ? ` (${marked.length} calls)` : ''}.`,
+        undo: marked.length ? async () => {
+          await post('/api/calls/episodes/reopen', { callIds: marked })
+          await load({ quiet: true })
+          focusAfter(c.id, index)
+        } : null,
+      })
       focusAfter(c.id, index)
       return
     }
     await post(`/api/calls/${c.id}/handled`, {})
     closeDetail({ restore: false })
     await load({ quiet: true })
-    showToast(`${c.name || 'The call'} marked handled.`, async () => {
-      await del(`/api/calls/${c.id}/handled`)
-      await load({ quiet: true })
-      focusAfter(c.id, index)
+    toast({
+      text: `${c.name || 'The call'} marked handled.`,
+      undo: async () => {
+        await del(`/api/calls/${c.id}/handled`)
+        await load({ quiet: true })
+        focusAfter(c.id, index)
+      },
     })
     focusAfter(c.id, index)
   } catch (e) {
@@ -750,7 +759,7 @@ async function reopen(c) {
   try {
     await del(`/api/calls/${c.id}/handled`)
     await load({ quiet: true })
-    showToast(`${c.name || 'The call'} is open again.`)
+    toast(`${c.name || 'The call'} is open again.`)
   } catch (e) {
     error.value = e.message
   } finally {
@@ -766,7 +775,7 @@ async function countAgain(c) {
   try {
     await del(`/api/calls/${c.id}/exclusion`)
     await load({ quiet: true })
-    showToast(`${c.name || 'The call'} is counted again.`)
+    toast(`${c.name || 'The call'} is counted again.`)
     focusAfter(c.id, indexOf(c.id))
   } catch (e) {
     error.value = e.message
@@ -774,10 +783,6 @@ async function countAgain(c) {
     busyId.value = null
   }
 }
-
-// --- toast ------------------------------------------------------------------------
-// The portal's shared toast (SwipeToast.vue); only after the server confirmed.
-function showToast(text, undo = null) { toast({ text, undo }) }
 
 // --- live updates ---------------------------------------------------------------
 // The server imports new calls every few minutes, and within about half a

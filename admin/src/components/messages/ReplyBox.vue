@@ -20,21 +20,6 @@
         </span>
 
         <div class="flex items-center gap-3">
-          <!-- Toast messages, in a region that is always mounted so the
-               message is announced when it appears. -->
-          <span role="status" aria-live="polite">
-            <transition name="fade">
-              <span v-if="toast"
-                :class="[
-                  'text-xs font-ui',
-                  toast.type === 'success' ? 'text-green-700' : 'text-amber-700'
-                ]">
-                <FaIcon :name="toast.type === 'success' ? 'check-circle' : 'exclamation-triangle'" class="mr-1" />
-                {{ toast.message }}
-              </span>
-            </transition>
-          </span>
-
           <button
             type="submit"
             :disabled="sending || !body.trim()"
@@ -54,9 +39,9 @@
 </template>
 
 <script setup>
-import { ref, onBeforeUnmount } from 'vue'
+import { ref } from 'vue'
 import { useApi } from '../../composables/useApi.js'
-import FaIcon from '../FaIcon.vue'
+import { toast } from '../../composables/useToast.js'
 import { isComposing } from '../../utils/text.js'
 
 const props = defineProps({
@@ -68,7 +53,6 @@ const emit = defineEmits(['replied'])
 const { post } = useApi()
 const body = ref('')
 const sending = ref(false)
-const toast = ref(null)
 // One key per reply: a retry after a timeout carries the same key, so the
 // server sends the email once even if the first attempt did get through.
 // A new key once that reply is sent, or its text changes.
@@ -79,7 +63,6 @@ async function sendReply() {
   if (!body.value.trim() || sending.value) return
 
   sending.value = true
-  toast.value = null
 
   const text = body.value.trim()
   if (text !== keyedText) { clientKey = crypto.randomUUID(); keyedText = text }
@@ -95,28 +78,18 @@ async function sendReply() {
     // Pass the result up: it carries the auto-advanced lead status.
     emit('replied', result)
 
+    // The portal's toast. A reply that may not have reached the client stays
+    // until dismissed, so nobody misses it.
     if (result.emailFailed) {
-      showToast('Reply saved but email delivery failed — follow up manually', 'warning')
+      toast({ text: 'Reply saved, but the email could not be delivered. Follow up another way.', tone: 'error' })
     } else {
-      showToast('Reply sent', 'success')
+      toast('Reply sent.')
     }
   } catch {
     // The text stays; sending again reuses the key, so nothing goes out twice.
-    showToast('Could not confirm it was sent. Send again — it will not go out twice.', 'warning')
+    toast({ text: 'Could not confirm it was sent. Send again: it will not go out twice.', tone: 'error' })
   } finally {
     sending.value = false
   }
 }
-
-let toastTimer = null
-
-function showToast(message, type) {
-  if (toastTimer) clearTimeout(toastTimer)
-  toast.value = { message, type }
-  toastTimer = setTimeout(() => { toast.value = null }, 5000)
-}
-
-onBeforeUnmount(() => {
-  if (toastTimer) clearTimeout(toastTimer)
-})
 </script>

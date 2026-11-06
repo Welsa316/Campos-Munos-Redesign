@@ -1,10 +1,10 @@
 <template>
-  <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-[300] focus:bg-brand-navy focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:font-ui focus:text-sm">
+  <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-(--z-skip) focus:bg-brand-navy focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:font-ui focus:text-sm">
     Skip to content
   </a>
   <!-- The session ended, or a screen failed: say so without reloading. -->
   <div v-if="sessionExpired || renderError" role="alert"
-    class="fixed inset-x-0 top-0 z-[250] flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-4 py-2.5 bg-amber-50 text-amber-900 ring-1 ring-amber-200 text-sm font-ui shadow-sm">
+    class="fixed inset-x-0 top-0 z-(--z-banner) flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-4 py-2.5 bg-amber-50 text-amber-900 ring-1 ring-amber-200 text-sm font-ui shadow-sm">
     <template v-if="sessionExpired">
       <span>Your session has ended. Anything you were typing is still here.</span>
       <a :href="loginHref()" class="font-semibold underline">Sign in again</a>
