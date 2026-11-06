@@ -174,6 +174,8 @@ test('activity log and team management', { skip: SKIP }, async (t) => {
     assert.ok(problems.json.items.length && problems.json.items.every((i) => i.outcome !== 'ok'))
     const search = await call('GET', '/api/activity?q=status', { cookie: dev })
     assert.ok(search.json.items.some((i) => i.action === 'lead.status'))
+    // A paging cursor too long for the database is ignored, not a 500.
+    assert.equal((await call('GET', '/api/activity?before=99999999999999999999', { cookie: dev })).status, 200)
   })
 
   await t.test('team: create, change role, revoke and restore access, reset a password', async () => {

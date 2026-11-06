@@ -97,7 +97,7 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
 
   // One call's evidence: every step RingCentral recorded, what each reason
   // means, who it was confirmed offered to, and why it is classified as it is.
-  router.get('/:id(\\d+)/evidence', async (req, res) => {
+  router.get('/:id(\\d{1,15})/evidence', async (req, res) => {
     try {
       const ev = await callEvidence(pool(), Number(req.params.id))
       if (!ev) return res.status(404).json({ error: 'Call not found' })
@@ -158,14 +158,14 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
     }
   }
 
-  router.post('/:id(\\d+)/exclusion', exclude, exclusionWrap(async (req, res) => {
+  router.post('/:id(\\d{1,15})/exclusion', exclude, exclusionWrap(async (req, res) => {
     const b = req.body || {}
     const out = await excludeCall(pool(), { callId: Number(req.params.id), reason: b.reason, note: b.note, scope: b.scope, accountId: req.account.id })
     req.log?.info({ call: out.callId, scope: out.scope, reason: out.reason }, 'Missed call marked as needing no callback')
     res.json(out)
   }))
 
-  router.delete('/:id(\\d+)/exclusion', exclude, exclusionWrap(async (req, res) => {
+  router.delete('/:id(\\d{1,15})/exclusion', exclude, exclusionWrap(async (req, res) => {
     const out = await includeCall(pool(), { callId: Number(req.params.id) })
     req.log?.info({ call: out.callId, removedCall: out.removedCall, removedNumber: out.removedNumber }, 'Missed call counted again')
     res.json(out)
@@ -173,11 +173,11 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
 
   // Dealt with another way (a callback from a mobile, an email): it leaves
   // Needs attention. Same permission as marking a call as needing no callback.
-  router.post('/:id(\\d+)/handled', exclude, exclusionWrap(async (req, res) => {
+  router.post('/:id(\\d{1,15})/handled', exclude, exclusionWrap(async (req, res) => {
     res.json(await markHandled(pool(), { callId: Number(req.params.id), note: req.body?.note, accountId: req.account.id }))
   }))
 
-  router.delete('/:id(\\d+)/handled', exclude, exclusionWrap(async (req, res) => {
+  router.delete('/:id(\\d{1,15})/handled', exclude, exclusionWrap(async (req, res) => {
     res.json(await unmarkHandled(pool(), { callId: Number(req.params.id) }))
   }))
 
@@ -221,11 +221,11 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
     res.status(201).json(out)
   }))
 
-  router.get('/ringout/:id(\\d+)', place, ringWrap(async (req, res) => {
+  router.get('/ringout/:id(\\d{1,15})', place, ringWrap(async (req, res) => {
     res.json(await ringOutStatus(pool(), config(), { id: Number(req.params.id), accountId: req.account.id }, deps))
   }))
 
-  router.delete('/ringout/:id(\\d+)', place, ringWrap(async (req, res) => {
+  router.delete('/ringout/:id(\\d{1,15})', place, ringWrap(async (req, res) => {
     res.json(await cancelRingOut(pool(), config(), { id: Number(req.params.id), accountId: req.account.id }, deps))
   }))
 

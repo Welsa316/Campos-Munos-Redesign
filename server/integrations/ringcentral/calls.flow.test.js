@@ -1079,6 +1079,14 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.equal((await send('POST', '/api/calls/ringout', { to: '+44 20 7946 0958' }, desk)).status, 201, 'unset: every country')
   })
 
+  await t.test('an id too long for the database is a 404, not a server error', async () => {
+    const huge = '99999999999999999999'
+    for (const [m, p] of [['GET', `/api/calls/${huge}/evidence`], ['POST', `/api/calls/${huge}/handled`], ['GET', `/api/calls/ringout/${huge}`]]) {
+      const r = m === 'GET' ? await call(m, p) : await send(m, p, {})
+      assert.equal(r.status, 404, `${m} ${p}`)
+    }
+  })
+
   await t.test('RingOut: one person can place only so many calls in 24 hours', async () => {
     const desk = { cookie: users.desk.cookie }
     const placed = (await db.query(`SELECT COUNT(*)::int AS n FROM rc_ringouts WHERE placed_by = $1`, [users.desk.id])).rows[0].n
