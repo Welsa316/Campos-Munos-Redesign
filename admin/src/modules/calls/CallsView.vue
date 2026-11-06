@@ -76,7 +76,7 @@
 
         <p v-if="businessHours || filter === 'unanswered' || filter === 'excluded'" class="flex flex-wrap items-center gap-2 text-xs font-ui text-gray-700">
           <span class="text-gray-500">Showing</span>
-          <span v-if="filter === 'unanswered'" class="px-2.5 py-1 rounded-full bg-white ring-1 ring-gray-200 font-semibold">Unanswered (not answered, caller hung up, voicemail)</span>
+          <span v-if="filter === 'unanswered'" class="px-2.5 py-1 rounded-full bg-white ring-1 ring-gray-200 font-semibold">Unanswered (not answered, caller hung up, ended before ringing, voicemail)</span>
           <span v-if="filter === 'excluded'" class="px-2.5 py-1 rounded-full bg-white ring-1 ring-gray-200 font-semibold">Marked as no callback needed</span>
           <span v-if="businessHours" class="px-2.5 py-1 rounded-full bg-white ring-1 ring-gray-200 font-semibold">Business hours · Mon–Fri 9–5</span>
           <button type="button" @click="clearNarrowing" class="font-semibold text-brand-navy underline">Show all</button>
@@ -92,7 +92,7 @@
         <p v-if="error" role="alert" class="text-sm font-ui text-brand-red bg-red-50 rounded-lg px-4 py-3">{{ error }}</p>
 
         <!-- Counts; each one filters the list -->
-        <div class="grid grid-cols-4 lg:grid-cols-8 gap-1.5 sm:gap-2">
+        <div class="grid grid-cols-3 min-[480px]:grid-cols-5 lg:grid-cols-9 gap-1.5 sm:gap-2">
           <button v-for="tile in tiles" :key="tile.key" type="button" @click="setFilter(tile.key)"
             :aria-pressed="filter === tile.key"
             :class="filter === tile.key ? 'ring-2 ring-brand-navy' : 'ring-1 ring-gray-200 hover:ring-gray-300'"
@@ -232,7 +232,7 @@ const RANGES = [
 // The Home card opens /calls?range=month&filter=unanswered&hours=business.
 const q0 = route.query
 const range = ref(['today', 'yesterday', 'week', 'month'].includes(q0.range) ? q0.range : 'today')
-const FILTERS = ['all', 'answered', 'missed', 'hung_up', 'voicemail', 'unconfirmed', 'system', 'unanswered', 'outgoing', 'not_returned', 'excluded']
+const FILTERS = ['all', 'answered', 'missed', 'hung_up', 'ended', 'voicemail', 'unconfirmed', 'system', 'unanswered', 'outgoing', 'not_returned', 'excluded']
 const filter = ref(FILTERS.includes(q0.filter) ? q0.filter : 'all')
 // Calls offered to one person (a RingCentral extension id), and who can be picked.
 const personFilter = ref(typeof q0.person === 'string' && /^\d+$/.test(q0.person) ? q0.person : '')
@@ -392,6 +392,7 @@ const tiles = computed(() => [
   { key: 'answered', label: 'Answered', count: counts.value.answered || 0, tone: 'text-green-700' },
   { key: 'missed', label: 'Not answered', count: counts.value.missed || 0, tone: 'text-brand-red' },
   { key: 'hung_up', label: 'Caller hung up', count: counts.value.hung_up || 0, tone: 'text-orange-800' },
+  { key: 'ended', label: 'Ended before ringing', count: counts.value.ended || 0, tone: 'text-orange-800' },
   { key: 'voicemail', label: 'Voicemail', count: counts.value.voicemail || 0, tone: 'text-amber-700' },
   { key: 'unconfirmed', label: 'Not confirmed', count: counts.value.unconfirmed || 0, tone: 'text-gray-700' },
   { key: 'not_returned', label: 'Not called back', count: counts.value.not_returned || 0, tone: 'text-brand-red' },
@@ -402,6 +403,7 @@ const LOOK = {
   answered: { icon: 'phone', label: 'Answered', badge: 'bg-green-100 text-green-700', text: 'text-gray-700' },
   not_answered: { icon: 'phone-slash', label: 'Not answered', badge: 'bg-red-100 text-brand-red', text: 'text-brand-red' },
   caller_hung_up: { icon: 'phone-slash', label: 'Caller hung up', badge: 'bg-orange-100 text-orange-800', text: 'text-orange-800' },
+  ended_before_ringing: { icon: 'phone-slash', label: 'Ended before anyone was rung', badge: 'bg-orange-100 text-orange-800', text: 'text-orange-800' },
   voicemail: { icon: 'voicemail', label: 'Voicemail', badge: 'bg-amber-100 text-amber-700', text: 'text-amber-800' },
   system: { icon: 'ban', label: 'Handled by the phone system', badge: 'bg-gray-100 text-gray-600', text: 'text-gray-600' },
   unknown: { icon: 'circle-question', label: 'Not confirmed', badge: 'bg-gray-100 text-gray-600', text: 'text-gray-700' },
@@ -427,7 +429,7 @@ function rowStatus(c) {
   return inboundStatus(c)
 }
 // Proven not answered by anyone: these need a callback.
-const UNANSWERED = ['not_answered', 'caller_hung_up', 'voicemail']
+const UNANSWERED = ['not_answered', 'caller_hung_up', 'ended_before_ringing', 'voicemail']
 const isUnanswered = (c) => c.direction === 'inbound' && UNANSWERED.includes(c.classification)
 // Anything not proven answered can be marked as needing no callback.
 // A call the phone system ended (a blocked number) needs no callback anyway.

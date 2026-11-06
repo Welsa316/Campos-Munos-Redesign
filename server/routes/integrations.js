@@ -8,7 +8,12 @@
 //                                 https://api.camulaw.com/api/integrations/ringcentral/callback);
 //                                 always answers with a redirect to the portal
 //   POST /ringcentral/refresh     refresh now, to confirm the connection works
-//   POST /ringcentral/disconnect  revoke and delete the stored tokens
+//   POST /ringcentral/disconnect  revoke and delete the stored tokens (and the
+//                                 live-event subscription, first)
+//   GET|POST|DELETE /ringcentral/events  the live call-event subscription:
+//                                 status, register (or replace), remove
+//                                 (telephonyEvents.js; deliveries arrive at
+//                                 /webhooks/ringcentral)
 //
 // Every route except the callback needs a portal session with
 // integrations.manage (administrators only). The callback is reached by a
@@ -26,10 +31,13 @@ import { loadAccount, tokenMatches } from '../auth/account.js'
 import { clientKey, sessionCookieOptions } from '../httpSecurity.js'
 import { loadRingCentralConfig } from '../integrations/ringcentral/config.js'
 import {
-  startAuthorization, completeAuthorization, getConnectionStatus, maintainConnection, disconnect,
+  startAuthorization, completeAuthorization, getConnectionStatus, maintainConnection, disconnect, getAccessToken,
   RingCentralFlowError, RingCentralNotConnectedError, STATE_TTL_MS, CALLBACK_OUTCOMES,
 } from '../integrations/ringcentral/service.js'
 import { RingCentralOAuthError } from '../integrations/ringcentral/oauth.js'
+import {
+  subscriptionStatus, registerSubscription, removeSubscription, checkSubscription, EventSubscriptionError,
+} from '../integrations/ringcentral/telephonyEvents.js'
 
 export const BINDING_COOKIE = 'cm_rc_oauth'
 const COOKIE_PATH = '/api/integrations/ringcentral'
@@ -130,6 +138,7 @@ export function createIntegrationsRouter({ db = null, env = process.env, fetchIm
       await fn(req, res)
     } catch (err) {
       if (err instanceof RingCentralFlowError) return res.status(err.status).json({ error: err.message, code: err.outcome })
+      if (err instanceof EventSubscriptionError) return res.status(err.status).json({ error: err.message, code: err.code })
       if (err instanceof RingCentralNotConnectedError) return res.status(409).json({ error: 'RingCentral is not connected', code: err.code })
       if (err instanceof RingCentralOAuthError) {
         req.log?.warn({ provider: 'ringcentral', code: err.code, status: err.status }, 'RingCentral token call failed')
@@ -159,8 +168,33 @@ export function createIntegrationsRouter({ db = null, env = process.env, fetchIm
   }))
 
   router.post('/ringcentral/disconnect', wrap(async (req, res) => {
+    // The subscription is deleted while the connection can still do it.
+    try { await removeSubscription(pool(), config(), { token: await getAccessToken(pool(), config(), deps), env, deps }) } catch { /* gone with the tokens */ }
     const out = await disconnect(pool(), config(), { actorId: req.account.id }, deps)
     res.json({ ...out, ...(await getConnectionStatus(pool(), config())) })
+  }))
+
+  // --- live call events -------------------------------------------------------------
+
+  router.get('/ringcentral/events', wrap(async (_req, res) => {
+    res.json(await subscriptionStatus(pool(), config(), env))
+  }))
+
+  router.post('/ringcentral/events', wrap(async (req, res) => {
+    const token = await getAccessToken(pool(), config(), deps)
+    res.json(await registerSubscription(pool(), config(), { token, actorId: req.account.id, env, now: now ? now() : new Date(), deps }))
+  }))
+
+  router.post('/ringcentral/events/check', wrap(async (_req, res) => {
+    const token = await getAccessToken(pool(), config(), deps)
+    await checkSubscription(pool(), config(), { token, now: now ? now() : new Date(), deps })
+    res.json(await subscriptionStatus(pool(), config(), env))
+  }))
+
+  router.delete('/ringcentral/events', wrap(async (_req, res) => {
+    let token = null
+    try { token = await getAccessToken(pool(), config(), deps) } catch { /* not connected: forget it locally */ }
+    res.json(await removeSubscription(pool(), config(), { token, env, deps }))
   }))
 
   return router

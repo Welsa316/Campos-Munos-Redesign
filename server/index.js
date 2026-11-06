@@ -133,6 +133,23 @@ if (callSyncOn) {
   }
   setTimeout(syncCalls, 90 * 1000).unref()
   setInterval(syncCalls, 5 * 60 * 1000).unref()
+
+  // The live call-event subscription, once a day: its state, and a renewal a
+  // month before it would expire. Never creates one (an administrator does).
+  const { checkSubscription } = await import('./integrations/ringcentral/telephonyEvents.js')
+  const { getAccessToken } = await import('./integrations/ringcentral/service.js')
+  const checkEvents = async () => {
+    const cfg = loadRingCentralConfig(process.env)
+    if (!cfg.configured) return
+    try {
+      const r = await checkSubscription(getPool(), cfg, { token: await getAccessToken(getPool(), cfg) })
+      if (r.status !== 'none' && r.status !== 'Active') logger.warn({ provider: 'ringcentral', status: r.status, code: r.code }, 'Live call-event subscription is not active')
+    } catch (err) {
+      logger.warn({ provider: 'ringcentral', err: { name: err?.name, code: err?.code } }, 'Live call-event subscription check failed')
+    }
+  }
+  setTimeout(checkEvents, 10 * 60 * 1000).unref()
+  setInterval(checkEvents, 24 * 60 * 60 * 1000).unref()
 }
 
 const server = app.listen(PORT, () => {

@@ -114,6 +114,49 @@
             </dl>
           </footer>
         </section>
+
+        <!-- RingCentral's live call events, delivered to the API as calls happen. -->
+        <section v-if="data && data.status !== 'not_connected'" class="bg-white rounded-xl ring-1 ring-gray-200" aria-labelledby="ev-h" data-live-events>
+          <header class="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center gap-3">
+            <h2 id="ev-h" class="font-ui font-semibold text-gray-900">Live call events</h2>
+            <span :class="eventsChip.tone" class="text-[11px] font-ui font-semibold px-2 py-0.5 rounded-full">{{ eventsChip.label }}</span>
+          </header>
+          <div class="px-5 py-4 space-y-3 text-[13px] font-ui text-gray-700">
+            <p>RingCentral reports each call as it happens: whose phone rang and for how long, who answered, and when the caller left. That shows in Calls, in each call’s details, for calls after this is registered. Needs the Call Control permission. It changes nothing in RingCentral’s routing, phones or settings; removing it stops the reports.</p>
+            <p v-if="eventsError" role="alert" class="text-brand-red bg-red-50 rounded-lg px-3 py-2">{{ eventsError }}</p>
+            <dl v-if="events?.registered" class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+              <div><dt class="text-gray-500 text-[11px]">Registered</dt><dd class="text-gray-900">{{ when(events.createdAt) }}</dd></div>
+              <div><dt class="text-gray-500 text-[11px]">Last event received</dt><dd class="text-gray-900">{{ when(events.lastEventAt) }}<span class="text-gray-500"> · {{ events.eventsLastDay }} in the last day</span></dd></div>
+              <div><dt class="text-gray-500 text-[11px]">Runs until</dt><dd class="text-gray-900">{{ when(events.expiresAt) }} <span class="text-gray-500">(renewed automatically)</span></dd></div>
+              <div><dt class="text-gray-500 text-[11px]">Last checked</dt><dd class="text-gray-900">{{ when(events.checkedAt) }}</dd></div>
+              <div v-if="events.lastErrorCode" class="sm:col-span-2"><dt class="text-gray-500 text-[11px]">Last problem</dt><dd class="text-gray-900">{{ events.lastErrorCode }} · {{ when(events.lastErrorAt) }}</dd></div>
+            </dl>
+            <p v-else-if="events?.lastErrorCode" class="text-gray-600">The last attempt failed ({{ events.lastErrorCode }}, {{ when(events.lastErrorAt) }}).</p>
+            <p v-if="events && !events.address" class="text-amber-900 bg-amber-50 rounded-lg px-3 py-2">The server has no https address for RingCentral to deliver to.</p>
+            <div class="flex flex-wrap gap-2">
+              <button v-if="data.status === 'connected'" type="button" @click="registerEvents" :disabled="Boolean(busy) || !events?.address" data-register-events
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-navy text-white text-sm font-semibold hover:bg-brand-navy-dark transition-colors disabled:opacity-50">
+                <FaIcon name="plug" :spin="false" />{{ events?.registered ? 'Register again' : 'Register' }}
+              </button>
+              <button v-if="events?.registered && data.status === 'connected'" type="button" @click="checkEvents" :disabled="Boolean(busy)"
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg ring-1 ring-gray-300 text-gray-700 text-sm font-semibold hover:bg-brand-surface transition-colors disabled:opacity-50">
+                <FaIcon name="arrows-rotate" :spin="busy === 'events-check'" />Check
+              </button>
+              <button v-if="events?.registered" type="button" @click="confirmRemoveEvents = true" :disabled="Boolean(busy)"
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-brand-red text-sm font-semibold hover:bg-red-50 transition-colors disabled:opacity-50">
+                <FaIcon name="xmark" />Remove
+              </button>
+            </div>
+            <div v-if="confirmRemoveEvents" role="alertdialog" aria-labelledby="re-h" class="rounded-lg ring-1 ring-red-200 bg-red-50 px-4 py-3">
+              <p id="re-h" class="font-semibold text-gray-900">Stop live call events?</p>
+              <p class="mt-1 text-gray-700">The subscription is deleted in RingCentral. Events already received stay with their calls; new calls are classified from the call log only.</p>
+              <div class="mt-3 flex gap-2">
+                <button type="button" @click="removeEvents" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg bg-brand-red text-white font-semibold disabled:opacity-50">Remove</button>
+                <button type="button" @click="confirmRemoveEvents = false" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-white">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   </div>
@@ -131,7 +174,7 @@ import FaIcon from '../../components/FaIcon.vue'
 const route = useRoute()
 const router = useRouter()
 const { adminEmail, logout } = useAuth()
-const { get, post } = useApi()
+const { get, post, del } = useApi()
 
 const data = ref(null)
 const loading = ref(false)
@@ -142,6 +185,31 @@ const confirmDisconnect = ref(false)
 const showChangePassword = ref(false)
 
 const conn = computed(() => data.value?.connection || null)
+
+// Live call events (server/integrations/ringcentral/telephonyEvents.js).
+const events = ref(null)
+const eventsError = ref('')
+const confirmRemoveEvents = ref(false)
+const eventsChip = computed(() => {
+  const e = events.value
+  if (!e?.registered) return { label: 'Not registered', tone: 'bg-gray-100 text-gray-600' }
+  if (e.status === 'Active') return { label: 'Receiving', tone: 'bg-emerald-50 text-emerald-800' }
+  return { label: e.status || 'Problem', tone: 'bg-amber-50 text-amber-800' }
+})
+async function loadEvents() {
+  try { events.value = await get('/api/integrations/ringcentral/events') } catch (e) { eventsError.value = e.message }
+}
+async function eventsAction(label, fn) {
+  busy.value = label
+  eventsError.value = ''
+  try { events.value = await fn() } catch (e) { eventsError.value = e.message; await loadEvents() } finally { busy.value = null }
+}
+const registerEvents = () => eventsAction('events-register', () => post('/api/integrations/ringcentral/events', {}))
+const checkEvents = () => eventsAction('events-check', () => post('/api/integrations/ringcentral/events/check', {}))
+async function removeEvents() {
+  await eventsAction('events-remove', () => del('/api/integrations/ringcentral/events'))
+  confirmRemoveEvents.value = false
+}
 
 // The callback reports one of these fixed codes (server/integrations/ringcentral/service.js).
 const OUTCOMES = {
@@ -181,6 +249,7 @@ async function load() {
   error.value = ''
   try {
     data.value = await get('/api/integrations/ringcentral')
+    if (data.value?.status !== 'not_connected') await loadEvents()
   } catch (e) {
     error.value = e.message
   } finally {

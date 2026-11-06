@@ -69,3 +69,27 @@ test('a not-confirmed call that reached only the phone system says so, and claim
   assert.equal(line, 'Not confirmed · reached only the phone system (the main line, the voicemail box); no one was shown as rung')
   assert.doesNotMatch(line, /hung up|abandon|missed/i)
 })
+
+test('live: a hang-up says when it happened relative to ringing', () => {
+  assert.equal(statusLine({ classification: 'caller_hung_up', stage: 'before_ringing', offeredTo: [] }), 'Caller hung up before anyone was rung')
+  assert.equal(statusLine({ classification: 'caller_hung_up', stage: 'while_ringing', rang: [{ name: 'Yoletty', extension: '101', seconds: 18 }], offeredTo: [] }),
+    'Caller hung up while ringing Yoletty, ext. 101 (18s)')
+  assert.equal(statusLine({ classification: 'ended_before_ringing' }), 'Ended at the phone system before anyone was rung')
+})
+
+test('live: party labels and states in plain words', async () => {
+  const { partyLabel, stateText } = await import('../src/modules/calls/callEvidenceText.js')
+  assert.equal(partyLabel({ person: true, name: 'Yoletty', extension: '101' }), 'Yoletty, ext. 101')
+  assert.equal(partyLabel({ person: false, name: 'CML', extension: '1', type: 'Department' }), 'CML (call queue)')
+  assert.equal(partyLabel({ person: false }), 'The firm’s line')
+  assert.equal(stateText('Proceeding'), 'ringing')
+  assert.equal(stateText('Answered', { person: true }), 'answered')
+  assert.equal(stateText('Answered', { person: false }), 'taken by the phone system', 'the firm’s line or a queue answering is not a person')
+})
+
+test('an offer seen only in the live events reads "phone rang"', async () => {
+  const { offerShort } = await import('../src/modules/calls/callEvidenceText.js')
+  assert.equal(offerShort({ reason: null, live: true }), 'phone rang')
+  assert.equal(offerShort({ reason: 'No Answer' }), 'no answer')
+  assert.equal(offerShort({ reason: null }), 'no reason given')
+})

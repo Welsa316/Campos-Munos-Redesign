@@ -18,6 +18,7 @@ import { getAccessToken, maintainConnection, RingCentralNotConnectedError } from
 import { rcGet, RingCentralApiError } from './api.js'
 import { sanitizeRecord, classifyCall, CLASSIFIER_VERSION, UNANSWERED_CLASSES, systemOnlyPlaces } from './callEvidence.js'
 import { refreshDirectory, loadDirectory } from './extensionDirectory.js'
+import { loadEvents, purgeOldEvents } from './telephonyEvents.js'
 
 export const ACCOUNT_PATH = '/restapi/v1.0/account/~/call-log'
 export const EXTENSION_PATH = '/restapi/v1.0/account/~/extension/~/call-log'
@@ -305,6 +306,8 @@ export async function classifyStored(db, { keys = [], all = false } = {}) {
     if (!groups.has(r.call_key)) groups.set(r.call_key, [])
     groups.get(r.call_key).push(r)
   }
+  // Live call events, by telephony session (the call key when RingCentral gave one).
+  const events = await loadEvents(db, [...groups.keys()])
   const updates = []
   for (const group of groups.values()) {
     // A session with an incoming record is an incoming call (an outgoing
@@ -314,7 +317,7 @@ export async function classifyStored(db, { keys = [], all = false } = {}) {
     const own = inbound.length ? inbound : group
     const legsOf = (r) => (Array.isArray(r.rc_raw?.legs) ? r.rc_raw.legs.length : -1)
     const primary = [...own].sort((a, b) => (a.scope === 'account' ? 0 : 1) - (b.scope === 'account' ? 0 : 1) || legsOf(b) - legsOf(a) || Number(a.id) - Number(b.id))[0]
-    const evidence = classifyCall(own.map((r) => r.rc_raw).filter(Boolean), { direction: primary.direction, directory })
+    const evidence = classifyCall(own.map((r) => r.rc_raw).filter(Boolean), { direction: primary.direction, directory, events: events.get(primary.call_key) || null })
     for (const r of group) updates.push([r.id, evidence.classification, primary.direction === 'inbound' ? evidence : null, r.id === primary.id])
   }
   for (let i = 0; i < updates.length; i += 500) {
@@ -425,6 +428,7 @@ async function runSync(db, config, { trigger, backfillDays, retentionDays, deps,
   const directory = await refreshDirectory(db, config, { token, now, deps })
   await classifyStored(db, { keys: result.rows.map(callKeyOf), all: directory.changed })
   await db.query(`DELETE FROM rc_calls WHERE started_at < $1::timestamptz - make_interval(days => $2)`, [now, Math.max(30, retentionDays)])
+  await purgeOldEvents(db, now)
   // Portal-placed calls are only needed while they ring; the call itself is in the call log.
   await db.query(`DELETE FROM rc_ringouts WHERE created_at < $1::timestamptz - INTERVAL '90 days'`, [now])
   await db.query(
@@ -458,7 +462,7 @@ export async function getSyncState(db) {
 // --- the list the portal shows ------------------------------------------------------
 
 export const OUTCOME_FILTERS = Object.freeze([
-  'all', 'answered', 'missed', 'hung_up', 'voicemail', 'unconfirmed', 'system', 'unanswered', 'outgoing', 'not_returned', 'excluded',
+  'all', 'answered', 'missed', 'hung_up', 'ended', 'voicemail', 'unconfirmed', 'system', 'unanswered', 'outgoing', 'not_returned', 'excluded',
 ])
 
 // The firm's opening hours, as published on the website (site/index.html,
@@ -618,6 +622,7 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
     answered: `${inbound} AND classification = 'answered'`,
     missed: `${inbound} AND classification = 'not_answered' AND ${kept}`,
     hung_up: `${inbound} AND classification = 'caller_hung_up' AND ${kept}`,
+    ended: `${inbound} AND classification = 'ended_before_ringing' AND ${kept}`,
     voicemail: `${inbound} AND classification = 'voicemail' AND ${kept}`,
     unconfirmed: `${inbound} AND classification = 'unknown' AND ${kept}`,
     system: `${inbound} AND classification = 'system'`,
@@ -640,6 +645,7 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
         COUNT(*) FILTER (WHERE ${inbound} AND classification = 'answered')::int AS answered,
         COUNT(*) FILTER (WHERE ${inbound} AND classification = 'not_answered' AND ${kept})::int AS missed,
         COUNT(*) FILTER (WHERE ${inbound} AND classification = 'caller_hung_up' AND ${kept})::int AS hung_up,
+        COUNT(*) FILTER (WHERE ${inbound} AND classification = 'ended_before_ringing' AND ${kept})::int AS ended,
         COUNT(*) FILTER (WHERE ${inbound} AND classification = 'voicemail' AND ${kept})::int AS voicemail,
         COUNT(*) FILTER (WHERE ${inbound} AND classification = 'unknown' AND ${kept})::int AS unconfirmed,
         COUNT(*) FILTER (WHERE ${inbound} AND classification = 'system')::int AS system,
@@ -721,6 +727,20 @@ export async function callEvidence(db, id) {
     facts: (ev.facts || []).map((f) => ({ ...f, to: toNamed(f.to) })),
     gaps: ev.gaps || [],
     steps: (ev.steps || []).map(({ onBehalfOf: _drop, ...s }) => ({ ...s, to: toNamed(s.to) })),
+    stage: ev.stage ?? null,
+    // RingCentral's live events for the call: each party and its states in order.
+    live: ev.live
+      ? {
+          events: ev.live.events,
+          complete: ev.live.complete,
+          parties: ev.live.parties.map((p) => ({
+            extensionId: p.extensionId, extension: p.extension, type: p.type, person: p.person,
+            name: (p.extensionId && names.get(p.extensionId)) || p.name, rcName: p.name,
+            rang: p.rang, answered: p.answered, voicemail: p.voicemail, missedCall: p.missedCall, endedAt: p.endedAt,
+            states: p.states,
+          })),
+        }
+      : null,
   }
 }
 
@@ -764,6 +784,9 @@ function present(r, names = new Map()) {
     gaps: ev?.gaps || [],
     // Not confirmed, and every recorded step went to the phone system: where it got to.
     systemOnly: systemOnlyPlaces(ev),
+    // A hang-up seen live: before anyone was rung, or while someone's phone rang.
+    stage: ev?.stage ?? null,
+    rang: ev?.live ? ev.live.parties.filter((p) => p.person && p.rang).map((p) => named({ extensionId: p.extensionId, extension: p.extension, name: p.name, seconds: p.rang.seconds }, names)) : [],
     followUp,
     // Marked as needing no callback: this call alone, or every call from its number.
     exclusion: r.excluded_kind

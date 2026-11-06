@@ -30,7 +30,7 @@
           <ul v-if="ev.offeredTo.length" class="mt-1.5 space-y-1">
             <li v-for="o in ev.offeredTo" :key="o.extensionId || o.extension" class="flex flex-wrap gap-x-2">
               <span class="font-medium text-gray-900">{{ who(o) }}</span>
-              <span :class="o.reason === 'Accepted' ? 'text-green-700' : 'text-gray-600'">{{ reasonShort(o.reason) }}</span>
+              <span :class="o.reason === 'Accepted' ? 'text-green-700' : 'text-gray-600'">{{ offerShort(o) }}</span>
             </li>
           </ul>
           <p v-else class="mt-1.5 text-gray-600">No step shows the call offered to a person. That does not prove nobody was rung.</p>
@@ -38,6 +38,25 @@
           <p class="mt-1" :class="ev.answeredBy ? 'font-medium text-gray-900' : 'text-gray-600'">{{ ev.answeredBy ? who(ev.answeredBy) : ev.classification === 'unknown' ? 'Not confirmed: see the evidence' : 'Nobody, as far as RingCentral’s record shows' }}</p>
         </div>
       </div>
+
+      <!-- RingCentral's live events, when the call happened after they were registered. -->
+      <template v-if="ev.live">
+        <h4 class="mt-4 font-ui text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-600">What happened live
+          <span class="normal-case tracking-normal font-normal">({{ ev.live.events }} events from RingCentral{{ ev.live.complete ? ', followed to the end' : ', not all seen to the end' }})</span>
+        </h4>
+        <ul class="mt-1.5 space-y-1.5" data-live-timeline>
+          <li v-for="p in ev.live.parties" :key="p.extensionId || p.name" class="rounded-md bg-white ring-1 ring-gray-200 px-3 py-2">
+            <p class="flex flex-wrap items-baseline justify-between gap-x-3">
+              <span class="font-medium text-gray-900">{{ partyLabel(p) }}<span v-if="p.rcName && p.rcName !== p.name" class="text-gray-500"> · “{{ p.rcName }}” in RingCentral</span></span>
+              <span v-if="p.person && p.rang" class="text-gray-700">rang {{ offset(p.rang.from, start) }}<template v-if="p.rang.seconds != null"> for {{ p.rang.seconds }}s</template></span>
+            </p>
+            <p class="mt-0.5 text-gray-600">
+              <template v-for="(st, i) in p.states" :key="i"><span v-if="i" aria-hidden="true" class="text-gray-400"> → </span><span>{{ stateText(st.code, p) }} {{ offset(st.at, start) }}<template v-if="st.reason"> ({{ st.reason }})</template></span></template>
+            </p>
+            <p v-if="p.person && p.missedCall && !p.answered" class="mt-0.5 text-gray-600">RingCentral flagged it as missed on this phone. The flag is shown but not counted against anyone: RingCentral does not document what sets it.</p>
+          </li>
+        </ul>
+      </template>
 
       <h4 class="mt-4 font-ui text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-600">What RingCentral recorded, in order</h4>
       <p v-if="!ev.steps.length" class="mt-1.5 text-gray-600">{{ ev.hasRaw ? 'No steps were recorded.' : 'This call was imported before RingCentral’s full record was kept.' }}</p>
@@ -94,7 +113,7 @@
 import { ref, onMounted } from 'vue'
 import { useApi } from '../../composables/useApi.js'
 import FaIcon from '../../components/FaIcon.vue'
-import { CLASS_LABEL, CLASS_EXPLAINED, gapText, who, stepTarget, reasonShort, factText, offset } from './callEvidenceText.js'
+import { CLASS_LABEL, CLASS_EXPLAINED, gapText, who, stepTarget, offerShort, factText, offset, stateText, partyLabel } from './callEvidenceText.js'
 
 const props = defineProps({
   callId: { type: Number, required: true },

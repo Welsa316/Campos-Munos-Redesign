@@ -23,6 +23,7 @@ import { createIntegrationsRouter } from './routes/integrations.js'
 import { createCallsRouter } from './routes/calls.js'
 import { createTeamRouter } from './routes/team.js'
 import { createActivityRouter } from './routes/activity.js'
+import { createRingCentralWebhookRouter } from './routes/ringcentralWebhook.js'
 import { activityRecorder } from './activity/recorder.js'
 import {
   resolveOrigins, corsOptionsDelegate, requireTrustedOrigin, resolveClientIp,
@@ -73,6 +74,8 @@ export function createApp({ env = process.env, log = logger, beforeFallback } = 
   // X-Hub-Signature-256 check is an HMAC over the raw bytes, so the router
   // parses its own body with express.raw(). See routes/whatsapp.js.
   app.use('/webhooks/whatsapp', whatsappRoutes)
+  // RingCentral live call events (verification token, own JSON parser).
+  app.use('/webhooks/ringcentral', createRingCentralWebhookRouter())
 
   app.use(cookieParser())
   app.use(express.json({ limit: '100kb' }))

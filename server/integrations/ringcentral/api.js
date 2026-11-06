@@ -1,6 +1,8 @@
 // RingCentral REST calls with a bearer token. GET reads; rcSend is used only
-// to place, and cancel, a RingOut call a staff member asked for. Nothing
-// here changes numbers, routing, queues, extensions, greetings or settings.
+// to place, and cancel, a RingOut call a staff member asked for, and to
+// create, renew or delete the one event subscription an administrator
+// registered (telephonyEvents.js). Nothing here changes numbers, routing,
+// queues, extensions, greetings or settings.
 //
 // Errors (RingCentral API reference, "Errors" and "Rate limits"): a JSON body
 // with errorCode (e.g. CMN-408 missing permission, CMN-301 rate limited,
@@ -27,7 +29,7 @@ export async function rcGet(config, accessToken, path, query = {}, deps = {}) {
   return rcRequest(config, accessToken, 'GET', path, { query }, deps)
 }
 
-/** POST / DELETE (RingOut only). */
+/** POST / DELETE (RingOut, and the event subscription). */
 export async function rcSend(config, accessToken, method, path, body, deps = {}) {
   if (!['POST', 'DELETE'].includes(method)) throw new Error('rcSend is for POST and DELETE')
   return rcRequest(config, accessToken, method, path, { body }, deps)
