@@ -489,3 +489,14 @@ test('live: a Stopped attempt with nobody answering live no longer blocks a docu
   assert.equal(c.classification, 'caller_hung_up')
   assert.equal(c.stage, 'while_ringing')
 })
+
+// One vocabulary: the database's allowed values are exactly the classifier's.
+import { CLASSIFICATIONS } from './callEvidence.js'
+import { INTEGRATIONS_SCHEMA_SQL } from '../../db/integrationsSchema.js'
+
+test('the rc_calls classification CHECK lists exactly the classifier’s classifications', () => {
+  const m = /rc_calls_classification_check\s+CHECK \(classification IN \(([^)]*)\)\)/.exec(INTEGRATIONS_SCHEMA_SQL)
+  assert.ok(m, 'CHECK found')
+  const allowed = m[1].split(',').map((x) => x.trim().replace(/^'|'$/g, '')).sort()
+  assert.deepEqual(allowed, [...CLASSIFICATIONS].sort())
+})

@@ -40,11 +40,14 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="inv in invoices" :key="inv.id" @click="open(inv.id)" @keydown.enter="open(inv.id)" :tabindex="canOpen ? 0 : undefined"
-                :class="canOpen ? 'hover:bg-brand-surface/60 cursor-pointer focus-visible:bg-brand-surface' : ''"
+              <!-- The client's name is the control (Enter and Space, a name for screen
+                   readers); clicking anywhere on the row is a mouse convenience. -->
+              <tr v-for="inv in invoices" :key="inv.id" @click="open(inv.id)"
+                :class="canOpen ? 'hover:bg-brand-surface/60 cursor-pointer focus-within:bg-brand-surface' : ''"
                 class="border-b border-gray-50">
                 <td class="px-5 py-3">
-                  <span class="block text-gray-900 font-medium">{{ inv.clientName || '—' }}</span>
+                  <button v-if="canOpen" type="button" @click.stop="open(inv.id)" class="block text-left text-gray-900 font-medium hover:underline">{{ inv.clientName || '—' }}</button>
+                  <span v-else class="block text-gray-900 font-medium">{{ inv.clientName || '—' }}</span>
                   <span class="block text-[10px] text-gray-500">{{ inv.eimmigrationClientId || 'No client ID in report' }}</span>
                 </td>
                 <td class="px-2 py-3 text-gray-700 whitespace-nowrap">{{ inv.invoiceId }}</td>
@@ -87,7 +90,7 @@
     </section>
 
     <!-- Detail panel -->
-    <div v-if="selectedId" class="fixed inset-0 z-30 flex" role="dialog" aria-modal="true" aria-labelledby="inv-detail-h" @keydown.esc="close">
+    <div v-if="selectedId" ref="panelRef" class="fixed inset-0 z-30 flex" role="dialog" aria-modal="true" aria-labelledby="inv-detail-h" @keydown.esc="close" @keydown.tab="trapTab(panelRef, $event)">
       <button class="flex-1 bg-black/20" aria-label="Close invoice details" @click="close"></button>
       <div class="w-full max-w-xl bg-white shadow-2xl flex flex-col">
         <div class="px-5 py-4 border-b border-gray-100 flex items-start gap-3">
@@ -99,7 +102,8 @@
             <i class="fa-solid fa-xmark" aria-hidden="true"></i>
           </button>
         </div>
-        <div v-if="!detail" class="p-8 text-center text-sm text-gray-500 font-ui">Loading…</div>
+        <LoadError v-if="detailError" :message="detailError" @retry="open(selectedId)" />
+        <div v-else-if="!detail" class="p-8 text-center text-sm text-gray-500 font-ui">Loading…</div>
         <div v-else class="flex-1 overflow-y-auto p-5 space-y-5 text-xs font-ui">
           <div class="flex flex-wrap items-center gap-2">
             <StatusPill :status="detail.status" />
@@ -158,6 +162,9 @@ import { can } from '../../../composables/useAuth.js'
 // revisions and monday.com links are billing records (billing.view).
 const canOpen = can('billing.view')
 import StatusPill from '../components/StatusPill.vue'
+import LoadError from '../../../components/LoadError.vue'
+import { latestOnly } from '../../../composables/useApi.js'
+import { trapTab, rememberFocus } from '../../../utils/focusTrap.js'
 
 const FILTERS = [
   { key: '', label: 'All' },
@@ -198,6 +205,8 @@ function setFilter(key) {
   load()
 }
 
+// A slow answer for an earlier filter or search never replaces a newer one.
+const latestList = latestOnly()
 async function load() {
   loading.value = true
   error.value = ''
@@ -206,7 +215,8 @@ async function load() {
     if (filter.value === 'absent') params.absent = 'true'
     else if (filter.value) params.status = filter.value
     if (search.value.trim()) params.search = search.value.trim()
-    invoices.value = await api.invoices(params)
+    const r = await latestList(() => api.invoices(params))
+    if (r.current) invoices.value = r.value
   } catch (err) {
     error.value = `Could not load invoices: ${err.message}`
   } finally {
@@ -214,22 +224,33 @@ async function load() {
   }
 }
 
+// The panel is modal: focus starts on its close button, Tab stays inside, and
+// focus returns to the row that opened it. A failed detail load is shown in
+// the panel; the list behind it stays.
+const panelRef = ref(null)
+const detailError = ref('')
+let opener = null
 async function open(id) {
   if (!canOpen) return
+  if (!selectedId.value) opener = rememberFocus()
   selectedId.value = id
   detail.value = null
+  detailError.value = ''
   await nextTick()
   closeBtn.value?.focus()
   try {
-    detail.value = await api.invoice(id)
+    const d = await api.invoice(id)
+    if (selectedId.value === id) detail.value = d
   } catch (err) {
-    error.value = `Could not load the invoice: ${err.message}`
-    selectedId.value = null
+    if (selectedId.value === id) detailError.value = `Could not load the invoice: ${err.message}`
   }
 }
 function close() {
   selectedId.value = null
   detail.value = null
+  detailError.value = ''
+  opener?.restore()
+  opener = null
 }
 
 const detailFields = computed(() => {

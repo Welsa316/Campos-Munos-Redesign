@@ -54,6 +54,7 @@
 
         <section class="bg-white rounded-xl ring-1 ring-gray-200" aria-label="Activity" :aria-busy="loading">
           <p v-if="loading && !items.length" class="py-12 text-center text-sm text-gray-500">Loading…</p>
+          <LoadError v-else-if="loadFailed && !items.length" message="Could not load the activity log." @retry="reload" />
           <div v-else-if="!items.length" class="py-12 px-6 text-center">
             <p class="text-sm text-gray-700">Nothing matches these filters.</p>
             <button v-if="filtered" type="button" @click="clearFilters" class="mt-2 text-xs font-semibold text-brand-navy underline">Clear filters</button>
@@ -104,10 +105,11 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useApi } from '../../composables/useApi.js'
+import { useApi, latestOnly } from '../../composables/useApi.js'
 import { statusMeta } from '../../data/leadStatuses.js'
 import PortalHeader from '../../components/portal/PortalHeader.vue'
 import FaIcon from '../../components/FaIcon.vue'
+import LoadError from '../../components/LoadError.vue'
 
 const OUTCOMES = [
   { key: '', label: 'All' },
@@ -125,6 +127,7 @@ const capabilityText = ref({})
 const nextBefore = ref(null)
 const loading = ref(false)
 const error = ref('')
+const loadFailed = ref(false)
 const filters = reactive({
   actor: typeof route.query.actor === 'string' ? route.query.actor : '',
   outcome: route.query.outcome === 'problems' ? 'problems' : '',
@@ -219,11 +222,15 @@ function params(before) {
   return p.toString()
 }
 
+// "Show older" for one filter must not append rows after the filter changed.
+const latestPage = latestOnly()
 async function fetchPage(before = null) {
   loading.value = true
   error.value = ''
   try {
-    const data = await get(`/api/activity?${params(before)}`)
+    const r = await latestPage(() => get(`/api/activity?${params(before)}`))
+    if (!r.current) return
+    const data = r.value
     items.value = before ? [...items.value, ...data.items] : data.items
     nextBefore.value = data.nextBefore
     if (data.people) people.value = data.people
@@ -231,6 +238,7 @@ async function fetchPage(before = null) {
     if (data.capabilities) capabilityText.value = data.capabilities
   } catch (err) {
     error.value = `Could not load the activity log: ${err.message}`
+    loadFailed.value = true
   } finally {
     loading.value = false
   }

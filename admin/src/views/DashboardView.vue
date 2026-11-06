@@ -33,7 +33,7 @@
             <RiseIn :duration="0.7" :distance="10">
               <button type="button" @click="showAvatarPicker = true" title="Change your picture" aria-label="Change your picture"
                 class="group relative flex-shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-navy">
-                <UserAvatar :avatar="profile.avatar" :size="avatarSize" label="Your picture" class="ring-4 ring-white shadow-sm transition-transform group-hover:scale-105" />
+                <UserAvatar :avatar="profile.avatar" :size="avatarSize" label="Your picture" class="ring-4 ring-white shadow-sm" />
                 <span class="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-white shadow ring-1 ring-black/5 text-gray-700 inline-flex items-center justify-center">
                   <FaIcon name="pen" class="text-[10px]" />
                 </span>
@@ -87,11 +87,11 @@
              four standard, five or more compact (a short last row stretches). -->
         <RiseIn v-if="cards.length" :delay="0.35" :stagger="0.1" class="flex flex-wrap gap-3 sm:gap-4">
           <TiltedCard v-for="card in cards" :key="card.key" :class="cardBasis" class="grow min-w-0"
-            :radius="24" :rotate-amplitude="cardSize === 'lg' ? 6 : 9" :scale-on-hover="cardSize === 'lg' ? 1.02 : 1.03" :glare="0.45" :shadow="0.3" :perspective="cardSize === 'lg' ? 1200 : 900">
+            :radius="24" :rotate-amplitude="cardSize === 'lg' ? 6 : 9" :scale-on-hover="1" :glare="0.45" :shadow="0.3" :perspective="cardSize === 'lg' ? 1200 : 900">
           <router-link :to="card.to" :class="SIZE[cardSize].card"
             class="group glass rounded-3xl h-full flex flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy">
             <div class="flex items-start justify-between">
-              <span :class="[card.tile, SIZE[cardSize].tile]" class="flex items-center justify-center transition-transform group-hover:scale-105">
+              <span :class="[card.tile, SIZE[cardSize].tile]" class="flex items-center justify-center">
                 <FaIcon :name="card.icon" :class="SIZE[cardSize].icon" />
               </span>
               <span class="w-8 h-8 rounded-full border border-gray-200 text-gray-500 inline-flex items-center justify-center group-hover:bg-gray-900 group-hover:text-white group-hover:border-gray-900 transition-colors">
@@ -196,7 +196,7 @@ const summaries = computed(() => {
       numberTone: 'text-danger-ink-strong',
       subTone: 'text-danger-ink opacity-80',
       value: !m ? '·' : connected ? total : '—',
-      sub: connected
+      sub: m?.error ? COULD_NOT_LOAD : connected
         ? `Last 30 days · Mon–Fri 9–5${m.missed.voicemail ? ` · ${m.missed.voicemail} went to voicemail` : ''}`
         : m ? 'RingCentral is not connected yet' : 'Last 30 days · Mon–Fri 9–5',
       pill: connected ? (notReturned ? `${notReturned} not called back` : 'All called back') : null,
@@ -216,9 +216,9 @@ const summaries = computed(() => {
       arrowTone: 'bg-glass-navy-chip text-glass-navy-ink',
       numberTone: 'text-glass-navy-ink',
       subTone: 'text-glass-navy-ink opacity-70',
-      value: !u ? '·' : u.count >= 200 ? '200+' : u.count,
-      sub: firstName.value ? `Waiting for you, ${firstName.value}` : 'Website and chat inquiries',
-      pill: u ? (u.count ? `Oldest from ${ago(u.oldest)}` : 'All caught up') : null,
+      value: !u ? '·' : u.error ? '—' : u.count >= 200 ? '200+' : u.count,
+      sub: u?.error ? COULD_NOT_LOAD : firstName.value ? `Waiting for you, ${firstName.value}` : 'Website and chat inquiries',
+      pill: u && !u.error ? (u.count ? `Oldest from ${ago(u.oldest)}` : 'All caught up') : null,
       pillTone: 'bg-glass-navy-chip text-glass-navy-ink',
     })
   }
@@ -238,7 +238,7 @@ const summaries = computed(() => {
       numberTone: 'text-danger-ink-strong',
       subTone: 'text-danger-ink opacity-80',
       value: !b ? '·' : imported ? overdue.count : '—',
-      sub: imported
+      sub: b?.error ? COULD_NOT_LOAD : imported
         ? `From the eImmigration report of ${shortDay(b.lastImport.report_date || b.lastImport.applied_at)}`
         : b ? 'No eImmigration report imported yet' : 'From the latest eImmigration report',
       pill: imported && overdue.count ? `${money(overdue.owedCents)} owed` : imported ? 'Nothing overdue' : null,
@@ -256,7 +256,7 @@ const summaries = computed(() => {
       arrowTone: 'bg-glass-navy-chip text-glass-navy-ink',
       numberTone: 'text-glass-navy-ink',
       subTone: 'text-glass-navy-ink opacity-70',
-      value: !b ? '·' : r?.count ?? 0,
+      value: !b ? '·' : b.error ? '—' : r?.count ?? 0,
       sub: 'Payment reminders drafted by the rules',
       pill: r?.count ? `Oldest from ${ago(r.oldest)}` : b ? 'Nothing to approve' : null,
       pillTone: 'bg-glass-navy-chip text-glass-navy-ink',
@@ -323,21 +323,26 @@ const SIZE = {
   sm: { card: 'p-4 sm:p-5 min-h-[180px]', tile: 'w-[48px] h-[48px] rounded-[14px]', icon: 'text-[21px]', eyebrow: 'mt-4', title: 'text-[19px]', text: 'text-[12.5px]' },
 }
 
+// A card whose figures failed to load says so, rather than claiming nothing
+// is connected or imported. Each is tried once more after a few seconds.
+const COULD_NOT_LOAD = 'Could not load these figures. Open the page, or reload to try again.'
+const withRetry = (fn) => fn().catch(() => new Promise((r) => setTimeout(r, 4000)).then(fn))
+
 onMounted(() => {
   if (showsBillingFigures.value) {
-    get('/api/billing/overview').then((d) => { billing.value = d }).catch(() => { billing.value = {} })
+    withRetry(() => get('/api/billing/overview')).then((d) => { billing.value = d }).catch(() => { billing.value = { error: true } })
   }
   if (can('calls.view')) {
-    get(`/api/calls/summary?from=${encodeURIComponent(monthStart.toISOString())}`)
+    withRetry(() => get(`/api/calls/summary?from=${encodeURIComponent(monthStart.toISOString())}`))
       .then((d) => { missed.value = d })
-      .catch(() => { missed.value = { connection: 'unknown' } })
+      .catch(() => { missed.value = { error: true } })
   }
   if (can('crm.view')) {
-    get('/api/submissions?unread=true&limit=200').then((rows) => {
+    withRetry(() => get('/api/submissions?unread=true&limit=200')).then((rows) => {
       const list = Array.isArray(rows) ? rows : []
       // Newest first from the API: the oldest waiting is the last one.
       unread.value = { count: list.length, oldest: list.length ? list[list.length - 1].created_at : null }
-    }).catch(() => { unread.value = null })
+    }).catch(() => { unread.value = { error: true } })
   }
 })
 

@@ -67,15 +67,21 @@ export function useAuth() {
     if (verified) return isAuthenticated.value
 
     loading.value = true
+    // Only a 401 means signed out. A network blip or a 5xx is tried once more,
+    // and if it still fails the next navigation checks again.
+    let settled = false
     try {
-      const res = await rawFetch('/api/auth/verify')
-      if (res.ok) applyProfile(await res.json())
-      else clearProfile()
-    } catch {
-      clearProfile()
+      for (let attempt = 0; attempt < 2 && !settled; attempt++) {
+        if (attempt) await new Promise((r) => setTimeout(r, 800))
+        try {
+          const res = await rawFetch('/api/auth/verify')
+          if (res.ok) { applyProfile(await res.json()); settled = true } else if (res.status === 401) { clearProfile(); settled = true }
+        } catch { /* try again */ }
+      }
+      if (!settled) clearProfile()
     } finally {
       loading.value = false
-      verified = true
+      verified = settled
     }
 
     return isAuthenticated.value

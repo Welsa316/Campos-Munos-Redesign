@@ -77,7 +77,8 @@
 
     <!-- Client replies -->
     <section v-if="view === 'responses'" class="bg-white rounded-xl ring-1 ring-gray-200">
-      <p v-if="!responses.length" class="p-8 text-center text-sm text-gray-500 font-ui">No client replies waiting.</p>
+      <LoadError v-if="loadFailed && !responses.length" message="Could not load client replies." @retry="load" />
+      <p v-else-if="!responses.length" class="p-8 text-center text-sm text-gray-500 font-ui">No client replies waiting.</p>
       <ul v-else class="divide-y divide-gray-100">
         <li v-for="m in responses" :key="m.id" class="px-5 py-4 flex flex-wrap items-start gap-3 text-xs font-ui">
           <div class="flex-1 min-w-[14rem]">
@@ -97,6 +98,7 @@
       <section class="bg-white rounded-xl ring-1 ring-gray-200 p-5 space-y-3" aria-labelledby="consent-h">
         <div>
           <h2 id="consent-h" class="text-sm font-ui font-semibold text-gray-900">WhatsApp consent</h2>
+          <p v-if="setupStatus.section === 'consent'" :role="setupStatus.ok ? 'status' : 'alert'" :class="setupStatus.ok ? 'text-green-700' : 'text-brand-red'" class="text-xs font-ui">{{ setupStatus.text }}</p>
           <p class="text-[11px] font-ui text-gray-500 mt-0.5">
             Where the firm gets clients' agreement to WhatsApp messages. With the firm policy on, every client with a WhatsApp number counts as
             having agreed, and nobody records consent one client at a time. A client who replies STOP or BAJA, or whom staff mark as opted out,
@@ -119,16 +121,17 @@
       <section class="bg-white rounded-xl ring-1 ring-gray-200" aria-labelledby="rules-h">
         <header class="px-5 py-4 border-b border-gray-100">
           <h2 id="rules-h" class="text-sm font-ui font-semibold text-gray-900">Rules</h2>
+          <p v-if="setupStatus.section === 'rules'" :role="setupStatus.ok ? 'status' : 'alert'" :class="setupStatus.ok ? 'text-green-700' : 'text-brand-red'" class="text-xs font-ui">{{ setupStatus.text }}</p>
           <p class="text-[11px] font-ui text-gray-500 mt-0.5">A rule only creates drafts for staff to approve. Reminders are never created for invoices that need review, clients without consent, or stale data.</p>
         </header>
         <ul class="divide-y divide-gray-100">
           <li v-for="r in config.rules" :key="r.key" class="px-5 py-3 flex flex-wrap items-center gap-3 text-xs font-ui">
             <label class="inline-flex items-center gap-2 min-w-[14rem] flex-1">
-              <input type="checkbox" v-model="r.enabled" @change="saveRule(r)" class="rounded border-gray-300" />
+              <input type="checkbox" v-model="r.enabled" @change="saveRule(r)" :disabled="Boolean(busy)" class="rounded border-gray-300" />
               <span class="text-gray-900 font-medium">{{ ruleLabel(r.key) }}</span>
             </label>
             <label class="inline-flex items-center gap-2 text-gray-600">
-              <input type="number" min="0" max="60" v-model.number="r.days" @change="saveRule(r)" class="w-16 px-2 py-1 rounded border border-gray-300 tabular-nums" :aria-label="`Days for ${r.label}`" />
+              <input type="number" min="0" max="60" v-model.number="r.days" @change="saveRule(r)" :disabled="Boolean(busy)" class="w-16 px-2 py-1 rounded border border-gray-300 tabular-nums" :aria-label="`Days for ${r.label}`" />
               days {{ r.trigger === 'before_due' ? 'before' : 'after' }} the due date
             </label>
             <span class="text-gray-500 w-40">{{ r.action === 'staff_followup' ? 'Staff task, no message' : `Template: ${r.templateKey}` }}</span>
@@ -139,6 +142,7 @@
       <section class="bg-white rounded-xl ring-1 ring-gray-200" aria-labelledby="tpl-h">
         <header class="px-5 py-4 border-b border-gray-100">
           <h2 id="tpl-h" class="text-sm font-ui font-semibold text-gray-900">Message templates</h2>
+          <p v-if="setupStatus.section === 'templates'" :role="setupStatus.ok ? 'status' : 'alert'" :class="setupStatus.ok ? 'text-green-700' : 'text-brand-red'" class="text-xs font-ui">{{ setupStatus.text }}</p>
           <p class="text-[11px] font-ui text-gray-500 mt-0.5">
             The text here is the preview staff approve. What clients receive is the version Meta approved under the same name in WhatsApp Manager (category: Utility), so keep the two identical, and tick "Approved by Meta" only once it is. Real sending refuses templates that are not ticked.
             Placeholders: {{ '{' + '{1}' + '}' }} client's first name, {{ '{' + '{2}' + '}' }} amount, {{ '{' + '{3}' + '}' }} due date. Never add case details or immigration status.
@@ -164,6 +168,7 @@
 
       <section class="bg-white rounded-xl ring-1 ring-gray-200 p-5 space-y-3" aria-labelledby="hours-h">
         <h2 id="hours-h" class="text-sm font-ui font-semibold text-gray-900">Sending hours</h2>
+        <p v-if="setupStatus.section === 'hours'" :role="setupStatus.ok ? 'status' : 'alert'" :class="setupStatus.ok ? 'text-green-700' : 'text-brand-red'" class="text-xs font-ui">{{ setupStatus.text }}</p>
         <div class="flex flex-wrap items-center gap-3 text-xs font-ui text-gray-700">
           <label class="inline-flex items-center gap-2">From <input type="number" min="0" max="23" v-model.number="hours.startHour" class="w-16 px-2 py-1 rounded border border-gray-300 tabular-nums" />:00</label>
           <label class="inline-flex items-center gap-2">to <input type="number" min="1" max="24" v-model.number="hours.endHour" class="w-16 px-2 py-1 rounded border border-gray-300 tabular-nums" />:00</label>
@@ -181,7 +186,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useApi, rawFetch, goToLogin } from '../../../composables/useApi.js'
+import { useApi, rawFetch, goToLogin, latestOnly } from '../../../composables/useApi.js'
 import { can } from '../../../composables/useAuth.js'
 
 // Acting on reminders and changing their setup are separate capabilities.
@@ -189,6 +194,7 @@ const canAct = can('billing.reminders')
 const canConfigure = can('billing.configure')
 import { money, shortDate } from '../api.js'
 import FaIcon from '../../../components/FaIcon.vue'
+import LoadError from '../../../components/LoadError.vue'
 
 const VIEWS = [
   { key: 'drafts', label: 'Awaiting approval' },
@@ -241,6 +247,7 @@ const consentChanged = computed(() => {
 const loading = ref(true)
 const busy = ref('')
 const error = ref('')
+const loadFailed = ref(false)
 const notice = ref('')
 const selected = ref(new Set())
 
@@ -270,6 +277,7 @@ function badge(key) {
   return 0
 }
 
+const latestQueue = latestOnly()
 async function load() {
   loading.value = true
   error.value = ''
@@ -280,25 +288,54 @@ async function load() {
       hours.value = { ...config.value.settings }
       consent.value = { firmPolicy: config.value.consent.firmPolicy, basis: config.value.consent.basis }
     }
-    data.value = await get(`/api/billing/reminders?state=${isQueue.value ? view.value : 'drafts'}`)
+    // A slow answer for a tab she has since left (Drafts with Approve buttons
+    // under "Sent") is dropped.
+    const r = await latestQueue(() => get(`/api/billing/reminders?state=${isQueue.value ? view.value : 'drafts'}`))
+    if (!r.current) return
+    data.value = r.value
     selected.value = new Set()
+    loadFailed.value = false
   } catch (err) {
     error.value = err.message
+    loadFailed.value = true
   } finally {
     loading.value = false
   }
 }
 function setView(v) { view.value = v; notice.value = ''; load() }
 
+// Queue actions (approve, cancel, send...): the list is read again whether
+// the action worked or not, since a failure can still have changed some rows.
 async function act(name, fn, after) {
   busy.value = name
   error.value = ''
   try {
     const r = await fn()
     if (after) notice.value = after(r)
-    await load()
   } catch (err) {
     error.value = err.message
+  } finally {
+    await load()
+    busy.value = ''
+  }
+}
+
+// Setup saves (a rule, a template, the hours, the consent policy) change one
+// thing: on success the rest of the page is left as it is (other unsaved
+// edits survive); on failure only that thing is put back to what the server
+// has, and the reason is shown next to it.
+const setupStatus = ref({ section: '', ok: true, text: '' })
+async function saveSetup(section, fn, { ok, revert, after }) {
+  busy.value = section
+  setupStatus.value = { section, ok: true, text: 'Saving…' }
+  try {
+    const r = await fn()
+    setupStatus.value = { section, ok: true, text: typeof ok === 'function' ? ok(r) : ok }
+    await after?.(r)
+  } catch (err) {
+    setupStatus.value = { section, ok: false, text: `Not saved: ${err.message}` }
+    const fresh = await get('/api/billing/reminders/config').catch(() => null)
+    if (fresh) revert(fresh)
   } finally {
     busy.value = ''
   }
@@ -327,15 +364,29 @@ function resolve(r, delivered) {
   act('resolve', () => post(`/api/billing/reminders/${r.id}/resolve`, { delivered }))
 }
 const markHandled = (m) => act('handled', () => post(`/api/billing/responses/${m.id}/handled`, {}))
-const saveRule = (r) => act('rule', () => put(`/api/billing/reminders/rules/${r.key}`, { days: r.days, enabled: r.enabled }), () => 'Rule saved.')
-const saveTemplate = (t) => act('template', () => put(`/api/billing/reminders/templates/${t.key}`, { metaName: t.metaName, languages: t.languages, metaApproved: t.metaApproved }), () => 'Template saved.')
+const saveRule = (r) => saveSetup('rules', () => put(`/api/billing/reminders/rules/${r.key}`, { days: r.days, enabled: r.enabled }), {
+  ok: 'Rule saved.',
+  revert: (c) => { const f = c.rules.find((x) => x.key === r.key); if (f) Object.assign(r, f) },
+})
+const saveTemplate = (t) => saveSetup('templates', () => put(`/api/billing/reminders/templates/${t.key}`, { metaName: t.metaName, languages: t.languages, metaApproved: t.metaApproved }), {
+  ok: 'Template saved.',
+  revert: (c) => { const f = c.templates.find((x) => x.key === t.key); if (f) Object.assign(t, f) },
+})
 function saveConsent() {
   const turningOff = config.value.consent.firmPolicy && !consent.value.firmPolicy
   if (turningOff && !window.confirm('Turn the firm policy off? Reminders waiting for clients without a recorded opt-in are cancelled.')) return
-  act('consent', () => put('/api/billing/consent', { firmPolicy: consent.value.firmPolicy, basis: consent.value.basis.trim() }),
-    (r) => (r.firmPolicy ? 'Firm policy on: clients with a WhatsApp number get reminders unless they opted out.' : 'Firm policy off: each client needs a recorded opt-in.'))
+  saveSetup('consent', () => put('/api/billing/consent', { firmPolicy: consent.value.firmPolicy, basis: consent.value.basis.trim() }), {
+    ok: (r) => (r.firmPolicy ? 'Firm policy on: clients with a WhatsApp number get reminders unless they opted out.' : 'Firm policy off: each client needs a recorded opt-in.'),
+    // Saved: it is now what the server has. Turning it off cancels waiting reminders.
+    after: async () => { config.value.consent = { ...config.value.consent, ...consent.value } },
+    revert: (c) => { consent.value = { firmPolicy: c.consent.firmPolicy, basis: c.consent.basis } },
+  })
 }
-const saveHours = () => act('hours', () => put('/api/billing/reminders/settings', hours.value), () => 'Sending hours saved.')
+const saveHours = () => saveSetup('hours', () => put('/api/billing/reminders/settings', hours.value), {
+  ok: 'Sending hours saved.',
+  after: () => { config.value.settings = { ...hours.value } },
+  revert: (c) => { hours.value = { ...c.settings } },
+})
 function toggleDay(i) {
   const d = new Set(hours.value.days)
   if (d.has(i)) d.delete(i); else d.add(i)
