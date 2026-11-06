@@ -104,9 +104,9 @@
     <!-- List -->
     <div class="flex-1 overflow-y-auto">
       <div v-if="filteredSubmissions.length === 0" class="p-6 text-center">
-        <i :class="viewMode === 'archived' ? 'fa-solid fa-archive' : 'fa-solid fa-inbox'" class="text-3xl text-gray-300 mb-3"></i>
+        <i :class="viewMode === 'archived' ? 'fa-solid fa-archive' : 'fa-solid fa-inbox'" class="text-3xl text-gray-300 mb-3" aria-hidden="true"></i>
         <p class="text-gray-500 text-sm font-ui">
-          {{ viewMode === 'archived' ? 'No archived messages' : (filter === 'unread' ? 'No unread messages' : 'No messages yet') }}
+          {{ emptyMessage }}
         </p>
       </div>
 
@@ -164,7 +164,7 @@
             @click.stop="openStatusFor = openStatusFor === sub.id ? null : sub.id"
             :disabled="!canManage"
             :aria-expanded="openStatusFor === sub.id"
-            :aria-label="`Change status for ${sub.first_name} ${sub.last_name}, currently ${statusMeta(sub.status).label}`"
+            :aria-label="`Change status for ${leadName(sub)}, currently ${statusMeta(sub.status).label}`"
             :class="statusMeta(sub.status).pill"
             class="inline-flex items-center gap-1.5 text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap transition-transform active:scale-95"
           >
@@ -193,8 +193,8 @@
 
         <button
           @click="$emit('openNotes', sub.id)"
-          :aria-label="`Notes for ${sub.first_name} ${sub.last_name}`"
-          :title="sub.note_count ? `${sub.note_count} note(s)` : 'Add a note'"
+          :aria-label="`Notes for ${leadName(sub)}`"
+          :title="sub.note_count ? plural(sub.note_count, 'note') : 'Add a note'"
           :class="sub.note_count ? 'text-brand-navy' : 'text-gray-500 hover:text-gray-600'"
           class="inline-flex items-center gap-1 text-[11px] font-ui font-semibold px-2 py-1 rounded-full hover:bg-brand-surface transition-colors"
         >
@@ -219,6 +219,7 @@ import { countryLabel } from '../../data/countries.js'
 import { adminLocale } from '../../utils/locale.js'
 import { LEAD_STATUSES, statusMeta } from '../../data/leadStatuses.js'
 import { can } from '../../composables/useAuth.js'
+import { leadName, plural } from '../../utils/text.js'
 
 // Status is shown to everyone who can read leads, changed only with crm.manage.
 const canManage = computed(() => can('crm.manage'))
@@ -279,6 +280,14 @@ onUnmounted(() => {
 const formatCountry = (code) => countryLabel(code, adminLocale())
 
 const unreadCount = computed(() => props.submissions.filter(s => !s.is_read).length)
+
+// Nothing to show because nothing exists, or because the filters hide it.
+const filtering = computed(() => Boolean(search.value.trim() || consultationFilter.value || statusFilter.value))
+const emptyMessage = computed(() => {
+  if (filtering.value && props.submissions.length) return 'No messages match these filters.'
+  if (props.viewMode === 'archived') return 'No archived messages'
+  return filter.value === 'unread' ? 'No unread messages' : 'No messages yet'
+})
 
 const filteredSubmissions = computed(() => {
   let list = props.submissions

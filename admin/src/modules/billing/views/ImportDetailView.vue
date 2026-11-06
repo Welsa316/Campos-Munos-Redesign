@@ -65,7 +65,9 @@
             <FaIcon v-if="busy === 'preview'" name="spinner" spin class="text-xs" />
             {{ job.status === 'previewed' ? 'Preview again' : 'Preview import' }}
           </button>
-          <button @click="cancel" :disabled="Boolean(busy)" class="px-3 py-2 rounded-lg text-sm font-ui text-gray-600 hover:text-brand-red hover:bg-red-50 transition-colors">Cancel import</button>
+          <button @click="confirmingCancel = true" :disabled="Boolean(busy)" :aria-expanded="confirmingCancel" class="px-3 py-2 rounded-lg text-sm font-ui text-gray-600 hover:text-brand-red hover:bg-red-50 transition-colors">Cancel import</button>
+          <ConfirmInline v-if="confirmingCancel" class="basis-full" title="Cancel this import?" body="Nothing from it has been applied."
+            confirm-label="Cancel import" cancel-label="Keep it" :busy="Boolean(busy)" @confirm="cancel" @cancel="confirmingCancel = false" />
         </div>
       </section>
 
@@ -84,7 +86,7 @@
         <header class="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center gap-3">
           <div>
             <h3 id="preview-h" class="text-sm font-ui font-semibold text-gray-900">{{ job.status === 'applied' ? 'What was applied' : '2 · Review the proposed changes' }}</h3>
-            <p class="text-[11px] font-ui text-gray-500 mt-0.5">{{ REPORT_TYPE_LABELS[job.report_type] }} · as of {{ shortDate(job.report_date) || 'upload date' }}</p>
+            <p class="text-[11px] font-ui text-gray-500 mt-0.5">{{ REPORT_TYPE_LABELS[job.report_type] || 'Type not set' }} · as of {{ job.report_date ? shortDate(job.report_date) : 'the upload date' }}</p>
           </div>
           <a :href="exceptionsUrl" class="ml-auto inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-ui font-semibold text-brand-navy hover:bg-brand-surface">
             <i class="fa-solid fa-download text-[10px]" aria-hidden="true"></i> Exceptions (CSV)
@@ -102,7 +104,7 @@
           Outstanding-only report: invoices that are not in this file are left exactly as they are. Missing from this report does not mean paid.
         </p>
         <p v-if="job.stats.counts.absent" class="mx-5 mb-4 text-[11px] font-ui text-amber-900 bg-amber-50 rounded-lg px-3 py-2">
-          {{ job.stats.counts.absent }} invoice(s) we already have are not in this full report. They will be flagged for review, not marked paid.
+          {{ plural(job.stats.counts.absent, 'invoice') }} we already have {{ job.stats.counts.absent === 1 ? 'is' : 'are' }} not in this full report. They will be flagged for review, not marked paid.
         </p>
 
         <p v-if="phoneSummary" class="mx-5 mb-4 text-[11px] font-ui text-gray-700 bg-brand-surface rounded-lg px-3 py-2">
@@ -157,8 +159,8 @@
         <!-- Step 3: approve -->
         <div v-if="canImport && job.status === 'previewed'" class="px-5 py-4 border-t border-gray-100 flex flex-wrap items-center gap-3 bg-brand-light rounded-b-xl">
           <p class="text-xs font-ui text-gray-700 flex-1 min-w-[16rem]">
-            Approving writes {{ job.stats.counts.invoice_insert }} new and {{ job.stats.counts.invoice_update }} changed invoices and
-            {{ job.stats.counts.payment_insert + job.stats.counts.payment_update }} payments<template v-if="phonesWritten">, and saves {{ phonesWritten }} WhatsApp number(s)</template>.
+            Approving writes {{ job.stats.counts.invoice_insert }} new and {{ job.stats.counts.invoice_update }} changed {{ job.stats.counts.invoice_insert + job.stats.counts.invoice_update === 1 ? 'invoice' : 'invoices' }} and
+            {{ plural(job.stats.counts.payment_insert + job.stats.counts.payment_update, 'payment') }}<template v-if="phonesWritten">, and saves {{ plural(phonesWritten, 'WhatsApp number') }}</template>.
             Skipped rows are not imported. monday.com is not touched.
           </p>
           <button @click="approve" :disabled="Boolean(busy)"
@@ -168,7 +170,7 @@
           </button>
         </div>
         <p v-if="applied" role="status" class="px-5 py-4 border-t border-gray-100 text-sm font-ui text-green-800 bg-green-50 rounded-b-xl">
-          Applied: {{ applied.applied.invoices }} invoices, {{ applied.applied.payments }} payments<span v-if="applied.applied.links">, {{ applied.applied.links }} client(s) linked to monday.com by eImmigration ID</span>.
+          Applied: {{ plural(applied.applied.invoices, 'invoice') }}, {{ plural(applied.applied.payments, 'payment') }}<span v-if="applied.applied.links">, {{ plural(applied.applied.links, 'client') }} linked to monday.com by eImmigration ID</span>.
         </p>
       </section>
     </template>
@@ -186,6 +188,8 @@ import { can } from '../../../composables/useAuth.js'
 const canImport = can('billing.import')
 import { API_BASE } from '../../../composables/useApi.js'
 import StatusPill from '../components/StatusPill.vue'
+import ConfirmInline from '../../../components/ConfirmInline.vue'
+import { plural } from '../../../utils/text.js'
 
 const FIELD_ORDER = Object.keys(FIELD_LABELS)
 const REPORT_TYPE_HELP = {
@@ -338,8 +342,9 @@ async function approve() {
   }
 }
 
+const confirmingCancel = ref(false)
 async function cancel() {
-  if (!window.confirm('Cancel this import? Nothing from it has been applied.')) return
+  confirmingCancel.value = false
   busy.value = 'cancel'
   try {
     await api.cancel(id.value)

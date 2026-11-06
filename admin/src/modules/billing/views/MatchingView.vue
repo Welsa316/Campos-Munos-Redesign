@@ -22,7 +22,7 @@
             :class="filter === f.key ? 'bg-brand-navy text-white ring-brand-navy' : 'bg-brand-surface text-gray-600 ring-transparent hover:text-gray-900'"
             class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap">{{ f.label }} {{ counts[f.key] }}</button>
           <span v-if="data?.invoicesWithoutClientId" class="ml-auto text-[11px] font-ui text-amber-800">
-            {{ data.invoicesWithoutClientId }} invoice(s) have no client ID in the report and cannot be linked until a report includes it.
+            {{ plural(data.invoicesWithoutClientId, 'invoice') }} {{ data.invoicesWithoutClientId === 1 ? 'has' : 'have' }} no client ID in the report and cannot be linked until a report includes it.
           </span>
         </div>
       </header>
@@ -34,17 +34,20 @@
         <li v-for="c in shown" :key="c.clientId" class="px-4 sm:px-5 py-4 grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] gap-3 lg:gap-6">
           <div>
             <p class="text-sm font-ui font-medium text-gray-900">{{ c.name || 'Unnamed client' }}</p>
-            <p class="text-[11px] font-ui text-gray-500">{{ c.eimmigrationClientId }} · {{ c.invoices }} invoice(s) · {{ money(c.owedCents) }} owed</p>
-            <p :class="STATUS[c.status].tone" class="mt-1 text-[11px] font-ui font-semibold">{{ STATUS[c.status].label }}<span class="font-normal text-gray-500"> · {{ c.reason }}</span></p>
+            <p class="text-[11px] font-ui text-gray-500">{{ c.eimmigrationClientId }} · {{ plural(c.invoices, 'invoice') }} · {{ money(c.owedCents) }} owed</p>
+            <p :class="known(STATUS, c.status, 'text-gray-700').tone" class="mt-1 text-[11px] font-ui font-semibold">{{ known(STATUS, c.status, 'text-gray-700').label }}<span class="font-normal text-gray-500"> · {{ c.reason }}</span></p>
           </div>
 
           <div class="text-xs font-ui">
             <!-- Linked -->
             <ul v-if="c.linked.length" class="space-y-1.5">
-              <li v-for="l in c.linked" :key="l.externalId" class="flex items-center gap-2">
+              <li v-for="l in c.linked" :key="l.externalId" class="flex flex-wrap items-center gap-2">
                 <i class="fa-solid fa-link text-[10px] text-green-700" aria-hidden="true"></i>
                 <span class="text-gray-800">{{ l.externalLabel || l.externalId }}</span>
-                <button @click="unlink(c, l.externalId)" :disabled="Boolean(busy)" class="ml-auto px-2 py-1 rounded text-gray-500 hover:text-brand-red hover:bg-red-50">Unlink</button>
+                <button @click="confirmingUnlink = `${c.clientId}:${l.externalId}`" :disabled="Boolean(busy)" :aria-expanded="confirmingUnlink === `${c.clientId}:${l.externalId}`" class="ml-auto px-2 py-1 rounded text-gray-500 hover:text-brand-red hover:bg-red-50">Unlink</button>
+                <ConfirmInline v-if="confirmingUnlink === `${c.clientId}:${l.externalId}`" class="basis-full"
+                  :title="`Unlink ${c.name || 'this client'} from this monday.com item?`" body="Future syncs will stop updating it."
+                  confirm-label="Unlink" :busy="Boolean(busy)" @confirm="unlink(c, l.externalId)" @cancel="confirmingUnlink = null" />
               </li>
             </ul>
 
@@ -89,6 +92,8 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useBillingApi, money } from '../api.js'
 import { can } from '../../../composables/useAuth.js'
 import LoadError from '../../../components/LoadError.vue'
+import ConfirmInline from '../../../components/ConfirmInline.vue'
+import { plural, known } from '../../../utils/text.js'
 
 const emit = defineEmits(['counts'])
 const STATUS = {
@@ -156,8 +161,9 @@ async function link(c, itemId) {
   }
 }
 
+const confirmingUnlink = ref(null)
 async function unlink(c, itemId) {
-  if (!window.confirm(`Unlink ${c.name || 'this client'} from this monday.com item? Future syncs will stop updating it.`)) return
+  confirmingUnlink.value = null
   busy.value = true
   try {
     await api.unlink(c.clientId, itemId)

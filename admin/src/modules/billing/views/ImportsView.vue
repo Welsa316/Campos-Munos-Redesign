@@ -29,12 +29,12 @@
         <li v-for="j in jobs" :key="j.id">
           <router-link :to="{ name: 'BillingImportDetail', params: { id: j.id } }"
             class="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 hover:bg-brand-surface/60 text-xs font-ui">
-            <span :class="JOB_STATUS[j.status].tone" class="text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded">{{ JOB_STATUS[j.status].label }}</span>
+            <span :class="known(JOB_STATUS, j.status).tone" class="text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded">{{ known(JOB_STATUS, j.status).label }}</span>
             <span class="text-gray-900 font-medium min-w-0 truncate max-w-[22rem]">{{ j.filename }}</span>
             <span class="text-gray-500">{{ REPORT_TYPE_LABELS[j.report_type] || 'Type not set' }}</span>
-            <span v-if="j.stats" class="text-gray-500 tabular-nums">
-              {{ j.stats.counts.invoices }} invoices · {{ j.stats.counts.payments }} payments
-              <template v-if="j.stats.counts.errors"> · <span class="text-brand-red">{{ j.stats.counts.errors }} errors</span></template>
+            <span v-if="j.stats?.counts" class="text-gray-500 tabular-nums">
+              {{ plural(j.stats.counts.invoices, 'invoice') }} · {{ plural(j.stats.counts.payments, 'payment') }}
+              <template v-if="j.stats.counts.errors"> · <span class="text-brand-red">{{ plural(j.stats.counts.errors, 'error') }}</span></template>
             </span>
             <span class="ml-auto text-gray-500 whitespace-nowrap">{{ shortDate(j.applied_at || j.created_at) }} · {{ j.uploaded_by || '—' }}</span>
           </router-link>
@@ -46,11 +46,12 @@
 
 <script setup>
 import FaIcon from '../../../components/FaIcon.vue'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useBillingApi, uploadReport, shortDate, REPORT_TYPE_LABELS } from '../api.js'
 import { can } from '../../../composables/useAuth.js'
 import LoadError from '../../../components/LoadError.vue'
+import { plural, known, isReportFile } from '../../../utils/text.js'
 
 const canImport = can('billing.import')
 
@@ -80,6 +81,7 @@ async function load() {
 async function handle(file) {
   if (!file) return
   uploadError.value = ''
+  if (!isReportFile(file)) { uploadError.value = 'That is not a CSV or Excel (.xlsx) file. Export the report from eImmigration as CSV or Excel.'; return }
   if (file.size > 15 * 1024 * 1024) { uploadError.value = 'That file is larger than 15 MB.'; return }
   uploading.value = true
   try {
@@ -94,5 +96,16 @@ async function handle(file) {
 function onPick(e) { handle(e.target.files?.[0]); e.target.value = '' }
 function onDrop(e) { dragging.value = false; handle(e.dataTransfer?.files?.[0]) }
 
-onMounted(load)
+// A file that misses the drop box would otherwise replace the portal with
+// the file itself.
+const stopStrayDrop = (e) => { if (e.dataTransfer?.types?.includes('Files')) e.preventDefault() }
+onMounted(() => {
+  load()
+  window.addEventListener('dragover', stopStrayDrop)
+  window.addEventListener('drop', stopStrayDrop)
+})
+onUnmounted(() => {
+  window.removeEventListener('dragover', stopStrayDrop)
+  window.removeEventListener('drop', stopStrayDrop)
+})
 </script>

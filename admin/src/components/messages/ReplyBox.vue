@@ -11,7 +11,7 @@
         placeholder="Type your reply..."
         aria-label="Reply body"
         class="form-input resize-none text-sm mb-3"
-        @keydown.enter.exact.prevent="sendReply"
+        @keydown.enter.exact="(e) => { if (!isComposing(e)) { e.preventDefault(); sendReply() } }"
       ></textarea>
 
       <div class="flex items-center justify-between">
@@ -57,6 +57,7 @@
 import { ref, onBeforeUnmount } from 'vue'
 import { useApi } from '../../composables/useApi.js'
 import FaIcon from '../FaIcon.vue'
+import { isComposing } from '../../utils/text.js'
 
 const props = defineProps({
   submissionId: { type: Number, required: true },

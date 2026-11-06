@@ -195,7 +195,7 @@
                 <label for="wa-note" class="sr-only">Add an internal note</label>
                 <textarea id="wa-note" v-model="noteDraft" rows="2" maxlength="2000" :disabled="busy === 'note'"
                   placeholder="For colleagues only: what was agreed, who to call…"
-                  class="form-input resize-none text-sm flex-1" @keydown.enter.exact.prevent="addNote"></textarea>
+                  class="form-input resize-none text-sm flex-1" @keydown.enter.meta="(e) => { if (!isComposing(e)) { e.preventDefault(); addNote() } }" @keydown.enter.ctrl="(e) => { if (!isComposing(e)) { e.preventDefault(); addNote() } }"></textarea>
                 <button type="submit" :disabled="busy === 'note' || !noteDraft.trim()"
                   class="bg-brand-navy text-white font-ui font-medium text-xs px-4 py-2.5 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0">{{ busy === 'note' ? 'Saving…' : 'Add' }}</button>
               </form>
@@ -218,7 +218,7 @@
               <label for="wa-reply" class="sr-only">Reply on WhatsApp</label>
               <textarea id="wa-reply" v-model="draft" rows="2" maxlength="4096" :disabled="busy === 'send'"
                 :placeholder="`Reply to ${title} on WhatsApp`"
-                class="form-input resize-none text-sm flex-1" @keydown.enter.meta.prevent="send" @keydown.enter.ctrl.prevent="send"></textarea>
+                class="form-input resize-none text-sm flex-1" @keydown.enter.meta="(e) => { if (!isComposing(e)) { e.preventDefault(); send() } }" @keydown.enter.ctrl="(e) => { if (!isComposing(e)) { e.preventDefault(); send() } }"></textarea>
               <button type="submit" :disabled="busy === 'send' || !draft.trim()"
                 class="bg-brand-navy text-white font-ui font-semibold text-sm px-5 py-3 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0">
                 <FaIcon :name="busy === 'send' ? 'spinner' : 'paper-plane'" :spin="busy === 'send'" class="text-xs mr-1.5" />Send
@@ -242,6 +242,7 @@ import { formatPhone } from '../../utils/phone.js'
 import SectionLinks from '../../components/portal/SectionLinks.vue'
 import FaIcon from '../../components/FaIcon.vue'
 import ChangePasswordModal from '../../components/messages/ChangePasswordModal.vue'
+import { toDate, isComposing } from '../../utils/text.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -424,8 +425,8 @@ function shortDay(value) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 function relTime(value) {
-  if (!value) return ''
-  const d = new Date(value)
+  const d = toDate(value)
+  if (!d) return ''
   const now = new Date()
   if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
   const y = new Date(now); y.setDate(y.getDate() - 1)
@@ -433,7 +434,8 @@ function relTime(value) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 function fullTime(value) {
-  const d = new Date(value)
+  const d = toDate(value)
+  if (!d) return ''
   const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
   const day = relTime(value)
   return day.includes(':') ? `Today at ${time}` : `${day} at ${time}`

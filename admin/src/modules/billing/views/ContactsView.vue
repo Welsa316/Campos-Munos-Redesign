@@ -6,7 +6,7 @@
         <div>
           <h2 class="text-sm font-ui font-semibold text-gray-900">WhatsApp contacts and consent</h2>
           <p v-if="policy.firmPolicy" class="text-[11px] font-ui text-gray-500 mt-0.5">
-            Firm policy: consent is taken on the {{ policy.basis.toLowerCase() }}, so a client with a number and a monday.com link gets payment
+            Firm policy: consent is taken on the {{ (policy.basis || 'signed engagement').toLowerCase() }}, so a client with a number and a monday.com link gets payment
             reminders. Nothing needs recording here. A client who replies STOP or BAJA is opted out automatically; record an opt-out for anyone
             who asks another way. Numbers come from the eImmigration report; a number saved here is kept and never replaced by a report.
           </p>
@@ -37,7 +37,7 @@
             <p class="text-gray-500">{{ c.eimmigration_client_id }}<template v-if="c.owed != null"> · {{ money(c.owed) }} owed</template></p>
             <p class="mt-1 font-semibold" :class="consent(c).tone">{{ consent(c).label }}</p>
             <p v-if="!c.linked" class="text-amber-700">Not linked to monday.com yet</p>
-            <p v-if="c.shared_with" class="text-amber-700">Number shared with {{ c.shared_with }} other client(s): a STOP from it stops messages to all of them</p>
+            <p v-if="c.shared_with" class="text-amber-700">Number shared with {{ plural(c.shared_with, 'other client') }}: a STOP from it stops messages to all of them</p>
             <p v-if="c.phone_e164" class="text-gray-500">Saved as +{{ c.phone_e164 }}{{ c.phone_source === 'import' ? ' · from the eImmigration report' : '' }}</p>
           </div>
           <div class="space-y-2">
@@ -82,8 +82,11 @@
                 </label>
                 <button @click="optIn(c)" :disabled="Boolean(busy) || !(edit(c).source || '').trim()" class="px-3 py-1.5 rounded-lg ring-1 ring-green-600/40 text-green-800 font-semibold hover:bg-green-50 disabled:opacity-40">Record opt-in</button>
               </template>
-              <button v-else @click="optOut(c)" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg text-gray-600 hover:text-brand-red hover:bg-red-50">Record opt-out</button>
+              <button v-else @click="confirmingOptOut = c.client_id" :disabled="Boolean(busy)" :aria-expanded="confirmingOptOut === c.client_id" class="px-3 py-1.5 rounded-lg text-gray-600 hover:text-brand-red hover:bg-red-50">Record opt-out</button>
             </div>
+            <ConfirmInline v-if="confirmingOptOut === c.client_id"
+              :title="`Record that ${c.display_name || 'this client'} does not want WhatsApp messages?`" body="Pending reminders for them are cancelled."
+              confirm-label="Record opt-out" :busy="Boolean(busy)" @confirm="optOut(c)" @cancel="confirmingOptOut = null" />
           </div>
         </li>
       </ul>
@@ -96,6 +99,8 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useApi, rawFetch, goToLogin } from '../../../composables/useApi.js'
 import { money, shortDate } from '../api.js'
 import { can } from '../../../composables/useAuth.js'
+import ConfirmInline from '../../../components/ConfirmInline.vue'
+import { plural } from '../../../utils/text.js'
 
 const { get, post } = useApi()
 const put = async (path, body) => {
@@ -181,8 +186,9 @@ const save = (c) => act('save', async () => {
   delete edits[c.client_id]
 })
 const optIn = (c) => act('optin', () => post(`/api/billing/contacts/${c.client_id}/opt-in`, { source: edit(c).source }))
+const confirmingOptOut = ref(null)
 function optOut(c) {
-  if (!window.confirm(`Record that ${c.display_name} does not want WhatsApp messages? Pending reminders for them are cancelled.`)) return
+  confirmingOptOut.value = null
   act('optout', () => post(`/api/billing/contacts/${c.client_id}/opt-out`, {}))
 }
 

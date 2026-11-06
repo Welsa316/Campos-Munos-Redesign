@@ -108,7 +108,7 @@
                 <button
                   @click.stop="openStatusFor = openStatusFor === c.id ? null : c.id"
                 :disabled="!canManage"
-                  :aria-label="`Change status for ${c.first_name} ${c.last_name}, currently ${statusMeta(c.status).label}`"
+                  :aria-label="`Change status for ${leadName(c)}, currently ${statusMeta(c.status).label}`"
                   :class="statusMeta(c.status).pill"
                   class="inline-flex items-center gap-1.5 text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap transition-transform active:scale-95"
                 >
@@ -162,6 +162,7 @@ import { can } from '../../composables/useAuth.js'
 // Status is shown to everyone who can read leads, changed only with crm.manage.
 const canManage = computed(() => can('crm.manage'))
 import { formatPhone, telHref } from '../../utils/phone.js'
+import { leadName } from '../../utils/text.js'
 
 const props = defineProps({
   contacts: { type: Array, default: () => [] },

@@ -101,7 +101,7 @@
                 class="inline-flex items-center gap-2 min-h-11 text-[13px] font-semibold text-brand-navy hover:underline">
                 <FaIcon :name="showEvidence ? 'chevron-up' : 'chevron-down'" class="text-[10px]" />What RingCentral recorded
               </button>
-              <CallDetails v-if="showEvidence" :id="`call-evidence-${call.id}`" :call-id="call.id" :start="String(call.startedAt)" class="!mt-1" />
+              <CallDetails v-if="showEvidence" :id="`call-evidence-${call.id}`" :call-id="call.id" :start="String(call.startedAt)" :reload-key="call" class="!mt-1" />
             </div>
           </div>
         </section>

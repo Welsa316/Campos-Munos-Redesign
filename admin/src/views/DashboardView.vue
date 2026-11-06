@@ -119,6 +119,8 @@
 <script setup>
 import { ref, computed, onMounted, onActivated } from 'vue'
 import { LOGO_SRC } from '../data/brand.js'
+import { zoneMidnightDaysAgo } from '../utils/firmTime.js'
+import { daysAgo, toDate } from '../utils/text.js'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 import { useApi } from '../composables/useApi.js'
@@ -153,8 +155,9 @@ const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: '
 
 // --- the two summary cards ------------------------------------------------------
 
-// Same start as the Calls page's "30 days" view, so the card and the list agree.
-const monthStart = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - 29); return d })()
+// Same start as the Calls page's "30 days" view (New Orleans midnight), so
+// the card and the list agree.
+const monthStart = zoneMidnightDaysAgo(29)
 const missed = ref(null) // { connection, configured, missed: {...} }
 const unread = ref(null) // { count, oldest }
 const billing = ref(null) // /api/billing/overview, for billing accounts
@@ -167,15 +170,10 @@ const showsBillingFigures = computed(() => can('billing.view') && !can('calls.vi
 function shortDay(d) {
   const s = String(d || '')
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s)
-  const date = m && s.length <= 10 ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const date = m && s.length <= 10 ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : toDate(s)
+  return date ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'an unknown date'
 }
 
-function ago(d) {
-  const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400000)
-  if (days < 1) return 'today'
-  return days === 1 ? 'yesterday' : `${days} days ago`
-}
 
 const summaries = computed(() => {
   const out = []
@@ -219,7 +217,7 @@ const summaries = computed(() => {
       subTone: 'text-glass-navy-ink opacity-70',
       value: !u ? '·' : u.error ? '—' : u.count,
       sub: u?.error ? COULD_NOT_LOAD : firstName.value ? `Waiting for you, ${firstName.value}` : 'Website and chat inquiries',
-      pill: u && !u.error ? (u.count ? (u.oldest ? `Oldest from ${ago(u.oldest)}` : null) : 'All caught up') : null,
+      pill: u && !u.error ? (u.count ? (daysAgo(u.oldest) ? `Oldest from ${daysAgo(u.oldest)}` : null) : 'All caught up') : null,
       pillTone: 'bg-glass-navy-chip text-glass-navy-ink',
     })
   }
@@ -259,7 +257,7 @@ const summaries = computed(() => {
       subTone: 'text-glass-navy-ink opacity-70',
       value: !b ? '·' : b.error ? '—' : r?.count ?? 0,
       sub: 'Payment reminders drafted by the rules',
-      pill: r?.count ? `Oldest from ${ago(r.oldest)}` : b ? 'Nothing to approve' : null,
+      pill: r?.count ? (daysAgo(r.oldest) ? `Oldest from ${daysAgo(r.oldest)}` : null) : b ? 'Nothing to approve' : null,
       pillTone: 'bg-glass-navy-chip text-glass-navy-ink',
     })
   }

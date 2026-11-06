@@ -112,13 +112,19 @@ export function factText(f) {
 }
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
 
-/** Seconds from the call's start, for the routing sequence. */
+/**
+ * Seconds from the call's start, for the routing sequence. Signed: a step
+ * stamped before the start (two clocks a little apart) shows as "−2s"
+ * rather than being folded into "+0s".
+ */
 export function offset(at, start) {
   const a = Date.parse(at)
   const b = Date.parse(start)
   if (Number.isNaN(a) || Number.isNaN(b)) return ''
-  const s = Math.max(0, Math.round((a - b) / 1000))
-  return s < 60 ? `+${s}s` : `+${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`
+  const signed = Math.round((a - b) / 1000)
+  const s = Math.abs(signed)
+  const sign = signed < 0 ? '−' : '+'
+  return s < 60 ? `${sign}${s}s` : `${sign}${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`
 }
 
 // RingCentral's live states, in plain words ("Proceeding": "The call is being

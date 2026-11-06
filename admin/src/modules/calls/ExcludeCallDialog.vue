@@ -69,6 +69,8 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
+import { toDate } from '../../utils/text.js'
+import { FIRM_TIME_ZONE } from '../../utils/firmTime.js'
 import { useApi } from '../../composables/useApi.js'
 import { formatPhone } from '../../utils/phone.js'
 import FaIcon from '../../components/FaIcon.vue'
@@ -93,7 +95,10 @@ const phone = (n) => {
   return /^\+1\d{10}$/.test(s) ? formatPhone(s.slice(2)) : formatPhone(s)
 }
 const who = computed(() => props.call?.name || (props.call?.number ? phone(props.call.number) : 'Number withheld'))
-const when = computed(() => (props.call ? new Date(props.call.startedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''))
+const when = computed(() => {
+  const d = toDate(props.call?.startedAt)
+  return d ? d.toLocaleString('en-US', { timeZone: FIRM_TIME_ZONE, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''
+})
 const canSave = computed(() => !busy.value && reason.value && (reason.value !== 'other' || note.value.trim()))
 
 watch(() => props.call, (c) => {

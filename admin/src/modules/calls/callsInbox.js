@@ -7,8 +7,9 @@
 // only says what is left to do about it.
 
 import { who } from './callEvidenceText.js'
+import { FIRM_TIME_ZONE } from '../../utils/firmTime.js'
 
-export const TIME_ZONE = 'America/Chicago'
+export const TIME_ZONE = FIRM_TIME_ZONE
 
 const fmt = (opts) => new Intl.DateTimeFormat('en-US', { timeZone: TIME_ZONE, ...opts })
 const KEY = new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' })

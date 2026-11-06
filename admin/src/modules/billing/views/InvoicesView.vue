@@ -154,6 +154,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { plural } from '../../../utils/text.js'
 import { useRoute, useRouter } from 'vue-router'
 import { useBillingApi, money, shortDate } from '../api.js'
 import { can } from '../../../composables/useAuth.js'
@@ -274,7 +275,7 @@ function describeChanges(changes = []) {
   if (!changes.length) return 'Re-confirmed, no changes'
   if (changes.every((c) => c.from == null)) return 'First imported from this report'
   const shown = changes.filter((c) => FIELD_NAMES[c.field])
-  if (!shown.length) return `${changes.length} field(s) updated`
+  if (!shown.length) return `${plural(changes.length, 'field')} updated`
   return shown.map((c) => {
     const fmt = (v) => (v == null ? '—' : /Cents$/.test(c.field) ? money(v) : /Date$/.test(c.field) ? shortDate(v) : v)
     return `${FIELD_NAMES[c.field]}: ${fmt(c.from)} → ${fmt(c.to)}`

@@ -24,10 +24,11 @@
           <div class="mt-3 flex flex-wrap items-center gap-2">
             <code class="px-3 py-2 rounded-lg bg-white ring-1 ring-amber-200 text-sm text-gray-900 font-mono select-all break-all">{{ secret.password }}</code>
             <button type="button" @click="copySecret" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-brand-navy ring-1 ring-brand-navy/30 hover:bg-white">
-              <FaIcon name="copy" />{{ copied ? 'Copied' : 'Copy' }}
+              <FaIcon name="copy" />{{ copied === true ? 'Copied' : 'Copy' }}
             </button>
             <button type="button" @click="secret = null" class="px-3 py-2 rounded-lg text-xs font-semibold text-gray-600 hover:bg-white">Done</button>
           </div>
+          <p v-if="copied === 'failed'" role="alert" class="mt-2 text-xs text-brand-red">Could not copy it. Select the password above and copy it by hand before closing this.</p>
         </section>
 
         <!-- Add person -->
@@ -419,8 +420,10 @@ async function create() {
   adding.value = false
 }
 
+// true once copied, 'failed' when the browser refused (the password is
+// shown once, so a silent failure would lose it).
 async function copySecret() {
-  try { await navigator.clipboard.writeText(secret.value.password); copied.value = true } catch { copied.value = false }
+  try { await navigator.clipboard.writeText(secret.value.password); copied.value = true } catch { copied.value = 'failed' }
 }
 
 onMounted(load)

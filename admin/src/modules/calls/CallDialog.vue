@@ -85,7 +85,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
-import { useApi, rawFetch, goToLogin } from '../../composables/useApi.js'
+import { useApi, rawFetch, goToLogin, latestOnly } from '../../composables/useApi.js'
 import { formatPhone } from '../../utils/phone.js'
 import FaIcon from '../../components/FaIcon.vue'
 
@@ -201,7 +201,10 @@ async function place() {
   busy.value = 'call'
   error.value = ''
   try {
-    call.value = await post('/api/calls/ringout', { to: to.value })
+    const placed = await post('/api/calls/ringout', { to: to.value })
+    // Closed while RingCentral was accepting it: nothing more to show or follow.
+    if (!props.visible) return
+    call.value = placed
     pollUntil = Date.now() + 3 * 60 * 1000
     schedulePoll()
   } catch (e) {
@@ -213,17 +216,24 @@ async function place() {
 }
 
 // Follow the call until it connects, ends or fails (at most three minutes).
+// A check still in flight when the dialog closes, resets or cancels is
+// dropped when it lands: it must not repaint the call or start polling again.
+const latestCheck = latestOnly()
 function schedulePoll() {
   stopPolling()
   if (!call.value || !['ringing_you', 'calling_client'].includes(call.value.phase) || Date.now() > pollUntil) return
+  const id = call.value.id
   pollTimer = setTimeout(async () => {
+    pollTimer = null
     try {
-      call.value = await get(`/api/calls/ringout/${call.value.id}`)
+      const r = await latestCheck(() => get(`/api/calls/ringout/${id}`))
+      if (!r.current) return
+      call.value = r.value
     } catch { /* keep the last state; try again */ }
     schedulePoll()
   }, 1500)
 }
-function stopPolling() { clearTimeout(pollTimer); pollTimer = null }
+function stopPolling() { latestCheck.cancel(); clearTimeout(pollTimer); pollTimer = null }
 onUnmounted(stopPolling)
 
 async function cancel() {

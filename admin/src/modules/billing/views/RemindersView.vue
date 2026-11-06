@@ -60,17 +60,20 @@
             <p v-if="r.state === 'cancelled'" class="mt-2 text-gray-500">Cancelled: {{ data.cancelReasons[r.cancel_reason] || r.cancel_reason }}</p>
           </div>
           <div class="col-start-2 lg:col-start-auto flex flex-wrap lg:flex-col items-start lg:items-end gap-2">
-            <span :class="STATE[r.state].tone" class="text-[10px] font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded">{{ STATE[r.state].label }}</span>
+            <span :class="known(STATE, r.state).tone" class="text-[10px] font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded">{{ known(STATE, r.state).label }}</span>
             <span v-if="r.simulated" class="text-[10px] font-semibold text-violet-700">simulated</span>
             <span v-if="r.sent_at" class="text-gray-500">sent {{ shortDate(r.sent_at) }}</span>
             <button v-if="canAct && r.state === 'draft'" @click="approve([r.id])" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg bg-brand-navy text-white font-semibold hover:bg-brand-navy-dark">{{ r.action === 'staff_followup' ? 'Mark done' : 'Approve' }}</button>
-            <button v-if="canAct && ['draft', 'approved', 'unknown'].includes(r.state)" @click="cancel(r)" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg text-gray-600 hover:text-brand-red hover:bg-red-50">Cancel</button>
+            <button v-if="canAct && ['draft', 'approved', 'unknown'].includes(r.state)" @click="ask(r, 'cancel')" :disabled="Boolean(busy)" :aria-expanded="isAsking(r, 'cancel')" class="px-3 py-1.5 rounded-lg text-gray-600 hover:text-brand-red hover:bg-red-50">Cancel</button>
             <button v-if="canAct && r.state === 'failed' && r.last_error_retryable" @click="retry(r)" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg ring-1 ring-brand-navy/30 text-brand-navy font-semibold hover:bg-brand-surface">Retry</button>
             <template v-if="canAct && r.state === 'unknown'">
-              <button @click="resolve(r, true)" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg ring-1 ring-green-600/40 text-green-800 font-semibold hover:bg-green-50">It arrived</button>
-              <button @click="resolve(r, false)" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg ring-1 ring-gray-300 text-gray-700 hover:bg-gray-50">It did not</button>
+              <button @click="ask(r, 'arrived')" :disabled="Boolean(busy)" :aria-expanded="isAsking(r, 'arrived')" class="px-3 py-1.5 rounded-lg ring-1 ring-green-600/40 text-green-800 font-semibold hover:bg-green-50">It arrived</button>
+              <button @click="ask(r, 'not_arrived')" :disabled="Boolean(busy)" :aria-expanded="isAsking(r, 'not_arrived')" class="px-3 py-1.5 rounded-lg ring-1 ring-gray-300 text-gray-700 hover:bg-gray-50">It did not</button>
             </template>
           </div>
+          <ConfirmInline v-if="asking?.id === r.id" class="col-span-full" :title="ASK[asking.kind].title(r)" :body="ASK[asking.kind].body"
+            :confirm-label="ASK[asking.kind].action" :tone="asking.kind === 'cancel' ? 'danger' : 'navy'" :busy="Boolean(busy)"
+            @confirm="answer(r)" @cancel="asking = null" />
         </li>
       </ul>
     </section>
@@ -116,6 +119,8 @@
           </label>
           <button @click="saveConsent" :disabled="Boolean(busy) || !consentChanged" class="min-h-11 sm:min-h-0 px-3 py-1.5 rounded-lg bg-brand-navy text-white text-xs font-ui font-semibold hover:bg-brand-navy-dark disabled:opacity-50">Save</button>
         </div>
+        <ConfirmInline v-if="confirmingPolicyOff" title="Turn the firm policy off?" body="Reminders waiting for clients without a recorded opt-in are cancelled."
+          confirm-label="Turn it off" :busy="Boolean(busy)" @confirm="saveConsent({ confirmed: true })" @cancel="confirmingPolicyOff = false" />
       </section>
 
       <section class="bg-white rounded-xl ring-1 ring-gray-200" aria-labelledby="rules-h">
@@ -195,6 +200,8 @@ const canConfigure = can('billing.configure')
 import { money, shortDate } from '../api.js'
 import FaIcon from '../../../components/FaIcon.vue'
 import LoadError from '../../../components/LoadError.vue'
+import ConfirmInline from '../../../components/ConfirmInline.vue'
+import { plural, known } from '../../../utils/text.js'
 
 const VIEWS = [
   { key: 'drafts', label: 'Awaiting approval' },
@@ -342,8 +349,8 @@ async function saveSetup(section, fn, { ok, revert, after }) {
 }
 
 const runEvaluate = () => act('evaluate', () => post('/api/billing/reminders/evaluate', {}), (r) => {
-  const why = r.suppressed.map((s) => `${s.count} × ${s.label.toLowerCase()}`).join('; ')
-  return `${r.created} new draft(s).${why ? ` Not created: ${why}.` : ''}`
+  const why = (r.suppressed || []).map((s) => `${s.count} × ${String(s.label || s.reason || '').toLowerCase()}`).join('; ')
+  return `${plural(r.created, 'new draft')}.${why ? ` Not created: ${why}.` : ''}`
 })
 const runDispatch = () => act('dispatch', () => post('/api/billing/reminders/dispatch', {}), (r) => {
   if (r.skipped === 'sending_disabled') return 'Sending is switched off on the server. Approved reminders are waiting.'
@@ -351,18 +358,25 @@ const runDispatch = () => act('dispatch', () => post('/api/billing/reminders/dis
   return `${r.sent} sent, ${r.failed} failed, ${r.unknown} unconfirmed, ${r.cancelled} cancelled before sending.`
 })
 const approve = (ids) => act('approve', () => post('/api/billing/reminders/approve', { ids }), (r) =>
-  `${r.approved.length} approved${r.tasksDone ? `, ${r.tasksDone} follow-up(s) marked done` : ''}${r.notApproved ? `; ${r.notApproved} no longer qualified and were cancelled or skipped` : ''}.`)
+  `${r.approved.length} approved${r.tasksDone ? `, ${plural(r.tasksDone, 'follow-up')} marked done` : ''}${r.notApproved ? `; ${r.notApproved} no longer qualified and were cancelled or skipped` : ''}.`)
 const approveSelected = () => approve([...selected.value])
-function cancel(r) {
-  if (!window.confirm(`Cancel the reminder for ${r.client_name || 'this client'}?`)) return
-  act('cancel', () => post(`/api/billing/reminders/${r.id}/cancel`, {}))
+// Cancelling a reminder, and saying whether an unconfirmed one arrived, are
+// asked inline under that reminder (ConfirmInline) rather than in a browser dialog.
+const ASK = {
+  cancel: { title: (r) => `Cancel the reminder for ${r.client_name || 'this client'}?`, body: '', action: 'Cancel reminder' },
+  arrived: { title: () => 'Confirm the client received this message?', body: 'Only after checking in WhatsApp.', action: 'It arrived' },
+  not_arrived: { title: () => 'Confirm the client did not receive it?', body: 'It can then be retried.', action: 'It did not arrive' },
+}
+const asking = ref(null)
+const ask = (r, kind) => { asking.value = { id: r.id, kind } }
+const isAsking = (r, kind) => asking.value?.id === r.id && asking.value.kind === kind
+function answer(r) {
+  const kind = asking.value?.kind
+  asking.value = null
+  if (kind === 'cancel') act('cancel', () => post(`/api/billing/reminders/${r.id}/cancel`, {}))
+  else if (kind) act('resolve', () => post(`/api/billing/reminders/${r.id}/resolve`, { delivered: kind === 'arrived' }))
 }
 const retry = (r) => act('retry', () => post(`/api/billing/reminders/${r.id}/retry`, {}), () => 'Moved back to approved. It goes out with the next send.')
-function resolve(r, delivered) {
-  const q = delivered ? 'Confirm the client received this message (checked in WhatsApp)?' : 'Confirm the client did NOT receive it? It can then be retried.'
-  if (!window.confirm(q)) return
-  act('resolve', () => post(`/api/billing/reminders/${r.id}/resolve`, { delivered }))
-}
 const markHandled = (m) => act('handled', () => post(`/api/billing/responses/${m.id}/handled`, {}))
 const saveRule = (r) => saveSetup('rules', () => put(`/api/billing/reminders/rules/${r.key}`, { days: r.days, enabled: r.enabled }), {
   ok: 'Rule saved.',
@@ -372,9 +386,11 @@ const saveTemplate = (t) => saveSetup('templates', () => put(`/api/billing/remin
   ok: 'Template saved.',
   revert: (c) => { const f = c.templates.find((x) => x.key === t.key); if (f) Object.assign(t, f) },
 })
-function saveConsent() {
+const confirmingPolicyOff = ref(false)
+function saveConsent({ confirmed = false } = {}) {
   const turningOff = config.value.consent.firmPolicy && !consent.value.firmPolicy
-  if (turningOff && !window.confirm('Turn the firm policy off? Reminders waiting for clients without a recorded opt-in are cancelled.')) return
+  if (turningOff && !confirmed) { confirmingPolicyOff.value = true; return }
+  confirmingPolicyOff.value = false
   saveSetup('consent', () => put('/api/billing/consent', { firmPolicy: consent.value.firmPolicy, basis: consent.value.basis.trim() }), {
     ok: (r) => (r.firmPolicy ? 'Firm policy on: clients with a WhatsApp number get reminders unless they opted out.' : 'Firm policy off: each client needs a recorded opt-in.'),
     // Saved: it is now what the server has. Turning it off cancels waiting reminders.

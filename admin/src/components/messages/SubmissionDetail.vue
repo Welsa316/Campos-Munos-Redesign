@@ -163,7 +163,7 @@
               :disabled="savingNote"
               placeholder="Log a call, a voicemail, what they need…"
               class="form-input resize-none text-sm flex-1"
-              @keydown.enter.exact.prevent="addNote"
+              @keydown.enter.exact="(e) => { if (!isComposing(e)) { e.preventDefault(); addNote() } }"
             ></textarea>
             <button
               type="submit"
@@ -227,6 +227,7 @@ import { formatPhone, telHref } from '../../utils/phone.js'
 import ReplyBox from './ReplyBox.vue'
 import FaIcon from '../FaIcon.vue'
 import { vAlertFocus } from '../../directives/alertFocus.js'
+import { toDate, isComposing } from '../../utils/text.js'
 import { LEAD_STATUSES, statusMeta } from '../../data/leadStatuses.js'
 import { can } from '../../composables/useAuth.js'
 
@@ -393,7 +394,8 @@ async function toggleArchive() {
 }
 
 function formatDate(dateStr) {
-  const d = new Date(dateStr)
+  const d = toDate(dateStr)
+  if (!d) return ''
   const now = new Date()
   const isToday = d.toDateString() === now.toDateString()
 

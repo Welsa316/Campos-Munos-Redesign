@@ -199,6 +199,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, onActivated, onDeactivated, nextTick, watchEffect } from 'vue'
 import { LOGO_SRC, NOTIFY_ICON } from '../data/brand.js'
+import { leadName } from '../utils/text.js'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 import { useApi, rawFetch, goToLogin, latestOnly } from '../composables/useApi.js'
@@ -324,7 +325,7 @@ function notifyOnNewArrivals(list) {
   if (arrivals.length === 1) {
     const s = arrivals[0]
     const body = (s.message || '').trim() || 'No message provided'
-    const note = new Notification(`New inquiry — ${s.first_name} ${s.last_name}`, {
+    const note = new Notification(`New inquiry — ${leadName(s, 'no name given')}`, {
       body: body.length > 140 ? `${body.slice(0, 140)}…` : body,
       icon: NOTIFY_ICON,
       // Same tag replaces rather than stacks if this fires twice for one message.
@@ -333,7 +334,7 @@ function notifyOnNewArrivals(list) {
     note.onclick = () => { open(s.id); note.close() }
   } else {
     const note = new Notification(`${arrivals.length} new inquiries`, {
-      body: arrivals.map(s => `${s.first_name} ${s.last_name}`).join(', ').slice(0, 160),
+      body: arrivals.map((s) => leadName(s, 'no name given')).join(', ').slice(0, 160),
       icon: NOTIFY_ICON,
       tag: 'cm-submissions-batch',
     })
@@ -609,7 +610,9 @@ async function exportCsv() {
     a.href = url
     a.download = `submissions-${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
-    URL.revokeObjectURL(url)
+    // Revoked a moment later: Safari can abort a download whose URL is
+    // revoked in the same task as the click.
+    setTimeout(() => URL.revokeObjectURL(url), 30000)
   } catch {
     // Surface the failure on the button instead of silently doing nothing.
     exportFailed.value = true
