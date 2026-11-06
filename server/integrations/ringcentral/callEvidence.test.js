@@ -318,3 +318,38 @@ test('a leg back to the caller’s own number never carries the whole number', (
   assert.equal(s.to.kind, 'caller')
   assert.ok(!JSON.stringify(c).includes('5045550142'))
 })
+
+// The shape RingCentral sends on this account: an employee's leg names only
+// the extension number in \`to\`, and carries the extension's id in the leg's
+// own \`extension\` ("on whose behalf"). Synthetic numbers.
+const realLeg = (s, ext, id, result, reason) => leg(s, { phoneNumber: LINE.phoneNumber, extensionNumber: ext, location: 'New Orleans, LA' }, reason,
+  { legType: 'PstnToSip', result, extension: { id: Number(id) } })
+
+test('real shape: the leg’s own extension id identifies the person', () => {
+  const c = classify(record([
+    leg(0, LINE, 'Accepted', { legType: 'Accept', master: true, result: 'Accepted' }),
+    leg(0, QUEUE, 'Accepted', { legType: 'Accept', result: 'Accepted' }),
+    realLeg(4, '101', '9101', 'Stopped', undefined),
+    realLeg(4, '101', '9101', 'Call connected', 'Accepted'),
+    realLeg(4, '102', '9102', 'Stopped', undefined),
+    realLeg(4, '102', '9102', 'IP Phone Offline', 'No Digital Line'),
+  ], { result: 'Accepted', reason: 'Accepted' }))
+  assert.equal(c.classification, 'answered')
+  assert.deepEqual(c.answeredBy, { kind: 'extension', extensionId: '9101', extension: '101', name: 'Yoletty' })
+  assert.deepEqual(c.offeredTo.map((o) => [o.name, o.reason]), [['Yoletty', 'Accepted'], ['Ciro', undefined]].map(([n, r]) => [n, r ?? null]))
+  assert.deepEqual(c.notAnsweredBy, [])
+})
+
+test('real shape: an id whose directory number disagrees with the leg is not trusted', () => {
+  const c = classify(record([leg(0, LINE, null, { master: true }), realLeg(4, '101', '9102', 'Call connected', 'Accepted')]))
+  assert.equal(c.classification, 'unknown')
+})
+
+test('real shape: a queue-only call RingCentral logs as Missed with no reason stays unknown and charges nobody', () => {
+  const c = classify(record([
+    leg(0, LINE, null, { legType: 'Accept', master: true, result: 'Missed' }),
+    leg(0, QUEUE, null, { legType: 'Accept', result: 'Missed' }),
+  ], { result: 'Missed', duration: 3 }))
+  assert.equal(c.classification, 'unknown')
+  assert.deepEqual(c.notAnsweredBy, [])
+})
