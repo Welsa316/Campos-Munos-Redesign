@@ -187,7 +187,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted, nextTick, watchEffect } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, onActivated, onDeactivated, nextTick, watchEffect } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 import { useApi, rawFetch, goToLogin, latestOnly } from '../composables/useApi.js'
@@ -327,29 +327,51 @@ function notifyOnNewArrivals(list) {
 
 // Mirror the unread count into the tab title, so a parked tab still shows that
 // something came in.
-watchEffect(() => {
+const active = ref(true)
+function setTitle() {
   const n = viewMode.value === 'inbox' ? unreadCount.value : 0
   document.title = `${n > 0 ? `(${n}) ` : ''}Client Messages | Campos Muños Law`
-})
+}
+watchEffect(() => { if (active.value) setTitle() })
 
-onMounted(() => {
-  fetchSubmissions()
-  // Opened from elsewhere in the portal (a call matched to this lead).
+// Opened from elsewhere in the portal (a call matched to this lead).
+function openLinkedLead() {
   const lead = Number(route.query.lead)
   if (Number.isInteger(lead) && lead > 0) {
     selectSubmission(lead)
     router.replace({ query: {} })
   }
+}
+function listen() {
   startPolling()
   document.addEventListener('visibilitychange', onVisibilityChange)
   window.addEventListener('focus', pollNow)
-})
-
-onUnmounted(() => {
+}
+function unlisten() {
   stopPolling()
   document.removeEventListener('visibilitychange', onVisibilityChange)
   window.removeEventListener('focus', pollNow)
+}
+
+// Kept alive between sections (App.vue): coming back shows the inbox at once
+// and refreshes it in the background; while away it does not poll or own
+// the tab title (active).
+let activations = 0
+onMounted(() => {
+  fetchSubmissions()
+  openLinkedLead()
+  listen()
 })
+onActivated(() => {
+  active.value = true
+  if (activations++ === 0) return
+  setTitle()
+  openLinkedLead()
+  listen()
+  pollNow()
+})
+onDeactivated(() => { active.value = false; unlisten() })
+onUnmounted(unlisten)
 
 // `silent` is the background refresh: it must not flash the loading state, show
 // an error banner on a transient blip, or spin the refresh button.

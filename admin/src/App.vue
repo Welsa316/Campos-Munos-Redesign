@@ -15,13 +15,26 @@
     </template>
   </div>
   <main id="main">
-    <router-view />
+    <!-- The sections staff move between stay alive, so going back to one
+         shows it at once while it refreshes in the background. Signing out
+         empties the cache, so the next account never sees the last one's. -->
+    <router-view v-slot="{ Component }">
+      <KeepAlive :include="isAuthenticated ? KEPT : []" :max="KEPT.length">
+        <component :is="Component" />
+      </KeepAlive>
+    </router-view>
   </main>
 </template>
 
 <script setup>
 import { sessionExpired, renderError } from './composables/appStatus.js'
 import { loginHref } from './composables/useApi.js'
+import { useAuth } from './composables/useAuth.js'
+
+// Each refreshes itself when shown again (onActivated) and stops polling
+// while hidden (onDeactivated).
+const KEPT = ['DashboardView', 'InboxView', 'CallsView', 'WhatsAppView']
+const { isAuthenticated } = useAuth()
 
 const reload = () => window.location.reload()
 </script>

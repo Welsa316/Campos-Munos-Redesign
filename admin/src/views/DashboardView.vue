@@ -117,7 +117,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 import { useApi } from '../composables/useApi.js'
@@ -328,23 +328,30 @@ const SIZE = {
 const COULD_NOT_LOAD = 'Could not load these figures. Open the page, or reload to try again.'
 const withRetry = (fn) => fn().catch(() => new Promise((r) => setTimeout(r, 4000)).then(fn))
 
-onMounted(() => {
+// Kept alive between sections (App.vue): coming back shows the figures at
+// once and refreshes them in the background. A failed background refresh
+// keeps the figures already shown.
+function loadFigures({ quiet = false } = {}) {
+  const failed = (current) => (quiet && current && !current.error ? current : { error: true })
   if (showsBillingFigures.value) {
-    withRetry(() => get('/api/billing/overview')).then((d) => { billing.value = d }).catch(() => { billing.value = { error: true } })
+    withRetry(() => get('/api/billing/overview')).then((d) => { billing.value = d }).catch(() => { billing.value = failed(billing.value) })
   }
   if (can('calls.view')) {
     withRetry(() => get(`/api/calls/summary?from=${encodeURIComponent(monthStart.toISOString())}`))
       .then((d) => { missed.value = d })
-      .catch(() => { missed.value = { error: true } })
+      .catch(() => { missed.value = failed(missed.value) })
   }
   if (can('crm.view')) {
     withRetry(() => get('/api/submissions?unread=true&limit=200')).then((rows) => {
       const list = Array.isArray(rows) ? rows : []
       // Newest first from the API: the oldest waiting is the last one.
       unread.value = { count: list.length, oldest: list.length ? list[list.length - 1].created_at : null }
-    }).catch(() => { unread.value = { error: true } })
+    }).catch(() => { unread.value = failed(unread.value) })
   }
-})
+}
+let activations = 0
+onMounted(() => loadFigures())
+onActivated(() => { if (activations++) loadFigures({ quiet: true }) })
 
 async function handleLogout() {
   await logout()
