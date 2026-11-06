@@ -87,6 +87,11 @@
           </router-link>
         </RiseIn>
 
+        <!-- What is waiting for me: callback reminders and new website messages. -->
+        <RiseIn v-if="canAny('calls.view', 'crm.view')" :delay="0.25" :duration="0.45" :distance="10" class="mt-2">
+          <MyFollowUps />
+        </RiseIn>
+
         <!-- Sections, side by side. -->
         <p class="mt-2 px-1 text-[17px] font-semibold tracking-tight text-gray-900">Go to</p>
         <!-- The row always fills its width: one or two big cards, three or
@@ -142,6 +147,7 @@ import { vGlassLight } from '../directives/glassLight.js'
 import RiseIn from '../components/RiseIn.vue'
 import UserAvatar from '../components/UserAvatar.vue'
 import AvatarPicker from '../components/AvatarPicker.vue'
+import MyFollowUps from '../modules/reminders/MyFollowUps.vue'
 
 const router = useRouter()
 const { adminEmail, profile, logout, can, canAny, updateProfile } = useAuth()
