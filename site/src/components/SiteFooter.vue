@@ -39,6 +39,7 @@
           </h4>
           <div class="space-y-3">
             <router-link to="/acerca-de" class="footer-link">{{ $t('nav.acercaDe') }}</router-link>
+            <router-link to="/blog" class="footer-link">{{ $t('nav.blog') }}</router-link>
             <router-link to="/pago" class="footer-link">{{ $t('nav.pago') }}</router-link>
           </div>
         </div>

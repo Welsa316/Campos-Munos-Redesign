@@ -62,6 +62,9 @@
         <router-link to="/acerca-de" class="nav-item" :class="navSolid ? 'nav-scrolled' : 'nav-top'">
           <span>{{ $t('nav.acercaDe') }}</span>
         </router-link>
+        <router-link to="/blog" class="nav-item" :class="navSolid ? 'nav-scrolled' : 'nav-top'">
+          <span>{{ $t('nav.blog') }}</span>
+        </router-link>
         <router-link to="/pago" class="nav-item" :class="navSolid ? 'nav-scrolled' : 'nav-top'">
           <span>{{ $t('nav.pago') }}</span>
         </router-link>
@@ -193,6 +196,9 @@
           </router-link>
           <router-link to="/acerca-de" class="drawer-link" @click="mobileOpen = false">
             {{ $t('nav.acercaDe') }}
+          </router-link>
+          <router-link to="/blog" class="drawer-link" @click="mobileOpen = false">
+            {{ $t('nav.blog') }}
           </router-link>
           <router-link to="/pago" class="drawer-link" @click="mobileOpen = false">
             {{ $t('nav.pago') }}

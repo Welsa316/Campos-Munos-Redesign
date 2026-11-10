@@ -38,12 +38,17 @@
     color: #1a1a1a;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* clip, not hidden: hidden makes body a scroll container, which breaks
+       position: sticky (the blog's table of contents). The hidden line is
+       the fallback for browsers without clip. */
     overflow-x: hidden;
+    overflow-x: clip;
     max-width: 100vw;
   }
 
   #app {
     overflow-x: hidden;
+    overflow-x: clip;
     max-width: 100vw;
   }
 
@@ -359,4 +364,23 @@ select:focus-visible {
   background: white;
   border-radius: 1rem;
   overflow: hidden;
+}
+
+/* Inline links inside blog article prose (RichText). Underlined so they read
+   as links without relying on colour alone. */
+.rich-link {
+  color: var(--color-brand-navy);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(0, 63, 141, 0.35);
+  transition: text-decoration-color 0.2s ease;
+}
+.rich-link:hover {
+  text-decoration-color: var(--color-brand-navy);
+}
+
+/* Navy surfaces: the global navy focus ring would vanish against them. */
+.on-dark :focus-visible {
+  outline-color: #fff;
 }
