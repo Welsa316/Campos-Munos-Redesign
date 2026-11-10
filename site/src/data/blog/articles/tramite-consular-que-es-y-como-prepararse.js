@@ -4,7 +4,7 @@
 export default {
   es: {
     blocks: [
-      { type: 'lead', text: 'En algunos casos, su proceso de inmigración se resuelve desde su país de origen: usted tiene que acudir a una embajada o un consulado de los Estados Unidos en el extranjero para obtener su residencia. Eso es el trámite consular.' },
+      { type: 'lead', text: 'En algunos casos, su proceso de inmigración se resuelve fuera de los Estados Unidos: usted tiene que acudir a una embajada o un consulado de los Estados Unidos en el extranjero para solicitar su residencia. Eso es el trámite consular.' },
 
       { type: 'heading', text: '¿Qué es el trámite consular?' },
       { type: 'paragraph', text: 'Es el proceso por el cual la persona beneficiaria de una petición de inmigración aprobada solicita su visa en un consulado de los Estados Unidos en el extranjero. Se diferencia del ajuste de estatus, que permite hacerse residente sin salir de los Estados Unidos. En el trámite consular, en cambio, usted debe estar en el país donde tiene su cita.' },
@@ -21,21 +21,21 @@ export default {
       { type: 'paragraph', text: 'Los procesos consulares requieren mucha preparación ante las autoridades consulares, con sus documentos presentados de manera correcta. Un error al llenar los formularios puede poner en riesgo toda la visa.' },
 
       { type: 'heading', text: 'Si hoy vive en los Estados Unidos' },
-      { type: 'paragraph', text: 'Si usted está en los Estados Unidos, viajar al extranjero para su cita es un paso muy importante en su camino migratorio. Antes de salir, conviene revisar con un abogado cualquier situación que pueda afectar su caso, como viajes anteriores a los Estados Unidos o problemas migratorios del pasado.' },
+      { type: 'paragraph', text: 'Si usted está en los Estados Unidos, viajar al extranjero para su cita es un paso muy importante en su camino migratorio. Antes de comenzar el proceso, conviene revisar con un abogado cualquier situación que pueda afectar su caso, como viajes anteriores a los Estados Unidos o problemas migratorios del pasado.' },
       { type: 'callout', title: 'Cuándo buscar un abogado', text: 'Lo ideal es **lo antes posible**. Un error puede hacerle perder tiempo valioso o, peor aún, poner en riesgo su posibilidad de entrar a los Estados Unidos en el futuro.' },
 
       { type: 'heading', text: 'Cómo le ayuda nuestra firma' },
       { type: 'paragraph', text: 'En Campos Muños Law le acompañamos en cada paso del trámite consular para que evite errores, desde la petición hasta la preparación de la entrevista. Conozca más sobre nuestro servicio de [trámite consular](/servicios/tramite-consular).' },
     ],
     faqs: [
-      { q: '¿Cuál es la diferencia entre el trámite consular y el ajuste de estatus?', a: 'El ajuste de estatus permite hacerse residente sin salir de los Estados Unidos. En el trámite consular, la persona obtiene su visa en una embajada o un consulado de los Estados Unidos en el extranjero.' },
+      { q: '¿Cuál es la diferencia entre el trámite consular y el ajuste de estatus?', a: 'El ajuste de estatus permite hacerse residente sin salir de los Estados Unidos. En el trámite consular, la persona solicita su visa en una embajada o un consulado de los Estados Unidos en el extranjero.' },
       { q: '¿Qué pasa en la entrevista consular?', a: 'Un oficial revisa su información y determina si existe alguna causa de inadmisibilidad. Debe estar preparado para explicar su solicitud y entregar los documentos requeridos.' },
       { q: '¿Cuándo debo buscar un abogado para el trámite consular?', a: 'Lo antes posible. Un error en el proceso puede hacerle perder tiempo o poner en riesgo su posibilidad de entrar a los Estados Unidos en el futuro.' },
     ],
   },
   en: {
     blocks: [
-      { type: 'lead', text: 'In some cases, your immigration process is resolved from your home country: you have to go to a U.S. embassy or consulate abroad to get your residence. That is consular processing.' },
+      { type: 'lead', text: 'In some cases, your immigration process is resolved outside the United States: you have to go to a U.S. embassy or consulate abroad to apply for your residence. That is consular processing.' },
 
       { type: 'heading', text: 'What is consular processing?' },
       { type: 'paragraph', text: 'It is the process by which the beneficiary of an approved immigration petition applies for their visa at a U.S. consulate abroad. It is different from adjustment of status, which lets you become a resident without leaving the United States. In consular processing, by contrast, you must be in the country where you have your appointment.' },
@@ -52,14 +52,14 @@ export default {
       { type: 'paragraph', text: 'Consular processes require a lot of preparation before the consular authorities, with your documents submitted correctly. One mistake in filling out the forms can put the whole visa at risk.' },
 
       { type: 'heading', text: 'If you live in the United States today' },
-      { type: 'paragraph', text: 'If you are in the United States, traveling abroad for your appointment is a very important step on your immigration path. Before you leave, it is wise to review with a lawyer any situation that could affect your case, such as previous trips to the United States or past immigration problems.' },
+      { type: 'paragraph', text: 'If you are in the United States, traveling abroad for your appointment is a very important step on your immigration path. Before the process begins, it is wise to review with a lawyer any situation that could affect your case, such as previous trips to the United States or past immigration problems.' },
       { type: 'callout', title: 'When to see a lawyer', text: 'Ideally, **as soon as possible**. A mistake can cost you valuable time or, worse, put at risk your chance of entering the United States in the future.' },
 
       { type: 'heading', text: 'How our firm helps' },
       { type: 'paragraph', text: 'At Campos Muños Law, we guide you through every step of consular processing so you can avoid mistakes, from the petition to preparing for the interview. Learn more about our [consular processing](/servicios/tramite-consular) service.' },
     ],
     faqs: [
-      { q: 'What is the difference between consular processing and adjustment of status?', a: 'Adjustment of status lets you become a resident without leaving the United States. In consular processing, the person gets their visa at a U.S. embassy or consulate abroad.' },
+      { q: 'What is the difference between consular processing and adjustment of status?', a: 'Adjustment of status lets you become a resident without leaving the United States. In consular processing, the person applies for their visa at a U.S. embassy or consulate abroad.' },
       { q: 'What happens at the consular interview?', a: 'An officer reviews your information and determines whether there is any ground of inadmissibility. You should be prepared to explain your application and provide the required documents.' },
       { q: 'When should I see a lawyer about consular processing?', a: 'As soon as possible. A mistake in the process can cost you time or put at risk your chance of entering the United States in the future.' },
     ],

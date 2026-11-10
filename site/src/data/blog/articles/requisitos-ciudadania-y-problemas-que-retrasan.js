@@ -44,7 +44,7 @@ export default {
     faqs: [
       { q: '¿Cuánto tiempo debo esperar para pedir la ciudadanía después de hacerme residente?', a: 'Por lo general, cinco años. Si durante ese tiempo ha estado casado con un ciudadano estadounidense y viviendo con él o ella, pueden ser tres años.' },
       { q: '¿Un antecedente criminal muy antiguo puede afectar mi solicitud?', a: 'Sí. Los antecedentes criminales pueden causar retrasos o problemas en la solicitud de ciudadanía, aunque sean muy antiguos. Conviene revisarlos con un abogado antes de aplicar.' },
-      { q: '¿Viajar fuera del país puede afectar mi ciudadanía?', a: 'Los viajes prolongados fuera de los Estados Unidos son una de las causas comunes de retrasos y problemas, porque la ciudadanía exige residencia continua y presencia física en el país.' },
+      { q: '¿Viajar fuera del país puede afectar mi ciudadanía?', a: 'Los viajes prolongados fuera de los Estados Unidos son una de las causas comunes de retrasos y problemas.' },
     ],
   },
   en: {
@@ -86,7 +86,7 @@ export default {
     faqs: [
       { q: 'How long do I have to wait to apply for citizenship after becoming a resident?', a: 'Generally five years. If during that time you have been married to, and living with, a U.S. citizen, it can be three years.' },
       { q: 'Can a very old criminal record affect my application?', a: 'Yes. Criminal records can cause delays or problems in a citizenship application, even very old ones. It is a good idea to review them with a lawyer before you apply.' },
-      { q: 'Can traveling outside the country affect my citizenship?', a: 'Long trips outside the United States are one of the common causes of delays and problems, because citizenship requires continuous residence and physical presence in the country.' },
+      { q: 'Can traveling outside the country affect my citizenship?', a: 'Long trips outside the United States are one of the common causes of delays and problems.' },
     ],
   },
 }

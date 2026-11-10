@@ -17,7 +17,7 @@ export default {
       { type: 'paragraph', text: 'Además, hay requisitos de edad y reglas migratorias específicas que también deben cumplirse.' },
 
       { type: 'heading', text: 'Dos instancias distintas: la corte estatal y USCIS' },
-      { type: 'paragraph', text: 'Lo que hace especiales a estos casos es que pasan por dos entidades. Primero, una corte estatal emite la orden sobre la situación del menor. Después, USCIS decide la parte migratoria. Las dos piezas tienen que estar bien hechas para que el caso avance.' },
+      { type: 'paragraph', text: 'Lo que hace especiales a estos casos es que requieren la intervención de dos entidades distintas: la corte estatal y USCIS.' },
 
       { type: 'heading', text: 'Retos y posibles complicaciones' },
       { type: 'paragraph', text: 'Son casos sensibles al tiempo y legalmente complejos. Pueden afectar el resultado:' },
@@ -33,8 +33,8 @@ export default {
     ],
     faqs: [
       { q: '¿Qué se necesita para la visa juvenil?', a: 'Una orden de una corte estatal que determine que el menor no puede reunirse con uno o ambos padres por abandono, abuso o negligencia, y que regresar a su país no es en el mejor interés del menor. También hay requisitos de edad y otras reglas migratorias.' },
-      { q: '¿La visa juvenil lleva a la green card?', a: 'Sí. Puede abrir un camino a la residencia permanente y, con el tiempo, a la ciudadanía.' },
-      { q: '¿Quién decide un caso de visa juvenil?', a: 'Dos entidades: una corte estatal, que emite la orden sobre el menor, y USCIS, que decide la parte migratoria.' },
+      { q: '¿La visa juvenil lleva a la green card?', a: 'Puede abrirle un camino a la residencia permanente y, con el tiempo, a la ciudadanía.' },
+      { q: '¿Quién decide un caso de visa juvenil?', a: 'Estos casos requieren la intervención de dos entidades distintas: la corte estatal y USCIS.' },
     ],
   },
   en: {
@@ -53,7 +53,7 @@ export default {
       { type: 'paragraph', text: 'In addition, there are age requirements and specific immigration rules that must also be met.' },
 
       { type: 'heading', text: 'Two separate authorities: the state court and USCIS' },
-      { type: 'paragraph', text: 'What makes these cases special is that they go through two different bodies. First, a state court issues the order about the minor’s situation. Then USCIS decides the immigration part. Both pieces have to be done right for the case to move forward.' },
+      { type: 'paragraph', text: 'What makes these cases special is that they require the involvement of two different bodies: the state court and USCIS.' },
 
       { type: 'heading', text: 'Challenges and possible complications' },
       { type: 'paragraph', text: 'These are time-sensitive and legally complex cases. The outcome can be affected by:' },
@@ -69,7 +69,7 @@ export default {
     ],
     faqs: [
       { q: 'What do you need for the juvenile visa?', a: 'An order from a state court finding that the minor cannot be reunited with one or both parents because of abandonment, abuse, or neglect, and that returning to their country is not in the minor’s best interest. There are also age requirements and other immigration rules.' },
-      { q: 'Does the juvenile visa lead to a green card?', a: 'Yes. It can open a path to permanent residence and, over time, to citizenship.' },
+      { q: 'Does the juvenile visa lead to a green card?', a: 'It can open a path to permanent residence and, over time, to citizenship.' },
       { q: 'Who decides a juvenile visa case?', a: 'Two bodies: a state court, which issues the order about the minor, and USCIS, which decides the immigration part.' },
     ],
   },

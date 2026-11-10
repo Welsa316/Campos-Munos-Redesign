@@ -1,7 +1,7 @@
 // Source: VAWA-Video-Transcript.txt
 // Wording deliberately differs from the video (listed in the sign-off doc):
 // "100% confidenciales" is stated as "confidential; your abuser does not have
-// to find out", and the law is noted to protect men as well as women.
+// to find out".
 export default {
   es: {
     blocks: [
@@ -9,7 +9,6 @@ export default {
 
       { type: 'heading', text: '¿Qué es VAWA?' },
       { type: 'paragraph', text: 'VAWA es una ley migratoria que protege a quienes han sido víctimas de abuso por parte de un ciudadano estadounidense o de un residente permanente. Lo más importante es que le permite pedir la [residencia permanente](/blog/como-obtener-la-green-card) por su cuenta: **sin la ayuda de su esposo o esposa**, sin la ayuda de la persona que le hizo daño.' },
-      { type: 'paragraph', text: 'Aunque su nombre en inglés se refiere a la violencia contra la mujer (Violence Against Women Act), la ley protege por igual a hombres y a mujeres.' },
 
       { type: 'heading', text: 'El abuso no tiene que ser físico' },
       { type: 'paragraph', text: 'Muchas personas creen que VAWA es solo para quien ha recibido golpes. No es así. El abuso también puede ser:' },
@@ -24,7 +23,7 @@ export default {
       { type: 'list', items: [
         'Esposos y esposas de ciudadanos o residentes permanentes que han sufrido abuso.',
         'Hijos maltratados por un padre o una madre ciudadano o residente.',
-        'Padres maltratados por un hijo o una hija ciudadano de 21 años o más.',
+        'Padres maltratados por un hijo o una hija ciudadano mayor de 21 años.',
       ] },
       { type: 'paragraph', text: 'Cada caso es único. Lo esencial es demostrar la relación familiar, cómo le afectó el abuso y qué tan grave fue.' },
 
@@ -47,7 +46,6 @@ export default {
 
       { type: 'heading', text: 'What is VAWA?' },
       { type: 'paragraph', text: 'VAWA is an immigration law that protects people who have been victims of abuse by a U.S. citizen or a permanent resident. Most importantly, it lets you apply for [permanent residence](/blog/como-obtener-la-green-card) on your own: **without the help of your husband or wife**, without the help of the person who hurt you.' },
-      { type: 'paragraph', text: 'Although its name (Violence Against Women Act) refers to violence against women, the law protects men and women equally.' },
 
       { type: 'heading', text: 'Abuse does not have to be physical' },
       { type: 'paragraph', text: 'Many people believe VAWA is only for someone who has been hit. That is not true. Abuse can also be:' },
@@ -62,7 +60,7 @@ export default {
       { type: 'list', items: [
         'Husbands and wives of citizens or permanent residents who have suffered abuse.',
         'Children abused by a parent who is a citizen or resident.',
-        'Parents abused by a son or daughter who is a citizen 21 or older.',
+        'Parents abused by a son or daughter who is a citizen over 21.',
       ] },
       { type: 'paragraph', text: 'Every case is unique. What matters most is showing the family relationship, how the abuse affected you, and how serious it was.' },
 

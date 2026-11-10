@@ -12,7 +12,7 @@ export default {
       { type: 'heading', text: 'Los tres caminos más comunes' },
       { type: 'paragraph', text: 'Hay varios caminos para llegar a la residencia permanente. Los más comunes son tres:' },
       { type: 'subheading', text: '1. Peticiones familiares' },
-      { type: 'paragraph', text: 'Un ciudadano o un residente permanente puede pedir la residencia para ciertos familiares, como su esposo o esposa y sus hijos. Vea [quién puede pedir a quién](/blog/peticiones-familiares-quien-puede-pedir-a-quien).' },
+      { type: 'paragraph', text: 'Un ciudadano o un residente permanente puede pedir la residencia para ciertos familiares. Vea [quién puede pedir a quién](/blog/peticiones-familiares-quien-puede-pedir-a-quien).' },
       { type: 'subheading', text: '2. Peticiones basadas en el trabajo' },
       { type: 'paragraph', text: 'La residencia también puede obtenerse a través de una petición basada en el empleo.' },
       { type: 'subheading', text: '3. Procesos humanitarios' },
@@ -43,7 +43,7 @@ export default {
     faqs: [
       { q: '¿La green card me permite trabajar?', a: 'Sí. La residencia permanente le permite vivir y trabajar en los Estados Unidos de manera indefinida.' },
       { q: '¿Cuáles son las formas más comunes de obtener la green card?', a: 'Las peticiones familiares, las peticiones basadas en el trabajo y algunos procesos humanitarios.' },
-      { q: '¿Qué puede complicar o retrasar mi green card?', a: 'El proceso se complica con entradas sin inspección, salidas prolongadas del país, antecedentes criminales o casos mal manejados en el pasado. Incluso errores pequeños o documentos incompletos pueden causar retrasos o negaciones.' },
+      { q: '¿Qué puede complicar o retrasar mi green card?', a: 'El proceso puede volverse complejo cuando existen entradas sin inspección, salidas prolongadas del país, antecedentes criminales o casos mal manejados en el pasado. Incluso errores pequeños o documentos incompletos pueden causar retrasos o negaciones.' },
     ],
   },
   en: {
@@ -56,7 +56,7 @@ export default {
       { type: 'heading', text: 'The three most common paths' },
       { type: 'paragraph', text: 'There are several paths to permanent residence. The three most common are:' },
       { type: 'subheading', text: '1. Family petitions' },
-      { type: 'paragraph', text: 'A U.S. citizen or a permanent resident can petition for residence for certain relatives, such as their husband or wife and their children. See [who can petition for whom](/blog/peticiones-familiares-quien-puede-pedir-a-quien).' },
+      { type: 'paragraph', text: 'A U.S. citizen or a permanent resident can petition for residence for certain relatives. See [who can petition for whom](/blog/peticiones-familiares-quien-puede-pedir-a-quien).' },
       { type: 'subheading', text: '2. Employment-based petitions' },
       { type: 'paragraph', text: 'Residence can also be obtained through an employment-based petition.' },
       { type: 'subheading', text: '3. Humanitarian processes' },
@@ -87,7 +87,7 @@ export default {
     faqs: [
       { q: 'Does a green card let me work?', a: 'Yes. Permanent residence lets you live and work in the United States indefinitely.' },
       { q: 'What are the most common ways to get a green card?', a: 'Family petitions, employment-based petitions, and some humanitarian processes.' },
-      { q: 'What can complicate or delay my green card?', a: 'The process gets complicated when there are entries without inspection, long absences from the country, criminal records, or cases that were mishandled in the past. Even small mistakes or incomplete documents can cause delays or denials.' },
+      { q: 'What can complicate or delay my green card?', a: 'The process can become complex when there are entries without inspection, long absences from the country, criminal records, or cases that were mishandled in the past. Even small mistakes or incomplete documents can cause delays or denials.' },
     ],
   },
 }

@@ -9,7 +9,7 @@ export default {
 
       { type: 'heading', text: 'DACA no es residencia' },
       { type: 'paragraph', text: 'DACA le protege temporalmente de la deportación y le permite tener permiso de trabajo y número de Seguro Social. Pero no es un estatus legal ni ofrece, por sí solo, un camino a la ciudadanía. Además es discrecional: las autoridades pueden decidir revocarlo.' },
-      { type: 'paragraph', text: 'Por eso muchos Dreamers buscan algo más estable: la [residencia permanente](/blog/como-obtener-la-green-card), que a su vez abre el camino a la [ciudadanía](/blog/requisitos-ciudadania-y-problemas-que-retrasan).' },
+      { type: 'paragraph', text: 'La [residencia permanente](/blog/como-obtener-la-green-card) ofrece más estabilidad y abre el camino a la [ciudadanía](/blog/requisitos-ciudadania-y-problemas-que-retrasan).' },
 
       { type: 'heading', text: 'Caminos posibles hacia la residencia' },
       { type: 'paragraph', text: 'Para algunas personas con DACA, la residencia puede llegar por una de estas vías:' },
@@ -43,7 +43,7 @@ export default {
 
       { type: 'heading', text: 'DACA is not permanent residence' },
       { type: 'paragraph', text: 'DACA protects you temporarily from deportation and lets you have a work permit and a Social Security number. But it is not a legal status, and on its own it does not offer a path to citizenship. It is also discretionary: the authorities can decide to revoke it.' },
-      { type: 'paragraph', text: 'That is why many Dreamers look for something more stable: [permanent residence](/blog/como-obtener-la-green-card), which in turn opens the path to [citizenship](/blog/requisitos-ciudadania-y-problemas-que-retrasan).' },
+      { type: 'paragraph', text: '[Permanent residence](/blog/como-obtener-la-green-card) offers more stability and opens the path to [citizenship](/blog/requisitos-ciudadania-y-problemas-que-retrasan).' },
 
       { type: 'heading', text: 'Possible paths to residence' },
       { type: 'paragraph', text: 'For some people with DACA, residence may come through one of these paths:' },

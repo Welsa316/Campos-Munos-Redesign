@@ -4,7 +4,7 @@
  * Every article is written from one of Juan's service videos (transcripts in
  * src/data/source/*-Video-Transcript.txt) plus the firm's own approved page
  * copy. Nothing here may state a legal fact that isn't in one of those
- * sources or listed for the client in docs/blog-articles-signoff.md.
+ * sources; wording changes are listed in docs/blog-articles-signoff.md.
  *
  * Kept free of Vite-only APIs so scripts/prerender.js can import it in Node.
  * Article bodies live in ./articles/<slug>.js and load on demand.
@@ -56,7 +56,7 @@ export const posts = [
     service: 'vawa',
     title: {
       es: 'VAWA: cómo arreglar papeles sin la ayuda de su esposo o esposa',
-      en: 'VAWA: how to get your green card without your spouse’s help',
+      en: 'VAWA: how to apply for a green card without your spouse’s help',
     },
     description: {
       es: 'Si su esposo o esposa ciudadano o residente le maltrata, VAWA puede permitirle pedir la residencia por su cuenta. Quién califica, qué cuenta como abuso y por qué su caso es confidencial.',
@@ -178,8 +178,8 @@ export const posts = [
       en: 'Consular processing: what it is and how to prepare for the embassy',
     },
     description: {
-      es: 'Cuando su caso se resuelve en una embajada o consulado de los Estados Unidos: las etapas del proceso, la entrevista y por qué salir del país es una decisión importante.',
-      en: 'When your case is decided at a U.S. embassy or consulate: the stages of the process, the interview, and why leaving the country is an important decision.',
+      es: 'Cuando su caso se resuelve en una embajada o consulado de los Estados Unidos: las etapas del proceso, la entrevista y por qué salir del país es un paso importante.',
+      en: 'When your case is decided at a U.S. embassy or consulate: the stages of the process, the interview, and why leaving the country is an important step.',
     },
   },
 ]

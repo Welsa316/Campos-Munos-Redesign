@@ -6,13 +6,13 @@ Páginas: /blog y /blog/… (aún no publicadas)
 
 Cada artículo está escrito a partir de uno de los videos de Juan (transcripciones
 en `site/src/data/source/*-Video-Transcript.txt`) y del texto ya aprobado de las
-páginas de servicio. Los artículos parafrasean los videos; no agregan datos
-legales nuevos, **excepto los que aparecen abajo**. Por favor marque
+páginas de servicio. Los artículos parafrasean los videos y no agregan datos
+legales de ninguna otra fuente. Por favor marque
 **Sí** / **No** / **Cambiar a:** en cada uno.
 
 Each article is written from one of Juan's videos plus the firm's already-approved
-service-page copy. They paraphrase the videos and add no new legal facts
-**except the ones listed below**. Please mark **Yes** / **No** / **Change to:**.
+service-page copy. They paraphrase the videos and add no legal facts from any
+other source. Please mark **Yes** / **No** / **Change to:**.
 
 Los artículos — The articles:
 
@@ -51,13 +51,13 @@ states the rule as above.)*
 - [ ] ¿Aprueba la versión del artículo? / Approve the article's wording?
 - [ ] ¿Corregimos también la pregunta frecuente de /servicios/ciudadania? / Also correct the live FAQ on the citizenship page?
 
-## 2. Datos que no están en los videos / Facts not in the videos
+## 2. Fuentes / Sources
 
-Son correctos según la ley, pero Juan no los dice en el video:
+Cada dato legal de los artículos aparece en el video de Juan o en el texto de la
+página de servicio correspondiente. No se agregó ningún dato de otra fuente.
 
-- [ ] **Peticiones familiares:** el ciudadano debe tener **al menos 21 años** para pedir a sus padres o hermanos. *(A citizen must be 21+ to petition for parents or siblings.)*
-- [ ] **Visa U:** el límite anual es de **10,000 visas U** para víctimas principales. *(The annual cap is 10,000 for principal petitioners.)*
-- [ ] **VAWA:** *"Aunque su nombre en inglés se refiere a la violencia contra la mujer (Violence Against Women Act), la ley protege por igual a hombres y a mujeres."*
+*(Every legal fact in the articles appears in Juan's video or on the matching
+service page. Nothing was added from any other source.)*
 
 ## 3. Frases suavizadas respecto al video / Wording softened from the video
 
@@ -69,7 +69,6 @@ Son correctos según la ley, pero Juan no los dice en el video:
 
 - [ ] **Proceso consular:** el artículo habla de salir de EE. UU. para la cita pero **no menciona los castigos por presencia ilegal** (3 y 10 años) ni los perdones. Ningún video ni página del sitio los menciona. ¿Agregamos una advertencia? *(The consular article doesn't mention the 3/10-year unlawful-presence bars. Add a warning?)*
 - [ ] **"Solteros":** para los hijos de residentes, ¿aclaramos que "solteros" incluye a hijos divorciados o viudos? *(Clarify that "unmarried" includes divorced or widowed children?)*
-- [ ] **Visa T:** la página de servicio dice que los menores de 18 no tienen que colaborar con la investigación. ¿Lo mencionamos en el artículo? *(Mention the under-18 cooperation exception?)*
 - [ ] **DACA:** el artículo dice que DACA da permiso de trabajo y número de Seguro Social (de la página de DACA). ¿Sigue siendo correcto hoy, con los juicios pendientes? *(Still accurate given current DACA litigation?)*
 
 ## 5. Textos nuevos de la página / New page copy

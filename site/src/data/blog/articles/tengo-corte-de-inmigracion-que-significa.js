@@ -43,7 +43,7 @@ export default {
   },
   en: {
     blocks: [
-      { type: 'lead', text: 'If you have a hearing in immigration court, it means you are in deportation proceedings. It is normal to feel fear and uncertainty, but there is something you should know from the start: having a court date does not mean your case is lost.' },
+      { type: 'lead', text: 'If you have a hearing in immigration court, it means you are in deportation proceedings. It is normal to feel fear and uncertainty, but there is something you should know from the start: having a court date does not automatically mean your case is lost.' },
 
       { type: 'heading', text: 'What does it mean to have immigration court?' },
       { type: 'paragraph', text: 'It means your case is before an immigration judge. This is a time to act carefully, not to give up: immigration law provides several forms of relief that, depending on the case, can allow a person to stay in the country legally.' },

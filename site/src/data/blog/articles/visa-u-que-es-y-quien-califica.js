@@ -1,6 +1,5 @@
 // Source: VisaU-Video-Transcript.txt
-// Addition beyond the video (listed in the sign-off doc): the annual cap is
-// 10,000 U visas for principal petitioners (INA 214(p)(2)).
+// The annual-limit point follows the U visa service page wording (no figure).
 export default {
   es: {
     blocks: [
@@ -18,11 +17,11 @@ export default {
       ] },
 
       { type: 'heading', text: 'Por qué el proceso puede tardar' },
-      { type: 'paragraph', text: 'Los casos de visa U suelen ser largos y complejos. La ley fija un límite anual de visas U disponibles —10,000 al año para las víctimas que las solicitan como peticionarias principales— y eso genera tiempos de espera muy prolongados. Conviene saberlo desde el principio para tener expectativas realistas.' },
+      { type: 'paragraph', text: 'Los casos de visa U suelen ser largos y complejos. Cada año existe un número limitado de visas U, y por eso los tiempos de espera pueden ser muy prolongados. Conviene saberlo desde el principio para tener expectativas realistas.' },
 
       { type: 'heading', text: 'Los puntos que más cuidado requieren' },
       { type: 'list', items: [
-        'Presentar evidencia adecuada del delito y del daño sufrido.',
+        'Presentar evidencia adecuada.',
         'Obtener la certificación correcta de la autoridad.',
         'Manejar con cuidado cualquier historial migratorio o criminal que usted pueda tener.',
       ] },
@@ -53,11 +52,11 @@ export default {
       ] },
 
       { type: 'heading', text: 'Why the process can take a long time' },
-      { type: 'paragraph', text: 'U visa cases tend to be long and complex. The law sets an annual limit on the number of U visas available—10,000 a year for victims who apply as principal petitioners—and that creates very long wait times. It is worth knowing this from the start so you can have realistic expectations.' },
+      { type: 'paragraph', text: 'U visa cases tend to be long and complex. Only a limited number of U visas are available each year, so wait times can be very long. It is worth knowing this from the start so you can have realistic expectations.' },
 
       { type: 'heading', text: 'The points that need the most care' },
       { type: 'list', items: [
-        'Submitting adequate evidence of the crime and of the harm suffered.',
+        'Submitting adequate evidence.',
         'Getting the correct certification from the authority.',
         'Carefully handling any immigration or criminal history you may have.',
       ] },

@@ -28,7 +28,7 @@ export default {
       ] },
 
       { type: 'heading', text: 'Lo que no necesita' },
-      { type: 'paragraph', text: 'No necesita tener papeles ni haber llamado a la policía. Lo esencial es haber sido víctima y estar dispuesto a colaborar con la investigación. Como en toda solicitud migratoria, la ley establece además otros requisitos, que un abogado revisará con usted.' },
+      { type: 'paragraph', text: 'No necesita tener papeles ni haber llamado a la policía. Lo esencial es haber sido víctima y estar dispuesto a colaborar con la investigación (las víctimas menores de 18 años están exentas de este requisito). Como en toda solicitud migratoria, la ley establece además otros requisitos, que un abogado revisará con usted.' },
       { type: 'quote', text: 'Y no, no necesitas tener papeles ni haber llamado a la policía.' },
 
       { type: 'heading', text: 'Cómo le ayuda nuestra firma' },
@@ -36,7 +36,7 @@ export default {
       { type: 'paragraph', text: 'Su historia puede cambiar su vida y la de otros. Si conoce a alguien que necesite esta información, compártala.' },
     ],
     faqs: [
-      { q: '¿Necesito tener papeles para pedir la visa T?', a: 'No. No necesita tener papeles. Lo esencial es haber sido víctima y estar dispuesto a colaborar con la investigación, además de cumplir los demás requisitos de la ley.' },
+      { q: '¿Necesito tener papeles para pedir la visa T?', a: 'No. No necesita tener papeles. Lo esencial es haber sido víctima y estar dispuesto a colaborar con la investigación (salvo las víctimas menores de 18 años), además de cumplir los demás requisitos de la ley.' },
       { q: '¿Tengo que haber llamado a la policía?', a: 'No. No necesita haber llamado a la policía para que la visa T pueda aplicar a su caso.' },
       { q: '¿La visa T da permiso de trabajo?', a: 'Sí. La visa T da estatus legal, autorización para trabajar y un camino hacia la residencia permanente.' },
     ],
@@ -66,7 +66,7 @@ export default {
       ] },
 
       { type: 'heading', text: 'What you don’t need' },
-      { type: 'paragraph', text: 'You don’t need to have papers or to have called the police. What matters most is having been a victim and being willing to cooperate with the investigation. As with any immigration application, the law also sets other requirements, which a lawyer will review with you.' },
+      { type: 'paragraph', text: 'You don’t need to have papers or to have called the police. What matters most is having been a victim and being willing to cooperate with the investigation (victims under 18 are exempt from this requirement). As with any immigration application, the law also sets other requirements, which a lawyer will review with you.' },
       { type: 'quote', text: 'And no, you don’t need to have papers or to have called the police.' },
 
       { type: 'heading', text: 'How our firm helps' },
@@ -74,7 +74,7 @@ export default {
       { type: 'paragraph', text: 'Your story can change your life and the lives of others. If you know someone who needs this information, share it.' },
     ],
     faqs: [
-      { q: 'Do I need to have papers to apply for the T visa?', a: 'No. You don’t need to have papers. What matters most is having been a victim and being willing to cooperate with the investigation, in addition to meeting the other requirements of the law.' },
+      { q: 'Do I need to have papers to apply for the T visa?', a: 'No. You don’t need to have papers. What matters most is having been a victim and being willing to cooperate with the investigation (except for victims under 18), in addition to meeting the other requirements of the law.' },
       { q: 'Do I have to have called the police?', a: 'No. You don’t need to have called the police for the T visa to apply to your case.' },
       { q: 'Does the T visa give me a work permit?', a: 'Yes. The T visa gives you legal status, work authorization, and a path to permanent residence.' },
     ],
