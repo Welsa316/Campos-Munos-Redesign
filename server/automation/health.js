@@ -101,7 +101,7 @@ export async function listExceptions(db, { limit = 100 } = {}) {
             NULLIF(TRIM(s.first_name || ' ' || s.last_name), '') AS lead_name
        FROM automation_jobs j
        LEFT JOIN submissions s ON j.entity_type = 'lead' AND s.id::text = j.entity_id
-      WHERE j.status = 'failed' AND j.acknowledged_at IS NULL
+      WHERE j.status = 'failed' AND j.acknowledged_at IS NULL AND j.type <> 'sms_delivery_check'
       ORDER BY j.completed_at DESC NULLS LAST LIMIT $1`,
     [Math.min(300, Math.max(1, Number(limit) || 100))]
   )).rows
@@ -132,9 +132,9 @@ export async function leadAttention(db, { ownerId = null, limit = 50, now = new 
        FROM submissions s
        CROSS JOIN LATERAL (
          SELECT * FROM (
-           SELECT 'client_replied' AS reason, 1 AS rank, (SELECT MIN(m.received_at) FROM rc_sms_inbound m WHERE m.submission_id = s.id AND m.kind = 'reply' AND m.handled_at IS NULL) AS at
+           SELECT 'client_replied' AS reason, 1 AS rank, (SELECT MIN(m.received_at) FROM rc_sms_inbound m WHERE m.submission_id = s.id AND m.kind <> 'opt_out' AND m.handled_at IS NULL) AS at
            UNION ALL
-           SELECT 'message_failed', 2, (SELECT MAX(j.completed_at) FROM automation_jobs j WHERE j.entity_type = 'lead' AND j.entity_id = s.id::text AND j.status = 'failed' AND j.acknowledged_at IS NULL AND s.status = 'new')
+           SELECT 'message_failed', 2, (SELECT MAX(j.completed_at) FROM automation_jobs j WHERE j.entity_type = 'lead' AND j.entity_id = s.id::text AND j.status = 'failed' AND j.acknowledged_at IS NULL AND j.type <> 'sms_delivery_check' AND s.status = 'new')
            UNION ALL
            SELECT 'booking_cancelled', 3, (SELECT MAX(b.updated_at) FROM consultation_bookings b WHERE b.submission_id = s.id AND b.status = 'cancelled' AND s.status = 'scheduled'
                                               AND NOT EXISTS (SELECT 1 FROM consultation_bookings o WHERE o.submission_id = s.id AND o.status = 'booked'))
@@ -177,7 +177,7 @@ export async function leadAutomationSummary(db, submissionId) {
     [String(submissionId)]
   )).rows
   const failed = (await db.query(
-    `SELECT id, type, outcome, completed_at FROM automation_jobs WHERE entity_type = 'lead' AND entity_id = $1 AND status = 'failed' AND acknowledged_at IS NULL ORDER BY completed_at DESC`,
+    `SELECT id, type, outcome, completed_at FROM automation_jobs WHERE entity_type = 'lead' AND entity_id = $1 AND status = 'failed' AND acknowledged_at IS NULL AND type <> 'sms_delivery_check' ORDER BY completed_at DESC`,
     [String(submissionId)]
   )).rows
   const stopped = (await db.query(
@@ -185,7 +185,7 @@ export async function leadAutomationSummary(db, submissionId) {
     [String(submissionId)]
   )).rows[0]
   const replies = (await db.query(
-    "SELECT COUNT(*)::int AS n, MIN(received_at) AS first FROM rc_sms_inbound WHERE submission_id = $1 AND kind = 'reply' AND handled_at IS NULL", [submissionId]
+    "SELECT COUNT(*)::int AS n, MIN(received_at) AS first FROM rc_sms_inbound WHERE submission_id = $1 AND kind <> 'opt_out' AND handled_at IS NULL", [submissionId]
   )).rows[0]
   const bookings = (await db.query(
     'SELECT starts_at, ends_at, status, created_at FROM consultation_bookings WHERE submission_id = $1 ORDER BY starts_at DESC NULLS LAST LIMIT 5', [submissionId]

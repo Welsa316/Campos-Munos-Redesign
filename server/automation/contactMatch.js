@@ -31,7 +31,7 @@ export async function autoConfirmMatches(db, { log = null } = {}) {
         WHERE cm_phone_key(s.phone) <> '' AND COALESCE(s.spam_state, '') <> 'spam'
         GROUP BY 1)
      SELECT p.key, p.leads,
-            EXISTS (SELECT 1 FROM rc_sms_inbound m WHERE m.from_key = p.key AND m.kind = 'reply' AND m.submission_id IS NOT NULL) AS replied
+            EXISTS (SELECT 1 FROM rc_sms_inbound m WHERE m.from_key = p.key AND m.kind <> 'opt_out' AND m.submission_id IS NOT NULL) AS replied
        FROM per_number p
       WHERE p.emails = 1
         AND EXISTS (SELECT 1 FROM rc_calls c WHERE c.counterpart_key = p.key AND NOT c.is_internal)

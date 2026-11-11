@@ -72,6 +72,11 @@ export const DEFAULTS = Object.freeze({
     // for a person. It only also moves New → Contacted when this is on:
     // nobody at the firm has spoken to them yet.
     contactedOnClientReply: false,
+    // An outgoing call counts as "someone reached them" only when it lasted
+    // at least this long: RingCentral reports a call that went to voicemail
+    // as connected too, and a few seconds of ringing into voicemail is not
+    // a conversation.
+    connectedCallSeconds: 60,
   },
   ownership: { defaultLeadOwnerId: null },
   spam: {
@@ -156,7 +161,9 @@ const VALIDATE = {
   },
   status(v) {
     if (typeof v?.contactedOnClientReply !== 'boolean') throw new SettingsError('Choose yes or no')
-    return { contactedOnClientReply: v.contactedOnClientReply }
+    const seconds = v.connectedCallSeconds ?? 60
+    if (!int(seconds, 0, 600)) throw new SettingsError('A call counts as contact after 0 to 600 seconds')
+    return { contactedOnClientReply: v.contactedOnClientReply, connectedCallSeconds: seconds }
   },
   ownership(v) {
     const id = v?.defaultLeadOwnerId

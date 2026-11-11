@@ -187,7 +187,14 @@ if (process.env.REMINDER_WORKER !== 'false') {
 // machine points at production), and each automation has its own switch on
 // top of that. Outside production nothing is sent to anyone but the
 // addresses in AUTOMATION_TEST_RECIPIENTS.
-if (String(process.env.AUTOMATION_ENABLED ?? '').trim().toLowerCase() === 'true') {
+const automationWanted = String(process.env.AUTOMATION_ENABLED ?? '').trim().toLowerCase() === 'true'
+// A worker takes jobs out of the queue even when it may not send them (it
+// finishes them as "skipped"). So one that is not production never starts
+// without a list of test recipients: a developer machine pointed at the
+// live database must not eat real clients' acknowledgments.
+const automationBlocked = automationWanted && !isProduction && !String(process.env.AUTOMATION_TEST_RECIPIENTS ?? '').trim()
+if (automationBlocked) logger.warn('Automation worker NOT started: outside production it needs AUTOMATION_TEST_RECIPIENTS (and never point it at the production database)')
+if (automationWanted && !automationBlocked) {
   const { runAutomation } = await import('./automation/worker.js')
   const { purgeOldJobs } = await import('./automation/jobs.js')
   const { createResendMailer } = await import('./reminders/email.js')
@@ -224,7 +231,7 @@ if (String(process.env.AUTOMATION_ENABLED ?? '').trim().toLowerCase() === 'true'
   schedule(runAll, 30 * 1000, 60 * 1000)
   schedule(() => purgeOldJobs(getPool()).catch((err) => logger.warn({ err: err.message }, 'Automation job purge failed')), 2 * 60 * 1000, 24 * 60 * 60 * 1000)
   logger.info('Automation worker on (AUTOMATION_ENABLED=true); each automation still needs its own switch')
-} else {
+} else if (!automationWanted) {
   logger.info('Automation worker off (AUTOMATION_ENABLED is not true)')
 }
 

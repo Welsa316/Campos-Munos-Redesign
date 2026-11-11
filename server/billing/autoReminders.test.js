@@ -188,7 +188,7 @@ test('a payment that arrives first cancels the reminder, before or after it was 
   await db.query("UPDATE billing_invoices SET status = 'paid', balance_cents = 0, paid_cents = total_cents WHERE external_invoice_id = $1", [a.invoice])
   await automatic()
   // The approval step looks for itself, without relying on the drafting step before it.
-  assert.deepEqual(await S.autoApprove(db, { env: ON, now: FRIDAY_10AM }), { approved: 0 })
+  assert.deepEqual(await S.autoApprove(db, { env: ON, now: FRIDAY_10AM }), { approved: 0, withdrawn: 0 })
   assert.deepEqual((await reminders()).map((x) => [x.state, x.cancel_reason, x.auto_approved]), [['cancelled', 'settled', false]])
   await tick()
   // Paid between the automatic approval (at night) and the sending hours.
@@ -302,4 +302,51 @@ test('the scheduler itself runs the same three steps', { skip: SKIP }, async () 
   const state = (await db.query("SELECT last_success_at, details FROM automation_state WHERE key = 'payment_reminders'")).rows[0]
   assert.ok(state.last_success_at)
   assert.equal(state.details.autoApproved, 1)
+})
+
+test('pausing stops what was already approved for Monday, not only what would be approved next', { skip: SKIP }, async () => {
+  const { setPaused } = await import('../automation/flags.js')
+  await client()
+  await client()
+  await automatic()
+  await tick(FRIDAY_NIGHT)
+  assert.deepEqual((await reminders()).map((x) => [x.state, x.auto_approved]), [['approved', true], ['approved', true]])
+  // One of them a person then approved themselves: that one is theirs.
+  const [mine] = await reminders()
+  await db.query("UPDATE billing_reminders SET state = 'draft', auto_approved = FALSE, approved_at = NULL WHERE id = $1", [mine.id])
+  await S.approveReminders(db, [mine.id], { actorId: adminId, now: FRIDAY_NIGHT })
+  // Saturday: an administrator pauses automatic reminders.
+  await setPaused(db, 'billing_auto_reminders', true, { actorId: adminId })
+  // Monday morning, the scheduler; and someone pressing "send now" comes to the same thing.
+  const sent = await S.dispatch(db, wa, { now: MONDAY_10AM, env: ON })
+  await wa.flushReceipts()
+  assert.equal(sent.sent, 1, 'only the one a person approved')
+  const after = await reminders()
+  assert.ok(['sent', 'delivered', 'read'].includes(after[0].state))
+  assert.deepEqual([after[1].state, after[1].auto_approved], ['draft', false], 'back to a draft for a person to decide')
+  assert.equal(wa.getSentLog().length, 1)
+  // Unmarking the rule does the same; switching the flag off too.
+  await setPaused(db, 'billing_auto_reminders', false, { actorId: adminId })
+  await tick(FRIDAY_NIGHT)
+  assert.equal((await reminders())[1].state, 'approved')
+  await S.saveRule(db, 'due_in_3', { autoApprove: false }, { actorId: adminId })
+  assert.equal((await S.autoApprove(db, { env: ON, now: FRIDAY_NIGHT })).withdrawn, 1)
+  assert.equal((await reminders())[1].state, 'draft')
+})
+
+test('marking a rule does not approve the drafts a person had left unapproved', { skip: SKIP }, async () => {
+  await client()
+  await db.query('UPDATE billing_message_templates SET meta_approved = TRUE')
+  await S.saveRule(db, 'due_in_3', { enabled: true }, { actorId: adminId })
+  await S.evaluate(db, { now: FRIDAY_10AM })
+  // The draft exists and was left alone; now the rule is marked and switched on.
+  await new Promise((r) => setTimeout(r, 20))
+  await S.saveRule(db, 'due_in_3', { autoApprove: true }, { actorId: adminId })
+  const r = await tick()
+  assert.equal(r.auto.approved, 0)
+  assert.deepEqual((await reminders()).map((x) => x.state), ['draft'])
+  assert.equal(wa.getSentLog().length, 0)
+  // A draft made after the rule was marked is approved.
+  await client()
+  assert.equal((await tick()).auto.approved, 1)
 })

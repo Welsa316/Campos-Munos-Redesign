@@ -21,12 +21,11 @@
 // help" group whose outcome RingCentral did not record.
 import { queryCalls, episodeOpen, ATTENTION_DAYS } from '../integrations/ringcentral/callLog.js'
 import { enqueue } from './jobs.js'
-import { deliver, recentlyMessaged } from './messaging.js'
+import { deliver } from './messaging.js'
 import { addBusinessMinutes, businessMinutesBetween, isBusinessTime, nextBusinessTime } from './businessHours.js'
 import { textingHours } from './settings.js'
 import { recordSystemEvent } from './events.js'
 import { notifyStaff } from './escalation.js'
-import { phoneKey } from '../utils/phone.js'
 
 const ENQUEUE_WINDOW_HOURS = 48
 
@@ -89,16 +88,24 @@ export function missedCallHandlers() {
       const lastAt = new Date(job.payload?.lastCallAt || job.created_at)
       if (businessMinutesBetween(lastAt, now, textingHours(settings)) > settings.missedCall.maxAgeMinutes) return skipped('too_old')
       const since = new Date(now.getTime() - settings.missedCall.cooldownDays * 24 * 60 * 60 * 1000)
-      if (await recentlyMessaged(db, { toKey: phoneKey(call.counterpart_number), purpose: 'missed_call', since, exceptKey: job.idempotency_key })) return skipped('cooldown')
-      // The language only when a website lead with this number chose one.
-      const lead = (await db.query(
-        `SELECT language FROM submissions WHERE cm_phone_key(phone) = $1 AND language IS NOT NULL ORDER BY created_at DESC LIMIT 1`, [call.counterpart_key]
+      // What the firm decided about a website lead with this number holds
+      // for the phone too: automatic messages stopped, or marked spam.
+      const leads = (await db.query(
+        `SELECT bool_or(automation_paused) AS stopped, bool_or(spam_state = 'spam') AS spam,
+                (array_agg(language ORDER BY created_at DESC) FILTER (WHERE language IS NOT NULL))[1] AS language
+           FROM submissions WHERE cm_phone_key(phone) = $1`, [call.counterpart_key]
       )).rows[0]
+      if (leads?.stopped) return skipped('stopped_by_staff')
+      if (leads?.spam) return skipped('spam')
+      // The language only when a website lead with this number chose one.
+      const lead = leads
       return deliver(db, {
         job, channel: 'sms', purpose: 'missed_call', entityType: 'call', entityId: callId, to: call.counterpart_number,
         templateKey: 'missed_call_sms', language: lead?.language || 'bi',
         vars: { firmName: settings.firm.name, officePhone: settings.firm.phone, bookingLink: flags.on('scheduling') ? settings.scheduling.bookingUrl : '' },
         event: 'automation.missed_call_sms_sent',
+        // One automatic text per number per cooldown.
+        dedupe: { since, reason: 'cooldown' },
       }, ctx)
     },
 
@@ -115,7 +122,14 @@ export function missedCallHandlers() {
         'INSERT INTO call_episode_escalations (episode_id, level) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING episode_id', [callId, level]
       )
       if (!claimed.rowCount) return { status: 'done', outcome: 'already_escalated' }
-      const told = await notifyStaff(db, { kind: 'caller', level, entityId: callId, capability: 'calls.view', path: `/calls?call=${callId}` }, ctx)
+      let told
+      try {
+        told = await notifyStaff(db, { kind: 'caller', level, entityId: callId, capability: 'calls.view', path: `/calls?call=${callId}` }, ctx)
+      } catch (err) {
+        // Nobody was told: the claim is given back, so the retry tells them.
+        await db.query('DELETE FROM call_episode_escalations WHERE episode_id = $1 AND level = $2', [callId, level]).catch(() => {})
+        return { status: 'retry', error: err?.code || err?.name || 'notify_failed' }
+      }
       await recordSystemEvent(db, { action: 'automation.caller_escalated', entityType: 'call', entityId: callId, details: { level, notified: told.accounts, emailed: told.emailed }, log: ctx.log })
       if (level === 1) {
         await enqueue(db, { type: 'call_sla', key: `call-sla:${callId}:2`, entityType: 'call', entityId: callId, runAt: addBusinessMinutes(now, settings.sla.missedCallSecondMinutes, settings.hours), payload: { level: 2 } })

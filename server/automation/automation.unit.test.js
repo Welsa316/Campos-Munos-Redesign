@@ -132,8 +132,10 @@ test('saving templates: a text must say STOP, use only known placeholders, and f
 
 test('opt-out words: only when the whole message is one', () => {
   for (const s of ['STOP', 'stop', ' Stop. ', 'STOP!', '"stop"', 'unsubscribe', 'CANCEL', 'alto', 'BAJA', 'No más', 'opt out', 'QUIT', 'END']) assert.equal(classifyInbound(s), 'opt_out', s)
-  for (const s of ['START', 'unstop', 'Resume', 'YES']) assert.equal(classifyInbound(s), 'opt_in', s)
-  for (const s of ['HELP', 'ayuda', 'Info']) assert.equal(classifyInbound(s), 'help', s)
+  for (const s of ['START', 'unstop', 'Resume']) assert.equal(classifyInbound(s), 'opt_in', s)
+  assert.equal(classifyInbound('HELP'), 'help')
+  // An answer, or a request for help, is for a person: never a keyword.
+  for (const s of ['Yes', 'YES', 'sí', 'ayuda', 'Info', 'ok']) assert.equal(classifyInbound(s), 'reply', s)
   // A sentence is for a person to read, never an opt-out the system acts on.
   for (const s of ['please stop calling my husband', 'No puedo parar de pensar en mi caso', 'stop by tomorrow?', 'Sí, gracias', '', null, 'cancel my appointment']) assert.equal(classifyInbound(s), 'reply', String(s))
 })
@@ -159,9 +161,15 @@ test('switches: off unless exactly true, off when paused, off when what it needs
   assert.equal(noSms.why('lead_ack_sms'), 'needs:sms_sending')
   assert.equal(noSms.on('missed_call_sms'), false)
   assert.equal(noSms.on('lead_followup'), false)
-  const withSms = resolveFlags({ ...env, RINGCENTRAL_SMS_ENABLED: 'true' })
-  assert.equal(withSms.on('lead_ack_sms'), true)
-  const paused = resolveFlags({ ...env, RINGCENTRAL_SMS_ENABLED: 'true' }, { sms_sending: { at: 'x' } })
+  // Sending alone is not enough: nothing is texted unless replies are read too.
+  const sendOnly = resolveFlags({ ...env, RINGCENTRAL_SMS_ENABLED: 'true' })
+  for (const key of ['lead_ack_sms', 'lead_followup', 'missed_call_sms']) {
+    assert.equal(sendOnly.on(key), false, key)
+    assert.equal(sendOnly.why(key), 'needs:sms_inbound', key)
+  }
+  const withSms = resolveFlags({ ...env, RINGCENTRAL_SMS_ENABLED: 'true', RINGCENTRAL_SMS_INBOUND_ENABLED: 'true' })
+  for (const key of ['lead_ack_sms', 'lead_followup', 'missed_call_sms']) assert.equal(withSms.on(key), true, key)
+  const paused = resolveFlags({ ...env, RINGCENTRAL_SMS_ENABLED: 'true', RINGCENTRAL_SMS_INBOUND_ENABLED: 'true' }, { sms_sending: { at: 'x' } })
   assert.equal(paused.on('sms_sending'), false)
   assert.equal(paused.why('sms_sending'), 'paused')
   assert.equal(paused.on('lead_ack_sms'), false, 'pausing sending pauses everything that texts')

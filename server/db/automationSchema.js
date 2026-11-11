@@ -129,7 +129,7 @@ export const AUTOMATION_SCHEMA_SQL = `
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
   CREATE INDEX IF NOT EXISTS idx_rc_sms_inbound_from ON rc_sms_inbound(from_key, received_at DESC);
-  CREATE INDEX IF NOT EXISTS idx_rc_sms_inbound_open ON rc_sms_inbound(submission_id) WHERE handled_at IS NULL AND kind = 'reply';
+  CREATE INDEX IF NOT EXISTS idx_rc_sms_inbound_waiting ON rc_sms_inbound(submission_id) WHERE handled_at IS NULL AND kind <> 'opt_out';
 
   -- A consultation found on the firm's calendar that belongs to a lead
   -- (matched by the guest's email address). Only matched events are kept,
@@ -194,15 +194,24 @@ export const AUTOMATION_SCHEMA_SQL = `
   ALTER TABLE contact_links ADD COLUMN IF NOT EXISTS evidence TEXT;
 
   -- The activity log now also records what the system did on its own
-  -- (source 'system'). Dropped and added again rather than guarded: a guard
-  -- on the name could never widen the list on a database that has it.
-  ALTER TABLE staff_activity DROP CONSTRAINT IF EXISTS staff_activity_source_check;
-  ALTER TABLE staff_activity ADD CONSTRAINT staff_activity_source_check CHECK (source IN ('portal', 'cli', 'system'));
+  -- (source 'system'). The guard reads the constraint's definition, not just
+  -- its name: a guard on the name alone could never widen the list.
+  -- Only when it has not been widened yet, so a deploy does not re-check
+  -- every row of the log each time.
+  DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'staff_activity_source_check' AND pg_get_constraintdef(oid) LIKE '%system%') THEN
+      ALTER TABLE staff_activity DROP CONSTRAINT IF EXISTS staff_activity_source_check;
+      ALTER TABLE staff_activity ADD CONSTRAINT staff_activity_source_check CHECK (source IN ('portal', 'cli', 'system'));
+    END IF;
+  END $$;
   CREATE INDEX IF NOT EXISTS idx_staff_activity_system ON staff_activity(id DESC) WHERE source = 'system';
 
   -- Payment reminders: a rule the firm approved to send on its own, and the
   -- reminders it approved (approved_by stays NULL for those).
   ALTER TABLE billing_reminder_rules ADD COLUMN IF NOT EXISTS auto_approve BOOLEAN NOT NULL DEFAULT FALSE;
+  -- When the rule was marked: only drafts made from then on are approved
+  -- automatically, never the older ones staff had left unapproved.
+  ALTER TABLE billing_reminder_rules ADD COLUMN IF NOT EXISTS auto_approve_since TIMESTAMPTZ;
   ALTER TABLE billing_reminders ADD COLUMN IF NOT EXISTS auto_approved BOOLEAN NOT NULL DEFAULT FALSE;
 `
 

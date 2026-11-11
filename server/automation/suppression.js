@@ -20,8 +20,10 @@ export const REASONS = Object.freeze(['opt_out', 'staff', 'invalid'])
 // RingCentral's own keyword lists, plus the Spanish words a client of this
 // firm would use.
 const OPT_OUT = new Set(['STOP', 'STOPALL', 'UNSUBSCRIBE', 'QUIT', 'CANCEL', 'END', 'REVOKE', 'OPT OUT', 'OPTOUT', 'ALTO', 'BAJA', 'PARAR', 'CANCELAR', 'NO MAS', 'NO MÁS'])
-const OPT_IN = new Set(['START', 'SUBSCRIBE', 'RESUME', 'CONTINUE', 'UNSTOP', 'YES', 'INICIAR', 'REANUDAR'])
-const HELP = new Set(['HELP', 'INFO', 'AYUDA'])
+// "Yes", "Info" and "Ayuda" are not here on purpose: from a client of this
+// firm they are an answer, or a request for help, that a person must read.
+const OPT_IN = new Set(['START', 'SUBSCRIBE', 'RESUME', 'CONTINUE', 'UNSTOP', 'INICIAR', 'REANUDAR'])
+const HELP = new Set(['HELP'])
 
 /** 'opt_out' | 'opt_in' | 'help' | 'reply' for the text of an incoming message. */
 export function classifyInbound(text) {
@@ -87,7 +89,7 @@ export async function unsuppress(db, { id = null, channel = null, address = null
   return r.rowCount
 }
 
-/** The list for the portal. Keys are shown masked to their last four characters for numbers. */
+/** The list for the portal (administrators only): the number or address in full, so it can be recognised and removed. */
 export async function listSuppressions(db, { limit = 200 } = {}) {
   const rows = (await db.query(
     `SELECT s.id, s.channel, s.address_key, s.reason, s.source, s.created_at,

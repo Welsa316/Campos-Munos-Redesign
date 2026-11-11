@@ -241,15 +241,15 @@ const clientMail = () => mail.sent.filter((m) => !/waiting/.test(m.subject))
 const staffMail = () => mail.sent.filter((m) => /waiting/.test(m.subject))
 
 let seq = 0
-async function addCall({ when, direction = 'inbound', cls = 'not_answered', number, outcome, internal = false }) {
+async function addCall({ when, direction = 'inbound', cls = 'not_answered', number, outcome, internal = false, seconds = 180 }) {
   const id = `au-${++seq}`
   const out = outcome || (direction === 'outbound' ? 'connected' : cls === 'answered' ? 'answered' : 'missed')
   const r = await db.query(
     `INSERT INTO rc_calls (rc_record_id, telephony_session_id, direction, started_at, outcome, counterpart_number, counterpart_key, scope,
-            classification, classification_evidence, classifier_version, is_primary, is_internal)
-     VALUES ($1, $2, $3, $4, $5, $6, cm_phone_key($6), 'account', $7, $8, $9, TRUE, $10) RETURNING id`,
+            classification, classification_evidence, classifier_version, is_primary, is_internal, duration_seconds)
+     VALUES ($1, $2, $3, $4, $5, $6, cm_phone_key($6), 'account', $7, $8, $9, TRUE, $10, $11) RETURNING id`,
     [id, `ts-${id}`, direction, when, out, number, direction === 'inbound' ? cls : null,
-      direction === 'inbound' ? JSON.stringify({ offeredTo: [], notAnsweredBy: [] }) : null, CLASSIFIER_VERSION, internal]
+      direction === 'inbound' ? JSON.stringify({ offeredTo: [], notAnsweredBy: [] }) : null, CLASSIFIER_VERSION, internal, seconds]
   )
   return Number(r.rows[0].id)
 }
@@ -566,11 +566,15 @@ test('a connected callback stops the follow-ups and marks the lead Contacted', {
   assert.deepEqual([l.status, l.status_reason, l.status_auto], ['contacted', 'connected_callback', true])
   assert.deepEqual((await jobs(a, 'lead_followup')).map((j) => [j.status, j.outcome]), [['cancelled', 'connected_callback'], ['cancelled', 'connected_callback']])
   assert.equal((await events('automation.sequence_cancelled'))[0].details.reason, 'connected_callback')
-  // A callback that did not connect proves nothing.
+  // A callback that did not connect proves nothing. Neither does one
+  // RingCentral calls "connected" that lasted seconds: it reached voicemail.
   const b = await newLead({ phone: '(504) 555-0112' })
+  const c = await newLead({ phone: '(504) 555-0119' })
   await addCall({ when: at(0, 14, 0), direction: 'outbound', number: '+15045550112', outcome: 'no_answer' })
+  await addCall({ when: at(0, 14, 5), direction: 'outbound', number: '+15045550119', seconds: 20 })
   await run(at(1, 10, 32))
-  assert.equal((await lead(b)).status, 'new')
+  assert.deepEqual([(await lead(b)).status, (await lead(c)).status], ['new', 'new'])
+  assert.deepEqual((await jobs(c, 'lead_followup')).map((j) => j.status), ['done', 'pending'], 'the voicemail lead is still followed up')
 })
 
 test('the lead calling in and being answered counts the same', { skip: SKIP }, async () => {
@@ -699,7 +703,11 @@ test('every step looks at the lead again right before acting, whatever else has 
   // change made straight in the database.
   const { leadHandlers } = A.leads
   const settings = await A.settings.loadSettings(db)
-  const onlyJobs = (when) => A.jobs.runDueJobs(db, leadHandlers(), { now: when, ctx: { db, env: ENV, flags: resolveFlags(ENV), settings, mailer, staffMailer: mailer, sms, pushOptions: { env: PUSH_ENV, transport }, now: when, budget: { sms: 10 } } })
+  const { pollInboundSms } = await import('./automation/smsInbound.js')
+  const onlyJobs = async (when) => {
+    await pollInboundSms(db, sms, { now: when, force: true }) // replies were read a moment ago
+    return A.jobs.runDueJobs(db, leadHandlers(), { now: when, ctx: { db, env: ENV, flags: resolveFlags(ENV), settings, mailer, staffMailer: mailer, sms, pushOptions: { env: PUSH_ENV, transport }, now: when, budget: { sms: 10 } } })
+  }
   const contacted = await newLead()
   const stopped = await newLead()
   const called = await newLead({ phone: '504-555-0141' })
@@ -1078,4 +1086,159 @@ test('one part failing does not stop the others', { skip: SKIP }, async () => {
   const h = (await http('GET', '/api/automation/health', undefined, u.owner)).json
   assert.equal(h.scheduling.lastError, 'forbidden')
   assert.equal(h.sms.inbound.lastError, 'CMN-408')
+})
+
+// --- found by an independent review of this code --------------------------------------
+
+test('someone who writes in twice is followed up once, not once per message', { skip: SKIP }, async () => {
+  // The chat, then the form an hour later: two leads, one person, one phone.
+  const first = await newLead({ email: 'dos@example.test', phone: '504-555-0201', message: 'Hola, tengo una pregunta' })
+  const second = await newLead({ email: 'dos@example.test', phone: '(504) 555-0201', message: 'Les escribí por el chat también', when: at(0, 11, 30) })
+  assert.equal((await jobs(first, 'lead_followup')).length, 2)
+  assert.deepEqual(await jobs(second, 'lead_followup'), [], 'no second sequence for the same person')
+  for (const when of [at(0, 11, 31), at(1, 10, 31), at(1, 11, 31), at(3, 10, 31), at(3, 11, 31)]) await run(when)
+  assert.deepEqual(txt.sent.map((m) => m.text.split(':')[1].trim().slice(0, 12)), ['recibimos su', 'seguimos ate', 'este es nues'], 'one acknowledgment, two follow-ups')
+  // Even if a second sequence did exist (queued before the first lead had one),
+  // the send itself refuses a follow-up to someone followed up on another lead this week.
+  const third = await newLead({ email: 'tres@example.test', phone: '504-555-0202', when: at(7, 10, 30) })
+  await run(at(7, 10, 31))
+  assert.equal((await jobs(third, 'lead_followup')).length, 2)
+  const fourth = await newLead({ email: 'tres@example.test', phone: '504-555-0202', message: 'otra', start: false, when: at(7, 10, 40) })
+  await db.query(`INSERT INTO automation_jobs (type, idempotency_key, entity_type, entity_id, run_at, payload) VALUES ('lead_followup', $1, 'lead', $2, $3, $4)`,
+    [`lead-followup:${fourth}:followup_1`, String(fourth), at(8, 10, 30), JSON.stringify({ step: 'followup_1', dueAt: at(8, 10, 30).toISOString() })])
+  await db.query('UPDATE submissions SET automation_started_at = NOW() WHERE id = $1', [fourth])
+  const before_ = txt.sent.length
+  await run(at(8, 10, 31))
+  assert.equal(txt.sent.filter((m) => m.to === '+15045550202').length, 2, 'the acknowledgment and one follow-up, to the first lead only')
+  assert.equal(txt.sent.length, before_ + 1)
+  assert.equal((await jobs(fourth, 'lead_followup'))[0].outcome, 'followed_up_on_another_lead')
+})
+
+test('two workers and two leads from one person: still one acknowledgment', { skip: SKIP }, async () => {
+  for (let i = 0; i < 4; i++) await newLead({ email: 'same.person@example.test', phone: '504-555-0203', message: `mensaje ${i}` })
+  const when = new Date(T0.getTime() + MIN)
+  await Promise.all([run(when), run(when), run(when)])
+  assert.equal(clientMail().length, 1)
+  assert.equal(txt.sent.length, 1)
+})
+
+test('the check for "already told this person" and the send are one step, even across workers', { skip: SKIP }, async () => {
+  const a = await newLead({ email: 'locked@example.test', consent: false })
+  // Another worker is in the middle of that step for the same person: it
+  // holds the per-recipient lock.
+  const other = await db.connect()
+  try {
+    await other.query('BEGIN')
+    await other.query("SELECT pg_advisory_xact_lock(hashtext('cm_auto_msg:' || 'lead_ack' || ':' || 'email' || ':' || 'locked@example.test'))")
+    const running = run(new Date(T0.getTime() + MIN))
+    await new Promise((r) => setTimeout(r, 400))
+    assert.equal(mail.calls.length, 0, 'this worker waits its turn instead of checking alongside')
+    // The other worker records its message for this person, then finishes.
+    await other.query("INSERT INTO automation_messages (channel, purpose, entity_type, entity_id, to_key, idempotency_key, status, created_at) VALUES ('email', 'lead_ack', 'lead', '999', 'locked@example.test', 'lead-ack-email:999', 'sent', $1)", [T0])
+    await other.query('COMMIT')
+    await running
+  } finally {
+    await other.query('ROLLBACK').catch(() => {})
+    other.release()
+  }
+  assert.equal(mail.calls.length, 0, 'and then sees the other one, and does not send a second')
+  assert.equal((await jobs(a, 'lead_ack_email'))[0].outcome, 'recently_acknowledged')
+})
+
+test('"Yes" is an answer: it stops the follow-ups like any other reply', { skip: SKIP }, async () => {
+  const yes = await newLead({ phone: '504-555-0204' })
+  const help = await newLead({ phone: '504-555-0205' })
+  await run(new Date(T0.getTime() + MIN))
+  txt.inbound = [{ id: 'y-1', fromKey: '5045550204', text: 'Yes', at: at(0, 15, 0) }, { id: 'y-2', fromKey: '5045550205', text: 'HELP', at: at(0, 15, 1) }]
+  for (const when of [at(1, 10, 31), at(3, 10, 31), at(7, 10, 31)]) await run(when)
+  assert.equal(txt.sent.length, 2, 'the two acknowledgments only')
+  for (const id of [yes, help]) {
+    assert.deepEqual((await jobs(id, 'lead_followup')).map((j) => j.outcome), ['client_replied_by_text', 'client_replied_by_text'])
+    assert.equal((await lead(id)).status, 'new', 'not No response: they answered')
+  }
+  assert.deepEqual((await http('GET', '/api/submissions/attention')).json.items.map((i) => i.reason), ['client_replied', 'client_replied'])
+})
+
+test('nothing is texted while replies cannot be read', { skip: SKIP }, async () => {
+  const a = await newLead({ phone: '504-555-0206' })
+  const call = await addCall({ when: T0, number: '+15045550207' })
+  const deaf = { ...sms, inbound: async () => { throw Object.assign(new Error('no'), { code: 'CMN-408' }) } }
+  // Reading replies has never worked: no acknowledgment text, no missed-call text. The email still goes.
+  for (const m of [1, 5, 9]) await run(new Date(T0.getTime() + m * MIN), {}, { sms: deaf })
+  assert.equal(txt.calls.length, 0)
+  assert.equal(clientMail().length, 1)
+  assert.deepEqual([(await jobs(a, 'lead_ack_sms'))[0].status, (await callJobs(call, 'missed_call_sms'))[0].status], ['pending', 'pending'], 'waiting, not failed')
+  // It works again: they go.
+  await run(new Date(T0.getTime() + 30 * MIN))
+  assert.deepEqual(txt.sent.map((m) => m.to).sort(), ['+15045550206', '+15045550207'])
+  // It stops working for days: the follow-up waits, then its moment has passed.
+  for (const when of [at(1, 10, 31), at(1, 14, 0), at(2, 10, 31), at(3, 10, 31), at(4, 10, 45)]) await run(when, {}, { sms: deaf })
+  assert.equal(txt.sent.length, 2, 'no follow-up went out blind')
+  assert.deepEqual((await jobs(a, 'lead_followup')).map((j) => [j.status, j.outcome])[0], ['skipped', 'too_late'])
+  // With the switch for reading replies off, the text switches are off too.
+  const b = await newLead({ phone: '504-555-0208', env: { RINGCENTRAL_SMS_INBOUND_ENABLED: 'false' } })
+  assert.deepEqual((await jobs(b)).map((j) => j.type).sort(), ['lead_ack_email', 'lead_sla'])
+})
+
+test('after the worker was off for days, follow-ups do not arrive back to back', { skip: SKIP }, async () => {
+  const a = await newLead({ phone: '504-555-0209' })
+  await run(new Date(T0.getTime() + MIN))
+  // Off from Monday evening until Thursday noon: follow-up 1 (Tuesday) and 2 (Thursday) are both due.
+  await run(at(3, 12, 0))
+  assert.equal(txt.sent.length, 2, 'the acknowledgment and ONE follow-up')
+  const [, second] = await jobs(a, 'lead_followup')
+  assert.equal(second.status, 'pending')
+  assert.equal(new Date(second.run_at).toISOString(), at(4, 10, 0).toISOString(), 'twenty hours on, at the next texting hour')
+  await run(at(4, 10, 1))
+  assert.equal(txt.sent.length, 3)
+  assert.equal((await lead(a)).status, 'new', 'not marked No response in the same breath')
+})
+
+test('"stop automatic messages" on a lead also covers a text to that phone after a missed call', { skip: SKIP }, async () => {
+  const stopped = await newLead({ phone: '504-555-0210' })
+  await newLead({ phone: '504-555-0211', email: 'sales@vendor.example' })
+  await http('PATCH', `/api/submissions/${stopped}/automation`, { paused: true })
+  await db.query("UPDATE submissions SET spam_state = 'spam', status = 'closed', is_archived = TRUE WHERE phone = '504-555-0211'")
+  await run(new Date(T0.getTime() + MIN))
+  const before_ = txt.sent.length
+  const c1 = await addCall({ when: at(0, 11, 0), number: '+15045550210' })
+  const c2 = await addCall({ when: at(0, 11, 0), number: '+15045550211' })
+  await run(at(0, 11, 5))
+  assert.equal(txt.sent.length, before_)
+  assert.deepEqual([(await callJobs(c1, 'missed_call_sms'))[0].outcome, (await callJobs(c2, 'missed_call_sms'))[0].outcome], ['stopped_by_staff', 'spam'])
+})
+
+test('not being able to read a delivery receipt is not shown as a failed message', { skip: SKIP }, async () => {
+  const a = await newLead({ phone: '504-555-0212' })
+  await run(new Date(T0.getTime() + MIN))
+  const blind = { ...sms, delivery: async () => null }
+  for (const m of [12, 15, 30, 60, 200]) await run(new Date(T0.getTime() + m * MIN), {}, { sms: blind })
+  const check = (await db.query("SELECT status, outcome FROM automation_jobs WHERE type = 'sms_delivery_check'")).rows
+  assert.deepEqual(check, [{ status: 'skipped', outcome: 'record_unavailable' }])
+  assert.deepEqual((await http('GET', '/api/automation/exceptions', undefined, u.owner)).json.items, [])
+  assert.deepEqual((await http('GET', `/api/submissions/${a}`)).json.automation.failed, [])
+  assert.equal((await messages()).find((m) => m.channel === 'sms').status, 'sent')
+})
+
+test('an escalation that could not tell anyone is tried again, not counted as done', { skip: SKIP }, async () => {
+  const a = await newLead({ consent: false })
+  // The notification step fails outright once (as a database error would).
+  const real = db.query.bind(db)
+  let failNext = true
+  db.query = (sql, ...rest) => {
+    if (failNext && typeof sql === 'string' && /FROM admin_users\s+WHERE disabled_at IS NULL/.test(sql)) { failNext = false; return Promise.reject(Object.assign(new Error('connection lost'), { code: '57P01' })) }
+    return real(sql, ...rest)
+  }
+  try {
+    await run(at(0, 12, 31))
+  } finally {
+    db.query = real
+  }
+  assert.equal(failNext, false, 'the failure was exercised')
+  assert.equal(pushed.length, 0)
+  assert.equal((await lead(a)).escalation_level, 0, 'the level was given back')
+  assert.equal((await jobs(a, 'lead_sla'))[0].status, 'pending')
+  await run(at(0, 12, 40))
+  assert.equal((await lead(a)).escalation_level, 1)
+  assert.equal(pushed.filter((p) => p.payload.title === 'A website lead is waiting').length, 2)
 })

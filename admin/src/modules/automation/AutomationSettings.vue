@@ -172,6 +172,10 @@
               </div>
               <SaveRow :state="state.ownership" :busy="busy" @save="save('ownership', s.ownership)" />
               <label class="flex items-start gap-2 pt-2"><input v-model="s.status.contactedOnClientReply" type="checkbox" class="mt-0.5 rounded border-gray-300" /><span>Count a lead’s text reply as “Contacted”. Off: the reply stops the follow-ups and asks for a person, and the lead stays New until someone at the firm reaches them.</span></label>
+              <p class="flex flex-wrap items-center gap-2">
+                <label for="st-secs">A call back counts as reaching them when it lasted at least</label>
+                <input id="st-secs" v-model.number="s.status.connectedCallSeconds" type="number" min="0" max="600" class="num" /><span>seconds (a call that goes to voicemail is “connected” too)</span>
+              </p>
               <SaveRow :state="state.status" :busy="busy" @save="save('status', s.status)" />
             </fieldset>
           </template>

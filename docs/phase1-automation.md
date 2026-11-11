@@ -122,16 +122,22 @@ up, so yesterday's leads are not acknowledged late.
   who already answered. An email step is refused on save. (Inbound email is in
   `DEFERRED.md`.)
 - Stops as soon as any of these is seen: a reply from the portal, a connected
-  call back, an answered call from them, a text reply, a booking, or the lead
-  being archived, marked Spam, moved out of New, or switched off by staff.
+  call back, an answered call from them, a text reply (anything they write,
+  short of STOP, including "Yes" or "Help"), a booking, or the lead being
+  archived, marked Spam, moved out of New, or switched off by staff.
 - Each step also looks at the lead again right before sending.
+- **One sequence per person.** Someone who writes in twice (the chat, then
+  the form) is followed up on the lead they already have open, and a second
+  lead of theirs is never followed up in the same week.
+- **Never back to back.** Two follow-ups to one lead are at least 20 hours
+  apart, whatever held the first one up (the worker off for a day, a pause).
 
 ### Lead status from evidence
 `leadStatus.js`
 
 | Change | Only when |
 |---|---|
-| New → Contacted | staff replied from the portal; **or** an outgoing call to the lead's number connected; **or** a call from that number was answered (after the lead wrote in) |
+| New → Contacted | staff replied from the portal; **or** an outgoing call to the lead's number connected and lasted at least 60 seconds (settings; RingCentral reports a call that reached voicemail as connected too); **or** a call from that number was answered (after the lead wrote in) |
 | → Scheduled | a booking for the lead is on the calendar |
 | New → No response | every follow-up went out and nothing came back |
 | → Retained | **never automatically.** Nothing the portal can see proves a client was signed |
@@ -157,6 +163,8 @@ again right before sending.
   numbers; numbers marked spam, verification or a colleague's phone; calls
   marked handled; the "check if they still need help" group.
 - A call at night is texted in the morning, if nobody has dealt with it by then.
+- Not to a phone whose website lead staff switched automatic messages off for,
+  or marked Spam.
 
 ### Ownership and escalation
 - A lead can have an owner (default owner in settings; changed on the lead).
@@ -212,6 +220,13 @@ review, cancellation on payment or a moved due date, opt-outs, sending hours,
 and an unknown delivery is never resent. `approved_by` stays empty and
 `auto_approved` is true.
 
+- Only drafts made **after** the rule was marked are approved; older drafts a
+  person had left unapproved stay theirs to decide.
+- Pausing automatic reminders, switching the flag off, or unmarking the rule
+  **takes back** what the portal had approved and not yet sent (it returns to
+  a draft), including when someone presses "send now". A reminder a person
+  approved is never touched.
+
 ## 4. Feature flags
 
 Two things must both be true: the variable is exactly `true`, and an
@@ -222,15 +237,15 @@ administrator has not paused it (**Integrations → Automation**).
 | `AUTOMATION_ENABLED` | the worker. Off: nothing below runs | |
 | `LEAD_ACK_ENABLED` | new-lead acknowledgment | |
 | `LEAD_ACK_EMAIL_ENABLED` | …by email | `LEAD_ACK_ENABLED` |
-| `LEAD_ACK_SMS_ENABLED` | …by text | `LEAD_ACK_ENABLED`, `RINGCENTRAL_SMS_ENABLED` |
-| `LEAD_FOLLOWUP_ENABLED` | follow-up texts | `RINGCENTRAL_SMS_ENABLED` |
+| `LEAD_ACK_SMS_ENABLED` | …by text | `LEAD_ACK_ENABLED`, `RINGCENTRAL_SMS_ENABLED`, `RINGCENTRAL_SMS_INBOUND_ENABLED` |
+| `LEAD_FOLLOWUP_ENABLED` | follow-up texts | `RINGCENTRAL_SMS_ENABLED`, `RINGCENTRAL_SMS_INBOUND_ENABLED` |
 | `LEAD_STATUS_AUTOMATION_ENABLED` | status changes on evidence | |
 | `LEAD_SPAM_AUTOMATION_ENABLED` | vendor rules | |
 | `CONTACT_AUTO_MATCH_ENABLED` | caller-match confirmation | |
 | `SLA_ESCALATION_ENABLED` | escalation of leads and callers | |
 | `RINGCENTRAL_SMS_ENABLED` | any automatic text at all | |
 | `RINGCENTRAL_SMS_INBOUND_ENABLED` | reading replies and STOPs (read-only) | |
-| `MISSED_CALL_SMS_ENABLED` | missed-call text-back | `RINGCENTRAL_SMS_ENABLED` |
+| `MISSED_CALL_SMS_ENABLED` | missed-call text-back | `RINGCENTRAL_SMS_ENABLED`, `RINGCENTRAL_SMS_INBOUND_ENABLED` |
 | `SCHEDULING_ENABLED` | reading the calendar; the booking link in messages | |
 | `BILLING_AUTO_REMINDERS_ENABLED` | automatic approval of marked rules | `BILLING_SCHEDULER_ENABLED`, `WHATSAPP_SENDING_ENABLED` |
 
@@ -242,6 +257,18 @@ Other variables:
 | `RINGCENTRAL_SMS_FROM` | the number texts come from. Must be one RingCentral lists as able to text for the connected extension |
 | `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` | read-only calendar access |
 | `GOOGLE_CALENDAR_ID` | the calendar, if not set in the portal |
+
+**Nothing is texted unless replies are being read.** Every automatic text
+needs `RINGCENTRAL_SMS_INBOUND_ENABLED`, and on top of the switch the last
+successful read must be less than 30 minutes old: a reply or a STOP the portal
+cannot see is one it cannot honour. A text that cannot go for that reason
+waits; a follow-up that has waited more than three days past its time is
+dropped.
+
+**The worker does not start outside production without
+`AUTOMATION_TEST_RECIPIENTS`.** A worker takes jobs out of the queue even when
+it may not send them (they end as "skipped"), so a developer machine must
+never run it against the production database.
 
 Stopping the follow-ups when evidence appears does **not** depend on the
 status flag: with `LEAD_STATUS_AUTOMATION_ENABLED` off, a connected call still
@@ -395,9 +422,10 @@ Each step is independent and can be undone by setting its variable back.
 
 **Stage 3 — texts**
 9. RingCentral SMS setup and the consent decisions above.
-10. `RINGCENTRAL_SMS_INBOUND_ENABLED=true` first (read-only), then
+10. `RINGCENTRAL_SMS_INBOUND_ENABLED=true` first (read-only); confirm on the
+    Automation page that replies are being read. Then
     `RINGCENTRAL_SMS_ENABLED=true` with the test number in
-    `AUTOMATION_TEST_RECIPIENTS`.
+    `AUTOMATION_TEST_RECIPIENTS`. No text automation works without both.
 11. `LEAD_ACK_SMS_ENABLED`, then `LEAD_FOLLOWUP_ENABLED`, then
     `MISSED_CALL_SMS_ENABLED`, one at a time.
 
@@ -428,6 +456,8 @@ Each step is independent and can be undone by setting its variable back.
 | Message skipped: `not_production` / `not_a_test_recipient` | sending is limited to the test addresses, or this is not the live server |
 | `no_sms_consent` | the form did not carry the person's agreement to be texted |
 | `sms_unavailable` | RingCentral cannot send texts; "Ask RingCentral now" says why |
+| A text job stays pending | replies have not been read in the last 30 minutes (see "Reading replies failed" on the Automation page), or it is outside the texting hours |
+| `followed_up_on_another_lead` | the same person has another lead that was followed up this week |
 | `unknown_delivery` | a text may or may not have gone out; never resent automatically. Check RingCentral |
 | `not_delivered` | RingCentral accepted the text and could not deliver it |
 | Calendar "forbidden" | the calendar is not shared with the service account, or sharing is limited to free/busy |
@@ -452,4 +482,8 @@ switches, the RingCentral and Google clients against recorded conversations),
 `server/billing/autoReminders.test.js`, `admin/test/automation.test.js`.
 Never run against production: each uses its own database, whose name must
 contain `test` (`TEST_DATABASE_URL=postgres://localhost/camulaw_phase1_test`).
-Each guard was broken on purpose once to confirm a test goes red for it.
+Each guard was broken on purpose once to confirm a test goes red for it. An
+independent review of the server code was done before release; its findings
+(a second lead of one person followed up twice, "Yes" not counted as a reply,
+texts possible without reply-reading, paused payment reminders still going
+out, and smaller ones) are fixed and each has its own test.

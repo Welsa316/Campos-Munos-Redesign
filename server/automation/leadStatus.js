@@ -1,7 +1,9 @@
 // A lead's status from evidence, never from a guess.
 //
 // What counts, and what it proves:
-//   a connected outgoing call to the lead's number      a person reached them  → Contacted
+//   a connected outgoing call to the lead's number, at
+//   least a minute long (settings.status; a call that
+//   reached voicemail is "connected" too)               a person reached them  → Contacted
 //   an incoming call from that number that was answered a person spoke to them → Contacted
 //   a reply sent from the portal (routes/submissions.js) → Contacted
 //   a consultation found on the calendar for the lead   → Scheduled
@@ -35,26 +37,26 @@ const SWEEP_LIMIT = 500
  * staff said is not this number's caller (contact_links 'rejected').
  * Returns { callAt, callKind, smsReplyAt, bookingAt, sharedNumber }.
  */
-export async function leadEvidence(db, lead) {
+export async function leadEvidence(db, lead, { connectedCallSeconds = 60 } = {}) {
   const r = (await db.query(
     `WITH k AS (SELECT cm_phone_key($2::text) AS key)
      SELECT
        (SELECT row_to_json(x) FROM (
           SELECT c.started_at AS at, c.direction FROM rc_calls c, k
            WHERE k.key <> '' AND c.counterpart_key = k.key AND c.is_primary AND NOT c.is_internal AND c.started_at > $3
-             AND ((c.direction = 'outbound' AND c.outcome = 'connected') OR (c.direction = 'inbound' AND c.classification = 'answered'))
+             AND ((c.direction = 'outbound' AND c.outcome = 'connected' AND c.duration_seconds >= $5::int) OR (c.direction = 'inbound' AND c.classification = 'answered'))
              AND NOT EXISTS (SELECT 1 FROM rc_ignored_numbers g WHERE g.counterpart_key = k.key)
              AND NOT EXISTS (SELECT 1 FROM contact_links l WHERE l.phone_key = k.key AND l.submission_id = $1 AND l.state = 'rejected')
            ORDER BY c.started_at LIMIT 1) x) AS call,
        (SELECT MIN(m.received_at) FROM rc_sms_inbound m, k
-         WHERE k.key <> '' AND m.from_key = k.key AND m.kind = 'reply' AND m.received_at > $3) AS sms_reply_at,
+         WHERE k.key <> '' AND m.from_key = k.key AND m.kind <> 'opt_out' AND m.received_at > $3) AS sms_reply_at,
        (SELECT MIN(b.starts_at) FROM consultation_bookings b WHERE b.submission_id = $1 AND b.status = 'booked') AS booking_at,
        -- Other people's open leads on the same number: a call to it does not
        -- say which of them was reached.
        (SELECT COUNT(DISTINCT LOWER(o.email)) FROM submissions o, k
          WHERE k.key <> '' AND cm_phone_key(o.phone) = k.key AND NOT o.is_archived AND o.status IN ('new', 'no_response')
            AND LOWER(o.email) <> LOWER($4::text)) AS others`,
-    [lead.id, lead.phone, lead.created_at, lead.email]
+    [lead.id, lead.phone, lead.created_at, lead.email, connectedCallSeconds]
   )).rows[0]
   return {
     callAt: r.call?.at ? new Date(r.call.at) : null,
@@ -102,15 +104,19 @@ export async function stopLeadAutomation(db, id, reason, { types = ALL_LEAD_JOB_
  */
 export async function applyLeadEvidence(db, { flags, settings, log = null } = {}) {
   const leads = (await db.query(
-    `SELECT id, phone, email, status, created_at FROM submissions
-      WHERE NOT is_archived AND status IN ('new', 'no_response', 'contacted')
-        AND created_at > NOW() - make_interval(days => $1::int) AND automation_started_at IS NOT NULL
+    // New and No response leads, and a Contacted one only when a booking
+    // was found for it (so the Contacted leads that pile up over the months
+    // never crowd the open ones out of the batch).
+    `SELECT id, phone, email, status, created_at FROM submissions s
+      WHERE NOT is_archived AND created_at > NOW() - make_interval(days => $1::int) AND automation_started_at IS NOT NULL
+        AND (status IN ('new', 'no_response')
+          OR (status = 'contacted' AND EXISTS (SELECT 1 FROM consultation_bookings b WHERE b.submission_id = s.id AND b.status = 'booked')))
       ORDER BY created_at DESC LIMIT $2`,
     [OPEN_DAYS, SWEEP_LIMIT]
   )).rows
   const out = { scheduled: 0, contacted: 0, stopped: 0 }
   for (const lead of leads) {
-    const ev = await leadEvidence(db, lead)
+    const ev = await leadEvidence(db, lead, settings.status)
     if (ev.bookingAt) {
       const stopped = await stopLeadAutomation(db, lead.id, 'consultation_booked', { log })
       if (stopped.length) out.stopped++

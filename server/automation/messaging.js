@@ -8,11 +8,16 @@
 //   3. outside production nothing goes anywhere except the addresses in
 //      AUTOMATION_TEST_RECIPIENTS; in production that list, when set, limits
 //      sending to those addresses (a staged rollout)
-//   4. texts only: inside the texting hours, under the per-minute limit, not
-//      while RingCentral asked us to wait, and from a number RingCentral
-//      allows
+//   4. texts only: replies have been read in the last half hour (a reply or
+//      a STOP the portal cannot see is one it cannot honour), inside the
+//      texting hours, under the per-minute limit, not while RingCentral
+//      asked us to wait, and from a number RingCentral allows
 //   5. the message row is written (automation_messages, UNIQUE on the job's
-//      key) BEFORE the provider is called
+//      key) BEFORE the provider is called. With `dedupe`, in the same
+//      transaction and under a lock on the recipient, it is first checked
+//      that this person has not had a message of this kind lately — so two
+//      leads from one person, taken by two workers at the same moment,
+//      still produce one message
 //
 // Step 5 is what makes a send happen once. If the process dies between the
 // row and the provider's answer, the next run finds the row still 'sending':
@@ -30,6 +35,8 @@ import { isBusinessTime, nextBusinessTime } from './businessHours.js'
 import { recordSystemEvent } from './events.js'
 import { enqueue } from './jobs.js'
 import { deliveryErrorKind } from '../integrations/ringcentral/sms.js'
+import { inboundFresh } from './smsInbound.js'
+import { inTransaction } from '../db/transaction.js'
 
 /** AUTOMATION_TEST_RECIPIENTS as { emails:Set, phones:Set }, or null when unset. */
 export function testRecipients(env = process.env) {
@@ -64,9 +71,12 @@ const skipped = (outcome) => ({ status: 'skipped', outcome })
  *   templateKey, language, vars   what to say (templates.js)
  *   event        the activity-log action to record when it is sent
  *   anyHour      texts only: may go outside the texting hours
+ *   dedupe       { since, reason, otherEntityOnly? }: skip (with `reason`)
+ *                when this address already had a message of this purpose
+ *                since then; otherEntityOnly counts only other leads' messages
  * ctx: { env, settings, mailer, sms, now, log, budget: { sms } }
  */
-export async function deliver(db, { job, channel, purpose, entityType, entityId, to, templateKey, language, vars = {}, event, anyHour = false }, ctx) {
+export async function deliver(db, { job, channel, purpose, entityType, entityId, to, templateKey, language, vars = {}, event, anyHour = false, dedupe = null }, ctx) {
   const { env = process.env, settings, mailer = null, sms = null, log = null } = ctx
   const now = ctx.now || new Date()
   const logEvent = (action, outcome, details) => recordSystemEvent(db, { action, entityType, entityId, outcome, details: { channel, purpose, ...details }, log })
@@ -96,6 +106,9 @@ export async function deliver(db, { job, channel, purpose, entityType, entityId,
   let sender = null
   if (channel === 'sms') {
     if (!sms) return { status: 'retry', error: 'sms_not_configured' }
+    // Not while replies are not being read. Waits; the caller's own "too
+    // late" rule ends it if this goes on.
+    if (!(await inboundFresh(db, now))) return { status: 'defer', runAt: new Date(now.getTime() + 15 * 60 * 1000), outcome: 'replies_not_read' }
     const hours = textingHours(settings)
     if (!anyHour && !isBusinessTime(now, hours)) return { status: 'defer', runAt: nextBusinessTime(now, hours) }
     const wait = await sms.backoffUntil(now)
@@ -110,11 +123,31 @@ export async function deliver(db, { job, channel, purpose, entityType, entityId,
 
   // 5. the message row, before the provider
   const msgKey = job.idempotency_key
-  let row = (await db.query(
+  const insertRow = (c) => c.query(
     `INSERT INTO automation_messages (job_id, channel, purpose, entity_type, entity_id, to_key, template_key, language, idempotency_key, status, created_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'sending', $10) ON CONFLICT (idempotency_key) DO NOTHING RETURNING id, status, attempts`,
     [job.id, channel, purpose, entityType, entityId == null ? null : String(entityId), key, templateKey, language, msgKey, now]
-  )).rows[0]
+  )
+  let row
+  if (dedupe) {
+    // One at a time per recipient and purpose, so the check and the row are
+    // one step even with two workers.
+    const claimed = await inTransaction(db, async (c) => {
+      await c.query("SELECT pg_advisory_xact_lock(hashtext('cm_auto_msg:' || $1 || ':' || $2 || ':' || $3))", [purpose, channel, key])
+      const already = await c.query(
+        `SELECT 1 FROM automation_messages
+          WHERE to_key = $1 AND purpose = $2 AND channel = $3 AND status IN ('sending', 'sent', 'unknown') AND created_at >= $4
+            AND idempotency_key <> $5 AND ($6::boolean IS NOT TRUE OR entity_id IS DISTINCT FROM $7) LIMIT 1`,
+        [key, purpose, channel, dedupe.since, msgKey, Boolean(dedupe.otherEntityOnly), entityId == null ? null : String(entityId)]
+      )
+      if (already.rowCount) return { duplicate: true }
+      return { row: (await insertRow(c)).rows[0] }
+    })
+    if (claimed.duplicate) return skip(dedupe.reason)
+    row = claimed.row
+  } else {
+    row = (await insertRow(db)).rows[0]
+  }
   if (!row) {
     const existing = (await db.query('SELECT id, status, provider_id FROM automation_messages WHERE idempotency_key = $1', [msgKey])).rows[0]
     if (existing.status === 'sent') return done('already_sent')
@@ -197,7 +230,9 @@ export async function checkSmsDelivery(db, job, ctx) {
   const row = (await db.query('SELECT * FROM automation_messages WHERE id = $1', [job.payload?.messageRowId])).rows[0]
   if (!row || row.status !== 'sent' || !row.provider_id || !sms) return skipped('nothing_to_check')
   const rec = await sms.delivery(row.provider_id)
-  if (!rec) return { status: 'retry', error: 'record_unavailable' }
+  // The record could not be read (no permission, RingCentral busy): that
+  // says nothing about the text, so it is never shown as a failed message.
+  if (!rec) return job.attempts < job.max_attempts ? { status: 'retry', error: 'record_unavailable' } : skipped('record_unavailable')
   if (rec.status === 'Delivered') {
     await db.query("UPDATE automation_messages SET error = NULL, updated_at = NOW() WHERE id = $1", [row.id])
     return done('delivered')

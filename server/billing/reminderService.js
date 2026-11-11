@@ -150,7 +150,10 @@ export async function saveRule(db, key, patch, { actorId }) {
     if (!template.meta_approved) throw new ReminderError('Mark the template as approved in WhatsApp Manager before this rule can send automatically', 409, 'template_not_approved')
   }
   await db.query(
-    'UPDATE billing_reminder_rules SET days = $2, enabled = $3, label = $4, auto_approve = $6, updated_by = $5, updated_at = NOW() WHERE key = $1',
+    `UPDATE billing_reminder_rules SET days = $2, enabled = $3, label = $4, auto_approve = $6, updated_by = $5, updated_at = NOW(),
+            -- From the moment it is marked: drafts made before that stay for a person.
+            auto_approve_since = CASE WHEN $6 AND NOT auto_approve THEN NOW() WHEN $6 THEN auto_approve_since ELSE NULL END
+      WHERE key = $1`,
     [key, days, enabled, label.trim(), actorId, autoApprove]
   )
   await audit(db, { actorId, action: 'reminders.rule_saved', entityType: 'rule', entityId: key, details: { days, enabled, autoApprove } })
@@ -409,7 +412,8 @@ export async function autoRemindersOn(db, env = process.env) {
  * not approved.
  */
 export async function autoApprove(db, { env = process.env, now = new Date(), log = null } = {}) {
-  if (!(await autoRemindersOn(db, env))) return { approved: 0, skipped: 'switched_off' }
+  const withdrawn = await withdrawAutoApprovals(db, { env })
+  if (!(await autoRemindersOn(db, env))) return { approved: 0, withdrawn, skipped: 'switched_off' }
   await cancelIneligible(db, { now })
   const { rows } = await db.query(
     `UPDATE billing_reminders r SET state = 'approved', approved_by = NULL, approved_at = NOW(), auto_approved = TRUE, updated_at = NOW()
@@ -417,13 +421,37 @@ export async function autoApprove(db, { env = process.env, now = new Date(), log
       WHERE ru.key = r.rule_key AND t.key = r.template_key
         AND r.state = 'draft' AND r.action = 'whatsapp'
         AND ru.enabled AND ru.auto_approve AND ru.action = 'whatsapp' AND t.meta_approved
+        -- Only drafts made since the rule was marked: older ones were left
+        -- unapproved by a person, and stay theirs to decide.
+        AND ru.auto_approve_since IS NOT NULL AND r.created_at >= ru.auto_approve_since
       RETURNING r.id`
   )
   if (rows.length) {
     await audit(db, { action: 'reminders.auto_approved', entityType: 'reminders', details: { approved: rows.length } })
     await recordSystemEvent(db, { action: 'automation.reminders_auto_approved', entityType: 'reminders', details: { approved: rows.length }, log })
   }
-  return { approved: rows.length }
+  return { approved: rows.length, withdrawn }
+}
+
+/**
+ * Reminders the portal approved by itself that have not gone out yet go
+ * back to drafts when automatic sending is switched off or paused, or their
+ * rule is no longer marked: pausing must stop what is waiting for Monday's
+ * sending hours, not only what would be approved next. One a person
+ * approved is never touched. Run before every automatic approval and before
+ * every send. Returns how many went back.
+ */
+export async function withdrawAutoApprovals(db, { env = process.env } = {}) {
+  const on = await autoRemindersOn(db, env)
+  const { rowCount } = await db.query(
+    `UPDATE billing_reminders r SET state = 'draft', approved_at = NULL, auto_approved = FALSE, updated_at = NOW()
+      WHERE r.state = 'approved' AND r.auto_approved AND r.approved_by IS NULL
+        AND ($1::boolean IS NOT TRUE OR NOT EXISTS (
+              SELECT 1 FROM billing_reminder_rules ru WHERE ru.key = r.rule_key AND ru.enabled AND ru.auto_approve))`,
+    [on]
+  )
+  if (rowCount) await audit(db, { action: 'reminders.auto_withdrawn', entityType: 'reminders', details: { withdrawn: rowCount, on } })
+  return rowCount
 }
 
 export async function cancelReminder(db, id, { actorId }) {
@@ -471,6 +499,9 @@ export async function dispatch(db, provider, { now = new Date(), env = process.e
   // reminder allowed per payment and stage, so simulation must be as
   // deliberate as the real thing (it is how a demo is run on purpose).
   if (!whatsappSendingEnabled(env)) return { skipped: 'sending_disabled' }
+  // What the portal approved by itself does not go out once automatic
+  // sending is off or paused (also when someone presses "send now").
+  await withdrawAutoApprovals(db, { env })
   const settings = await getReminderSettings(db)
   const firmConsent = firmConsentOf(await getConsentPolicy(db))
   await markStalePendingUnknown(db)
@@ -618,6 +649,6 @@ async function markStalePendingUnknown(db) {
 
 export { relevantDueDate }
 export default {
-  ensureDefaults, evaluate, cancelIneligible, approveReminders, autoApprove, autoRemindersOn, cancelReminder, retryReminder, resolveUnknown, dispatch,
+  ensureDefaults, evaluate, cancelIneligible, approveReminders, autoApprove, autoRemindersOn, withdrawAutoApprovals, cancelReminder, retryReminder, resolveUnknown, dispatch,
   upsertContact, recordOptIn, recordOptOut, saveRule, saveTemplate, getReminderSettings, saveReminderSettings,
 }
