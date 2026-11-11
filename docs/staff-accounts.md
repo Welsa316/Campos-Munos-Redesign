@@ -146,6 +146,12 @@ with `staff.js` are logged as "command line". Reading and opening are not
 logged, except downloads (the leads CSV, import exceptions); colour theme
 changes are not logged.
 
+What the portal does on its own (an acknowledgment sent, a follow-up
+cancelled, a status changed on evidence, an escalation) is written to the
+same log with the person shown as "The portal (automatic)" and the reason
+beside it (`server/automation/events.js`, source `system`). The Person
+filter has "The portal itself" for these. See `docs/phase1-automation.md`.
+
 Details hold ids, statuses and counts only: never message or note text,
 passwords, or full phone numbers (a placed call keeps the last four
 digits). Each action's name lives in `server/activity/actions.js`;

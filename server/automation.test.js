@@ -1059,8 +1059,9 @@ test('a missed form request is picked up by the worker', { skip: SKIP }, async (
   await run(new Date(Date.now() + 1000))
   assert.ok((await lead(id)).automation_started_at)
   assert.equal(clientMail().length, 1)
-  // An old lead from before the automation existed is left alone.
-  const old = (await db.query("INSERT INTO submissions (first_name, last_name, email, phone, message, created_at) VALUES ('Old', 'Lead', 'old@example.test', '504-555-0197', 'hola', NOW() - INTERVAL '10 days') RETURNING id")).rows[0].id
+  // A lead from before the automation was switched on is left alone: turning
+  // it on must not reach back and acknowledge this morning's leads.
+  const old = (await db.query("INSERT INTO submissions (first_name, last_name, email, phone, message, created_at) VALUES ('Old', 'Lead', 'old@example.test', '504-555-0197', 'hola', NOW() - INTERVAL '3 hours') RETURNING id")).rows[0].id
   await run(new Date(Date.now() + 2000))
   assert.equal((await lead(old)).automation_started_at, null)
   assert.equal(clientMail().length, 1)

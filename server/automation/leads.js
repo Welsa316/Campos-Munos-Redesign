@@ -106,10 +106,15 @@ export async function startLeadAutomation(db, submissionId, { flags, settings, n
   return { started: true, jobs, spam: spam?.state || null }
 }
 
-/** Leads from the last two days whose jobs were never queued (the form request died first). */
+/**
+ * Leads from the last hour whose jobs were never queued: the form request
+ * died first, or the worker was restarting. Only the last hour on purpose:
+ * switching the automation on must not reach back and acknowledge
+ * yesterday's leads, which the front desk has long since dealt with.
+ */
 export async function startMissedLeads(db, opts) {
   const rows = (await db.query(
-    "SELECT id FROM submissions WHERE automation_started_at IS NULL AND created_at > NOW() - INTERVAL '2 days' ORDER BY id LIMIT 200"
+    "SELECT id FROM submissions WHERE automation_started_at IS NULL AND created_at > NOW() - INTERVAL '1 hour' ORDER BY id LIMIT 200"
   )).rows
   let started = 0
   for (const r of rows) if ((await startLeadAutomation(db, r.id, opts)).started) started++

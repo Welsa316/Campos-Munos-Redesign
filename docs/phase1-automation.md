@@ -96,7 +96,9 @@ index.js  ── every minute ──▶  automation/worker.js  runAutomation()
 
 ### New-lead acknowledgment
 `leads.js` — when a website lead is stored, its work is queued (and a lead the
-form request did not get to is picked up within a minute).
+form request did not get to is picked up within a minute). Switching the
+automation on does not reach back: only leads from the last hour are picked
+up, so yesterday's leads are not acknowledged late.
 
 - **Email** (Resend), from the firm's address, replies to the office inbox.
 - **Text** (RingCentral), only with the person's agreement on the form (see
