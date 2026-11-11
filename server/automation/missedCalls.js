@@ -22,7 +22,7 @@
 import { queryCalls, episodeOpen, ATTENTION_DAYS } from '../integrations/ringcentral/callLog.js'
 import { enqueue } from './jobs.js'
 import { deliver, recentlyMessaged } from './messaging.js'
-import { addBusinessMinutes, businessMinutesBetween } from './businessHours.js'
+import { addBusinessMinutes, businessMinutesBetween, isBusinessTime, nextBusinessTime } from './businessHours.js'
 import { textingHours } from './settings.js'
 import { recordSystemEvent } from './events.js'
 import { notifyStaff } from './escalation.js'
@@ -109,6 +109,8 @@ export function missedCallHandlers() {
       const level = Number(job.payload?.level) === 2 ? 2 : 1
       const callId = Number(job.entity_id)
       if (!(await episodeOpen(db, callId))) return cancelled('resolved')
+      // Told in office hours only, like a waiting lead.
+      if (!isBusinessTime(now, settings.hours)) return { status: 'defer', runAt: nextBusinessTime(now, settings.hours) }
       const claimed = await db.query(
         'INSERT INTO call_episode_escalations (episode_id, level) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING episode_id', [callId, level]
       )

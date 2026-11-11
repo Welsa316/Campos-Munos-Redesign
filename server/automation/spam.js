@@ -6,7 +6,8 @@
 //
 //   an exact sender address, or a whole sender domain (never a public mail
 //   provider: settings.js refuses gmail.com and the like)
-//                         → marked spam and archived
+//                         → given the status the front desk already uses for
+//                           junk (stored 'closed', shown as "Spam") and archived
 //   a listed phrase in the message
 //                         → marked "possible spam" for a person to look at;
 //                           it stays in the inbox, and gets no automatic
@@ -36,7 +37,13 @@ export async function applySpamRules(db, lead, rules, { log = null } = {}) {
   const v = spamVerdict(lead, rules)
   if (!v) return null
   const r = await db.query(
-    `UPDATE submissions SET spam_state = $2::varchar, spam_reason = $3, is_archived = CASE WHEN $2::varchar = 'spam' THEN TRUE ELSE is_archived END
+    `UPDATE submissions SET spam_state = $2::varchar, spam_reason = $3,
+            is_archived = CASE WHEN $2::varchar = 'spam' THEN TRUE ELSE is_archived END,
+            -- Spam is the existing 'closed' status; only a lead still New is moved.
+            status = CASE WHEN $2::varchar = 'spam' AND status = 'new' THEN 'closed' ELSE status END,
+            status_reason = CASE WHEN $2::varchar = 'spam' AND status = 'new' THEN 'vendor_rule' ELSE status_reason END,
+            status_auto = CASE WHEN $2::varchar = 'spam' AND status = 'new' THEN TRUE ELSE status_auto END,
+            status_changed_at = CASE WHEN $2::varchar = 'spam' AND status = 'new' THEN NOW() ELSE status_changed_at END
       WHERE id = $1 AND spam_state IS DISTINCT FROM 'cleared' AND spam_state IS DISTINCT FROM $2::varchar RETURNING id`,
     [lead.id, v.state, v.reason]
   )
@@ -58,11 +65,17 @@ export async function applySpamRulesToOpen(db, rules, { log = null } = {}) {
   return out
 }
 
-/** A person says a lead is not spam (it comes back to the inbox) or is. */
+/**
+ * A person says a lead is spam (the Spam status, archived) or is not (back
+ * in the inbox; and back to New when Spam was its status).
+ */
 export async function setSpamState(db, id, state) {
   if (!['cleared', 'spam'].includes(state)) throw Object.assign(new Error('Unknown choice'), { status: 400, code: 'invalid' })
   const r = await db.query(
-    `UPDATE submissions SET spam_state = $2::varchar, spam_reason = 'set_by_staff', is_archived = ($2::varchar = 'spam') WHERE id = $1 RETURNING id, spam_state, is_archived`,
+    `UPDATE submissions SET spam_state = $2::varchar, spam_reason = 'set_by_staff', is_archived = ($2::varchar = 'spam'),
+            status = CASE WHEN $2::varchar = 'spam' THEN 'closed' WHEN status = 'closed' THEN 'new' ELSE status END,
+            status_reason = 'set_by_staff', status_auto = FALSE, status_changed_at = NOW()
+      WHERE id = $1 RETURNING id, spam_state, is_archived, status`,
     [id, state]
   )
   return r.rows[0] || null

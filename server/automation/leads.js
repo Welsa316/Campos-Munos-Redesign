@@ -17,7 +17,7 @@
 import { enqueue } from './jobs.js'
 import { deliver, recentlyMessaged } from './messaging.js'
 import { languageFor } from './templates.js'
-import { addBusinessDays, addBusinessMinutes, nextBusinessTime } from './businessHours.js'
+import { addBusinessDays, addBusinessMinutes, nextBusinessTime, isBusinessTime } from './businessHours.js'
 import { textingHours } from './settings.js'
 import { applySpamRules } from './spam.js'
 import { recordSystemEvent } from './events.js'
@@ -215,6 +215,9 @@ export function leadHandlers() {
       if (!lead || lead.is_archived || lead.spam_state === 'spam') return cancelled(lead ? 'archived' : 'lead_gone')
       if (lead.status !== 'new') return cancelled(`status_${lead.status}`)
       if (humanContact(await leadEvidence(ctx.db, lead))) return cancelled('client_reached')
+      // Nobody is told at night or at the weekend: a deadline that passed
+      // while the office was closed (or the worker was off) waits for it to open.
+      if (!isBusinessTime(now, settings.hours)) return { status: 'defer', runAt: nextBusinessTime(now, settings.hours) }
       const claimed = await ctx.db.query(
         'UPDATE submissions SET escalation_level = $2, escalated_at = NOW() WHERE id = $1 AND escalation_level < $2 RETURNING id', [lead.id, level]
       )

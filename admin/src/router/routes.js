@@ -55,6 +55,11 @@ export const routes = [
   { path: '/integrations', name: 'Integrations', component: () => import('../modules/integrations/IntegrationsView.vue'),
     meta: { requiresAuth: true, module: 'integrations', capability: 'integrations.manage', title: 'Integrations' } },
 
+  // Automation: what the portal does on its own (switches, health, failed
+  // steps, settings). Administrators only; reached from Integrations.
+  { path: '/automation', name: 'Automation', component: () => import('../modules/automation/AutomationView.vue'),
+    meta: { requiresAuth: true, module: 'automation', capability: 'integrations.manage', title: 'Automation' } },
+
   // Team: staff accounts, roles and access. Administrators only.
   { path: '/team', name: 'Team', component: () => import('../modules/team/TeamView.vue'),
     meta: { requiresAuth: true, module: 'team', capability: 'team.manage', title: 'Team' } },

@@ -23,6 +23,23 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'automation-phase-1',
+    // Set to the real go-live time when this is merged and deployed.
+    at: '2026-11-11T18:00:00Z',
+    section: 'admin',
+    any: ['integrations.manage'],
+    title: 'The portal can now do routine follow-up on its own',
+    summary: 'A new Automation page (from Integrations) shows what the portal does without anyone opening it. Everything is switched off until it is turned on from the server, one piece at a time.',
+    points: [
+      'A new website lead can get an acknowledgment by email and, with their agreement, by text; then follow-up texts after one and three business days while nobody has reached them.',
+      'A caller the firm missed can get one text, a few minutes after the call, if they are still waiting for a call back.',
+      'A lead’s status changes on its own only when something proves it: a connected call, a reply from the portal, or a booking found on the calendar. The automatic acknowledgment never counts as contact.',
+      'A new lead or a missed caller that waits too long is brought to the front desk’s attention, on Home and by notification.',
+      'A payment reminder rule can be marked “Send automatically”, so its reminders go out in the sending hours without each one being approved.',
+      'Each automation can be paused from the Automation page. Everything the portal did on its own is in the activity log, with why.',
+    ],
+  },
+  {
     id: 'review-fixes-2026-11',
     at: '2026-11-06T17:33:28Z',
     section: 'everyone',

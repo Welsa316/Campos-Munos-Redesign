@@ -942,7 +942,7 @@ router.post('/:id/spam', requireAuth, requireCapability('crm.manage'), leadId,
       const row = await setSpamState(getPool(), req.params.id, req.body.state)
       if (!row) return res.status(404).json({ error: 'Submission not found' })
       if (req.body.state === 'spam') await staffTookOver(row.id, 'spam', req.account.id, req.log)
-      res.json({ id: row.id, spamState: row.spam_state, is_archived: row.is_archived })
+      res.json({ id: row.id, spamState: row.spam_state, is_archived: row.is_archived, status: row.status })
     } catch (err) {
       req.log.error({ err }, 'Lead spam mark error')
       res.status(500).json({ error: 'Internal server error' })

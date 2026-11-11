@@ -401,11 +401,14 @@ test('archived, spam and unusable addresses get nothing', { skip: SKIP }, async 
     const l = await lead(id)
     assert.equal(l.spam_state, 'spam')
     assert.equal(l.is_archived, true)
+    // The status the front desk already uses for junk (shown as "Spam"), with why.
+    assert.deepEqual([l.status, l.status_reason, l.status_auto], ['closed', 'vendor_rule', true])
     assert.deepEqual(await jobs(id), [], 'a listed sender gets no jobs')
   }
   const m = await lead(maybe)
   assert.equal(m.spam_state, 'possible')
   assert.equal(m.is_archived, false, 'a phrase never hides a lead')
+  assert.equal(m.status, 'new', 'and never changes its status')
   assert.deepEqual((await jobs(maybe)).map((j) => j.type), ['lead_sla'], 'only the deadline for a person to look')
   assert.deepEqual(mail.sent.map((x) => x.to), [(await lead(badPhone)).email])
   assert.equal(txt.calls.length, 0)
@@ -414,6 +417,7 @@ test('archived, spam and unusable addresses get nothing', { skip: SKIP }, async 
   assert.deepEqual((await events('automation.lead_spam')).map((e) => e.details.state).sort(), ['possible', 'spam', 'spam'])
   const back = await http('POST', `/api/submissions/${vendor}/spam`, { state: 'cleared' })
   assert.equal(back.json.is_archived, false)
+  assert.deepEqual([(await lead(vendor)).status, (await lead(vendor)).status_auto], ['new', false], 'Not spam: back in the inbox as New')
   assert.equal(await A.spam.applySpamRules(db, await lead(vendor), (await A.settings.loadSettings(db)).spam), null, 'a lead a person cleared is never marked again')
 })
 
@@ -785,6 +789,23 @@ test('a new lead nobody has contacted is escalated once per level, in office tim
   assert.equal((await lead(a)).escalation_level, 2)
   assert.equal(pushed.filter((p) => p.payload.title === 'A website lead is still waiting').length, 2)
   assert.equal(staffMail().length, 1, 'nothing is emailed at the second level unless an address was set')
+})
+
+test('nobody is told at night: a deadline that passed while the office was closed waits for it to open', { skip: SKIP }, async () => {
+  // As after the worker was off all afternoon: both deadlines are long past by 11 PM.
+  const a = await newLead({ consent: false })
+  const call = await addCall({ when: T0, number: '+15045550175' })
+  await run(at(0, 23, 0), { MISSED_CALL_SMS_ENABLED: 'false' })
+  await run(at(1, 3, 0), { MISSED_CALL_SMS_ENABLED: 'false' })
+  assert.equal(pushed.length, 0)
+  assert.equal(staffMail().length, 0)
+  assert.equal((await lead(a)).escalation_level, 0)
+  const waiting = [(await jobs(a, 'lead_sla'))[0], (await callJobs(call, 'call_sla'))[0]]
+  assert.deepEqual(waiting.map((j) => [j.status, j.attempts, new Date(j.run_at).toISOString()]), [['pending', 0, at(1, 9, 0).toISOString()], ['pending', 0, at(1, 9, 0).toISOString()]])
+  await run(at(1, 9, 1), { MISSED_CALL_SMS_ENABLED: 'false' })
+  assert.equal((await lead(a)).escalation_level, 1)
+  assert.ok(pushed.some((p) => p.payload.title === 'A website lead is waiting'))
+  assert.ok(pushed.some((p) => p.payload.title === 'A caller is waiting for a call back'))
 })
 
 test('the second level is emailed only when an address was set for it', { skip: SKIP }, async () => {
