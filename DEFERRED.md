@@ -3,6 +3,47 @@
 Audit-flagged work that's been intentionally deferred. Each one has scope and
 rationale so future-you (or another dev) can decide when to pick it up.
 
+## Phase 1 automation: left out, and waiting on the firm (2026-11-11)
+
+Built: `docs/phase1-automation.md`. Decided out of scope on 2026-11-11:
+
+- **eImmigration API sync** and its scheduler. No verified API schema or
+  credentials exist; `server/billing/providers/billing/index.js` is still the
+  boundary only, and the file import is how billing data arrives. The sync
+  needs: pagination, incremental reads, a single-run lock, "an older read
+  never overwrites a newer one" (the importer's report-date rule already
+  does this), and health on the Automation page.
+- **Automatic monday.com payment-status sync.** Preview and apply stay
+  manual. An automatic mode would run the existing `previewSync` →
+  `applySync` after a successful import, behind its own flag, separate from
+  `MONDAY_WRITES_ENABLED`.
+- **Management digest** (daily or weekly counts emailed to Juan). Nothing
+  from the automation is emailed outside the portal unless a second-level
+  escalation address is set (it is empty).
+
+Waiting on a decision or an asset from the firm, not on code:
+
+- **Wording** of the acknowledgment, follow-up and missed-call messages (the
+  defaults are drafts).
+- **A consent checkbox on the website forms** for text messages. The API
+  already stores `smsConsent`; the forms do not send it, so no lead is texted.
+- **Whether a missed caller may be texted** at all (consent; RingCentral's
+  policy on automated texts).
+- **RingCentral**: the SMS and Read Messages permissions on the app, and TCR
+  (10DLC) registration of the number.
+- **Google Calendar**: a service account, the calendar shared with it, and
+  one test booking to confirm how Google lists the person who booked.
+
+Follow-ups go by text only because a client's email reply cannot be seen by
+the portal (see "Inbound email replies" below); that work would also allow an
+email follow-up sequence.
+
+Seen while building, not changed: the administrator's header runs off the
+right edge at laptop widths on pages that show section labels from `xl`
+(Integrations among them), and Sign out is 8px over at 375px. The Automation
+page shows icons only below `2xl` to avoid it; the header itself is the open
+decision noted under "Staff portal review (2026-11-05)".
+
 ## Blog: prerender article bodies (opened 2026-11-10)
 
 The blog went live on 2026-11-10. The prerender writes only the `<head>`, so
