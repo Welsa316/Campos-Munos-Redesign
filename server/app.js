@@ -30,6 +30,7 @@ import { createNotificationsRouter } from './routes/notifications.js'
 import { createRemindersRouter } from './routes/reminders.js'
 import { createWorkQueueRouter } from './routes/workQueue.js'
 import { createRingCentralWebhookRouter } from './routes/ringcentralWebhook.js'
+import { createAutomationRouter } from './routes/automation.js'
 import { activityRecorder } from './activity/recorder.js'
 import {
   resolveOrigins, corsOptionsDelegate, requireTrustedOrigin, resolveClientIp,
@@ -172,6 +173,9 @@ export function createApp({ env = process.env, log = logger, beforeFallback, rea
   app.use('/api/reminders', createRemindersRouter())
   // Home's "My follow-ups" (read-only).
   app.use('/api/work-queue', createWorkQueueRouter())
+  // What the portal does on its own: switches, health, exceptions, settings
+  // (server/automation/). Administrators only.
+  app.use('/api/automation', createAutomationRouter({ env }))
 
   // API 404s — registered before any frontend fallback so an unknown /api/*
   // path returns JSON instead of a page.

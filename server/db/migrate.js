@@ -15,6 +15,7 @@ import { seedReminderDefaults } from '../billing/reminderModel.js'
 import { applyContactsSchema } from './contactsSchema.js'
 import { applyTestChannelSchema } from './testChannelSchema.js'
 import { applyRemindersSchema } from './remindersSchema.js'
+import { applyAutomationSchema } from './automationSchema.js'
 
 async function migrate() {
   const pool = getPool()
@@ -189,6 +190,10 @@ async function migrate() {
     // Callback reminders (db/remindersSchema.js). Needs admin_users,
     // submissions and rc_calls.
     await applyRemindersSchema(client)
+    // Phase 1 automation (db/automationSchema.js): the job queue, automatic
+    // messages, opt-outs, lead ownership. Last: it adds to submissions,
+    // contact_links, staff_activity and the billing reminder tables.
+    await applyAutomationSchema(client)
     logger.info('Migration complete — tables created.')
   } finally {
     client.release()

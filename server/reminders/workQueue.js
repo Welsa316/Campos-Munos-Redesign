@@ -4,16 +4,21 @@
 //
 //   1. my reminders that are overdue (due 5 minutes or more ago), oldest first
 //   2. my reminders due now
-//   3. my reminders due later today (New Orleans time), soonest first
-//   4. website leads nobody has opened or worked yet (unread, status new,
-//      not archived), oldest first, and not already in 1–3
-//   5. my reminders on later days (callers and leads I have taken on), soonest first
+//   3. website leads that need a person (automation/health.js leadAttention):
+//      a text reply waiting, an automatic message that failed, past the
+//      time someone should have made contact, possible spam, a finished
+//      follow-up sequence with no answer; mine first
+//   4. my reminders due later today (New Orleans time), soonest first
+//   5. website leads nobody has opened or worked yet (unread, status new,
+//      not archived), oldest first, and not already above
+//   6. my reminders on later days (callers and leads I have taken on), soonest first
 //
 // No other person's work and no counts about anyone: this is a to-do list,
 // not a report.
 import { callerIdName } from '../integrations/ringcentral/callLog.js'
 import { canSeeKind, targetPath } from './reminders.js'
 import { firmWall, firmInstant } from './dueTime.js'
+import { leadAttention } from '../automation/health.js'
 
 export const WORK_QUEUE_LIMIT = 5
 const OVERDUE_MS = 5 * 60 * 1000
@@ -74,7 +79,16 @@ export async function workQueue(db, { accountId, caps, now = new Date(), limit =
     }
   })
 
-  // New website leads, unless I already have a reminder on them.
+  // Leads that need a person, unless I already have a reminder on them.
+  if (leads) {
+    const mine = new Set(items.filter((i) => i.leadId).map((i) => i.leadId))
+    for (const a of await leadAttention(db, { ownerId: accountId, limit: limit + 1, now })) {
+      if (mine.has(a.id)) continue
+      items.push({ kind: 'lead_attention', group: 'attention', reason: a.reason, name: a.name, number: null, at: a.at, path: `/inbox?lead=${a.id}`, leadId: a.id })
+    }
+  }
+
+  // New website leads, unless they are already above.
   if (leads) {
     const taken = items.filter((i) => i.leadId).map((i) => i.leadId)
     const fresh = (await db.query(
@@ -91,7 +105,7 @@ export async function workQueue(db, { accountId, caps, now = new Date(), limit =
     }
   }
 
-  const ORDER = { overdue: 0, due: 1, today: 2, lead: 3, later: 4 }
+  const ORDER = { overdue: 0, due: 1, attention: 2, today: 3, lead: 4, later: 5 }
   items.sort((a, b) => ORDER[a.group] - ORDER[b.group] || new Date(a.at) - new Date(b.at))
   const shown = items.slice(0, limit).map(({ leadId, ...rest }) => rest)
   return { items: shown, hasMore: items.length > shown.length, sections: { calls, leads } }

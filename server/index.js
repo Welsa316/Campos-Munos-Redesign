@@ -179,6 +179,55 @@ if (process.env.REMINDER_WORKER !== 'false') {
   schedule(runReminders, 15 * 1000, 60 * 1000)
 }
 
+// Phase 1 automation (server/automation/, docs/phase1-automation.md): lead
+// acknowledgment and follow-ups, missed-call text-back, escalation, booking
+// detection. Every minute and once at boot, from this process alone; safe
+// with several instances. OFF unless AUTOMATION_ENABLED is exactly 'true'
+// (the same reason as the billing scheduler: server/.env on a developer
+// machine points at production), and each automation has its own switch on
+// top of that. Outside production nothing is sent to anyone but the
+// addresses in AUTOMATION_TEST_RECIPIENTS.
+if (String(process.env.AUTOMATION_ENABLED ?? '').trim().toLowerCase() === 'true') {
+  const { runAutomation } = await import('./automation/worker.js')
+  const { purgeOldJobs } = await import('./automation/jobs.js')
+  const { createResendMailer } = await import('./reminders/email.js')
+  const { loadRingCentralConfig } = await import('./integrations/ringcentral/config.js')
+  const { createRingCentralSms } = await import('./integrations/ringcentral/sms.js')
+  const { loadSettings } = await import('./automation/settings.js')
+  const { loadGoogleCalendarConfig, createGoogleCalendarProvider } = await import('./automation/scheduling/google.js')
+  const emailReady = !emailProblems.includes('RESEND_API_KEY is not set') && !emailProblems.includes('RESEND_API_KEY is still the placeholder')
+  const mailer = emailReady ? createResendMailer({ apiKey: process.env.RESEND_API_KEY, env: process.env }) : null
+  // Built once: the calendar provider keeps its access token between runs.
+  let calendar = null
+  let calendarId = null
+  const calendarFor = async () => {
+    const cfg = loadGoogleCalendarConfig(process.env, await loadSettings(getPool()))
+    if (!cfg.configured) return null
+    if (!calendar || calendarId !== cfg.calendarId) { calendar = createGoogleCalendarProvider(cfg); calendarId = cfg.calendarId }
+    return calendar
+  }
+  let running = false
+  const runAll = async () => {
+    if (running) return
+    running = true
+    try {
+      const rc = loadRingCentralConfig(process.env)
+      const sms = rc.configured ? createRingCentralSms(getPool(), rc, { env: process.env }) : null
+      const r = await runAutomation(getPool(), { env: process.env, mailer, staffMailer: mailer, sms, calendar: await calendarFor().catch(() => null), log: logger })
+      if (r.jobs?.length) logger.info({ jobs: r.jobs.length, failed: r.jobs.filter((j) => j.result.status === 'failed').length }, 'Automation jobs run')
+    } catch (err) {
+      logger.warn({ err: { name: err?.name, code: err?.code, message: err?.message } }, 'Automation run failed')
+    } finally {
+      running = false
+    }
+  }
+  schedule(runAll, 30 * 1000, 60 * 1000)
+  schedule(() => purgeOldJobs(getPool()).catch((err) => logger.warn({ err: err.message }, 'Automation job purge failed')), 2 * 60 * 1000, 24 * 60 * 60 * 1000)
+  logger.info('Automation worker on (AUTOMATION_ENABLED=true); each automation still needs its own switch')
+} else {
+  logger.info('Automation worker off (AUTOMATION_ENABLED is not true)')
+}
+
 // RingCentral: keep an idle connection alive. Refresh tokens expire (7 days
 // by default) unless used, so refresh before that. Only in production by
 // default (a developer machine must not rotate the firm's tokens), and only

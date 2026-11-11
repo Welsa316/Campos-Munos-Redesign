@@ -16,6 +16,15 @@ import { notifyNewLead } from '../push/leadAlerts.js'
 import { verifyTestToken } from '../testChannel/token.js'
 import { storeTestSubmission, notifyTestSender } from '../testChannel/store.js'
 import { closeResolvedReminders, reopenResolvedReminders } from '../reminders/reminders.js'
+import { currentFlags } from '../automation/flags.js'
+import { loadSettings } from '../automation/settings.js'
+import { startLeadAutomation } from '../automation/leads.js'
+import { stopLeadAutomation, MESSAGE_JOB_TYPES } from '../automation/leadStatus.js'
+import { leadAutomationSummary, leadAttention } from '../automation/health.js'
+import { setSpamState } from '../automation/spam.js'
+import { markRepliesHandled } from '../automation/smsInbound.js'
+import { canSeeKind } from '../reminders/reminders.js'
+import { capsOfRow } from '../auth/account.js'
 
 const UNARCHIVE_REOPEN_DAYS = 30
 
@@ -119,6 +128,35 @@ function submittedFields(b) {
     source: b.source === 'chat' ? 'chat' : 'contact',
     consultationType: b.consultationType || 'other',
     location: stripHtml(b.location || ''),
+    // The website language the form was sent in. Never guessed: anything
+    // else is stored as unknown, and messages then go out bilingual.
+    language: b.language === 'es' || b.language === 'en' ? b.language : null,
+    // True only when the form carried the person's agreement to be texted.
+    smsConsent: b.smsConsent === true,
+  }
+}
+
+// Queue the lead's automatic work (server/automation/leads.js). After the
+// answer, and never able to fail the form: a lead this misses is picked up
+// by the automation worker within a minute.
+async function beginLeadAutomation(submissionId, log) {
+  try {
+    const flags = await currentFlags(getPool(), process.env)
+    if (!flags.on('worker')) return
+    await startLeadAutomation(getPool(), submissionId, { flags, settings: await loadSettings(getPool()), log })
+  } catch (err) {
+    log?.warn?.({ err: { name: err?.name, code: err?.code }, submissionId }, 'Lead automation could not be queued; the worker will pick it up')
+  }
+}
+
+// A person acted on a lead: its pending automatic messages stop, and any
+// text reply waiting for someone counts as seen to.
+async function staffTookOver(submissionId, reason, accountId, log, { types = undefined } = {}) {
+  try {
+    await stopLeadAutomation(getPool(), submissionId, reason, { ...(types ? { types } : {}), log })
+    await markRepliesHandled(getPool(), submissionId, accountId)
+  } catch (err) {
+    log?.warn?.({ err: { name: err?.name, code: err?.code }, submissionId }, 'Could not stop a lead’s automatic follow-ups')
   }
 }
 
@@ -171,6 +209,9 @@ router.post(
   body('location').optional({ values: 'falsy' }).trim().matches(COUNTRY_CODE_REGEX).withMessage('Invalid country'),
   // Shared with the browser pixel so OpenAI deduplicates the two lead_created events.
   body('conversionEventId').optional({ values: 'falsy' }).isUUID().withMessage('Invalid conversion event id'),
+  // The website's current language, and (when the form asks) agreement to be texted.
+  body('language').optional({ values: 'falsy' }).isIn(['es', 'en']).withMessage('Invalid language'),
+  body('smsConsent').optional({ values: 'null' }).isBoolean({ strict: true }).withMessage('Invalid consent'),
   // The administrator's test link (testChannel/token.js). Checked after all
   // of the above, so a test goes through the same validation as a lead.
   body('testToken').optional({ values: 'falsy' }).isString().isLength({ max: 200 }).withMessage('Invalid test link'),
@@ -183,7 +224,7 @@ router.post(
       // link never turns into one.
       if (req.body.testToken) return await handleTestSubmission(req, res)
 
-      const { firstName, lastName, email, phone, message, source, consultationType, location } = submittedFields(req.body)
+      const { firstName, lastName, email, phone, message, source, consultationType, location, language, smsConsent } = submittedFields(req.body)
 
       const duplicate = (await getPool().query(
         `SELECT id, created_at, chat_token FROM submissions
@@ -202,14 +243,20 @@ router.post(
       const chatToken = source === 'chat' ? crypto.randomBytes(24).toString('base64url') : null
 
       const result = await getPool().query(
-        `INSERT INTO submissions (first_name, last_name, email, phone, message, source, consultation_type, location, chat_token) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id, created_at`,
-        [firstName, lastName, email, phone, message, source, consultationType, location, chatToken]
+        `INSERT INTO submissions (first_name, last_name, email, phone, message, source, consultation_type, location, chat_token, language, sms_consent_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CASE WHEN $11::boolean THEN NOW() END) RETURNING id, created_at`,
+        [firstName, lastName, email, phone, message, source, consultationType, location, chatToken, language, smsConsent]
       )
 
       // Return chat_token only when this is a chat session — the widget needs it to post follow-ups
       const responseBody = { id: result.rows[0].id, created_at: result.rows[0].created_at }
       if (chatToken) responseBody.chat_token = chatToken
       res.status(201).json(responseBody)
+
+      // The acknowledgment, follow-ups and escalation for this lead, when
+      // those are switched on. A duplicate never reaches here, so a repeated
+      // form is acknowledged once.
+      beginLeadAutomation(responseBody.id, req.log)
 
       // A desktop notification for staff who turned them on and may read
       // leads (push/leadAlerts.js). After the answer, so the website never waits.
@@ -315,6 +362,7 @@ router.get('/', requireAuth, requireCapability('crm.view'), async (req, res) => 
 
     const query = `SELECT s.id, s.first_name, s.last_name, s.email, s.phone, s.message, s.is_read,
         s.is_archived, s.source, s.consultation_type, s.location, s.status, s.created_at,
+        s.owner_id, s.spam_state, s.escalation_level, s.status_auto,
         (SELECT COUNT(*) FROM lead_notes n WHERE n.submission_id = s.id)::int AS note_count,
         (SELECT n.body FROM lead_notes n WHERE n.submission_id = s.id ORDER BY n.created_at DESC LIMIT 1) AS latest_note
       FROM submissions s${where} ORDER BY s.created_at DESC${limitClause}`
@@ -348,6 +396,19 @@ router.get('/unread-count', requireAuth, requireCapability('crm.view'), async (r
     res.json({ count: rows[0].count, oldest: rows[0].oldest ? new Date(rows[0].oldest).toISOString() : null })
   } catch (err) {
     req.log.error({ err }, 'Unread count error')
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// Admin — the leads that need a person now, and why (automation/health.js):
+// a text reply waiting, a message that failed, past the contact deadline,
+// possible spam, a finished sequence with no answer. The signed-in person's
+// own leads first.
+router.get('/attention', requireAuth, requireCapability('crm.view'), async (req, res) => {
+  try {
+    res.json({ items: await leadAttention(getPool(), { ownerId: req.account.id }) })
+  } catch (err) {
+    req.log.error({ err }, 'Lead attention error')
     res.status(500).json({ error: 'Internal server error' })
   }
 })
@@ -393,6 +454,8 @@ router.get(
         replies: repliesResult.rows,
         chat_messages: chatMessagesResult.rows,
         notes: notesResult.rows,
+        // What the portal did and will do on its own for this lead.
+        automation: await leadAutomationSummary(getPool(), req.params.id),
       })
     } catch (err) {
       req.log.error({ err: err }, 'Get submission error')
@@ -550,6 +613,8 @@ router.patch(
       // only thing that closes a lead's reminder as resolved; a month back
       // at most, so a long-forgotten one does not fire out of nowhere).
       if (result.rows[0].is_archived) {
+        // Nothing automatic goes to an archived lead.
+        await staffTookOver(result.rows[0].id, 'archived', req.account.id, req.log)
         await closeResolvedReminders(getPool(), { submissionId: result.rows[0].id })
           .catch((err) => req.log.warn({ err: { name: err?.name, code: err?.code } }, 'Closing reminders on an archived lead failed'))
       } else {
@@ -576,12 +641,16 @@ router.patch(
   async (req, res) => {
     try {
       const result = await getPool().query(
-        'UPDATE submissions SET status = $2 WHERE id = $1 RETURNING id, status',
+        `UPDATE submissions SET status = $2, status_reason = 'set_by_staff', status_auto = FALSE, status_changed_at = NOW()
+          WHERE id = $1 RETURNING id, status`,
         [req.params.id, req.body.status]
       )
       if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Submission not found' })
       }
+      // A person decided where this lead stands. Anything but New ends its
+      // automatic follow-ups; putting it back to New starts none.
+      if (req.body.status !== 'new') await staffTookOver(result.rows[0].id, `status_${req.body.status}`, req.account.id, req.log)
       res.json(result.rows[0])
     } catch (err) {
       req.log.error({ err }, 'Update status error')
@@ -761,10 +830,13 @@ router.post(
       let status = null
       try {
         const advanced = await getPool().query(
-          "UPDATE submissions SET status = 'contacted' WHERE id = $1 AND status IN ('new', 'no_response') RETURNING status",
+          `UPDATE submissions SET status = 'contacted', status_reason = 'staff_replied', status_auto = FALSE, status_changed_at = NOW()
+            WHERE id = $1 AND status IN ('new', 'no_response') RETURNING status`,
           [submission.id]
         )
         if (advanced.rows.length) status = advanced.rows[0].status
+        // A person wrote to them: the automatic follow-ups are over.
+        await staffTookOver(submission.id, 'staff_replied', req.account.id, req.log)
       } catch (statusErr) {
         // A status bump must never fail the reply itself.
         req.log.error({ err: statusErr }, 'Auto-advance status failed')
@@ -820,5 +892,72 @@ router.post(
     }
   }
 )
+
+// --- what the portal does on its own for a lead (server/automation/) ---------------
+
+const leadId = param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid submission ID')
+
+// Admin — stop (or allow again) automatic messages to this lead. Stopping
+// cancels what is queued; allowing again queues nothing new.
+router.patch('/:id/automation', requireAuth, requireCapability('crm.manage'), leadId,
+  body('paused').isBoolean({ strict: true }).withMessage('Say whether to stop or allow automatic messages'), validate,
+  async (req, res) => {
+    try {
+      const r = await getPool().query('UPDATE submissions SET automation_paused = $2 WHERE id = $1 RETURNING id, automation_paused', [req.params.id, req.body.paused])
+      if (!r.rowCount) return res.status(404).json({ error: 'Submission not found' })
+      if (req.body.paused) await stopLeadAutomation(getPool(), r.rows[0].id, 'stopped_by_staff', { types: MESSAGE_JOB_TYPES, log: req.log })
+      res.json({ id: r.rows[0].id, paused: r.rows[0].automation_paused })
+    } catch (err) {
+      req.log.error({ err }, 'Lead automation switch error')
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  })
+
+// Admin — who follows this lead up (null: the front desk as a whole).
+router.put('/:id/owner', requireAuth, requireCapability('crm.manage'), leadId,
+  body('ownerId').optional({ values: 'null' }).isInt({ min: 1, max: 2147483647 }).withMessage('Choose a person, or nobody'), validate,
+  async (req, res) => {
+    try {
+      const ownerId = req.body.ownerId ?? null
+      if (ownerId != null) {
+        const a = (await getPool().query('SELECT id, role, capability_grants, capability_revokes, disabled_at FROM admin_users WHERE id = $1', [ownerId])).rows[0]
+        if (!a || a.disabled_at || !canSeeKind(capsOfRow(a), 'submission')) return res.status(400).json({ error: 'That person cannot open website leads', code: 'invalid_owner' })
+      }
+      const r = await getPool().query(
+        'UPDATE submissions SET owner_id = $2, assigned_at = CASE WHEN $2::int IS NULL THEN NULL ELSE NOW() END WHERE id = $1 RETURNING id, owner_id', [req.params.id, ownerId]
+      )
+      if (!r.rowCount) return res.status(404).json({ error: 'Submission not found' })
+      res.json({ id: r.rows[0].id, ownerId: r.rows[0].owner_id })
+    } catch (err) {
+      req.log.error({ err }, 'Lead owner error')
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  })
+
+// Admin — "Not spam" (back to the inbox, never marked again) or "Spam".
+router.post('/:id/spam', requireAuth, requireCapability('crm.manage'), leadId,
+  body('state').isIn(['cleared', 'spam']).withMessage('Choose spam or not spam'), validate,
+  async (req, res) => {
+    try {
+      const row = await setSpamState(getPool(), req.params.id, req.body.state)
+      if (!row) return res.status(404).json({ error: 'Submission not found' })
+      if (req.body.state === 'spam') await staffTookOver(row.id, 'spam', req.account.id, req.log)
+      res.json({ id: row.id, spamState: row.spam_state, is_archived: row.is_archived })
+    } catch (err) {
+      req.log.error({ err }, 'Lead spam mark error')
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  })
+
+// Admin — the lead's text replies have been seen to (answered in
+// RingCentral, or they needed nothing).
+router.post('/:id/text-replies/handled', requireAuth, requireCapability('crm.manage'), leadId, validate, async (req, res) => {
+  try {
+    res.json({ handled: await markRepliesHandled(getPool(), req.params.id, req.account.id) })
+  } catch (err) {
+    req.log.error({ err }, 'Text replies handled error')
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
 
 export default router
