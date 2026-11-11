@@ -3,22 +3,13 @@
 Audit-flagged work that's been intentionally deferred. Each one has scope and
 rationale so future-you (or another dev) can decide when to pick it up.
 
-## Blog: waiting on client sign-off (opened 2026-11-09)
+## Blog: prerender article bodies (opened 2026-11-10)
 
-**State:** 12 bilingual articles written from Juan's videos live on the
-`feat/blog` branch (/blog, /blog/<slug>, linked from the nav, footer and each
-service page). Not merged: the copy is legal content and needs Juan's sign-off
-first. The open questions are in `docs/blog-articles-signoff.md`. The most
-important one: the live citizenship FAQ (`serviceFaqs.ciudadania`) ties 3 vs 5
-years to how the green card was obtained, which is not the rule.
-
-**At merge:** set `BLOG_DATE` in `site/src/data/blog/posts.js` and the blog
-`<lastmod>` entries in `site/public/sitemap.xml` to the go-live date.
-
-**Follow-up worth considering:** the prerender writes only the `<head>`, so
+The blog went live on 2026-11-10. The prerender writes only the `<head>`, so
 crawlers that don't run JavaScript (most AI search crawlers) see each article's
 title and description but not its body. Prerendering article bodies is the
-next step if AI-search visibility matters.
+next step if AI-search visibility matters. Open copy questions for Juan are
+still in `docs/blog-articles-signoff.md`.
 
 ## Video CDN move (~474MB across 11 MP4s)
 

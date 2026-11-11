@@ -21,7 +21,7 @@
  * Order = display order on /blog (the first one is featured).
  */
 
-export const BLOG_DATE = '2026-11-09'
+export const BLOG_DATE = '2026-11-10'
 
 export const posts = [
   {
