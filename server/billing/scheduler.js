@@ -1,11 +1,14 @@
 // Periodic reminder work: create drafts for what became due today, cancel
-// what no longer qualifies, and send what staff already approved (inside the
+// what no longer qualifies, approve the drafts of rules the firm marked
+// "send automatically" (only with BILLING_AUTO_REMINDERS_ENABLED=true;
+// reminderService.autoApprove), and send what is approved (inside the
 // sending window). Nothing here can send an unapproved message.
 //
 // One instance at a time: a session-level advisory lock is taken with
 // pg_try_advisory_lock on a dedicated connection; an instance that does not
 // get it simply skips this tick.
-import { evaluate, dispatch } from './reminderService.js'
+import { evaluate, autoApprove, dispatch } from './reminderService.js'
+import { noteSuccess, noteFailure } from '../automation/state.js'
 import { createWhatsAppProvider } from './providers/whatsapp/index.js'
 import { handleWhatsAppEvent, sweepUnhandled } from './whatsappInbound.js'
 
@@ -45,13 +48,16 @@ export function startReminderScheduler({ pool, env = process.env, log, intervalM
         const now = new Date()
         await sweepUnhandled(pool, { log })
         const ev = await evaluate(pool, { now })
+        const auto = await autoApprove(pool, { env, now, log })
         const sent = await dispatch(pool, provider, { now, env, log })
-        if (ev.created || sent.sent || sent.failed || sent.unknown) log?.info?.({ drafts: ev.created, ...sent }, 'Reminder scheduler tick')
+        if (ev.created || auto.approved || sent.sent || sent.failed || sent.unknown) log?.info?.({ drafts: ev.created, autoApproved: auto.approved, ...sent }, 'Reminder scheduler tick')
+        await noteSuccess(pool, 'payment_reminders', { drafts: ev.created, autoApproved: auto.approved, sent: sent.sent || 0, failed: sent.failed || 0, unknown: sent.unknown || 0 }).catch(() => {})
       } finally {
         await client.query('SELECT pg_advisory_unlock(hashtext($1))', [LOCK_KEY]).catch(() => {})
       }
     } catch (err) {
       log?.warn?.({ err: err.message }, 'Reminder scheduler tick failed')
+      await noteFailure(pool, 'payment_reminders', err?.code || 'error').catch(() => {})
     } finally {
       client.release()
       running = false
