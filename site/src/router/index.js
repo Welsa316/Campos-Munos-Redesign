@@ -24,6 +24,10 @@ const routes = [
   { path: '/acerca-de', name: 'About', component: () => import('../views/AboutPage.vue'),
     meta: { title: 'Acerca de Nosotros',
       description: 'Conozca a Campos Muños Law: abogados de inmigración con más de veinte años de experiencia sirviendo a la comunidad en Nueva Orleans, Louisiana.' } },
+  { path: '/blog', name: 'Blog', component: () => import('../views/BlogIndexPage.vue'),
+    meta: { title: 'Blog de Inmigración — Guías y Preguntas Frecuentes',
+      description: 'Guías claras sobre green card, ciudadanía, peticiones familiares, VAWA, visas U y T, DACA y defensa contra la deportación, de los abogados de inmigración de Campos Muños Law en Nueva Orleans.' } },
+  { path: '/blog/:slug', name: 'BlogPost', component: () => import('../views/BlogPostPage.vue'), props: true },
   { path: '/el-equipo', redirect: '/acerca-de#equipo' },
   { path: '/el-equipo/:member', name: 'TeamMember', component: () => import('../views/TeamMemberPage.vue'), props: true },
   // The staff portal is a separate app (admin/, served at admin.camulaw.com).

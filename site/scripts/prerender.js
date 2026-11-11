@@ -25,6 +25,7 @@ import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
 import { baseServices, generateSeoMeta, locations } from '../src/data/seoServices.js'
 import es from '../src/i18n/es.js'
+import { posts } from '../src/data/blog/posts.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const DIST = join(__dirname, '..', 'dist')
@@ -68,13 +69,31 @@ const TEAM = ['juan', 'angenette', 'diana', 'rio'].map(key => {
   }
 })
 
-const ROUTES = [...CORE, ...SERVICES, ...TEAM]
+// Blog: the index plus one page per article. Articles carry og:type=article
+// and their video poster as the share image (1280×720), so a link pasted into
+// WhatsApp or Facebook previews the article rather than the homepage.
+const BLOG = [
+  { path: '/blog', title: `${es.blog.metaTitle} | ${BRAND}`, description: es.blog.metaDescription, canonical: `${BASE}/blog` },
+  ...posts.map((post) => {
+    const thumb = post.service ? baseServices[post.service]?.thumbnail : null
+    return {
+      path: `/blog/${post.slug}`,
+      title: `${post.title.es} | ${BRAND}`,
+      description: post.description.es,
+      canonical: `${BASE}/blog/${post.slug}`,
+      ogType: 'article',
+      image: thumb ? { url: `${BASE}${thumb}`, width: 1280, height: 720, alt: post.title.es } : null,
+    }
+  }),
+]
+
+const ROUTES = [...CORE, ...SERVICES, ...TEAM, ...BLOG]
 
 function replaceMeta(html, selector, value) {
   return html.replace(new RegExp(`(<meta ${selector} content=")[^"]*(")`), `$1${escapeAttr(value)}$2`)
 }
 
-function applyHead(html, { title, description, canonical }) {
+function applyHead(html, { title, description, canonical, ogType, image }) {
   let out = html
   out = out.replace(/<title>[^<]*<\/title>/, `<title>${escapeText(title)}</title>`)
   out = out.replace(/(<link rel="canonical" href=")[^"]*(")/, `$1${canonical}$2`)
@@ -84,6 +103,15 @@ function applyHead(html, { title, description, canonical }) {
   out = replaceMeta(out, 'property="og:url"', canonical)
   out = replaceMeta(out, 'name="twitter:title"', title)
   out = replaceMeta(out, 'name="twitter:description"', description)
+  if (ogType) out = replaceMeta(out, 'property="og:type"', ogType)
+  if (image) {
+    out = replaceMeta(out, 'property="og:image"', image.url)
+    out = replaceMeta(out, 'property="og:image:width"', String(image.width))
+    out = replaceMeta(out, 'property="og:image:height"', String(image.height))
+    out = replaceMeta(out, 'property="og:image:alt"', image.alt)
+    out = replaceMeta(out, 'name="twitter:image"', image.url)
+    out = replaceMeta(out, 'name="twitter:image:alt"', image.alt)
+  }
   return out
 }
 
@@ -99,7 +127,7 @@ for (const route of ROUTES) {
   written++
 }
 
-console.log(`Prerendered ${written} route heads (${CORE.length} core + ${SERVICES.length} services + ${TEAM.length} team).`)
+console.log(`Prerendered ${written} route heads (${CORE.length} core + ${SERVICES.length} services + ${TEAM.length} team + ${BLOG.length} blog).`)
 
 // Emit the set of URLs that are real pages, so the server can return a true 404
 // for anything else instead of a soft-404 (HTTP 200 + "page not found" body).

@@ -49,42 +49,10 @@
           <p class="font-heading text-xl text-brand-navy mb-3">
             <i class="fa-solid fa-circle-play text-brand-navy/60 mr-2" aria-hidden="true"></i>{{ $t('serviceDetail.watchVideo', { service: serviceName }) }}
           </p>
-          <div class="rounded-2xl overflow-hidden shadow-lg">
-            <div class="aspect-video relative bg-brand-navy">
-              <!-- Graceful fallback when the video source fails to load -->
-              <div v-if="videoError"
-                class="absolute inset-0 flex items-center justify-center text-center px-6 text-white/70 font-ui text-base">
-                {{ $t('serviceDetail.videoUnavailable') }}
-              </div>
-
-              <!-- Click-to-play everywhere (no autoplay, per client decision) -->
-              <template v-else>
-                <img v-if="!videoPlaying" :src="thumbnailSrc" :alt="serviceName"
-                  class="absolute inset-0 w-full h-full object-cover" />
-                <button v-if="!videoPlaying" type="button" @click="playVideo"
-                  :aria-label="$t('serviceDetail.watchVideo', { service: serviceName })"
-                  class="absolute inset-0 cursor-pointer group z-10 bg-transparent border-0 p-0 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/80 focus-visible:ring-inset rounded-2xl">
-                  <span class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 sm:w-24 sm:h-24">
-                    <span class="absolute inset-0 rounded-full border-2 border-white/70 play-pulse-ring" aria-hidden="true"></span>
-                    <span class="relative w-full h-full rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-transform duration-300 shadow-2xl">
-                      <i class="fa-solid fa-play text-brand-navy text-2xl sm:text-3xl ml-1"></i>
-                    </span>
-                  </span>
-                </button>
-                <video
-                  v-if="videoPlaying"
-                  ref="detailVideoRef"
-                  :src="videoFile"
-                  :aria-label="$t('serviceDetail.watchVideo', { service: serviceName })"
-                  class="w-full h-full object-contain bg-black"
-                  controls
-                  autoplay
-                  playsinline
-                  @error="videoError = true"
-                ></video>
-              </template>
-            </div>
-          </div>
+          <!-- Keyed on the source so a service-to-service navigation resets the
+               player to its poster. -->
+          <ClickToPlayVideo :key="videoFile" :src="videoFile" :poster="thumbnailSrc" :alt="serviceName"
+            :label="$t('serviceDetail.watchVideo', { service: serviceName })" />
         </div>
 
         <!-- Location service area note -->
@@ -168,6 +136,22 @@
           </div>
         </div>
 
+        <!-- Blog articles written from this service's video -->
+        <div v-if="serviceArticles.length" class="reveal mt-12">
+          <h2 class="font-heading text-2xl md:text-3xl text-brand-navy mb-4">
+            {{ $t('blog.serviceArticlesTitle') }}
+          </h2>
+          <ul class="divide-y divide-gray-200 border-y border-gray-200">
+            <li v-for="post in serviceArticles" :key="post.slug">
+              <router-link :to="`/blog/${post.slug}`"
+                class="group flex items-center justify-between gap-6 py-5 text-gray-700 hover:text-brand-navy transition-colors">
+                <span class="font-heading text-xl leading-snug">{{ post.title[locale] || post.title.es }}</span>
+                <i class="fa-solid fa-arrow-right text-sm text-brand-navy/40 group-hover:text-brand-navy transition-colors flex-shrink-0" aria-hidden="true"></i>
+              </router-link>
+            </li>
+          </ul>
+        </div>
+
         <!-- Related Services (Internal Linking) -->
         <div v-if="relatedServices.length" class="reveal mt-12">
           <h2 class="font-heading text-2xl md:text-3xl text-brand-navy mb-4">
@@ -205,7 +189,9 @@ import {
   baseServices,
 } from '../data/seoServices.js'
 import { getServiceContent } from '../data/serviceContent.js'
+import { posts } from '../data/blog/posts.js'
 import NotFoundPage from './NotFoundPage.vue'
+import ClickToPlayVideo from '../components/ClickToPlayVideo.vue'
 
 const props = defineProps({ slug: String, service: String, location: String })
 const { t, locale } = useI18n()
@@ -309,47 +295,12 @@ const relatedServices = computed(() => {
   }).filter(Boolean)
 })
 
-// Video player (click-to-play with sound; no autoplay per client decision)
-const videoPlaying = ref(false)
-const detailVideoRef = ref(null)
-// Set true when a <video> emits an error (missing/unreachable source);
-// hides the broken player and shows a graceful notice.
-const videoError = ref(false)
+// Blog articles written from this service's video (internal links both ways)
+const serviceArticles = computed(() => posts.filter(p => p.service === baseSlug.value))
 
-function playVideo() {
-  videoPlaying.value = true
-  nextTick(() => {
-    const video = detailVideoRef.value
-    if (video) {
-      video.play().catch(() => {})
-      // Move keyboard focus onto the player: the play <button> just unmounted,
-      // so without this focus would fall back to <body>.
-      video.focus()
-    }
-  })
-}
-
-// Reset video + re-observe reveals when route changes
+// Re-observe reveals when the route changes (the player resets via its :key)
 watch(
   () => [props.slug, props.service, props.location],
-  () => {
-    videoPlaying.value = false
-    videoError.value = false
-    nextTick(observeRevealElements)
-  }
+  () => { nextTick(observeRevealElements) }
 )
 </script>
-
-<style scoped>
-/* Subtle expanding ring behind the play button (same easing as .btn-magnetic) */
-@keyframes play-pulse {
-  0% { transform: scale(1); opacity: 0.7; }
-  70%, 100% { transform: scale(1.35); opacity: 0; }
-}
-.play-pulse-ring {
-  animation: play-pulse 2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .play-pulse-ring { animation: none; }
-}
-</style>

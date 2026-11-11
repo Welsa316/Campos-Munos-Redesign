@@ -3,6 +3,14 @@
 Audit-flagged work that's been intentionally deferred. Each one has scope and
 rationale so future-you (or another dev) can decide when to pick it up.
 
+## Blog: prerender article bodies (opened 2026-11-10)
+
+The blog went live on 2026-11-10. The prerender writes only the `<head>`, so
+crawlers that don't run JavaScript (most AI search crawlers) see each article's
+title and description but not its body. Prerendering article bodies is the
+next step if AI-search visibility matters. Open copy questions for Juan are
+still in `docs/blog-articles-signoff.md`.
+
 ## Video CDN move (~474MB across 11 MP4s)
 
 **State today:** the service-page videos live in `site/public/*.mp4` and are
