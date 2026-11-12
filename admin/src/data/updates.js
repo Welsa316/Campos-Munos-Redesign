@@ -24,8 +24,7 @@ export const SECTIONS = {
 export const UPDATES = [
   {
     id: 'test-automation-mode',
-    // Set to the real go-live time when this is merged and deployed.
-    at: '2026-11-11T18:00:00Z',
+    at: '2026-11-12T00:45:00Z',
     section: 'admin',
     any: ['forms.test'],
     title: 'Rehearse the automation in the Test channel',
@@ -40,8 +39,7 @@ export const UPDATES = [
   },
   {
     id: 'automation-phase-1',
-    // Set to the real go-live time when this is merged and deployed.
-    at: '2026-11-11T18:00:00Z',
+    at: '2026-11-12T00:45:00Z',
     section: 'admin',
     any: ['integrations.manage'],
     title: 'The portal can now do routine follow-up on its own',
