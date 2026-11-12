@@ -12,7 +12,6 @@ import { testRecipients } from './messaging.js'
 import { isProductionEnv } from '../utils/productionEnv.js'
 import { emailConfigProblems } from '../utils/emailConfig.js'
 
-const envTrue = (env, name) => String(env?.[name] ?? '').trim().toLowerCase() === 'true'
 
 export async function automationHealth(db, { env = process.env } = {}) {
   const flags = await currentFlags(db, env)
@@ -45,14 +44,6 @@ export async function automationHealth(db, { env = process.env } = {}) {
 
   const sms = state.ringcentral_sms?.details || {}
   const calendar = loadGoogleCalendarConfig(env, settings)
-  const reminders = (await db.query(
-    `SELECT COUNT(*) FILTER (WHERE state IN ('approved', 'queued'))::int AS queued,
-            COUNT(*) FILTER (WHERE state IN ('failed', 'unknown'))::int AS problems,
-            COUNT(*) FILTER (WHERE state = 'draft')::int AS drafts,
-            COUNT(*) FILTER (WHERE auto_approved AND approved_at > NOW() - INTERVAL '7 days')::int AS auto_7d
-       FROM billing_reminders`
-  )).rows[0]
-  const autoRules = (await db.query("SELECT COUNT(*)::int AS n FROM billing_reminder_rules WHERE auto_approve AND enabled AND action = 'whatsapp'")).rows[0].n
   const optOuts = (await db.query('SELECT COUNT(*)::int AS n FROM automation_suppressions WHERE removed_at IS NULL')).rows[0].n
   const test = testRecipients(env)
 
@@ -84,11 +75,6 @@ export async function automationHealth(db, { env = process.env } = {}) {
       configured: calendar.configured, problems: calendar.problems, bookingLinkSet: Boolean(settings.scheduling.bookingUrl),
       lastSuccessAt: state.calendar?.lastSuccessAt || null, lastFailureAt: state.calendar?.lastFailureAt || null,
       lastError: state.calendar?.lastError || null, consecutiveFailures: state.calendar?.consecutiveFailures || 0,
-    },
-    paymentReminders: {
-      schedulerOn: envTrue(env, 'BILLING_SCHEDULER_ENABLED'), sendingOn: envTrue(env, 'WHATSAPP_SENDING_ENABLED'), automaticOn: flags.on('billing_auto_reminders'),
-      automaticRules: autoRules, drafts: reminders.drafts, queued: reminders.queued, problems: reminders.problems, autoApproved7d: reminders.auto_7d,
-      lastSuccessAt: state.payment_reminders?.lastSuccessAt || null, lastFailureAt: state.payment_reminders?.lastFailureAt || null, lastError: state.payment_reminders?.lastError || null,
     },
     optOuts,
   }

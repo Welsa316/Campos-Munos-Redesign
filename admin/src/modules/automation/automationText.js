@@ -169,7 +169,6 @@ export function systemEventBits(e) {
   else if (e.action === 'automation.lead_spam') bits.push(d.state === 'spam' ? 'a listed sender; archived' : 'a listed phrase; left in the inbox for someone to check')
   else if (e.action === 'automation.contact_matched') bits.push('the phone number and the email address both agree')
   else if (['automation.lead_escalated', 'automation.caller_escalated'].includes(e.action)) bits.push(`level ${d.level || 1}${d.notified != null ? `, ${d.notified} ${d.notified === 1 ? 'person' : 'people'} notified` : ''}${d.emailed ? ', one email' : ''}`)
-  else if (e.action === 'automation.reminders_auto_approved' && d.approved != null) bits.push(`${d.approved} reminder${d.approved === 1 ? '' : 's'}`)
   else if (d.reason) bits.push(reasonText(d.reason))
   return bits
 }

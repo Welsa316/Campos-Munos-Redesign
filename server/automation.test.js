@@ -1046,8 +1046,9 @@ test('health says what is on, what ran and what failed, without anyone’s detai
   await run(new Date(T0.getTime() + MIN))
   const h = (await http('GET', '/api/automation/health', undefined, u.owner)).json
   assert.equal(h.flags.find((f) => f.key === 'lead_ack').on, true)
-  assert.equal(h.flags.find((f) => f.key === 'billing_auto_reminders').on, false)
-  assert.equal(h.flags.find((f) => f.key === 'billing_auto_reminders').why, 'switched_off')
+  // Payment reminders are not automated: there is no switch for them at all.
+  assert.equal(h.flags.some((f) => /billing|reminder/i.test(f.key)), false)
+  assert.equal('paymentReminders' in h, false)
   assert.equal(h.leadAck.done7d, 2)
   assert.equal(h.leadFollowup.pending, 3)
   assert.deepEqual(h.messages.map((m) => [m.purpose, m.channel, m.sent7d]).sort(), [['lead_ack', 'email', 1], ['lead_ack', 'sms', 1]])

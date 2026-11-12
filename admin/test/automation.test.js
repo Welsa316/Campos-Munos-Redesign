@@ -85,7 +85,6 @@ test('the activity log says why the portal did something', () => {
   assert.equal(bits('automation.job_failed', { type: 'missed_call_sms', reason: 'unknown_delivery' }), 'Missed-call text: it may or may not have been delivered, so it was not sent again')
   assert.equal(bits('automation.lead_escalated', { level: 1, notified: 2, emailed: true }), 'level 1, 2 people notified, one email')
   assert.equal(bits('automation.lead_spam', { state: 'possible', reason: 'phrase_rule' }), 'a listed phrase; left in the inbox for someone to check')
-  assert.equal(bits('automation.reminders_auto_approved', { approved: 1 }), '1 reminder')
 })
 
 test('a code nobody wrote words for still reads as words, never as nothing', () => {

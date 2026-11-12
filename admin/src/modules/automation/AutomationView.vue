@@ -211,7 +211,6 @@ const groups = computed(() => {
   const sent = (purpose) => h.messages.filter((m) => m.purpose === purpose).reduce((n, m) => n + m.sent7d, 0)
   const sms = h.sms
   const cal = h.scheduling
-  const pr = h.paymentReminders
   return [
     { key: 'core', title: 'Worker', flags: of('core'), stats: null },
     { key: 'leads', title: 'Website leads', flags: of('leads'),
@@ -226,9 +225,6 @@ const groups = computed(() => {
     { key: 'scheduling', title: 'Consultation bookings', flags: of('scheduling'),
       stats: cal.configured ? `Calendar last read ${when(cal.lastSuccessAt)}. ${cal.bookingLinkSet ? 'The booking link is offered in messages.' : 'No booking link is set, so messages do not offer one.'}` : null,
       problem: !cal.configured ? `The calendar cannot be read yet: ${cal.problems.join('; ')}.` : cal.lastError ? `Reading the calendar failed (${cal.lastError}, ${when(cal.lastFailureAt)}).` : null },
-    { key: 'billing', title: 'Payment reminders', flags: of('billing'),
-      stats: `${plural(pr.automaticRules, 'rule')} marked “send automatically”. ${plural(pr.drafts, 'draft')} waiting for a person, ${pr.queued} approved and waiting to go, ${plural(pr.problems, 'problem')}. ${pr.autoApproved7d} approved automatically in the last 7 days.`,
-      problem: !pr.schedulerOn ? 'The reminder scheduler is off on the server (BILLING_SCHEDULER_ENABLED), so nothing is drafted, approved or sent on its own.' : !pr.sendingOn ? 'Sending is off on the server (WHATSAPP_SENDING_ENABLED): approved reminders wait.' : pr.lastError ? `The last run failed (${pr.lastError}).` : null },
   ].filter((g) => g.flags.length)
 })
 

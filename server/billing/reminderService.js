@@ -2,12 +2,8 @@
 // → receipts, plus the automatic cancellation pass.
 //
 // Safety rules, all enforced here on the server:
-//   - Evaluation only ever creates DRAFTS. Nothing is sent without an
-//     approval, and approval re-checks eligibility. A person approves
-//     (approveReminders), or, for a rule the firm marked "send
-//     automatically", the scheduler does (autoApprove) — only with
-//     BILLING_AUTO_REMINDERS_ENABLED=true, and never for a rule that was not
-//     marked. Everything after approval is the same either way.
+//   - Evaluation only ever creates DRAFTS. Nothing is sent without a staff
+//     approval (approveReminders), and approval re-checks eligibility.
 //   - The dispatcher sends only approved reminders, only inside the sending
 //     window, only with WHATSAPP_SENDING_ENABLED=true for the real provider,
 //     and re-checks eligibility right before each send.
@@ -24,8 +20,6 @@ import { whatsappSendingEnabled } from './providers/whatsapp/index.js'
 import { fromInvoiceRow, todayInFirmTz } from './importService.js'
 import { audit } from './audit.js'
 import { applyEarlyReceipts } from './whatsappInbound.js'
-import { envOn, loadPaused } from '../automation/flags.js'
-import { recordSystemEvent } from '../automation/events.js'
 
 export const MAX_ATTEMPTS = 3
 export const PENDING_SEND_TIMEOUT_MINUTES = 10
@@ -117,7 +111,6 @@ export const ensureDefaults = seedReminderDefaults
 export async function loadRules(db) {
   return (await db.query('SELECT * FROM billing_reminder_rules ORDER BY trigger DESC, days DESC')).rows.map((r) => ({
     key: r.key, label: r.label, trigger: r.trigger, days: r.days, action: r.action, templateKey: r.template_key, enabled: r.enabled,
-    autoApprove: Boolean(r.auto_approve),
   }))
 }
 
@@ -136,27 +129,15 @@ export async function saveRule(db, key, patch, { actorId }) {
   if (!Number.isInteger(days) || days < 0 || days > 60) throw new ReminderError('Days must be between 0 and 60')
   if (typeof enabled !== 'boolean') throw new ReminderError('Enabled must be true or false')
   if (typeof label !== 'string' || !label.trim() || label.length > 80 || /[\r\n\t]/.test(label)) throw new ReminderError('Name: one line, up to 80 characters')
-  const autoApprove = patch.autoApprove ?? Boolean(cur.auto_approve)
-  if (typeof autoApprove !== 'boolean') throw new ReminderError('Send automatically must be true or false')
-  let template = null
-  if (cur.action === 'whatsapp' && (enabled || autoApprove)) {
-    template = (await db.query('SELECT meta_approved FROM billing_message_templates WHERE key = $1', [cur.template_key])).rows[0]
-    if (!template) throw new ReminderError('This rule has no message template', 409, 'no_template')
-  }
-  // Sending without a person looking is only for a message that can be
-  // sent at all: a WhatsApp rule whose template Meta has approved.
-  if (autoApprove && !cur.auto_approve) {
-    if (cur.action !== 'whatsapp') throw new ReminderError('A staff follow-up is a task for a person; it cannot be sent automatically', 409, 'not_a_message')
-    if (!template.meta_approved) throw new ReminderError('Mark the template as approved in WhatsApp Manager before this rule can send automatically', 409, 'template_not_approved')
+  if (cur.action === 'whatsapp' && enabled) {
+    const t = (await db.query('SELECT meta_approved FROM billing_message_templates WHERE key = $1', [cur.template_key])).rows[0]
+    if (!t) throw new ReminderError('This rule has no message template', 409, 'no_template')
   }
   await db.query(
-    `UPDATE billing_reminder_rules SET days = $2, enabled = $3, label = $4, auto_approve = $6, updated_by = $5, updated_at = NOW(),
-            -- From the moment it is marked: drafts made before that stay for a person.
-            auto_approve_since = CASE WHEN $6 AND NOT auto_approve THEN NOW() WHEN $6 THEN auto_approve_since ELSE NULL END
-      WHERE key = $1`,
-    [key, days, enabled, label.trim(), actorId, autoApprove]
+    'UPDATE billing_reminder_rules SET days = $2, enabled = $3, label = $4, updated_by = $5, updated_at = NOW() WHERE key = $1',
+    [key, days, enabled, label.trim(), actorId]
   )
-  await audit(db, { actorId, action: 'reminders.rule_saved', entityType: 'rule', entityId: key, details: { days, enabled, autoApprove } })
+  await audit(db, { actorId, action: 'reminders.rule_saved', entityType: 'rule', entityId: key, details: { days, enabled } })
 }
 
 export async function saveTemplate(db, key, patch, { actorId }) {
@@ -390,70 +371,6 @@ export async function approveReminders(db, ids, { actorId, now = new Date() }) {
   return { approved: rows.map((r) => Number(r.id)), tasksDone: tasks.rowCount, notApproved: ids.length - rows.length - tasks.rowCount }
 }
 
-/** BILLING_AUTO_REMINDERS_ENABLED is 'true' and an administrator has not paused it. */
-export async function autoRemindersOn(db, env = process.env) {
-  if (!envOn(env, 'BILLING_AUTO_REMINDERS_ENABLED')) return false
-  return !(await loadPaused(db)).billing_auto_reminders
-}
-
-/**
- * Approve, with nobody looking, the drafts of the rules the firm marked
- * "send automatically". Off unless BILLING_AUTO_REMINDERS_ENABLED is 'true'.
- *
- * Exactly what a person's approval does, and no more: the same re-check
- * first (a draft whose invoice was paid, voided, needs review, moved its due
- * date, or whose client opted out is cancelled, not approved), then
- * draft → approved. The dispatcher's own checks, the sending hours, the
- * one-reminder-per-payment-and-stage rule and "never resend an unknown" all
- * still apply after it. approved_by stays empty and auto_approved says why.
- *
- * Never approved here: a staff follow-up (a task for a person), a draft of
- * a rule that is switched off or not marked, or one whose template Meta has
- * not approved.
- */
-export async function autoApprove(db, { env = process.env, now = new Date(), log = null } = {}) {
-  const withdrawn = await withdrawAutoApprovals(db, { env })
-  if (!(await autoRemindersOn(db, env))) return { approved: 0, withdrawn, skipped: 'switched_off' }
-  await cancelIneligible(db, { now })
-  const { rows } = await db.query(
-    `UPDATE billing_reminders r SET state = 'approved', approved_by = NULL, approved_at = NOW(), auto_approved = TRUE, updated_at = NOW()
-       FROM billing_reminder_rules ru, billing_message_templates t
-      WHERE ru.key = r.rule_key AND t.key = r.template_key
-        AND r.state = 'draft' AND r.action = 'whatsapp'
-        AND ru.enabled AND ru.auto_approve AND ru.action = 'whatsapp' AND t.meta_approved
-        -- Only drafts made since the rule was marked: older ones were left
-        -- unapproved by a person, and stay theirs to decide.
-        AND ru.auto_approve_since IS NOT NULL AND r.created_at >= ru.auto_approve_since
-      RETURNING r.id`
-  )
-  if (rows.length) {
-    await audit(db, { action: 'reminders.auto_approved', entityType: 'reminders', details: { approved: rows.length } })
-    await recordSystemEvent(db, { action: 'automation.reminders_auto_approved', entityType: 'reminders', details: { approved: rows.length }, log })
-  }
-  return { approved: rows.length, withdrawn }
-}
-
-/**
- * Reminders the portal approved by itself that have not gone out yet go
- * back to drafts when automatic sending is switched off or paused, or their
- * rule is no longer marked: pausing must stop what is waiting for Monday's
- * sending hours, not only what would be approved next. One a person
- * approved is never touched. Run before every automatic approval and before
- * every send. Returns how many went back.
- */
-export async function withdrawAutoApprovals(db, { env = process.env } = {}) {
-  const on = await autoRemindersOn(db, env)
-  const { rowCount } = await db.query(
-    `UPDATE billing_reminders r SET state = 'draft', approved_at = NULL, auto_approved = FALSE, updated_at = NOW()
-      WHERE r.state = 'approved' AND r.auto_approved AND r.approved_by IS NULL
-        AND ($1::boolean IS NOT TRUE OR NOT EXISTS (
-              SELECT 1 FROM billing_reminder_rules ru WHERE ru.key = r.rule_key AND ru.enabled AND ru.auto_approve))`,
-    [on]
-  )
-  if (rowCount) await audit(db, { action: 'reminders.auto_withdrawn', entityType: 'reminders', details: { withdrawn: rowCount, on } })
-  return rowCount
-}
-
 export async function cancelReminder(db, id, { actorId }) {
   const { rowCount } = await db.query(
     `UPDATE billing_reminders SET state = 'cancelled', cancel_reason = 'staff', cancelled_by = $2, cancelled_at = NOW(), updated_at = NOW()
@@ -499,9 +416,6 @@ export async function dispatch(db, provider, { now = new Date(), env = process.e
   // reminder allowed per payment and stage, so simulation must be as
   // deliberate as the real thing (it is how a demo is run on purpose).
   if (!whatsappSendingEnabled(env)) return { skipped: 'sending_disabled' }
-  // What the portal approved by itself does not go out once automatic
-  // sending is off or paused (also when someone presses "send now").
-  await withdrawAutoApprovals(db, { env })
   const settings = await getReminderSettings(db)
   const firmConsent = firmConsentOf(await getConsentPolicy(db))
   await markStalePendingUnknown(db)
@@ -649,6 +563,6 @@ async function markStalePendingUnknown(db) {
 
 export { relevantDueDate }
 export default {
-  ensureDefaults, evaluate, cancelIneligible, approveReminders, autoApprove, autoRemindersOn, withdrawAutoApprovals, cancelReminder, retryReminder, resolveUnknown, dispatch,
+  ensureDefaults, evaluate, cancelIneligible, approveReminders, cancelReminder, retryReminder, resolveUnknown, dispatch,
   upsertContact, recordOptIn, recordOptOut, saveRule, saveTemplate, getReminderSettings, saveReminderSettings,
 }

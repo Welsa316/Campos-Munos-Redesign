@@ -62,7 +62,6 @@
           <div class="col-start-2 lg:col-start-auto flex flex-wrap lg:flex-col items-start lg:items-end gap-2">
             <span :class="known(STATE, r.state).tone" class="text-[10px] font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded">{{ known(STATE, r.state).label }}</span>
             <span v-if="r.simulated" class="text-[10px] font-semibold text-violet-700">simulated</span>
-            <span v-if="r.auto_approved" class="text-[10px] font-semibold text-gray-600" title="Approved by the portal, from a rule marked “Send automatically”">approved automatically</span>
             <span v-if="r.sent_at" class="text-gray-500">sent {{ shortDate(r.sent_at) }}</span>
             <button v-if="canAct && r.state === 'draft'" @click="approve([r.id])" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg bg-brand-navy text-white font-semibold hover:bg-brand-navy-dark">{{ r.action === 'staff_followup' ? 'Mark done' : 'Approve' }}</button>
             <button v-if="canAct && ['draft', 'approved', 'unknown'].includes(r.state)" @click="ask(r, 'cancel')" :disabled="Boolean(busy)" :aria-expanded="isAsking(r, 'cancel')" class="px-3 py-1.5 rounded-lg text-gray-600 hover:text-brand-red hover:bg-red-50">Cancel</button>
@@ -128,14 +127,7 @@
         <header class="px-5 py-4 border-b border-gray-100">
           <h2 id="rules-h" class="text-sm font-ui font-semibold text-gray-900">Rules</h2>
           <p v-if="setupStatus.section === 'rules'" :role="setupStatus.ok ? 'status' : 'alert'" :class="setupStatus.ok ? 'text-green-700' : 'text-brand-red'" class="text-xs font-ui">{{ setupStatus.text }}</p>
-          <p class="text-[11px] font-ui text-gray-500 mt-0.5">A rule creates drafts for staff to approve. Reminders are never created for invoices that need review, clients without consent, or stale data.</p>
-          <!-- Automatic mode: what it does, and whether the server acts on it now. -->
-          <p class="text-[11px] font-ui text-gray-500 mt-1.5" data-auto-note>
-            A rule marked <span class="font-semibold text-gray-700">Send automatically</span> is approved by the portal instead of a person, and goes out in the sending hours. Everything else stays the same: a payment, a moved due date or an opt-out still cancels it, and a send that could not be confirmed is never repeated.
-            <span v-if="config.automatic" :class="config.automatic.enabled && config.automatic.schedulerOn ? 'text-green-700' : 'text-amber-800'" class="font-semibold">
-              {{ autoState }}
-            </span>
-          </p>
+          <p class="text-[11px] font-ui text-gray-500 mt-0.5">A rule only creates drafts for staff to approve. Reminders are never created for invoices that need review, clients without consent, or stale data.</p>
         </header>
         <ul class="divide-y divide-gray-100">
           <li v-for="r in config.rules" :key="r.key" class="px-5 py-3 flex flex-wrap items-center gap-3 text-xs font-ui">
@@ -148,10 +140,6 @@
               days {{ r.trigger === 'before_due' ? 'before' : 'after' }} the due date
             </label>
             <span class="text-gray-500 w-40">{{ r.action === 'staff_followup' ? 'Staff task, no message' : `Template: ${r.templateKey}` }}</span>
-            <label v-if="r.action !== 'staff_followup'" class="inline-flex items-center gap-2 text-gray-700 min-h-11 sm:min-h-0" :class="{ 'opacity-60': !r.enabled }">
-              <input type="checkbox" v-model="r.autoApprove" @change="saveRule(r)" :disabled="Boolean(busy) || !r.enabled" class="rounded border-gray-300" :aria-label="`Send ${r.label} automatically, without a person approving each one`" />
-              Send automatically
-            </label>
           </li>
         </ul>
       </section>
@@ -383,16 +371,7 @@ function answer(r) {
 }
 const retry = (r) => act('retry', () => post(`/api/billing/reminders/${r.id}/retry`, {}), () => 'Moved back to approved. It goes out with the next send.')
 const markHandled = (m) => act('handled', () => post(`/api/billing/responses/${m.id}/handled`, {}))
-// Whether a rule marked "Send automatically" is acted on by the server now.
-const autoState = computed(() => {
-  const a = config.value?.automatic
-  if (!a) return ''
-  if (a.enabled && a.schedulerOn) return 'Automatic sending is on.'
-  if (!a.enabled) return 'Automatic sending is switched off on the server: marked rules still wait for a person.'
-  return 'The reminder scheduler is off on the server: nothing is approved or sent on its own.'
-})
-// A rule that is switched off cannot also be automatic.
-const saveRule = (r) => saveSetup('rules', () => put(`/api/billing/reminders/rules/${r.key}`, { days: r.days, enabled: r.enabled, autoApprove: Boolean(r.enabled && r.autoApprove) }), {
+const saveRule = (r) => saveSetup('rules', () => put(`/api/billing/reminders/rules/${r.key}`, { days: r.days, enabled: r.enabled }), {
   ok: 'Rule saved.',
   revert: (c) => { const f = c.rules.find((x) => x.key === r.key); if (f) Object.assign(r, f) },
 })

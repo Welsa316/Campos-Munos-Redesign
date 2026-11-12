@@ -23,7 +23,6 @@ export const SYSTEM_EVENTS = Object.freeze({
   'automation.contact_matched': 'Confirmed a caller is a website lead',
   'automation.opt_out': 'Recorded an opt-out from automatic messages',
   'automation.opt_in': 'Removed an opt-out after the person asked to be texted again',
-  'automation.reminders_auto_approved': 'Approved payment reminders automatically',
   'automation.job_failed': 'An automation step failed',
 })
 

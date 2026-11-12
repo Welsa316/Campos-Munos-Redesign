@@ -37,8 +37,6 @@ export const FLAGS = Object.freeze({
     about: 'Texts a caller the firm missed, once per caller waiting for a call back.' },
   scheduling: { env: 'SCHEDULING_ENABLED', label: 'Consultation bookings', group: 'scheduling',
     about: 'Reads the firm’s calendar for consultations booked by a lead, and offers the booking link in messages.' },
-  billing_auto_reminders: { env: 'BILLING_AUTO_REMINDERS_ENABLED', label: 'Automatic payment reminders', group: 'billing', sends: true,
-    about: 'Approves reminders from the rules marked “send automatically”, so they go out in the sending hours without a person.' },
 })
 
 export const FLAG_KEYS = Object.freeze(Object.keys(FLAGS))

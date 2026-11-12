@@ -129,25 +129,6 @@ confirm whether a message went out (a timeout), the reminder is marked
 "Unconfirmed" and is **never resent automatically**; staff check the WhatsApp
 app and mark it "It arrived" or "It did not".
 
-## 3c. Reminders that send without each one being approved
-
-A rule can be marked **Send automatically** (Billing → Reminders → Rules &
-templates). Its drafts are then approved by the scheduler instead of a person
-and go out in the sending hours. It is acted on only when all of these hold:
-
-- `BILLING_AUTO_REMINDERS_ENABLED=true` on the API service (and not paused on
-  Integrations → Automation);
-- `BILLING_SCHEDULER_ENABLED=true` and `WHATSAPP_SENDING_ENABLED=true`;
-- the rule is switched on and marked, and its template is ticked "Approved by
-  Meta" (a rule cannot be marked before that).
-
-The approval re-checks eligibility first, exactly as a person's does, and
-nothing after it changes: one reminder per payment and stage, the next
-installment only, cancellation on payment or a moved due date, opt-outs, and
-a send that could not be confirmed is never repeated. Such a reminder shows
-"approved automatically" in the list. Failed and unconfirmed sends and client
-replies stay in the same queues for staff. See `docs/phase1-automation.md`.
-
 ## 4. Activating the real eImmigration export
 
 The column names the importer recognises are educated guesses

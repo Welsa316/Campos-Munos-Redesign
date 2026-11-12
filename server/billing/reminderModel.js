@@ -23,7 +23,7 @@ export const PENDING_STATES = ['draft', 'approved', 'queued']
 /** Allowed transitions. Anything else is a bug and must throw. */
 export const TRANSITIONS = {
   draft: ['approved', 'cancelled'],
-  approved: ['queued', 'cancelled', 'draft'], // 'draft' = an automatic approval withdrawn (automatic sending paused, or the rule unmarked)
+  approved: ['queued', 'cancelled'],
   queued: ['sent', 'failed', 'unknown', 'approved'], // 'approved' = released untouched (window closed, lock lost)
   sent: ['delivered', 'read', 'failed'],
   delivered: ['read'],

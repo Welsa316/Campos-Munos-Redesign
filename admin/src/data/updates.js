@@ -35,7 +35,6 @@ export const UPDATES = [
       'A caller the firm missed can get one text, a few minutes after the call, if they are still waiting for a call back.',
       'A lead’s status changes on its own only when something proves it: a connected call, a reply from the portal, or a booking found on the calendar. The automatic acknowledgment never counts as contact.',
       'A new lead or a missed caller that waits too long is brought to the front desk’s attention, on Home and by notification.',
-      'A payment reminder rule can be marked “Send automatically”, so its reminders go out in the sending hours without each one being approved.',
       'Each automation can be paused from the Automation page. Everything the portal did on its own is in the activity log, with why.',
     ],
   },

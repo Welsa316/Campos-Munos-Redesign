@@ -16,7 +16,7 @@ export const AUTOMATION_SCHEMA_SQL = `
   );
 
   -- Where each automation stands, for the health view: one row per
-  -- automation (worker, sms_inbound, calendar, payment_reminders, ...).
+  -- automation (worker, sms_inbound, calendar, ...).
   CREATE TABLE IF NOT EXISTS automation_state (
     key TEXT PRIMARY KEY,
     last_attempt_at TIMESTAMPTZ,
@@ -205,14 +205,6 @@ export const AUTOMATION_SCHEMA_SQL = `
     END IF;
   END $$;
   CREATE INDEX IF NOT EXISTS idx_staff_activity_system ON staff_activity(id DESC) WHERE source = 'system';
-
-  -- Payment reminders: a rule the firm approved to send on its own, and the
-  -- reminders it approved (approved_by stays NULL for those).
-  ALTER TABLE billing_reminder_rules ADD COLUMN IF NOT EXISTS auto_approve BOOLEAN NOT NULL DEFAULT FALSE;
-  -- When the rule was marked: only drafts made from then on are approved
-  -- automatically, never the older ones staff had left unapproved.
-  ALTER TABLE billing_reminder_rules ADD COLUMN IF NOT EXISTS auto_approve_since TIMESTAMPTZ;
-  ALTER TABLE billing_reminders ADD COLUMN IF NOT EXISTS auto_approved BOOLEAN NOT NULL DEFAULT FALSE;
 `
 
 export async function applyAutomationSchema(db) {

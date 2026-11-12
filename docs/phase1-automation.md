@@ -2,16 +2,14 @@
 
 What the staff portal does on its own, with nobody signed in: acknowledge new
 website leads, follow them up, text back a missed caller, move a lead's status
-when something proves it, escalate what has waited too long, and approve the
-payment reminders the firm marked to send automatically.
+when something proves it, and escalate what has waited too long.
 
 **Everything is off until it is switched on.** Deploying this code changes
 nothing a client or a staff member would notice. Each automation has its own
 variable on the API service, and can be paused in the portal.
 
 Code: `server/automation/` (the worker), `server/integrations/ringcentral/sms.js`
-(text messages), `server/billing/reminderService.js` (`autoApprove`),
-`admin/src/modules/automation/` (the portal screens).
+(text messages), `admin/src/modules/automation/` (the portal screens).
 
 Deterministic throughout: no model writes, reads or decides anything, and no
 client data goes to any AI provider.
@@ -29,11 +27,11 @@ client data goes to any AI provider.
 | Push notifications and the desktop app's feed | Escalation and failure notices go through them |
 | Activity log | The portal's own actions are written to it (source `system`) |
 | Contact matching by phone number, decided by staff | A match is confirmed automatically only when phone and email both agree |
-| Payment reminder engine: rules, drafts, approval, sending hours, cancellation, opt-out, unknown-delivery handling, scheduler with advisory lock | A per-rule automatic approval. Nothing else about it changes |
 
 **Left out on purpose** (decided 2026-11-11): the eImmigration API sync and
-its scheduler, the automatic monday.com payment-status sync, and the
-management digest. The file import, and Monday's preview/apply, work as
+its scheduler, the automatic monday.com payment-status sync, automatic
+payment reminders, and the management digest. The file import, Monday's
+preview/apply, and payment reminders (every one approved by a person) work as
 before. See `DEFERRED.md`.
 
 ## 2. Architecture
@@ -210,23 +208,6 @@ the firm's Google Calendar and links an event to a lead when a guest's email
 address is exactly a lead's. Only matched events are kept, and only their time
 and state. See "Scheduling setup".
 
-### Automatic payment reminders
-`billing/reminderService.js autoApprove` — a rule marked **Send
-automatically** (Billing → Reminders → Rules & templates) has its drafts
-approved by the scheduler instead of a person. It re-checks eligibility first
-and then does exactly what a person's approval does. Unchanged: next
-installment only, no invented amount, nothing for an invoice that needs
-review, cancellation on payment or a moved due date, opt-outs, sending hours,
-and an unknown delivery is never resent. `approved_by` stays empty and
-`auto_approved` is true.
-
-- Only drafts made **after** the rule was marked are approved; older drafts a
-  person had left unapproved stay theirs to decide.
-- Pausing automatic reminders, switching the flag off, or unmarking the rule
-  **takes back** what the portal had approved and not yet sent (it returns to
-  a draft), including when someone presses "send now". A reminder a person
-  approved is never touched.
-
 ## 4. Feature flags
 
 Two things must both be true: the variable is exactly `true`, and an
@@ -247,7 +228,6 @@ administrator has not paused it (**Integrations → Automation**).
 | `RINGCENTRAL_SMS_INBOUND_ENABLED` | reading replies and STOPs (read-only) | |
 | `MISSED_CALL_SMS_ENABLED` | missed-call text-back | `RINGCENTRAL_SMS_ENABLED`, `RINGCENTRAL_SMS_INBOUND_ENABLED` |
 | `SCHEDULING_ENABLED` | reading the calendar; the booking link in messages | |
-| `BILLING_AUTO_REMINDERS_ENABLED` | automatic approval of marked rules | `BILLING_SCHEDULER_ENABLED`, `WHATSAPP_SENDING_ENABLED` |
 
 Other variables:
 
@@ -330,7 +310,6 @@ New columns:
   `automation_started_at`, `spam_state`, `spam_reason`, `status_reason`,
   `status_auto`, `status_changed_at`
 - `contact_links`: `decided_auto`, `evidence`
-- `billing_reminder_rules.auto_approve`, `billing_reminders.auto_approved`
 
 One constraint widened: `staff_activity.source` now also allows `system`.
 Nothing is renamed or dropped. Finished jobs are purged after 180 days.
@@ -429,11 +408,6 @@ Each step is independent and can be undone by setting its variable back.
 11. `LEAD_ACK_SMS_ENABLED`, then `LEAD_FOLLOWUP_ENABLED`, then
     `MISSED_CALL_SMS_ENABLED`, one at a time.
 
-**Stage 4 — payment reminders**
-12. With `BILLING_SCHEDULER_ENABLED` and `WHATSAPP_SENDING_ENABLED` already on
-    and templates approved by Meta: tick "Send automatically" on one rule,
-    then `BILLING_AUTO_REMINDERS_ENABLED=true`.
-
 ## 11. Rollback
 
 - **One automation**: pause it on the Automation page (immediate), or set its
@@ -441,8 +415,6 @@ Each step is independent and can be undone by setting its variable back.
 - **Everything**: `AUTOMATION_ENABLED=false`. The worker stops; queued jobs
   stay queued and are skipped as `switched_off` or `too_late` if it is turned
   on again later (a follow-up more than three days late is not sent).
-- **Payment reminders**: `BILLING_AUTO_REMINDERS_ENABLED=false`; already
-  approved reminders can be cancelled in Billing → Reminders.
 - **The code**: revert the release. The new tables and columns are additive
   and are ignored by the previous version; nothing needs to be migrated back.
   (The widened `staff_activity.source` check stays, harmlessly.)
@@ -485,5 +457,4 @@ contain `test` (`TEST_DATABASE_URL=postgres://localhost/camulaw_phase1_test`).
 Each guard was broken on purpose once to confirm a test goes red for it. An
 independent review of the server code was done before release; its findings
 (a second lead of one person followed up twice, "Yes" not counted as a reply,
-texts possible without reply-reading, paused payment reminders still going
-out, and smaller ones) are fixed and each has its own test.
+texts possible without reply-reading, and smaller ones) are fixed and each has its own test.

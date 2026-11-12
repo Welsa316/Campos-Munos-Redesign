@@ -17,6 +17,9 @@ Built: `docs/phase1-automation.md`. Decided out of scope on 2026-11-11:
   manual. An automatic mode would run the existing `previewSync` →
   `applySync` after a successful import, behind its own flag, separate from
   `MONDAY_WRITES_ENABLED`.
+- **Automatic payment reminders** (decided the same day, after a first
+  version was built and removed). Every payment reminder is still approved by
+  a person in Billing → Reminders; there is no rule-level "send automatically".
 - **Management digest** (daily or weekly counts emailed to Juan). Nothing
   from the automation is emailed outside the portal unless a second-level
   escalation address is set (it is empty).

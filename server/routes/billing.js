@@ -28,7 +28,7 @@ import { audit } from '../billing/audit.js'
 import {
   evaluate as evaluateReminders, cancelIneligible, approveReminders, cancelReminder, retryReminder, resolveUnknown, dispatch,
   upsertContact, recordOptIn, recordOptOut, saveRule, saveTemplate, loadRules, loadTemplates,
-  getReminderSettings, saveReminderSettings, getConsentPolicy, saveConsentPolicy, ReminderError, autoRemindersOn,
+  getReminderSettings, saveReminderSettings, getConsentPolicy, saveConsentPolicy, ReminderError,
 } from '../billing/reminderService.js'
 import { createWhatsAppProvider, whatsappSendingEnabled } from '../billing/providers/whatsapp/index.js'
 import { handleWhatsAppEvent } from '../billing/whatsappInbound.js'
@@ -512,7 +512,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
     const rows = (await db.query(
       `SELECT r.id, r.rule_key, r.action, r.state, r.language, r.to_phone, r.preview, r.due_date, r.balance_cents, r.attempts,
               r.last_error, r.last_error_retryable, r.simulated, r.cancel_reason, r.created_at, r.approved_at, r.sent_at,
-              r.delivered_at, r.read_at, r.cancelled_at, r.auto_approved, i.external_invoice_id, i.status AS invoice_status, c.display_name AS client_name,
+              r.delivered_at, r.read_at, r.cancelled_at, i.external_invoice_id, i.status AS invoice_status, c.display_name AS client_name,
               u.email AS approved_by
          FROM billing_reminders r
          LEFT JOIN billing_invoices i ON i.id = r.invoice_id
@@ -569,12 +569,7 @@ export function createBillingRouter({ db = null, env = process.env, mondayProvid
   // Reads only: the default rules and templates are seeded by db/migrate.js.
   router.get('/reminders/config', need('billing.view'), wrap(async (_req, res) => {
     const db = pool()
-    res.json({
-      rules: await loadRules(db), templates: await loadTemplates(db), settings: await getReminderSettings(db), consent: await getConsentPolicy(db),
-      // Whether a rule marked "send automatically" is acted on at all, and
-      // whether the scheduler that does it is running (both set on the API service).
-      automatic: { enabled: await autoRemindersOn(db, env), schedulerOn: String(env.BILLING_SCHEDULER_ENABLED ?? '').trim().toLowerCase() === 'true' },
-    })
+    res.json({ rules: await loadRules(db), templates: await loadTemplates(db), settings: await getReminderSettings(db), consent: await getConsentPolicy(db) })
   }))
 
   router.put('/reminders/rules/:key', need('billing.configure'), wrap(async (req, res) => {
