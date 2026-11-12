@@ -235,6 +235,40 @@ if (automationWanted && !automationBlocked) {
   logger.info('Automation worker off (AUTOMATION_ENABLED is not true)')
 }
 
+// Test automation mode (server/testChannel/automation.js): the lead
+// automation rehearsed on the administrator's test forms. Separate from the
+// worker above and from every production switch: it reads and writes the
+// test tables only, so it runs while all automations are off. On in
+// production; elsewhere only with TEST_AUTOMATION_ENABLED=true, because a
+// developer machine may be pointed at the live database and must not pick
+// up the administrator's test steps. TEST_AUTOMATION_ENABLED=false switches
+// it off everywhere.
+{
+  const { testAutomationOn, runDueTestSteps } = await import('./testChannel/automation.js')
+  if (testAutomationOn(process.env)) {
+    const { createResendMailer } = await import('./reminders/email.js')
+    const emailReady = !emailProblems.includes('RESEND_API_KEY is not set') && !emailProblems.includes('RESEND_API_KEY is still the placeholder')
+    const mailer = emailReady ? createResendMailer({ apiKey: process.env.RESEND_API_KEY, env: process.env }) : null
+    let running = false
+    const runTests = async () => {
+      if (running) return
+      running = true
+      try {
+        const done = await runDueTestSteps(getPool(), { mailer, env: process.env, log: logger })
+        if (done.length) logger.info({ steps: done.length }, 'Test automation steps run')
+      } catch (err) {
+        logger.warn({ err: { name: err?.name, code: err?.code, message: err?.message } }, 'Test automation run failed')
+      } finally {
+        running = false
+      }
+    }
+    // Every few seconds: a test's acknowledgment should feel immediate. One
+    // indexed look at a table that is nearly always empty.
+    schedule(runTests, 5 * 1000, 5 * 1000)
+    logger.info('Test automation mode on (test channel only; no production automation is involved)')
+  }
+}
+
 // RingCentral: keep an idle connection alive. Refresh tokens expire (7 days
 // by default) unless used, so refresh before that. Only in production by
 // default (a developer machine must not rotate the firm's tokens), and only

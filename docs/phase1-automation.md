@@ -384,6 +384,14 @@ not un-schedule the lead; it asks a person to look.
 
 Each step is independent and can be undone by setting its variable back.
 
+**Before any of it: rehearse.** The Test channel has a test automation mode
+that runs the whole lead sequence on a test form, in minutes, with every
+switch below still off: the firm's own wording, the stop rules, the
+escalation, and one real acknowledgment email to an address you type. See
+"Test automation mode" in `docs/staff-accounts.md`. It proves the wording and
+the sequence; it does not exercise RingCentral, the calendar or the worker,
+which the stages below do.
+
 **Stage 1 — infrastructure, nothing sent**
 1. Deploy. Confirm the migration ran and the portal works as before.
 2. Set `AUTOMATION_TEST_RECIPIENTS` to the test address(es) and
@@ -451,7 +459,8 @@ After each stage, in the portal:
 `server/automation.test.js` (the worker over a real Postgres, fake providers),
 `server/automation/automation.unit.test.js` (hours, templates, opt-out words,
 switches, the RingCentral and Google clients against recorded conversations),
-`server/billing/autoReminders.test.js`, `admin/test/automation.test.js`.
+`admin/test/automation.test.js`. Test automation mode:
+`server/testAutomation.test.js`, `admin/test/testAutomation.test.js`.
 Never run against production: each uses its own database, whose name must
 contain `test` (`TEST_DATABASE_URL=postgres://localhost/camulaw_phase1_test`).
 Each guard was broken on purpose once to confirm a test goes red for it. An

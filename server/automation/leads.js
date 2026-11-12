@@ -44,12 +44,28 @@ export function leadStop(lead) {
   return null
 }
 
-function messageVars(lead, settings, flags) {
+export function messageVars(lead, settings, flags) {
   return {
     firstName: lead.first_name,
     firmName: settings.firm.name,
     officePhone: settings.firm.phone,
     bookingLink: flags.on('scheduling') ? settings.scheduling.bookingUrl : '',
+  }
+}
+
+/**
+ * When each step of a lead's sequence falls due, from when it arrived and
+ * the settings. Pure: the one place the timing is worked out, shared with
+ * the administrator's test mode (testChannel/automation.js), which shows
+ * the same times without ever touching a lead.
+ *   { slaDue, followups: [{ step, at }], noResponseAt }
+ */
+export function leadSchedule(created, settings) {
+  const texting = textingHours(settings)
+  return {
+    slaDue: addBusinessMinutes(created, settings.sla.newLeadMinutes, settings.hours),
+    followups: settings.followup.steps.map((step) => ({ step, at: nextBusinessTime(addBusinessDays(created, step.afterBusinessDays, settings.hours), texting) })),
+    noResponseAt: addBusinessDays(created, settings.followup.noResponseAfterBusinessDays, settings.hours),
   }
 }
 
@@ -72,7 +88,8 @@ export async function startLeadAutomation(db, submissionId, { flags, settings, n
 
   // Who follows it up, and by when a person should have made contact.
   const created = new Date(lead.created_at)
-  const slaDue = addBusinessMinutes(created, settings.sla.newLeadMinutes, settings.hours)
+  const plan = leadSchedule(created, settings)
+  const slaDue = plan.slaDue
   await db.query(
     `UPDATE submissions SET sla_due_at = COALESCE(sla_due_at, $2),
             owner_id = COALESCE(owner_id, (SELECT id FROM admin_users WHERE id = $3::int AND disabled_at IS NULL)),
@@ -89,7 +106,6 @@ export async function startLeadAutomation(db, submissionId, { flags, settings, n
     if (flags.on('lead_ack_sms')) await add({ type: 'lead_ack_sms', key: `lead-ack-sms:${lead.id}`, runAt: now })
   }
   if (messaging && flags.on('lead_followup') && settings.followup.steps.length) {
-    const texting = textingHours(settings)
     // One sequence per person: someone who wrote in twice (the chat, then
     // the form) is followed up on the lead they already have open.
     const other = (await db.query(
@@ -99,12 +115,11 @@ export async function startLeadAutomation(db, submissionId, { flags, settings, n
       [lead.id, lead.phone]
     )).rowCount
     if (!other) {
-      for (const step of settings.followup.steps) {
-        const at = nextBusinessTime(addBusinessDays(created, step.afterBusinessDays, settings.hours), texting)
+      for (const { step, at } of plan.followups) {
         // dueAt: when it was meant to go, kept apart from run_at (which moves when it has to wait).
         await add({ type: 'lead_followup', key: `lead-followup:${lead.id}:${step.key}`, runAt: at, payload: { step: step.key, dueAt: at.toISOString() } })
       }
-      await add({ type: 'lead_no_response', key: `lead-no-response:${lead.id}`, runAt: addBusinessDays(created, settings.followup.noResponseAfterBusinessDays, settings.hours) })
+      await add({ type: 'lead_no_response', key: `lead-no-response:${lead.id}`, runAt: plan.noResponseAt })
     }
   }
   // A possible-spam lead still gets a deadline: a person has to look at it.

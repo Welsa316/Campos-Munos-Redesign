@@ -23,6 +23,22 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'test-automation-mode',
+    // Set to the real go-live time when this is merged and deployed.
+    at: '2026-11-11T18:00:00Z',
+    section: 'admin',
+    any: ['forms.test'],
+    title: 'Rehearse the automation in the Test channel',
+    summary: 'The Test channel can now run the whole lead automation on a test form, so you can watch it work before any of it is switched on. Nothing real is involved: no lead, no client, no colleague.',
+    points: [
+      'Start a test from the Test channel page, or have one start for each test form you send from the website.',
+      'Accelerated timing runs the sequence in about five minutes: the acknowledgment at once, a follow-up after one and two minutes, the escalation after three and four, then “No response”.',
+      'Only the acknowledgment email can really be sent, to the address you type for the test, marked [TEST]. Text messages are never sent; the page shows what each would say.',
+      'Press “Client replied”, “Consultation booked” or a status button to see the sequence stop as it would for a lead.',
+      'Everything a test did is in the test history on that page, and “Reset test data” removes it all.',
+    ],
+  },
+  {
     id: 'automation-phase-1',
     // Set to the real go-live time when this is merged and deployed.
     at: '2026-11-11T18:00:00Z',

@@ -9,6 +9,12 @@
           <p class="text-xs text-gray-500 mt-0.5 max-w-2xl">Send test forms through the real website. They go through the same checks as a client’s, then land here instead of the inbox: no lead, no office email, and no notification for anyone but you.</p>
         </div>
 
+        <!-- Said once for the whole page, and again on everything a test produces. -->
+        <p class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-amber-50 ring-1 ring-amber-300 px-4 py-3 text-xs text-amber-900" data-test-banner>
+          <span class="inline-flex items-center gap-2 font-semibold tracking-[0.06em]"><FaIcon name="flask" class="text-[11px]" />{{ TEST_BANNER }}</span>
+          <span>Everything on this page stays in the test channel. Leads, clients, staff, reminders, billing and RingCentral are never touched.</span>
+        </p>
+
         <!-- Send a test -->
         <section class="bg-white rounded-xl ring-1 ring-gray-200 px-4 sm:px-5 py-4" aria-labelledby="tc-send">
           <div class="flex flex-wrap items-start justify-between gap-3">
@@ -45,6 +51,24 @@
           </div>
         </section>
 
+        <!-- Test automation mode -->
+        <p v-if="overviewError" role="alert" class="text-sm text-brand-red bg-red-50 rounded-lg px-4 py-3">{{ overviewError }}</p>
+        <TestAutomationStart v-if="overview" :overview="overview" @started="onStarted" @options="(o) => (startOptions = o)" />
+
+        <section v-if="overview?.pending.length" class="bg-white rounded-xl ring-1 ring-gray-200 overflow-hidden" aria-labelledby="ta-waiting">
+          <h3 id="ta-waiting" class="px-4 sm:px-5 py-3 border-b border-gray-100 text-sm font-semibold text-gray-900">Waiting to run <span class="text-gray-500 font-normal tabular-nums">({{ overview.pending.length }})</span></h3>
+          <ul class="divide-y divide-gray-100" aria-live="polite">
+            <li v-for="p in overview.pending" :key="p.testId">
+              <button type="button" @click="open(p.testId, true)" class="w-full text-left px-4 sm:px-5 py-2.5 min-h-11 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs hover:bg-brand-surface/60 transition-colors">
+                <span class="font-semibold text-gray-900">{{ p.testName || `Test ${p.testId}` }}</span>
+                <span class="text-gray-600">next: {{ stepLabel(p.nextStep) }}</span>
+                <span class="text-amber-800 font-semibold tabular-nums">{{ dueText(p.nextDueAt, now) }}</span>
+                <span class="ml-auto text-gray-500 tabular-nums">{{ p.pending }} waiting</span>
+              </button>
+            </li>
+          </ul>
+        </section>
+
         <!-- What came in -->
         <section class="bg-white rounded-xl ring-1 ring-gray-200 overflow-hidden" aria-labelledby="tc-received" :aria-busy="loading">
           <div class="flex flex-wrap items-center gap-3 px-4 sm:px-5 py-3 border-b border-gray-100">
@@ -56,11 +80,11 @@
               </button>
               <button v-if="items.length && !confirmClear" type="button" @click="confirmClear = true"
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-red ring-1 ring-red-200 hover:bg-red-50 transition-colors">
-                <FaIcon name="trash" class="text-[10px]" />Clear all
+                <FaIcon name="trash" class="text-[10px]" />Reset test data
               </button>
             </div>
             <ConfirmInline v-if="confirmClear" class="basis-full" :title="`Remove all ${items.length} test form${items.length === 1 ? '' : 's'}?`"
-              body="Only test forms are removed. Leads in the inbox are not touched." confirm-label="Remove all" :busy="clearing"
+              body="Every test form goes, with its automation test, anything still waiting to run and the test history. Leads in the inbox are not touched." confirm-label="Reset test data" :busy="clearing"
               @confirm="clearAll" @cancel="confirmClear = false" />
           </div>
 
@@ -82,10 +106,11 @@
                   <span class="flex items-center gap-2">
                     <span class="truncate text-sm font-semibold text-gray-900">{{ t.first_name }} {{ t.last_name }}</span>
                     <span :class="t.source === 'chat' ? 'bg-brand-navy/10 text-brand-navy' : 'bg-gray-100 text-gray-600'"
-                      class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider">{{ t.source === 'chat' ? 'Chat' : 'Form' }}</span>
+                      class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider">{{ SOURCE[t.source] || 'Form' }}</span>
                     <time :datetime="t.created_at" class="ml-auto shrink-0 text-[11px] text-gray-500 tabular-nums">{{ when(t.created_at) }}</time>
                   </span>
                   <span class="block mt-0.5 truncate text-xs text-gray-500">{{ t.message || '(no message)' }}</span>
+                  <span v-if="listNote(t)" :class="t.automation_pending ? 'text-amber-800' : 'text-gray-500'" class="block mt-0.5 truncate text-[11px] font-semibold">{{ listNote(t) }}</span>
                 </button>
               </li>
             </ol>
@@ -101,7 +126,7 @@
                   <div class="min-w-0">
                     <h4 class="font-heading text-xl text-gray-900 break-words">{{ selected.first_name }} {{ selected.last_name }}</h4>
                     <p class="text-xs text-gray-500 mt-0.5">
-                      {{ selected.source === 'chat' ? 'Chat' : 'Contact form' }} · <time :datetime="selected.created_at">{{ fullTime(selected.created_at) }}</time>
+                      {{ SOURCE_LONG[selected.source] || 'Contact form' }} · <time :datetime="selected.created_at">{{ fullTime(selected.created_at) }}</time>
                     </p>
                   </div>
                   <button v-if="!confirmRemove" type="button" @click="confirmRemove = true"
@@ -130,9 +155,22 @@
                     <p class="text-[11px] text-gray-500 mt-1 ml-1"><time :datetime="m.sent_at">{{ fullTime(m.sent_at) }}</time></p>
                   </div>
                 </div>
+
+                <TestAutomationPanel v-if="overview?.on" ref="panelEl" :test="selected" :options="startOptions" :now="now" :busy="acting" :error="panelError" :ask-known="askKnown"
+                  @start="startOn" @action="act" @dismiss="askKnown = ''" />
               </article>
             </div>
           </div>
+        </section>
+
+        <!-- Everything any test did: the test-only history -->
+        <section v-if="overview" class="bg-white rounded-xl ring-1 ring-gray-200 overflow-hidden" aria-labelledby="ta-history">
+          <div class="px-4 sm:px-5 py-3 border-b border-gray-100">
+            <h3 id="ta-history" class="text-sm font-semibold text-gray-900">Test history <span class="text-gray-500 font-normal tabular-nums">({{ overview.history.length }})</span></h3>
+            <p class="text-[11px] text-gray-500 mt-0.5">What every automation test sent, showed or was told, newest first. Kept here only: none of it is in the staff activity log.</p>
+          </div>
+          <p v-if="!overview.history.length" class="py-8 px-6 text-center text-xs text-gray-500">Nothing yet. Start an automation test above.</p>
+          <TestEventList v-else :events="overview.history" show-test class="px-4 sm:px-5 max-h-[28rem] overflow-y-auto" @open="(id) => open(id, true)" />
         </section>
       </div>
     </div>
@@ -140,7 +178,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../../composables/useApi.js'
 import { consultationLabel } from '../../data/consultationTypes.js'
@@ -150,6 +188,13 @@ import { formatPhone } from '../../utils/phone.js'
 import PortalHeader from '../../components/portal/PortalHeader.vue'
 import FaIcon from '../../components/FaIcon.vue'
 import ConfirmInline from '../../components/ConfirmInline.vue'
+import TestAutomationStart from './TestAutomationStart.vue'
+import TestAutomationPanel from './TestAutomationPanel.vue'
+import TestEventList from './TestEventList.vue'
+import { TEST_BANNER, stepLabel, dueText, listNote } from './testAutomationText.js'
+
+const SOURCE = { chat: 'Chat', contact: 'Form', portal: 'Portal' }
+const SOURCE_LONG = { chat: 'Chat', contact: 'Contact form', portal: 'Started from the portal' }
 
 const { get, post, del } = useApi()
 const route = useRoute()
@@ -183,31 +228,122 @@ function when(d) {
   return date.toDateString() === new Date().toDateString() ? clock(d) : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-async function load() {
-  loading.value = true
-  error.value = ''
+// quiet: the refresh a running test does on its own, with no spinner.
+async function load({ quiet = false } = {}) {
+  if (!quiet) loading.value = true
+  if (!quiet) error.value = ''
   try {
     items.value = (await get('/api/test-channel')).items
     loaded.value = true
     // The open one may have been removed meanwhile.
     if (selected.value && !items.value.some((t) => t.id === selected.value.id)) selected.value = null
   } catch (err) {
-    error.value = `Could not load the test channel: ${err.message}`
+    if (!quiet) error.value = `Could not load the test channel: ${err.message}`
   } finally {
-    loading.value = false
+    if (!quiet) loading.value = false
   }
 }
 
-async function open(id) {
+async function open(id, reveal = false) {
   confirmRemove.value = false
+  panelError.value = ''
+  askKnown.value = ''
   try {
     selected.value = await get(`/api/test-channel/${id}`)
     if (String(route.query.test || '') !== String(id)) router.replace({ query: { test: id } })
+    if (reveal) nextTick(() => panelEl.value?.$el?.scrollIntoView?.({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'nearest' }))
   } catch (err) {
     error.value = `Could not open that test form: ${err.message}`
     selected.value = null
   }
 }
+
+// --- test automation mode ---------------------------------------------------------------
+
+const overview = ref(null)
+const overviewError = ref('')
+const startOptions = ref({ timing: 'accelerated', sendEmail: true, notifyMe: false })
+const acting = ref(false)
+const panelError = ref('')
+const askKnown = ref('')
+const panelEl = ref(null)
+// The clock the countdowns read; it only ticks while something is waiting.
+const now = ref(Date.now())
+const reduceMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+
+const somethingWaiting = computed(() => Boolean(overview.value?.pending.length))
+
+async function loadOverview() {
+  try {
+    overview.value = await get('/api/test-channel/automation')
+    overviewError.value = ''
+  } catch (err) {
+    if (!overview.value) overviewError.value = `Could not load test automation: ${err.message}`
+  }
+}
+
+/** The open test and the overview, quietly: what the page shows while a test runs. */
+async function refreshRunning() {
+  now.value = Date.now()
+  await Promise.all([loadOverview(), load({ quiet: true })])
+  if (selected.value?.automation) {
+    try {
+      const fresh = await get(`/api/test-channel/${selected.value.id}`)
+      if (selected.value?.id === fresh.id) selected.value = fresh
+    } catch { /* removed meanwhile: the list says so on its next load */ }
+  }
+}
+
+async function onStarted(id) {
+  await Promise.all([load(), loadOverview()])
+  await open(id, true)
+}
+
+/** Start the automation test on the open test form, with the choices above. */
+async function startOn(confirmKnown) {
+  if (!selected.value) return
+  acting.value = true
+  panelError.value = ''
+  try {
+    await post(`/api/test-channel/${selected.value.id}/automation`, { ...startOptions.value, confirmKnown: confirmKnown === true })
+    askKnown.value = ''
+    await Promise.all([open(selected.value.id), loadOverview(), load()])
+  } catch (err) {
+    if (err.code === 'address_on_a_lead') askKnown.value = err.message
+    else panelError.value = `Could not start the test: ${err.message}`
+  } finally {
+    acting.value = false
+  }
+}
+
+async function act(action) {
+  if (!selected.value) return
+  acting.value = true
+  panelError.value = ''
+  try {
+    const r = await post(`/api/test-channel/${selected.value.id}/automation/actions`, { action })
+    selected.value = { ...selected.value, automation: r.automation }
+    await Promise.all([loadOverview(), load()])
+  } catch (err) {
+    panelError.value = `That did not work: ${err.message}`
+  } finally {
+    acting.value = false
+  }
+}
+
+// While a test is waiting on a step: a countdown every second, and a look at
+// the server every three (the server runs a due step within five).
+let clockTimer = null
+let pollTimer = null
+watch(somethingWaiting, (on) => {
+  clearInterval(clockTimer)
+  clearInterval(pollTimer)
+  if (!on) return
+  clockTimer = setInterval(() => { now.value = Date.now() }, 1000)
+  pollTimer = setInterval(() => { if (document.visibilityState === 'visible' && !acting.value) refreshRunning() }, 3000)
+}, { immediate: true })
+
+
 function close() {
   selected.value = null
   router.replace({ query: {} })
@@ -243,7 +379,7 @@ async function remove(id) {
     await del(`/api/test-channel/${id}`)
     confirmRemove.value = false
     close()
-    await load()
+    await Promise.all([load(), loadOverview()])
   } catch (err) {
     error.value = `Could not remove it: ${err.message}`
   } finally {
@@ -257,7 +393,7 @@ async function clearAll() {
     await del('/api/test-channel')
     confirmClear.value = false
     close()
-    await load()
+    await Promise.all([load(), loadOverview()])
   } catch (err) {
     error.value = `Could not clear the test channel: ${err.message}`
   } finally {
@@ -266,7 +402,7 @@ async function clearAll() {
 }
 
 // Coming back from the website tab is when a new test has arrived.
-const onVisible = () => { if (document.visibilityState === 'visible') load() }
+const onVisible = () => { if (document.visibilityState === 'visible') { load(); refreshRunning() } }
 
 // ?test=<id>: a test form's notification opens it.
 watch(() => route.query.test, (id) => {
@@ -275,10 +411,13 @@ watch(() => route.query.test, (id) => {
 
 onMounted(() => {
   load()
+  loadOverview()
   document.addEventListener('visibilitychange', onVisible)
 })
 onBeforeUnmount(() => {
   document.removeEventListener('visibilitychange', onVisible)
   clearTimeout(copiedTimer)
+  clearInterval(clockTimer)
+  clearInterval(pollTimer)
 })
 </script>

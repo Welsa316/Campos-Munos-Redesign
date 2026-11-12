@@ -15,6 +15,7 @@ import { sha256Hex, digestsEqual } from '../integrations/secretBox.js'
 import { notifyNewLead } from '../push/leadAlerts.js'
 import { verifyTestToken } from '../testChannel/token.js'
 import { storeTestSubmission, notifyTestSender } from '../testChannel/store.js'
+import { getTestPrefs, startTestRun, testAutomationOn } from '../testChannel/automation.js'
 import { closeResolvedReminders, reopenResolvedReminders } from '../reminders/reminders.js'
 import { currentFlags } from '../automation/flags.js'
 import { loadSettings } from '../automation/settings.js'
@@ -173,6 +174,20 @@ async function handleTestSubmission(req, res) {
   if (stored.duplicate) return
   notifyTestSender(getPool(), { accountId: account.id, testId: stored.id, source: fields.source })
     .catch((err) => req.log.warn({ err, testId: stored.id }, 'Test form notification failed'))
+  // Test automation mode: when this administrator asked for it, the test
+  // form gets the automation a lead would, rehearsed in the test channel
+  // only (testChannel/automation.js). After the answer; never able to fail
+  // the form.
+  beginTestAutomation(account.id, stored.id).catch((err) => req.log.warn({ err: { name: err?.name, code: err?.code }, testId: stored.id }, 'Test automation could not be started'))
+}
+
+async function beginTestAutomation(accountId, testId) {
+  if (!testAutomationOn(process.env)) return
+  const prefs = await getTestPrefs(getPool(), accountId)
+  if (!prefs.autoStart) return
+  // lenient: nobody is there to confirm an address a lead also has, so the
+  // email is held back instead of the test being refused.
+  await startTestRun(getPool(), { testId, by: accountId, timing: prefs.timing, sendEmail: prefs.sendEmail, notifyMe: prefs.notifyMe, lenient: true })
 }
 
 async function handleTestChatMessage(req, res) {

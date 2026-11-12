@@ -64,6 +64,12 @@ export const ACTIONS = {
   'POST /api/test-channel/link': { key: 'test_channel.link', label: 'Made a test link for the website forms' },
   'DELETE /api/test-channel/:id': { key: 'test_channel.removed', label: 'Removed a test form', entity: 'test_form' },
   'DELETE /api/test-channel': { key: 'test_channel.cleared', label: 'Cleared the test channel' },
+  // Test automation mode: not in this log on purpose. Every test action is
+  // written to the test's own history (test_automation_events) instead.
+  'PUT /api/test-channel/automation/prefs': { skip: true },
+  'POST /api/test-channel/automation/tests': { skip: true },
+  'POST /api/test-channel/:id/automation': { skip: true },
+  'POST /api/test-channel/:id/automation/actions': { skip: true },
 
   // WhatsApp inbox
   'POST /api/whatsapp/conversations/:id/messages': { key: 'whatsapp.replied', label: 'Sent a WhatsApp reply', entity: 'conversation' },
