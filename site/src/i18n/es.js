@@ -90,6 +90,9 @@ export default {
     email: 'Correo electrónico',
     message: 'Mensaje',
     phone: 'Teléfono',
+    // Agreeing to text messages. Optional. The firm's wording to approve.
+    smsConsent: 'Acepto recibir mensajes de texto de Campos Muños Law sobre mi consulta en el número que indiqué (opcional).',
+    smsConsentNote: 'Hasta 3 mensajes por consulta. Pueden aplicarse tarifas de mensajes y datos. Responda STOP para dejar de recibirlos. No es un requisito para recibir nuestros servicios.',
     submit: 'Enviar',
     sending: 'Enviando...',
     successMessage: '¡Gracias por enviar su formulario! Nos comunicaremos con usted pronto.',

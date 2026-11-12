@@ -40,7 +40,7 @@
   <transition name="modal">
     <div v-if="isOpen" ref="panelRef"
       role="dialog" aria-modal="true" :aria-label="$t('chat.openChat')" tabindex="-1"
-      class="fixed inset-x-3 bottom-3 sm:inset-x-auto sm:bottom-6 sm:right-6 z-[150] w-auto sm:w-[380px] max-w-[420px] h-[calc(100dvh-1.5rem)] sm:h-[560px] sm:max-h-[calc(100dvh-3rem)] flex flex-col bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
+      class="fixed inset-x-3 bottom-3 sm:inset-x-auto sm:bottom-6 sm:right-6 z-[150] w-auto sm:w-[380px] max-w-[420px] h-[calc(100dvh-1.5rem)] sm:h-[620px] sm:max-h-[calc(100dvh-3rem)] flex flex-col bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
       <!-- Header -->
       <div class="flex items-center gap-3 px-4 py-3 bg-brand-navy text-white flex-shrink-0">
         <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-white/30 flex-shrink-0">
@@ -125,6 +125,15 @@
                 :aria-label="$t('chat.firstMessage')"
                 class="chat-input w-full resize-none"></textarea>
 
+              <!-- Optional and unticked: agreeing to text messages is the person's
+                   own choice. Its small print sits with the privacy note under the
+                   button, so the button stays in reach in this small panel. -->
+              <label class="flex items-start gap-2.5 cursor-pointer text-left">
+                <input v-model="form.smsConsent" type="checkbox" name="sms_consent"
+                  class="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-brand-navy focus:ring-2 focus:ring-brand-navy/40" />
+                <span class="text-gray-600 text-[11px] font-ui leading-relaxed">{{ $t('contact.smsConsent') }}</span>
+              </label>
+
               <p v-if="formError" role="alert" class="text-brand-red text-xs font-ui">
                 <i class="fa-solid fa-circle-exclamation mr-1" aria-hidden="true"></i>{{ formError }}
               </p>
@@ -138,6 +147,7 @@
 
               <p class="text-gray-500 text-[11px] font-ui leading-relaxed text-center">
                 {{ $t('chat.privacyNote') }}
+                <span class="block mt-1">{{ $t('contact.smsConsentNote') }}</span>
               </p>
             </form>
           </div>
@@ -251,6 +261,7 @@ const form = ref({
   consultationType: '',
   location: '',
   message: '',
+  smsConsent: false,
   website: '',
 })
 
@@ -404,6 +415,8 @@ async function startChat() {
         source: 'chat',
         // The site language the chat was started in (for the acknowledgment).
         language: locale.value === 'en' ? 'en' : 'es',
+        // Only their own tick counts as agreeing to text messages.
+        smsConsent: f.smsConsent === true,
         website: f.website,
         ...(testToken ? { testToken } : {}),
       }),
@@ -435,7 +448,7 @@ async function startChat() {
     }
     messages.value = [{ id: `m-${data.id}`, body: firstMessageBody, sent_at: data.created_at }]
     saveSession()
-    form.value = { firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '', website: '' }
+    form.value = { firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '', smsConsent: false, website: '' }
     nextTick(scrollThreadToBottom)
   } catch (err) {
     formError.value = refusedTestLink ? t('testMode.expired') : t('chat.sendError')

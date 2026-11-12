@@ -110,6 +110,17 @@
                 <textarea id="contact-message" v-model="form.message" rows="4" maxlength="5000" class="form-input resize-none"></textarea>
               </div>
 
+              <!-- Optional, never ticked for them: only a person's own tick
+                   counts as agreeing to text messages. -->
+              <label for="contact-sms-consent" class="flex items-start gap-3 cursor-pointer py-1">
+                <input id="contact-sms-consent" v-model="form.smsConsent" type="checkbox" name="sms_consent"
+                  class="mt-1 h-5 w-5 shrink-0 rounded border-gray-300 text-brand-navy focus:ring-2 focus:ring-brand-navy/40" />
+                <span class="text-gray-600 text-sm font-ui leading-relaxed">
+                  {{ $t('contact.smsConsent') }}
+                  <span class="block text-gray-500 text-xs mt-1">{{ $t('contact.smsConsentNote') }}</span>
+                </span>
+              </label>
+
               <button type="submit" :disabled="loading"
                 class="w-full bg-brand-navy text-white font-ui font-bold tracking-wider text-base py-5 rounded-xl btn-magnetic disabled:opacity-50 disabled:cursor-not-allowed">
                 <span v-if="loading">
@@ -239,7 +250,7 @@ function onPhoneInput(e) {
 }
 const { t, te, locale } = useI18n()
 
-const form = ref({ firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '', website: '' })
+const form = ref({ firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '', smsConsent: false, website: '' })
 const submitted = ref(false)
 const loading = ref(false)
 const error = ref(false)
@@ -297,7 +308,7 @@ async function submitForm() {
     if (!testToken) trackLead('form', { consultation_type: form.value.consultationType || 'other' }, { conversionEventId })
 
     submitted.value = true
-    form.value = { firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '', website: '' }
+    form.value = { firstName: '', lastName: '', email: '', phone: '', consultationType: '', location: '', message: '', smsConsent: false, website: '' }
     scheduleReset(() => { submitted.value = false })
   } catch {
     if (!errorText.value) errorText.value = t('contact.errorMessage')
