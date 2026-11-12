@@ -23,6 +23,36 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'test-automation-mode',
+    at: '2026-11-12T00:45:00Z',
+    section: 'admin',
+    any: ['forms.test'],
+    title: 'Rehearse the automation in the Test channel',
+    summary: 'The Test channel can now run the whole lead automation on a test form, so you can watch it work before any of it is switched on. Nothing real is involved: no lead, no client, no colleague.',
+    points: [
+      'Start a test from the Test channel page, or have one start for each test form you send from the website.',
+      'Accelerated timing runs the sequence in about five minutes: the acknowledgment at once, a follow-up after one and two minutes, the escalation after three and four, then “No response”.',
+      'Only the acknowledgment email can really be sent, to the address you type for the test, marked [TEST]. Text messages are never sent; the page shows what each would say.',
+      'Press “Client replied”, “Consultation booked” or a status button to see the sequence stop as it would for a lead.',
+      'Everything a test did is in the test history on that page, and “Reset test data” removes it all.',
+    ],
+  },
+  {
+    id: 'automation-phase-1',
+    at: '2026-11-12T00:45:00Z',
+    section: 'admin',
+    any: ['integrations.manage'],
+    title: 'The portal can now do routine follow-up on its own',
+    summary: 'A new Automation page (from Integrations) shows what the portal does without anyone opening it. Everything is switched off until it is turned on from the server, one piece at a time.',
+    points: [
+      'A new website lead can get an acknowledgment by email and, with their agreement, by text; then follow-up texts after one and three business days while nobody has reached them.',
+      'A caller the firm missed can get one text, a few minutes after the call, if they are still waiting for a call back.',
+      'A lead’s status changes on its own only when something proves it: a connected call, a reply from the portal, or a booking found on the calendar. The automatic acknowledgment never counts as contact.',
+      'A new lead or a missed caller that waits too long is brought to the front desk’s attention, on Home and by notification.',
+      'Each automation can be paused from the Automation page. Everything the portal did on its own is in the activity log, with why.',
+    ],
+  },
+  {
     id: 'review-fixes-2026-11',
     at: '2026-11-06T17:33:28Z',
     section: 'everyone',

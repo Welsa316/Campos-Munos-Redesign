@@ -61,3 +61,12 @@ export function parseCountryCodes(list) {
 }
 
 export const inCountries = (digits, codes) => !codes || codes.some((c) => String(digits || '').startsWith(c))
+
+/**
+ * The comparable key for a number, the same as the database's cm_phone_key():
+ * digits only, and for North American numbers the last ten. '' for none.
+ */
+export function phoneKey(raw) {
+  const d = String(raw ?? '').replace(/\D/g, '')
+  return /^1\d{10}$/.test(d) ? d.slice(1) : d
+}

@@ -179,6 +179,96 @@ if (process.env.REMINDER_WORKER !== 'false') {
   schedule(runReminders, 15 * 1000, 60 * 1000)
 }
 
+// Phase 1 automation (server/automation/, docs/phase1-automation.md): lead
+// acknowledgment and follow-ups, missed-call text-back, escalation, booking
+// detection. Every minute and once at boot, from this process alone; safe
+// with several instances. OFF unless AUTOMATION_ENABLED is exactly 'true'
+// (the same reason as the billing scheduler: server/.env on a developer
+// machine points at production), and each automation has its own switch on
+// top of that. Outside production nothing is sent to anyone but the
+// addresses in AUTOMATION_TEST_RECIPIENTS.
+const automationWanted = String(process.env.AUTOMATION_ENABLED ?? '').trim().toLowerCase() === 'true'
+// A worker takes jobs out of the queue even when it may not send them (it
+// finishes them as "skipped"). So one that is not production never starts
+// without a list of test recipients: a developer machine pointed at the
+// live database must not eat real clients' acknowledgments.
+const automationBlocked = automationWanted && !isProduction && !String(process.env.AUTOMATION_TEST_RECIPIENTS ?? '').trim()
+if (automationBlocked) logger.warn('Automation worker NOT started: outside production it needs AUTOMATION_TEST_RECIPIENTS (and never point it at the production database)')
+if (automationWanted && !automationBlocked) {
+  const { runAutomation } = await import('./automation/worker.js')
+  const { purgeOldJobs } = await import('./automation/jobs.js')
+  const { createResendMailer } = await import('./reminders/email.js')
+  const { loadRingCentralConfig } = await import('./integrations/ringcentral/config.js')
+  const { createRingCentralSms } = await import('./integrations/ringcentral/sms.js')
+  const { loadSettings } = await import('./automation/settings.js')
+  const { loadGoogleCalendarConfig, createGoogleCalendarProvider } = await import('./automation/scheduling/google.js')
+  const emailReady = !emailProblems.includes('RESEND_API_KEY is not set') && !emailProblems.includes('RESEND_API_KEY is still the placeholder')
+  const mailer = emailReady ? createResendMailer({ apiKey: process.env.RESEND_API_KEY, env: process.env }) : null
+  // Built once: the calendar provider keeps its access token between runs.
+  let calendar = null
+  let calendarId = null
+  const calendarFor = async () => {
+    const cfg = loadGoogleCalendarConfig(process.env, await loadSettings(getPool()))
+    if (!cfg.configured) return null
+    if (!calendar || calendarId !== cfg.calendarId) { calendar = createGoogleCalendarProvider(cfg); calendarId = cfg.calendarId }
+    return calendar
+  }
+  let running = false
+  const runAll = async () => {
+    if (running) return
+    running = true
+    try {
+      const rc = loadRingCentralConfig(process.env)
+      const sms = rc.configured ? createRingCentralSms(getPool(), rc, { env: process.env }) : null
+      const r = await runAutomation(getPool(), { env: process.env, mailer, staffMailer: mailer, sms, calendar: await calendarFor().catch(() => null), log: logger })
+      if (r.jobs?.length) logger.info({ jobs: r.jobs.length, failed: r.jobs.filter((j) => j.result.status === 'failed').length }, 'Automation jobs run')
+    } catch (err) {
+      logger.warn({ err: { name: err?.name, code: err?.code, message: err?.message } }, 'Automation run failed')
+    } finally {
+      running = false
+    }
+  }
+  schedule(runAll, 30 * 1000, 60 * 1000)
+  schedule(() => purgeOldJobs(getPool()).catch((err) => logger.warn({ err: err.message }, 'Automation job purge failed')), 2 * 60 * 1000, 24 * 60 * 60 * 1000)
+  logger.info('Automation worker on (AUTOMATION_ENABLED=true); each automation still needs its own switch')
+} else if (!automationWanted) {
+  logger.info('Automation worker off (AUTOMATION_ENABLED is not true)')
+}
+
+// Test automation mode (server/testChannel/automation.js): the lead
+// automation rehearsed on the administrator's test forms. Separate from the
+// worker above and from every production switch: it reads and writes the
+// test tables only, so it runs while all automations are off. On in
+// production; elsewhere only with TEST_AUTOMATION_ENABLED=true, because a
+// developer machine may be pointed at the live database and must not pick
+// up the administrator's test steps. TEST_AUTOMATION_ENABLED=false switches
+// it off everywhere.
+{
+  const { testAutomationOn, runDueTestSteps } = await import('./testChannel/automation.js')
+  if (testAutomationOn(process.env)) {
+    const { createResendMailer } = await import('./reminders/email.js')
+    const emailReady = !emailProblems.includes('RESEND_API_KEY is not set') && !emailProblems.includes('RESEND_API_KEY is still the placeholder')
+    const mailer = emailReady ? createResendMailer({ apiKey: process.env.RESEND_API_KEY, env: process.env }) : null
+    let running = false
+    const runTests = async () => {
+      if (running) return
+      running = true
+      try {
+        const done = await runDueTestSteps(getPool(), { mailer, env: process.env, log: logger })
+        if (done.length) logger.info({ steps: done.length }, 'Test automation steps run')
+      } catch (err) {
+        logger.warn({ err: { name: err?.name, code: err?.code, message: err?.message } }, 'Test automation run failed')
+      } finally {
+        running = false
+      }
+    }
+    // Every few seconds: a test's acknowledgment should feel immediate. One
+    // indexed look at a table that is nearly always empty.
+    schedule(runTests, 5 * 1000, 5 * 1000)
+    logger.info('Test automation mode on (test channel only; no production automation is involved)')
+  }
+}
+
 // RingCentral: keep an idle connection alive. Refresh tokens expire (7 days
 // by default) unless used, so refresh before that. Only in production by
 // default (a developer machine must not rotate the firm's tokens), and only

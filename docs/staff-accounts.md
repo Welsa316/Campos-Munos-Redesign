@@ -146,6 +146,12 @@ with `staff.js` are logged as "command line". Reading and opening are not
 logged, except downloads (the leads CSV, import exceptions); colour theme
 changes are not logged.
 
+What the portal does on its own (an acknowledgment sent, a follow-up
+cancelled, a status changed on evidence, an escalation) is written to the
+same log with the person shown as "The portal (automatic)" and the reason
+beside it (`server/automation/events.js`, source `system`). The Person
+filter has "The portal itself" for these. See `docs/phase1-automation.md`.
+
 Details hold ids, statuses and counts only: never message or note text,
 passwords, or full phone numbers (a placed call keeps the last four
 digits). Each action's name lives in `server/activity/actions.js`;
@@ -182,6 +188,73 @@ pixels either.
 Making a link, removing one test and clearing them all are in the activity
 log. Code: `server/testChannel/`, `server/routes/testChannel.js`,
 `server/testChannel.test.js`.
+
+## Test automation mode
+
+A rehearsal of the lead automation (`docs/phase1-automation.md`) on a test
+form, in the same Test channel. Every screen, email and notice it produces
+says **TEST MODE — NO PRODUCTION ACTIONS**. It needs none of the automation
+switches and turns none of them on.
+
+**Starting a test.** On the Test channel page, under "Automation test": a
+first name, the email address the test should use, optionally a phone and
+the form's language, then **Start the test**. Or tick "Also start one for
+each test form I send from the website" and send a form through a test link
+as before. Or open any received test form and press **Start the automation
+test**.
+
+**Timing.** *Accelerated*: the acknowledgment at once, then one step about
+every minute: each follow-up, escalation level 1, level 2, "No response"
+(about five minutes with the default two follow-ups). *Real timing*: the
+business days and office hours a lead arriving now would get, from the same
+function that schedules a lead (`automation/leads.js leadSchedule`);
+**Run the next step now** moves it along. The accelerated minutes exist only
+in `testChannel/automation.js` and are never read for a lead.
+
+**What is real and what is only shown.**
+
+| Step | In a test |
+|---|---|
+| Acknowledgment email | Really sent **only** when ticked, email is set up on the server and the address is not on the opt-out list; to the address typed for the test and nowhere else; subject starts `[TEST]`, a test notice sits above the message; a reply goes to the administrator, never to the office inbox. Otherwise shown on the page |
+| Acknowledgment text, follow-up texts | Never sent. The page shows the exact text and number. Skipped without "agreed to texts", as for a lead |
+| Escalation (two levels) | Written to the test history. Nobody is notified, unless "Show me the escalation notice" is ticked: then one notice to the starting administrator's own account, titled `TEST:` |
+| Status changes | The test's own status (`test_automation_runs.lead_status`). No lead's status is read or written |
+| Client replied / Consultation booked / Mark contacted / Mark closed | Buttons that stand in for the client, the calendar and the staff. They stop what is left by the same rules a lead follows: a reply stops the follow-ups but not the escalation; a booking or a changed status stops everything |
+
+The wording is the firm's own templates and settings, rendered by the code
+that writes to clients. The booking link is included when one is set, as it
+would be with scheduling on.
+
+**An address a lead also has.** A real email to it needs a one-time
+confirmation in the portal ("It is mine"), remembered for that
+administrator. A test arriving from the website with such an address is not
+refused: its email is held back and shown instead.
+
+**History and reset.** Every step, message and button press is a row in
+`test_automation_events`, shown per test and in "Test history" at the foot of
+the page. None of it is in the staff activity log. **Reset test data** removes
+every test form, automation test, waiting step and the history, leaving one
+line that says so; **Remove** on one test does the same for that test.
+
+**Isolation.** Test mode writes to `test_submissions` and
+`test_automation_*` only. It never writes to `submissions`,
+`automation_jobs`, `automation_messages`, reminders, billing, RingCentral or
+the activity log, and the automation worker never reads the test tables.
+`server/testAutomation.test.js` fingerprints every row of every other table
+before and after a whole test and requires them identical.
+
+**Where it runs.** A five-second tick in the API process
+(`server/index.js`), separate from the automation worker. On in production;
+elsewhere only with `TEST_AUTOMATION_ENABLED=true`, because a developer
+machine may be pointed at the live database. `TEST_AUTOMATION_ENABLED=false`
+switches it off everywhere. Outside production a real email goes only to an
+address in `REMINDER_EMAIL_ALLOWLIST` or `AUTOMATION_TEST_RECIPIENTS`. At
+most ten tests run at once. A step cut off mid-way is marked failed and never
+tried again, so a test email cannot go out twice.
+
+Code: `server/testChannel/automation.js`, `server/routes/testChannel.js`,
+`admin/src/modules/testChannel/`, `server/testAutomation.test.js`,
+`admin/test/testAutomation.test.js`.
 
 ## Running the script
 

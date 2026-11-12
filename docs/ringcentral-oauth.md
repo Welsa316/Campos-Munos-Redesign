@@ -145,3 +145,11 @@ concurrent refresh (exactly one), transient vs permanent refresh failures,
 keep-alive threshold, key mismatch not wiping tokens, reconnect and
 disconnect. Removing the cookie check, the one-time consume, the same-admin
 check or the row lock each turns it red.
+
+## Text messages (Phase 1 automation)
+
+Sending and reading text messages needs two more permissions on the same
+RingCentral app, **SMS** and **Read Messages**, and connecting again on the
+Integrations page afterwards so they are granted. RingOut alone does not allow
+texting, and the number must be registered for it. Everything is in
+`docs/phase1-automation.md`, "RingCentral SMS setup".

@@ -11,6 +11,16 @@
         </p>
         <p v-if="error" role="alert" class="text-sm font-ui text-brand-red bg-red-50 rounded-lg px-4 py-3">{{ error }}</p>
 
+        <!-- What the portal does on its own lives on its own page. -->
+        <router-link :to="{ name: 'Automation' }" class="auto-link flex items-center gap-4 bg-white rounded-xl ring-1 ring-gray-200 px-5 py-4 font-ui">
+          <span class="w-9 h-9 flex-shrink-0 rounded-full bg-brand-navy/10 text-brand-navy inline-flex items-center justify-center text-[13px]" aria-hidden="true"><FaIcon name="bolt" /></span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-sm font-semibold text-gray-900">Automation</span>
+            <span class="block text-[11px] text-gray-500 mt-0.5">What the portal does on its own: acknowledgments, follow-ups, missed-call texts, escalation. What is on, what failed, and its settings.</span>
+          </span>
+          <FaIcon name="chevron-right" class="text-[11px] text-gray-400 flex-shrink-0" />
+        </router-link>
+
         <section class="bg-white rounded-xl ring-1 ring-gray-200" aria-labelledby="rc-h">
           <header class="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center gap-3">
             <div class="min-w-0">
@@ -294,3 +304,9 @@ onMounted(async () => {
   await load()
 })
 </script>
+
+<style scoped>
+.auto-link { transition: background-color 160ms ease; }
+.auto-link:hover { background: var(--surface-hover); }
+.auto-link:focus-visible { outline: 2px solid var(--primary-ring); outline-offset: 2px; }
+</style>

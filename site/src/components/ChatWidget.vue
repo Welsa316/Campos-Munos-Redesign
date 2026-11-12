@@ -402,6 +402,8 @@ async function startChat() {
         location: f.location.trim(),
         message: f.message.trim(),
         source: 'chat',
+        // The site language the chat was started in (for the acknowledgment).
+        language: locale.value === 'en' ? 'en' : 'es',
         website: f.website,
         ...(testToken ? { testToken } : {}),
       }),

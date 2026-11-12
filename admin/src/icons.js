@@ -69,6 +69,13 @@ import {
   faSliders,
   faClock,
   faBullhorn,
+  faBolt,
+  faCalendarCheck,
+  faCalendarXmark,
+  faPause,
+  faPlay,
+  faGear,
+  faUserCheck,
 } from '@fortawesome/free-solid-svg-icons'
 
 export const ICONS = [
@@ -80,6 +87,7 @@ export const ICONS = [
   faArrowsRotate, faCircleCheck, faCircleInfo, faPlug, faPen, faPalette, faHouse, faPhoneSlash, faPhoneVolume, faVoicemail, faArrowTurnUp, faArrowRight, faEnvelopeOpenText, faCirclePause, faComments, faFlask, faLock, faRotateLeft, faUser,
   faUsers, faClockRotateLeft, faUserPlus, faBan, faCopy, faTerminal, faCircleQuestion,
   faEllipsis, faSliders, faClock, faBullhorn,
+  faBolt, faCalendarCheck, faCalendarXmark, faPause, faPlay, faGear, faUserCheck,
 ]
 
 library.add(...ICONS)

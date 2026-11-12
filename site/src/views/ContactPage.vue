@@ -277,7 +277,9 @@ async function submitForm() {
     const testToken = currentTestToken()
     const res = await rawFetch('/api/submissions', {
       method: 'POST',
-      body: JSON.stringify({ ...form.value, conversionEventId, ...(testToken ? { testToken } : {}) }),
+      // language: the site language this was written in, so the firm's
+      // automatic acknowledgment goes out in it (never guessed from a name).
+      body: JSON.stringify({ ...form.value, language: locale.value === 'en' ? 'en' : 'es', conversionEventId, ...(testToken ? { testToken } : {}) }),
     })
 
     if (!res.ok) {

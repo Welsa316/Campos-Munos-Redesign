@@ -1,7 +1,7 @@
 // /api/activity — the activity log, newest first (docs/staff-accounts.md).
 // Administrators only (activity.view). Reading it is not itself logged.
 //
-//   GET /?actor=<id|cli>&outcome=ok|problems&q=<text>&from=YYYY-MM-DD&to=YYYY-MM-DD&before=<row id>
+//   GET /?actor=<id|cli|system>&outcome=ok|problems&q=<text>&from=YYYY-MM-DD&to=YYYY-MM-DD&before=<row id>
 //
 // Dates are the firm's calendar days (America/Chicago). Pages of 100 rows;
 // pass the last row's id as `before` for the next page.
@@ -28,6 +28,8 @@ export function createActivityRouter({ db = null } = {}) {
       const args = []
       const add = (sql, v) => { args.push(v); where.push(sql.replace('?', `$${args.length}`)) }
       if (q.actor === 'cli') where.push("a.source = 'cli'")
+      // What the portal did on its own (server/automation/events.js).
+      else if (q.actor === 'system') where.push("a.source = 'system'")
       else if (/^\d+$/.test(String(q.actor || ''))) add('a.actor_id = ?', Number(q.actor))
       if (q.outcome === 'ok') where.push("a.outcome = 'ok'")
       else if (q.outcome === 'problems') where.push("a.outcome <> 'ok'")

@@ -30,6 +30,14 @@ export function portalBase(env = process.env) {
   return base.replace(/\/+$/, '')
 }
 
+/** The address mail to a client comes from: the firm's own, as inbox replies do. */
+export function clientFrom(env = process.env) {
+  return `${env.RESEND_FROM_NAME || 'Campos Muños Law'} <${env.RESEND_FROM_EMAIL || 'contact@camulaw.com'}>`
+}
+
+/** Where a client's reply to that mail goes: the office inbox. */
+export const clientReplyTo = (env = process.env) => (env.ADMIN_EMAIL || env.RESEND_FROM_EMAIL || 'contact@camulaw.com').trim()
+
 export function notifyFrom(env = process.env) {
   const name = env.RESEND_FROM_NAME || 'Campos Muños Law'
   const address = resolveNotifyFrom(env.RESEND_FROM_EMAIL || 'contact@camulaw.com', env.ADMIN_EMAIL, env.RESEND_NOTIFY_FROM_EMAIL)
@@ -91,10 +99,12 @@ export function createResendMailer({ apiKey, env = process.env, client = null, t
   if (!apiKey && !client) return null
   const resend = client || new Resend(apiKey)
   return {
-    async send({ to, subject, html, text, idempotencyKey }) {
+    // from / replyTo: for mail to a client (automation/messaging.js), which
+    // goes out from the firm's own address with replies to the office.
+    async send({ to, subject, html, text, idempotencyKey, from = null, replyTo = null }) {
       try {
         // Resend answers { error } rather than throwing for API errors.
-        const { data, error } = await withTimeout(resend.emails.send({ from: notifyFrom(env), to, subject, html, text }, { idempotencyKey }), timeoutMs)
+        const { data, error } = await withTimeout(resend.emails.send({ from: from || notifyFrom(env), to, subject, html, text, ...(replyTo ? { replyTo } : {}) }, { idempotencyKey }), timeoutMs)
         if (error) return { ok: false, error: `${error.name || 'error'}: ${String(error.message || '').slice(0, 160)}`, transient: TRANSIENT.has(error.name) }
         return { ok: true, id: data?.id || null }
       } catch (err) {

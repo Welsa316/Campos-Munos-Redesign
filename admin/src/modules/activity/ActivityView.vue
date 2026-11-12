@@ -18,6 +18,7 @@
               <option value="">Everyone</option>
               <option v-for="p in people" :key="p.id" :value="String(p.id)">{{ p.name || p.email }}{{ p.disabled ? ' (access revoked)' : '' }}</option>
               <option value="cli">Command line (scripts/staff.js)</option>
+              <option value="system">The portal itself (automatic)</option>
             </select>
           </div>
           <div class="col-span-2 sm:col-span-1">
@@ -70,6 +71,7 @@
 
                 <div class="min-w-0 flex items-center gap-2 lg:pt-0">
                   <FaIcon v-if="e.source === 'cli'" name="terminal" class="text-[11px] text-gray-500" />
+                  <FaIcon v-else-if="e.source === 'system'" name="bolt" class="text-[11px] text-gray-500" />
                   <span class="truncate font-semibold text-gray-900" :title="e.actor?.email || ''">{{ actorName(e) }}</span>
                   <span v-if="e.actor?.role" class="hidden sm:inline text-[11px] text-gray-500 truncate">{{ roleLabels[e.actor.role] || e.actor.role }}</span>
                 </div>
@@ -112,6 +114,7 @@ import PortalHeader from '../../components/portal/PortalHeader.vue'
 import { rovingKeydown, rovingTabindex } from '../../utils/roving.js'
 import FaIcon from '../../components/FaIcon.vue'
 import LoadError from '../../components/LoadError.vue'
+import { systemEventBits } from '../automation/automationText.js'
 
 const OUTCOMES = [
   { key: '', label: 'All' },
@@ -162,6 +165,7 @@ const fullTime = (d) => new Date(d).toLocaleString('en-US', { dateStyle: 'full',
 
 function actorName(e) {
   // Only a failed sign-in has nobody to name.
+  if (e.source === 'system') return 'The portal (automatic)'
   if (!e.actor) return 'Unknown'
   if (e.source === 'cli') return e.actor.email
   return e.actor.name || e.actor.email
@@ -196,6 +200,8 @@ function extra(e) {
   if (e.action === 'calls.excluded' && d.reason) bits.push(`reason: ${d.reason.replace(/_/g, ' ')}`)
   if (e.action === 'reminders.approved' && d.count != null) bits.push(`${d.count} reminder${d.count === 1 ? '' : 's'}`)
   if (e.action === 'integrations.rc_connected' && d.outcome) bits.push(`result: ${d.outcome.replace(/_/g, ' ')}`)
+  // What the portal did on its own: why, in words (modules/automation/automationText.js).
+  if (e.source === 'system') bits.push(...systemEventBits(e))
   if (e.action === 'request') bits.push('Not yet named in the log; shown as the request itself')
   if (e.action === 'auth.sign_in' && e.outcome !== 'ok') {
     bits.push({ 401: 'wrong email or password', 403: 'access revoked', 429: 'too many attempts; sign-in paused for 15 minutes' }[e.statusCode] || `error ${e.statusCode}`)
@@ -209,13 +215,14 @@ function linkFor(e) {
   if (!e.entityId || e.outcome === 'denied') return null
   switch (e.entityType) {
     case 'lead': return { name: 'Inbox', query: { lead: e.entityId } }
+    case 'call': return { name: 'Calls', query: { call: e.entityId } }
     case 'conversation': return { name: 'WhatsApp', params: { id: e.entityId } }
     case 'import': return { name: 'BillingImportDetail', params: { id: e.entityId } }
     case 'account': return e.action.startsWith('team.') ? { name: 'Team' } : null
     default: return null
   }
 }
-const linkText = (e) => ({ lead: `Lead #${e.entityId}`, conversation: 'Open conversation', import: `Import #${e.entityId}`, account: 'Team' }[e.entityType] || 'Open')
+const linkText = (e) => ({ lead: `Lead #${e.entityId}`, call: 'Open the call', conversation: 'Open conversation', import: `Import #${e.entityId}`, account: 'Team' }[e.entityType] || 'Open')
 
 function params(before) {
   const p = new URLSearchParams()

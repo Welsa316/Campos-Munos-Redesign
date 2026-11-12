@@ -42,11 +42,34 @@ export const ACTIONS = {
   'DELETE /api/submissions/:id/notes/:noteId': { key: 'lead.note_deleted', label: 'Deleted a note on a lead', entity: 'lead' },
   'POST /api/submissions/:id/reply': { key: 'lead.replied', label: 'Emailed a lead', entity: 'lead' },
   'GET /api/submissions/export/csv': { key: 'lead.exported', label: 'Downloaded every lead as CSV' },
+  'PATCH /api/submissions/:id/automation': { key: 'lead.automation', label: 'Stopped or allowed automatic messages to a lead', entity: 'lead',
+    details: (req) => ({ paused: body(req).paused === true }) },
+  'PUT /api/submissions/:id/owner': { key: 'lead.owner', label: 'Changed who follows a lead up', entity: 'lead',
+    details: (req) => ({ ownerId: body(req).ownerId ?? null }) },
+  'POST /api/submissions/:id/spam': { key: 'lead.spam', label: 'Marked a lead as spam or not spam', entity: 'lead',
+    details: (req) => ({ state: body(req).state }) },
+  'POST /api/submissions/:id/text-replies/handled': { key: 'lead.text_replies_handled', label: 'Marked a lead’s text replies as seen to', entity: 'lead' },
+
+  // Automation (administrator): what the portal does on its own
+  'PUT /api/automation/flags/:key': { key: 'automation.paused', label: 'Paused or resumed an automation' },
+  'PUT /api/automation/settings/:section': { key: 'automation.settings', label: 'Changed the automation settings' },
+  'POST /api/automation/jobs/:id/retry': { key: 'automation.job_retried', label: 'Retried a failed automatic step', entity: 'job' },
+  'POST /api/automation/jobs/:id/acknowledge': { key: 'automation.job_dismissed', label: 'Dismissed a failed automatic step', entity: 'job' },
+  'POST /api/automation/suppressions': { key: 'automation.suppressed', label: 'Added someone to the no-automatic-messages list' },
+  'DELETE /api/automation/suppressions/:id': { key: 'automation.unsuppressed', label: 'Removed someone from the no-automatic-messages list', entity: 'suppression' },
+  'POST /api/automation/spam/apply': { key: 'automation.spam_applied', label: 'Ran the vendor rules over new leads' },
+  'POST /api/automation/sms/check': { key: 'automation.sms_checked', label: 'Checked whether RingCentral can send text messages' },
 
   // Test channel (administrator only): test forms kept out of the inbox
   'POST /api/test-channel/link': { key: 'test_channel.link', label: 'Made a test link for the website forms' },
   'DELETE /api/test-channel/:id': { key: 'test_channel.removed', label: 'Removed a test form', entity: 'test_form' },
   'DELETE /api/test-channel': { key: 'test_channel.cleared', label: 'Cleared the test channel' },
+  // Test automation mode: not in this log on purpose. Every test action is
+  // written to the test's own history (test_automation_events) instead.
+  'PUT /api/test-channel/automation/prefs': { skip: true },
+  'POST /api/test-channel/automation/tests': { skip: true },
+  'POST /api/test-channel/:id/automation': { skip: true },
+  'POST /api/test-channel/:id/automation/actions': { skip: true },
 
   // WhatsApp inbox
   'POST /api/whatsapp/conversations/:id/messages': { key: 'whatsapp.replied', label: 'Sent a WhatsApp reply', entity: 'conversation' },

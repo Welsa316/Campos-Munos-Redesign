@@ -3,6 +3,7 @@
 import { formatDue, formatTime } from './dueChoices.js'
 import { sameFirmDay } from '../../utils/firmTime.js'
 import { phone } from '../calls/callLook.js'
+import { attentionText } from '../automation/automationText.js'
 
 function when(item, now) {
   const at = new Date(item.at)
@@ -15,6 +16,8 @@ function when(item, now) {
 
 /** { title, when, icon, tone } for one row. */
 export function workItemText(item, now = Date.now()) {
+  // A lead that needs a person, and why (server/automation/health.js).
+  if (item.kind === 'lead_attention') return attentionText(item, now)
   const who = item.name || (item.number ? phone(item.number) : null)
   const title = item.kind === 'callback' ? `Call back ${who || 'a caller'}`
     : item.kind === 'lead_followup' ? `Follow up with ${who || 'a website lead'}`

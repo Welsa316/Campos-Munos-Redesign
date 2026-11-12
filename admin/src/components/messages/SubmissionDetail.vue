@@ -111,6 +111,9 @@
         </p>
       </div>
 
+      <!-- What needs a person now: a text reply, possible spam, a message that failed. -->
+      <LeadAutomation v-if="submission.automation" show="alerts" class="flex-shrink-0" :submission="submission" :can-manage="canManage" @changed="$emit('noteAdded')" />
+
       <!-- Conversation thread -->
       <div class="flex-1 overflow-y-auto p-6 space-y-4">
         <template v-for="item in threadItems" :key="`${item.type}-${item.id}`">
@@ -222,6 +225,9 @@
         </div>
       </div>
 
+      <!-- What the portal did and will do on its own for this lead. -->
+      <LeadAutomation v-if="submission.automation" show="panel" class="flex-shrink-0" :submission="submission" :can-manage="canManage" @changed="$emit('noteAdded')" />
+
       <!-- Reply box — keyed by submission so a half-typed draft never carries
            over to a different client when the admin switches messages. -->
       <ReplyBox
@@ -249,6 +255,7 @@ import { toDate, isComposing } from '../../utils/text.js'
 import { LEAD_STATUSES, statusMeta } from '../../data/leadStatuses.js'
 import { can } from '../../composables/useAuth.js'
 import FollowUpReminders from '../../modules/reminders/FollowUpReminders.vue'
+import LeadAutomation from '../../modules/automation/LeadAutomation.vue'
 
 const formatCountry = (code) => countryLabel(code, adminLocale())
 
