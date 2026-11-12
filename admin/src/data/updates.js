@@ -24,8 +24,7 @@ export const SECTIONS = {
 export const UPDATES = [
   {
     id: 'sms-consent-and-test-texts',
-    // Set to the real go-live time when this is merged and deployed.
-    at: '2026-11-12T02:00:00Z',
+    at: '2026-11-12T03:35:00Z',
     section: 'admin',
     any: ['forms.test'],
     title: 'A text-consent box on the website, and real test texts',
