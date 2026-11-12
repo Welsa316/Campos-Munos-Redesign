@@ -109,6 +109,13 @@ export const TEST_CHANNEL_SCHEMA_SQL = `
     confirmed_emails TEXT[] NOT NULL DEFAULT '{}',
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
+
+  -- Really text the test's own phone from the firm's RingCentral number
+  -- (else each text is only shown), and the numbers an administrator
+  -- confirmed a real text may go to even though a lead or client has them.
+  ALTER TABLE test_automation_runs ADD COLUMN IF NOT EXISTS send_sms BOOLEAN NOT NULL DEFAULT FALSE;
+  ALTER TABLE test_automation_prefs ADD COLUMN IF NOT EXISTS send_sms BOOLEAN NOT NULL DEFAULT FALSE;
+  ALTER TABLE test_automation_prefs ADD COLUMN IF NOT EXISTS confirmed_phones TEXT[] NOT NULL DEFAULT '{}';
 `
 
 export async function applyTestChannelSchema(db) {

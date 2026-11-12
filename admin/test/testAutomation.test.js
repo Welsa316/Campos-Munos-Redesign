@@ -27,11 +27,16 @@ test('every step and every button has a name in words', () => {
   assert.deepEqual(['ack_email', 'ack_sms', 'followup:followup_1', 'escalation_1', 'no_response'].map(isText), [false, true, true, false, false])
 })
 
-test('before a test starts, only the acknowledgment email can be called real, and only when it will be', () => {
+test('before a test starts, a step is called real only when it will really be sent', () => {
   assert.match(stepPlan('ack_email', { sendEmail: true }), /really sent, to the test’s address only/)
   assert.equal(stepPlan('ack_email', { sendEmail: false }), 'shown only, not sent')
-  // A text is never real, whatever is ticked.
-  for (const type of ['ack_sms', 'followup:followup_1']) assert.match(stepPlan(type, { sendEmail: true, notifyMe: true }), /^shown only: texts are never sent$/)
+  for (const type of ['ack_sms', 'followup:followup_1']) {
+    // Ticking the email (or anything else) never makes a text real.
+    assert.equal(stepPlan(type, { sendEmail: true, notifyMe: true }), 'shown only, not sent')
+    assert.equal(stepPlan(type, { sendSms: true }), 'really texted, to the test’s phone only')
+  }
+  // And ticking the texts never makes the email real.
+  assert.equal(stepPlan('ack_email', { sendSms: true }), 'shown only, not sent')
   assert.match(stepPlan('escalation_1', { notifyMe: false }), /nobody is notified/)
   assert.match(stepPlan('escalation_1', { notifyMe: true }), /to you only/)
   assert.match(stepPlan('no_response'), /never a lead’s/)
@@ -43,6 +48,9 @@ test('a waiting step counts down; a finished one says whether anything left the 
   assert.equal(step('pending', null, { dueAt: new Date(NOW + 125_000) }).text, 'Due in 2:05')
   assert.equal(step('pending', null, { dueAt: new Date(NOW - 1000) }).text, 'Due now')
   assert.deepEqual(step('done', 'sent'), { tone: 'good', text: 'Really sent to me@example.test' })
+  // A text names the phone, never the email address.
+  assert.equal(stepState({ type: 'followup:followup_1', state: 'done', outcome: 'sent' }, { test: { email: 'me@example.test', phone: '(504) 555-0100' }, now: NOW }).text, 'Really sent to (504) 555-0100')
+  assert.match(step('failed', 'unknown_delivery').text, /may or may not have arrived; it is not sent again/)
   assert.deepEqual(step('done', 'simulated'), { tone: 'shown', text: 'Shown only, nothing was sent' })
   assert.equal(step('done', 'level_1').text, 'Escalated in the test only')
   assert.equal(step('skipped', 'no_sms_consent').text, 'Skipped: they did not agree on the form to be texted')
@@ -84,10 +92,24 @@ test('the history says what was really sent, what was only shown, and why', () =
   assert.equal(eventLine({ kind: 'status', detail: { from: 'new', to: 'no_response', reason: 'follow_up_sequence_completed', auto: true } }).title, 'Test status: New → No response')
   assert.equal(eventLine({ kind: 'status', by: 'Walid', detail: { from: 'new', to: 'closed', reason: 'marked_by_staff', auto: false } }).note, 'Set by Walid.')
   assert.equal(eventLine({ kind: 'action', by: 'Walid', detail: { action: 'client_replied' } }).title, 'Walid pressed “Client replied”')
-  assert.match(eventLine({ kind: 'started', detail: { timing: 'accelerated', sendEmail: false, emailHeld: 'address_on_a_lead' } }).note, /shown only: a lead in the inbox has this address/)
+  assert.equal(eventLine({ kind: 'started', detail: { timing: 'accelerated', sendEmail: false, emailHeld: 'address_on_a_lead' } }).note, 'The acknowledgment email is shown only: a lead or client already has it, and nobody confirmed it is yours.')
+  assert.equal(eventLine({ kind: 'started', detail: { timing: 'accelerated', sendEmail: true, sendSms: false, smsHeld: 'address_on_a_lead' } }).note,
+    'You asked for the acknowledgment email to be really sent, to the test’s own address only. The texts are shown only: a lead or client already has it, and nobody confirmed it is yours.')
   assert.equal(eventLine({ kind: 'started', detail: { timing: 'production', sendEmail: false } }).note, 'Nothing is really sent in this test.')
+  assert.equal(eventLine({ kind: 'started', detail: { timing: 'accelerated', sendEmail: true, sendSms: true } }).note, 'You asked for the acknowledgment email and the text messages to be really sent, to the test’s own address and phone only.')
+  assert.equal(eventLine({ kind: 'started', detail: { timing: 'accelerated', sendSms: true } }).note, 'You asked for the text messages to be really sent, to the test’s own phone only.')
+
+  const texted = eventLine({ kind: 'sent', step: 'ack_sms', channel: 'sms', recipient: '(504) 555-0100', body: '[TEST] Hola STOP', detail: { from: '+15045550100', providerId: '9' } })
+  assert.equal(texted.tone, 'good')
+  assert.equal(texted.title, 'Acknowledgment text really sent to (504) 555-0100')
+  assert.match(texted.note, /From the firm’s RingCentral number \+15045550100\. It also shows in RingCentral’s own message history\./)
+  assert.equal(texted.preview.body, '[TEST] Hola STOP')
+  assert.equal(eventLine({ kind: 'simulated', step: 'ack_sms', channel: 'sms', body: 'x', detail: { reason: 'sms_unavailable', why: 'no_sms_number' } }).note,
+    'Not sent: RingCentral cannot send text messages from this connection right now (no sms number).')
+  assert.equal(eventLine({ kind: 'simulated', step: 'ack_sms', channel: 'sms', body: 'x', detail: { reason: 'texts_not_requested' } }).note, 'Not sent: you chose not to send the texts for real.')
+  assert.match(eventLine({ kind: 'failed', step: 'ack_sms', channel: 'sms', body: 'x', detail: { reason: 'unknown_delivery', error: 'timeout' } }).note, /may or may not have arrived; it is not sent again \(timeout\)/)
   assert.match(eventLine({ kind: 'reset', detail: { removed: 3, all: true } }).note, /^3 test forms removed/)
-  assert.match(eventLine({ kind: 'failed', step: 'ack_email', detail: { reason: 'send_failed', error: 'validation_error' } }).note, /did not accept it \(validation_error\)/)
+  assert.match(eventLine({ kind: 'failed', step: 'ack_email', detail: { reason: 'send_failed', error: 'validation_error' } }).note, /It was not accepted for sending \(validation_error\)/)
   // Only a real send is good news in green.
   for (const kind of ['simulated', 'skipped', 'cancelled', 'status', 'action', 'started', 'reset']) assert.notEqual(eventLine({ kind, step: 'ack_sms', detail: {} }).tone, 'good', kind)
 })

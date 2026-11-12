@@ -211,12 +211,14 @@ function that schedules a lead (`automation/leads.js leadSchedule`);
 **Run the next step now** moves it along. The accelerated minutes exist only
 in `testChannel/automation.js` and are never read for a lead.
 
-**What is real and what is only shown.**
+**What is real and what is only shown.** Two things can really leave, each
+only when ticked for that test: the acknowledgment email and the text
+messages. Both go only to the address and phone typed for the test.
 
 | Step | In a test |
 |---|---|
 | Acknowledgment email | Really sent **only** when ticked, email is set up on the server and the address is not on the opt-out list; to the address typed for the test and nowhere else; subject starts `[TEST]`, a test notice sits above the message; a reply goes to the administrator, never to the office inbox. Otherwise shown on the page |
-| Acknowledgment text, follow-up texts | Never sent. The page shows the exact text and number. Skipped without "agreed to texts", as for a lead |
+| Acknowledgment text, follow-up texts | Shown on the page. Really sent **only** when "Really text the messages" is ticked: to the test's phone and nowhere else, from the firm's RingCentral number, each starting `[TEST]`; at most three in a test (the acknowledgment and two follow-ups). Needs "agreed to texts" (skipped without it, as for a lead), a North American number, RingCentral able to text, and the number not on the opt-out list. A text RingCentral refused or did not confirm is never tried again. A real test text uses the firm's RingCentral connection, so it also appears in that extension's message history in RingCentral, and a reply to it lands there |
 | Escalation (two levels) | Written to the test history. Nobody is notified, unless "Show me the escalation notice" is ticked: then one notice to the starting administrator's own account, titled `TEST:` |
 | Status changes | The test's own status (`test_automation_runs.lead_status`). No lead's status is read or written |
 | Client replied / Consultation booked / Mark contacted / Mark closed | Buttons that stand in for the client, the calendar and the staff. They stop what is left by the same rules a lead follows: a reply stops the follow-ups but not the escalation; a booking or a changed status stops everything |
@@ -225,10 +227,17 @@ The wording is the firm's own templates and settings, rendered by the code
 that writes to clients. The booking link is included when one is set, as it
 would be with scheduling on.
 
-**An address a lead also has.** A real email to it needs a one-time
-confirmation in the portal ("It is mine"), remembered for that
-administrator. A test arriving from the website with such an address is not
-refused: its email is held back and shown instead.
+**An address or number someone real has.** A real email to an address a
+lead has, or a real text to a number a lead or billing client has, needs a
+one-time confirmation in the portal ("It is mine"), remembered for that
+administrator. A test arriving from the website with such an address or
+number is not refused: that email or those texts are held back and shown
+instead.
+
+**Test texts do not need the automation switches.** They work with
+`RINGCENTRAL_SMS_ENABLED` and the rest unset: the tick on the test is the
+switch. They are not held to the texting hours, and replies are not read
+(the "Client replied" button stands in for a reply).
 
 **History and reset.** Every step, message and button press is a row in
 `test_automation_events`, shown per test and in "Test history" at the foot of
@@ -238,8 +247,10 @@ line that says so; **Remove** on one test does the same for that test.
 
 **Isolation.** Test mode writes to `test_submissions` and
 `test_automation_*` only. It never writes to `submissions`,
-`automation_jobs`, `automation_messages`, reminders, billing, RingCentral or
-the activity log, and the automation worker never reads the test tables.
+`automation_jobs`, `automation_messages`, reminders, billing or the activity
+log, and the automation worker never reads the test tables. (Sending a real
+test text makes RingCentral's client save what it learned about the
+connection in `automation_state`, as any text does.)
 `server/testAutomation.test.js` fingerprints every row of every other table
 before and after a whole test and requires them identical.
 
@@ -248,9 +259,10 @@ before and after a whole test and requires them identical.
 elsewhere only with `TEST_AUTOMATION_ENABLED=true`, because a developer
 machine may be pointed at the live database. `TEST_AUTOMATION_ENABLED=false`
 switches it off everywhere. Outside production a real email goes only to an
-address in `REMINDER_EMAIL_ALLOWLIST` or `AUTOMATION_TEST_RECIPIENTS`. At
+address in `REMINDER_EMAIL_ALLOWLIST` or `AUTOMATION_TEST_RECIPIENTS`, and a
+real text only to a number in `AUTOMATION_TEST_RECIPIENTS`. At
 most ten tests run at once. A step cut off mid-way is marked failed and never
-tried again, so a test email cannot go out twice.
+tried again, so a test email or text cannot go out twice.
 
 Code: `server/testChannel/automation.js`, `server/routes/testChannel.js`,
 `admin/src/modules/testChannel/`, `server/testAutomation.test.js`,

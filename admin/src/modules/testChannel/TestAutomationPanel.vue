@@ -16,9 +16,10 @@
     <div v-if="!run" class="px-4 py-4 bg-white">
       <p class="text-xs text-gray-700">No automation test has run on this form. Start one with the choices under “Automation test” above:
         <span class="font-semibold text-gray-900">{{ options.timing === 'production' ? 'real timing' : 'accelerated timing' }}</span>,
-        acknowledgment email <span class="font-semibold text-gray-900">{{ options.sendEmail ? `really sent to ${test.email}` : 'shown only' }}</span>.</p>
+        acknowledgment email <span class="font-semibold text-gray-900">{{ options.sendEmail ? `really sent to ${test.email}` : 'shown only' }}</span>,
+        texts <span class="font-semibold text-gray-900">{{ options.sendSms && test.phone ? `really sent to ${formatPhone(test.phone)}` : 'shown only' }}</span>.</p>
       <p v-if="error" role="alert" class="mt-3 text-sm text-brand-red bg-red-50 rounded-lg px-3 py-2">{{ error }}</p>
-      <ConfirmInline v-if="askKnown" class="mt-3" tone="navy" :title="askKnown" body="Only continue if the address is your own. The email is marked as a test, and a reply to it comes to you."
+      <ConfirmInline v-if="askKnown" class="mt-3" tone="navy" :title="askKnown" body="Only continue if it is your own. Every message is marked as a test."
         confirm-label="It is mine, send the test" :busy="busy" @confirm="$emit('start', true)" @cancel="$emit('dismiss')" />
       <button v-else type="button" :disabled="busy" @click="$emit('start', false)"
         class="mt-3 inline-flex items-center gap-2 px-3.5 py-2 min-h-11 sm:min-h-0 rounded-lg bg-brand-navy hover:bg-brand-navy-dark text-white text-xs font-semibold transition-colors disabled:opacity-50">
@@ -72,6 +73,7 @@ import ConfirmInline from '../../components/ConfirmInline.vue'
 import TestModeBadge from './TestModeBadge.vue'
 import TestEventList from './TestEventList.vue'
 import { STATUS_LABELS, stepLabel, stepIcon, stepState } from './testAutomationText.js'
+import { formatPhone } from '../../utils/phone.js'
 
 const props = defineProps({
   // The open test form, with `automation` (its automation test, or null).
@@ -98,7 +100,7 @@ const TONE = {
   bad: { icon: 'text-brand-red', text: 'text-brand-red font-semibold' },
 }
 
-const steps = computed(() => run.value.steps.map((s) => ({ id: s.id, icon: stepIcon(s.type), label: stepLabel(s.type), ...stepState(s, { test: props.test, now: props.now }) })))
+const steps = computed(() => run.value.steps.map((s) => ({ id: s.id, icon: stepIcon(s.type), label: stepLabel(s.type), ...stepState(s, { test: { email: props.test.email, phone: formatPhone(props.test.phone) }, now: props.now }) })))
 const waiting = computed(() => run.value.steps.filter((s) => s.state === 'pending' || s.state === 'running').length)
 
 const actions = computed(() => {
