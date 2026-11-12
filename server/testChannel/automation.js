@@ -8,18 +8,23 @@
 //   - the TIMES are real when asked for: "production" timing comes from the
 //     same function a lead's does (leads.js leadSchedule); "accelerated"
 //     timing is minutes, and lives only in this file
-//   - ONE thing may really leave: the acknowledgment email, to the address
-//     typed for the test, marked as a test, with replies going back to the
-//     administrator and never to the office
-//   - everything else is only written down: text messages are never sent,
-//     the escalation notifies nobody (or only the administrator who started
-//     the test, when they asked), the status is the test's own
+//   - TWO things may really leave, each only when the administrator ticks
+//     it: the acknowledgment email, to the address typed for the test,
+//     marked as a test, with replies going back to the administrator and
+//     never to the office; and the text messages, to the phone typed for the
+//     test, from the firm's RingCentral number, each starting "[TEST]"
+//   - everything else is only written down: the escalation notifies nobody
+//     (or only the administrator who started the test, when they asked),
+//     the status is the test's own
 //
 // Isolation, by construction rather than by a flag: this file writes to
 // test_automation_* and test_submissions only. It never writes to
 // submissions, automation_jobs, automation_messages, staff_activity,
-// reminders, billing or RingCentral, and it runs whether or not any
-// production automation is switched on (they are separate switches).
+// reminders or billing, and it runs whether or not any production
+// automation is switched on (they are separate switches). A real test text
+// is the one thing that reaches outside: it goes through the firm's
+// RingCentral connection (so it shows in that extension's own message
+// history), to the test's phone and nowhere else.
 import { loadSettings } from '../automation/settings.js'
 import { renderTemplate, languageFor } from '../automation/templates.js'
 import { leadSchedule, messageVars } from '../automation/leads.js'
@@ -30,7 +35,7 @@ import { ALERTS } from '../automation/escalation.js'
 import { clientFrom, emailAllowlist, looksLikeEmail } from '../reminders/email.js'
 import { isProductionEnv } from '../utils/productionEnv.js'
 import { escapeHtml } from '../utils/sanitize.js'
-import { phoneKey } from '../utils/phone.js'
+import { phoneKey, phoneDigits, inCountries } from '../utils/phone.js'
 import { sendPush } from '../push/send.js'
 
 /** Shown on every screen, email and notification that test mode produces. */
@@ -117,30 +122,31 @@ export async function noteTestsRemoved(db, { count, all = false, actorId = null 
 
 // --- preferences ----------------------------------------------------------------------
 
-const PREF_DEFAULTS = Object.freeze({ autoStart: false, timing: 'accelerated', sendEmail: true, notifyMe: false, confirmedEmails: [] })
+const PREF_DEFAULTS = Object.freeze({ autoStart: false, timing: 'accelerated', sendEmail: true, sendSms: false, notifyMe: false, confirmedEmails: [], confirmedPhones: [] })
 
 export async function getTestPrefs(db, accountId) {
-  const r = (await db.query('SELECT auto_start, timing, send_email, notify_me, confirmed_emails FROM test_automation_prefs WHERE account_id = $1', [accountId])).rows[0]
+  const r = (await db.query('SELECT auto_start, timing, send_email, send_sms, notify_me, confirmed_emails, confirmed_phones FROM test_automation_prefs WHERE account_id = $1', [accountId])).rows[0]
   if (!r) return { ...PREF_DEFAULTS }
-  return { autoStart: r.auto_start, timing: r.timing, sendEmail: r.send_email, notifyMe: r.notify_me, confirmedEmails: r.confirmed_emails }
+  return { autoStart: r.auto_start, timing: r.timing, sendEmail: r.send_email, sendSms: r.send_sms, notifyMe: r.notify_me, confirmedEmails: r.confirmed_emails, confirmedPhones: r.confirmed_phones }
 }
 
-export async function saveTestPrefs(db, accountId, { autoStart, timing, sendEmail, notifyMe }) {
+export async function saveTestPrefs(db, accountId, { autoStart, timing, sendEmail, sendSms = false, notifyMe }) {
   if (!TIMINGS.includes(timing)) throw new TestAutomationError('bad_timing', 'Choose accelerated or production timing')
   await db.query(
-    `INSERT INTO test_automation_prefs (account_id, auto_start, timing, send_email, notify_me) VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO test_automation_prefs (account_id, auto_start, timing, send_email, send_sms, notify_me) VALUES ($1, $2, $3, $4, $5, $6)
      ON CONFLICT (account_id) DO UPDATE SET auto_start = EXCLUDED.auto_start, timing = EXCLUDED.timing, send_email = EXCLUDED.send_email,
-       notify_me = EXCLUDED.notify_me, updated_at = NOW()`,
-    [accountId, Boolean(autoStart), timing, Boolean(sendEmail), Boolean(notifyMe)]
+       send_sms = EXCLUDED.send_sms, notify_me = EXCLUDED.notify_me, updated_at = NOW()`,
+    [accountId, Boolean(autoStart), timing, Boolean(sendEmail), Boolean(sendSms), Boolean(notifyMe)]
   )
   return getTestPrefs(db, accountId)
 }
 
-async function rememberConfirmed(db, accountId, email) {
+// column: 'confirmed_emails' | 'confirmed_phones' (never from a request).
+async function rememberConfirmed(db, accountId, column, value) {
   await db.query(
-    `INSERT INTO test_automation_prefs (account_id, confirmed_emails) VALUES ($1, ARRAY[$2::text])
-     ON CONFLICT (account_id) DO UPDATE SET confirmed_emails = ARRAY(SELECT DISTINCT e FROM unnest(test_automation_prefs.confirmed_emails || $2::text) e), updated_at = NOW()`,
-    [accountId, email]
+    `INSERT INTO test_automation_prefs (account_id, ${column}) VALUES ($1, ARRAY[$2::text])
+     ON CONFLICT (account_id) DO UPDATE SET ${column} = ARRAY(SELECT DISTINCT e FROM unnest(test_automation_prefs.${column} || $2::text) e), updated_at = NOW()`,
+    [accountId, value]
   )
 }
 
@@ -159,6 +165,22 @@ export async function leadsWithAddress(db, email) {
   return (await db.query('SELECT COUNT(*)::int AS n FROM submissions WHERE LOWER(email) = LOWER($1)', [email])).rows[0].n
 }
 
+/** Why this process may not text this number, or null. Outside production: the developer's test numbers only. */
+export function phoneGate(env, key) {
+  if (isProductionEnv(env)) return null
+  return testRecipients(env)?.phones.has(key) ? null : 'not_production'
+}
+
+/** How many leads or billing clients have this phone number (by its key). */
+export async function peopleWithPhone(db, key) {
+  if (!key) return 0
+  return (await db.query(
+    `SELECT (SELECT COUNT(*) FROM submissions WHERE cm_phone_key(phone) = $1)::int
+          + (SELECT COUNT(*) FROM billing_client_contacts WHERE phone_e164 IS NOT NULL AND cm_phone_key(phone_e164) = $1)::int AS n`,
+    [key]
+  )).rows[0].n
+}
+
 // --- starting a test ------------------------------------------------------------------
 
 /**
@@ -169,10 +191,10 @@ export async function leadsWithAddress(db, email) {
  * email is simply not sent.
  * Returns { runId, created, emailHeld }.
  */
-export async function startTestRun(db, { testId, by = null, timing = 'accelerated', sendEmail = false, notifyMe = false, confirmKnown = false, lenient = false, now = new Date(), env = process.env }) {
+export async function startTestRun(db, { testId, by = null, timing = 'accelerated', sendEmail = false, sendSms = false, notifyMe = false, confirmKnown = false, lenient = false, now = new Date(), env = process.env }) {
   if (!testAutomationOn(env)) throw new TestAutomationError('test_automation_off', 'Test automation is switched off on this server', 409)
   if (!TIMINGS.includes(timing)) throw new TestAutomationError('bad_timing', 'Choose accelerated or production timing')
-  const sub = (await db.query('SELECT id, email FROM test_submissions WHERE id = $1', [testId])).rows[0]
+  const sub = (await db.query('SELECT id, email, phone FROM test_submissions WHERE id = $1', [testId])).rows[0]
   if (!sub) throw new TestAutomationError('test_not_found', 'Test form not found', 404)
   const existing = (await db.query('SELECT id FROM test_automation_runs WHERE test_submission_id = $1', [testId])).rows[0]
   if (existing) return { runId: existing.id, created: false, emailHeld: null }
@@ -182,25 +204,36 @@ export async function startTestRun(db, { testId, by = null, timing = 'accelerate
 
   // A real email only ever goes to the address typed for this test. If a
   // lead in the inbox has the same address, a person is asked first.
+  // The same for a real text and the phone number typed for the test.
+  const prefs = by != null ? await getTestPrefs(db, by) : PREF_DEFAULTS
   let send = Boolean(sendEmail) && looksLikeEmail(sub.email)
+  let text = Boolean(sendSms) && Boolean(phoneKey(sub.phone))
   let emailHeld = null
-  if (send) {
-    const email = sub.email.toLowerCase()
-    const leads = await leadsWithAddress(db, email)
-    const confirmed = by != null && (await getTestPrefs(db, by)).confirmedEmails.includes(email)
-    if (leads && !confirmed) {
-      if (confirmKnown && by != null) await rememberConfirmed(db, by, email)
-      else if (lenient) { send = false; emailHeld = 'address_on_a_lead' }
-      else throw new TestAutomationError('address_on_a_lead', `${leads === 1 ? 'A lead' : `${leads} leads`} in the inbox ${leads === 1 ? 'has' : 'have'} this email address. A real email would go to it.`, 409, { leads })
+  let smsHeld = null
+  const email = String(sub.email || '').toLowerCase()
+  const phone = phoneKey(sub.phone)
+  const emailLeads = send && !prefs.confirmedEmails.includes(email) ? await leadsWithAddress(db, email) : 0
+  const phonePeople = text && !prefs.confirmedPhones.includes(phone) ? await peopleWithPhone(db, phone) : 0
+  if (emailLeads || phonePeople) {
+    if (confirmKnown && by != null) {
+      if (emailLeads) await rememberConfirmed(db, by, 'confirmed_emails', email)
+      if (phonePeople) await rememberConfirmed(db, by, 'confirmed_phones', phone)
+    } else if (lenient) {
+      if (emailLeads) { send = false; emailHeld = 'address_on_a_lead' }
+      if (phonePeople) { text = false; smsHeld = 'address_on_a_lead' }
+    } else {
+      const what = emailLeads && phonePeople ? 'email address and this phone number' : emailLeads ? 'email address' : 'phone number'
+      const real = emailLeads && phonePeople ? 'A real email and real texts' : emailLeads ? 'A real email' : 'Real texts'
+      throw new TestAutomationError('address_on_a_lead', `A lead or client already has this ${what}. ${real} would go to it.`, 409, { leads: emailLeads, phones: phonePeople })
     }
   }
 
   const settings = await loadSettings(db)
   const steps = planTestSteps({ created: now, timing, settings })
   const inserted = await db.query(
-    `INSERT INTO test_automation_runs (test_submission_id, started_by, timing, send_email, notify_starter, started_at)
-     VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (test_submission_id) DO NOTHING RETURNING id`,
-    [testId, by, timing, send, Boolean(notifyMe), now]
+    `INSERT INTO test_automation_runs (test_submission_id, started_by, timing, send_email, send_sms, notify_starter, started_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (test_submission_id) DO NOTHING RETURNING id`,
+    [testId, by, timing, send, text, Boolean(notifyMe), now]
   )
   // Two starts at once: the other one won.
   if (!inserted.rowCount) return { runId: (await db.query('SELECT id FROM test_automation_runs WHERE test_submission_id = $1', [testId])).rows[0].id, created: false, emailHeld: null }
@@ -208,8 +241,8 @@ export async function startTestRun(db, { testId, by = null, timing = 'accelerate
   for (const s of steps) {
     await db.query('INSERT INTO test_automation_steps (run_id, type, payload, due_at) VALUES ($1, $2, $3, $4)', [runId, s.type, JSON.stringify(s.payload || {}), s.dueAt])
   }
-  await logEvent(db, { runId, kind: 'started', detail: { timing, sendEmail: send, notifyMe: Boolean(notifyMe), steps: steps.length, ...(emailHeld ? { emailHeld } : {}) }, actorId: by })
-  return { runId, created: true, emailHeld }
+  await logEvent(db, { runId, kind: 'started', detail: { timing, sendEmail: send, sendSms: text, notifyMe: Boolean(notifyMe), steps: steps.length, ...(emailHeld ? { emailHeld } : {}), ...(smsHeld ? { smsHeld } : {}) }, actorId: by })
+  return { runId, created: true, emailHeld, smsHeld }
 }
 
 /**
@@ -290,12 +323,40 @@ async function runAckEmail(db, run, { settings, mailer, env }) {
   return done('sent', { kind: 'sent', ...base, subject: out.subject, detail: { template: 'lead_ack_email', language: msg.language, providerId: res.id || null, replyTo: out.replyTo } })
 }
 
-// A text message is never sent in test mode: what it would say is shown.
-function runText(run, templateKey, { settings }) {
+// A text message: shown, and really sent only when the administrator
+// ticked it for this test. Then to the test's own phone, from the firm's
+// RingCentral number, starting "[TEST]". Never tried twice (the step is
+// claimed before this runs and is not run again, whatever RingCentral says).
+async function runText(db, run, step, templateKey, { settings, sms, env, now }) {
   if (!phoneKey(run.phone)) return skipped('no_phone', { channel: 'sms' })
   if (settings.ack.smsRequiresFormConsent && !run.sms_consent) return skipped('no_sms_consent', { channel: 'sms', recipient: run.phone })
   const msg = renderTemplate(settings.templates, templateKey, languageFor(run), messageVars(run, settings, ALL_ON))
-  return done('simulated', { kind: 'simulated', channel: 'sms', recipient: run.phone, body: msg.text, detail: { template: templateKey, language: msg.language, reason: 'texts_are_never_sent_in_test_mode' } })
+  const base = { channel: 'sms', recipient: run.phone, body: msg.text }
+  const shown = (reason, extra = {}) => done('simulated', { kind: 'simulated', ...base, detail: { template: templateKey, language: msg.language, reason, ...extra } })
+  if (!run.send_sms) return shown('texts_not_requested')
+  const digits = phoneDigits(run.phone)
+  if (!digits) return shown('invalid_address')
+  if (!inCountries(digits, settings.texting.countries)) return shown('country_not_allowed')
+  const gate = phoneGate(env, phoneKey(digits))
+  if (gate) return shown(gate)
+  // The firm's opt-out list is honoured even here.
+  if (await suppressionReason(db, { channel: 'sms', address: `+${digits}` })) return shown('opted_out')
+  if (!sms) return shown('sms_not_configured')
+  if (await sms.backoffUntil(now)) return shown('ringcentral_asked_to_wait')
+  const cap = await sms.capability({ now })
+  if (!cap.available) return shown('sms_unavailable', { why: cap.reason || null })
+  const text = `[TEST] ${msg.text}`
+  let res
+  try {
+    res = await sms.send({ from: cap.sender, to: `+${digits}`, text }, { now })
+  } catch {
+    res = { ok: false, outcome: 'unknown', code: 'exception' }
+  }
+  const detail = { template: templateKey, language: msg.language, from: cap.sender }
+  if (res?.ok) return done('sent', { kind: 'sent', ...base, body: text, detail: { ...detail, providerId: res.id || null, status: res.status || null } })
+  // 'unknown': it may have gone. Either way it is not sent again.
+  const outcome = res?.outcome === 'unknown' ? 'unknown_delivery' : 'send_failed'
+  return { state: 'failed', outcome, event: { kind: 'failed', ...base, body: text, detail: { ...detail, reason: outcome, error: String(res?.code || 'error').slice(0, 80) } } }
 }
 
 async function runEscalation(db, run, step, { env, pushOptions, log }) {
@@ -349,8 +410,8 @@ async function executeStep(db, step, ctx) {
   const stop = testStop(run, step.type)
   if (stop) return { state: 'cancelled', outcome: stop, event: { kind: 'cancelled', detail: { reason: stop, steps: [step.type] } } }
   if (step.type === 'ack_email') return runAckEmail(db, run, ctx)
-  if (step.type === 'ack_sms') return runText(run, 'lead_ack_sms', ctx)
-  if (isFollowup(step.type)) return runText(run, step.payload?.templateKey, ctx)
+  if (step.type === 'ack_sms') return runText(db, run, step, 'lead_ack_sms', ctx)
+  if (isFollowup(step.type)) return runText(db, run, step, step.payload?.templateKey, ctx)
   if (step.type === 'escalation_1' || step.type === 'escalation_2') return runEscalation(db, run, step, ctx)
   if (step.type === 'no_response') return runNoResponse(db, run)
   return skipped('unknown_step')
@@ -368,10 +429,10 @@ async function closeIfFinished(db, runId, now) {
  * Run every test step that is due. Each step is claimed by one process (a
  * step is never run twice), looks at its test again right before acting,
  * and writes what it did to the test history. A step cut off mid-way is
- * marked failed and never run again, so a test email cannot go out twice.
+ * marked failed and never run again, so a test email or text cannot go out twice.
  * Returns [{ runId, type, state, outcome }].
  */
-export async function runDueTestSteps(db, { now = new Date(), mailer = null, env = process.env, pushOptions = {}, log = null, limit = 25 } = {}) {
+export async function runDueTestSteps(db, { now = new Date(), mailer = null, sms = null, env = process.env, pushOptions = {}, log = null, limit = 25 } = {}) {
   if (!testAutomationOn(env)) return []
   const stuck = (await db.query(
     `UPDATE test_automation_steps SET state = 'failed', outcome = 'interrupted', finished_at = $1
@@ -396,7 +457,7 @@ export async function runDueTestSteps(db, { now = new Date(), mailer = null, env
     settings ||= await loadSettings(db)
     let result
     try {
-      result = await executeStep(db, step, { settings, mailer, env, pushOptions, log })
+      result = await executeStep(db, step, { settings, mailer, sms, env, now, pushOptions, log })
     } catch (err) {
       log?.warn?.({ err: { name: err?.name, code: err?.code }, step: step.type }, 'Test automation step failed')
       result = { state: 'failed', outcome: 'error', event: { kind: 'failed', detail: { reason: 'error', error: String(err?.code || err?.name || 'error').slice(0, 80) } } }
@@ -486,7 +547,7 @@ export async function describeTestRun(db, testId) {
     `SELECT e.*, ${ACTOR} AS actor_name FROM test_automation_events e LEFT JOIN admin_users u ON u.id = e.actor_id WHERE e.run_id = $1 ORDER BY e.id`, [run.id]
   )).rows
   return {
-    id: run.id, timing: run.timing, sendEmail: run.send_email, notifyMe: run.notify_starter,
+    id: run.id, timing: run.timing, sendEmail: run.send_email, sendSms: run.send_sms, notifyMe: run.notify_starter,
     leadStatus: run.lead_status, statusReason: run.status_reason, escalationLevel: run.escalation_level,
     repliedAt: run.replied_at, bookedAt: run.booked_at, startedAt: run.started_at, endedAt: run.ended_at,
     steps: steps.map((s) => ({ id: s.id, type: s.type, level: s.payload?.level || null, dueAt: s.due_at, state: s.state, outcome: s.outcome, finishedAt: s.finished_at })),
@@ -523,5 +584,5 @@ export async function pendingTests(db) {
 
 export default {
   TEST_BANNER, TIMINGS, ACTIONS, testAutomationOn, planTestSteps, startTestRun, createPortalTest, runDueTestSteps, testAction,
-  describeTestRun, testHistory, pendingTests, getTestPrefs, saveTestPrefs, noteTestsRemoved, emailGate, leadsWithAddress,
+  describeTestRun, testHistory, pendingTests, getTestPrefs, saveTestPrefs, noteTestsRemoved, emailGate, phoneGate, leadsWithAddress, peopleWithPhone,
 }

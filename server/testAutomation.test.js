@@ -39,6 +39,14 @@ const sent = []
 let mailerAnswer = () => ({ ok: true, id: `fake-${sent.length}` })
 const mailer = { async send(m) { sent.push(m); return mailerAnswer(m) } }
 
+// The fake RingCentral: what would have been texted, and what it answers.
+const texts = []
+const FIRM_NUMBER = '+15045550100'
+let smsAnswer = () => ({ ok: true, id: `text-${texts.length}`, status: 'Queued' })
+let smsCapability = { available: true, sender: FIRM_NUMBER, reason: null }
+let smsWait = null
+const sms = { capability: async () => smsCapability, backoffUntil: async () => smsWait, send: async (m) => { texts.push(m); return smsAnswer(m) } }
+
 before(async () => {
   if (SKIP) return
   process.env.JWT_SECRET = 'testautomation-secret-0123456789abcdef'
@@ -111,6 +119,10 @@ async function reset() {
   await db.query('TRUNCATE submissions, test_submissions, test_automation_events, test_automation_prefs, account_notifications, automation_settings, automation_suppressions RESTART IDENTITY CASCADE')
   sent.length = 0
   mailerAnswer = () => ({ ok: true, id: `fake-${sent.length}` })
+  texts.length = 0
+  smsAnswer = () => ({ ok: true, id: `text-${texts.length}`, status: 'Queued' })
+  smsCapability = { available: true, sender: FIRM_NUMBER, reason: null }
+  smsWait = null
 }
 
 // Real leads the tests must never touch.
@@ -123,12 +135,12 @@ async function seedLeads() {
 }
 
 /** A test form made in the portal, with its automation test started at `now`. */
-async function start({ now = new Date(), email = 'tester@example.test', phone = '504-555-0177', language = 'es', smsConsent = true, timing = 'accelerated', sendEmail = true, notifyMe = false, by = ids.admin, ...rest } = {}) {
+async function start({ now = new Date(), email = 'tester@example.test', phone = '504-555-0177', language = 'es', smsConsent = true, timing = 'accelerated', sendEmail = true, sendSms = false, notifyMe = false, by = ids.admin, ...rest } = {}) {
   const testId = await A.createPortalTest(db, { firstName: 'Prueba', lastName: 'Uno', email, phone, language, smsConsent }, { sentBy: by })
-  const r = await A.startTestRun(db, { testId, by, timing, sendEmail, notifyMe, now, env: RUN_ENV, ...rest })
+  const r = await A.startTestRun(db, { testId, by, timing, sendEmail, sendSms, notifyMe, now, env: RUN_ENV, ...rest })
   return { testId, ...r }
 }
-const tick = (now, extra = {}) => A.runDueTestSteps(db, { now, mailer, env: RUN_ENV, ...extra })
+const tick = (now, extra = {}) => A.runDueTestSteps(db, { now, mailer, sms, env: RUN_ENV, ...extra })
 const steps = async (testId) => Object.fromEntries((await A.describeTestRun(db, testId)).steps.map((s) => [s.type, s.outcome ? `${s.state}:${s.outcome}` : s.state]))
 const events = async (testId) => (await A.describeTestRun(db, testId)).events
 const status = async (testId) => (await A.describeTestRun(db, testId)).leadStatus
@@ -211,10 +223,13 @@ test('accelerated: acknowledgment at once, a follow-up at 1 and 2 minutes, escal
     ['status', null, null],
   ])
   assert.deepEqual(run.events.at(-1).detail, { from: 'new', to: 'no_response', reason: 'follow_up_sequence_completed', auto: true })
-  const texts = run.events.filter((e) => e.channel === 'sms')
-  assert.ok(texts.every((e) => e.recipient === '504-555-0177' && /STOP/.test(e.body) && e.detail.reason === 'texts_are_never_sent_in_test_mode'))
-  assert.match(texts[1].body, /seguimos atentos/, 'the firm’s own follow-up wording, in the form’s language')
+  const shownTexts = run.events.filter((e) => e.channel === 'sms')
+  assert.ok(shownTexts.every((e) => e.recipient === '504-555-0177' && /STOP/.test(e.body) && e.detail.reason === 'texts_not_requested'))
+  assert.match(shownTexts[1].body, /seguimos atentos/, 'the firm’s own follow-up wording, in the form’s language')
   assert.deepEqual(run.events.filter((e) => e.step?.startsWith('escalation')).map((e) => e.detail.notified), ['nobody', 'nobody'])
+
+  // Texts were not asked for in this test: RingCentral was never called.
+  assert.equal(texts.length, 0)
 
   // Exactly one email, to the test's own address, marked as a test.
   assert.equal(sent.length, 1)
@@ -540,4 +555,184 @@ test('at most ten tests run at once', { skip: SKIP }, async () => {
   // Once they finish, another may start.
   for (let i = 0; i < 4; i++) await tick(new Date(T0.getTime() + 10 * MIN))
   assert.equal((await start({ now: T0, email: 'twelfth@example.test', sendEmail: false })).created, true)
+})
+
+// --- real text messages, only when asked for ------------------------------------------------
+
+test('ticked, the texts really go: to the test’s phone only, from the firm’s number, each marked [TEST]', { skip: SKIP }, async () => {
+  await reset()
+  await seedLeads()
+  const before_ = await everythingElse()
+  const T0 = new Date('2026-11-14T03:00:00Z')
+  const { testId } = await start({ now: T0, phone: '(504) 555-0177', sendSms: true, sendEmail: false })
+  await tick(T0)
+  assert.equal(texts.length, 1, 'the acknowledgment text, at once')
+  await tick(new Date(T0.getTime() + 2 * MIN))
+  assert.deepEqual(texts.map((m) => [m.from, m.to, m.text.startsWith('[TEST] '), /STOP/.test(m.text)]), Array(3).fill([FIRM_NUMBER, '+15045550177', true, true]))
+  assert.match(texts[0].text, /^\[TEST\] Campos Muños Law: recibimos su mensaje/)
+  assert.match(texts[2].text, /último recordatorio/)
+  assert.deepEqual(await steps(testId), {
+    ack_email: 'done:simulated', ack_sms: 'done:sent', 'followup:followup_1': 'done:sent', 'followup:followup_2': 'done:sent',
+    escalation_1: 'pending', escalation_2: 'pending', no_response: 'pending',
+  })
+  const log = (await events(testId)).filter((e) => e.channel === 'sms')
+  assert.deepEqual(log.map((e) => [e.kind, e.recipient, e.detail.from, e.detail.providerId]), [
+    ['sent', '(504) 555-0177', FIRM_NUMBER, 'text-1'], ['sent', '(504) 555-0177', FIRM_NUMBER, 'text-2'], ['sent', '(504) 555-0177', FIRM_NUMBER, 'text-3'],
+  ])
+  assert.equal(log[0].body, texts[0].text, 'the history shows exactly what was sent')
+  // Three texts sent count as the sequence having run.
+  await tick(new Date(T0.getTime() + 5 * MIN))
+  assert.equal(await status(testId), 'no_response')
+  assert.equal(texts.length, 3, 'three texts in a whole test, never more')
+  assert.equal(sent.length, 0)
+  // Still nothing outside the test tables: no message row, no job, no lead touched.
+  assert.deepEqual(await everythingElse(), before_)
+})
+
+test('a real text needs agreement, a usable number, RingCentral, the live server, and no opt-out', { skip: SKIP }, async () => {
+  await reset()
+  const T0 = new Date('2026-11-12T16:00:00Z')
+  const ack = async (testId) => (await events(testId)).find((e) => e.step === 'ack_sms')
+  const why = async (testId) => { const e = await ack(testId); return [e.kind, e.detail.reason] }
+
+  const noConsent = await start({ now: T0, email: 'a@example.test', sendSms: true, smsConsent: false })
+  await tick(T0)
+  assert.deepEqual(await why(noConsent.testId), ['skipped', 'no_sms_consent'])
+
+  const abroad = await start({ now: T0, email: 'b@example.test', phone: '+44 20 7946 0958', sendSms: true })
+  await tick(T0)
+  assert.deepEqual(await why(abroad.testId), ['simulated', 'country_not_allowed'])
+
+  // RingCentral is not set up on this server.
+  const noRc = await start({ now: T0, email: 'c@example.test', sendSms: true })
+  await A.runDueTestSteps(db, { now: T0, mailer, sms: null, env: RUN_ENV })
+  assert.deepEqual(await why(noRc.testId), ['simulated', 'sms_not_configured'])
+
+  // RingCentral says this connection cannot text.
+  smsCapability = { available: false, sender: null, reason: 'no_sms_number' }
+  const cannot = await start({ now: T0, email: 'd@example.test', sendSms: true })
+  await tick(T0)
+  assert.deepEqual(await why(cannot.testId), ['simulated', 'sms_unavailable'])
+  assert.equal((await ack(cannot.testId)).detail.why, 'no_sms_number')
+  smsCapability = { available: true, sender: FIRM_NUMBER, reason: null }
+
+  // RingCentral asked the portal to slow down.
+  smsWait = new Date(T0.getTime() + MIN)
+  const slow = await start({ now: T0, email: 'e@example.test', sendSms: true })
+  await tick(T0)
+  assert.deepEqual(await why(slow.testId), ['simulated', 'ringcentral_asked_to_wait'])
+  smsWait = null
+
+  // A developer machine: only a number on its own test list.
+  const dev = await start({ now: T0, email: 'f@example.test', phone: '504-555-0181', sendSms: true })
+  await A.runDueTestSteps(db, { now: T0, mailer, sms, env: { TEST_AUTOMATION_ENABLED: 'true', AUTOMATION_TEST_RECIPIENTS: '504-555-0199' } })
+  assert.deepEqual(await why(dev.testId), ['simulated', 'not_production'])
+
+  // The firm's opt-out list.
+  await db.query("INSERT INTO automation_suppressions (channel, address_key, reason, source) VALUES ('sms', '5045550182', 'opt_out', 'reply')")
+  const out = await start({ now: T0, email: 'g@example.test', phone: '504-555-0182', sendSms: true })
+  await tick(T0)
+  assert.deepEqual(await why(out.testId), ['simulated', 'opted_out'])
+
+  assert.equal(texts.length, 0, 'none of them reached RingCentral')
+
+  // And the developer machine with the number on its list does send.
+  const listed = await start({ now: T0, email: 'h@example.test', phone: '504-555-0199', sendSms: true })
+  await A.runDueTestSteps(db, { now: T0, mailer, sms, env: { TEST_AUTOMATION_ENABLED: 'true', AUTOMATION_TEST_RECIPIENTS: '504-555-0199' } })
+  assert.deepEqual(await why(listed.testId), ['sent', undefined])
+  assert.deepEqual(texts.map((m) => m.to), ['+15045550199'])
+})
+
+test('a text RingCentral refused or never confirmed is not sent again', { skip: SKIP }, async () => {
+  await reset()
+  const T0 = new Date('2026-11-12T16:00:00Z')
+  smsAnswer = () => ({ ok: false, outcome: 'unknown', code: 'timeout' })
+  const maybe = await start({ now: T0, email: 'u@example.test', sendSms: true, sendEmail: false })
+  await tick(T0)
+  await tick(new Date(T0.getTime() + 30 * 1000))
+  assert.equal((await steps(maybe.testId)).ack_sms, 'failed:unknown_delivery')
+  assert.equal(texts.length, 1, 'it may have arrived: tried once')
+  const e = (await events(maybe.testId)).find((x) => x.step === 'ack_sms')
+  assert.deepEqual([e.kind, e.detail.reason, e.detail.error], ['failed', 'unknown_delivery', 'timeout'])
+
+  smsAnswer = () => ({ ok: false, outcome: 'failed', code: 'SMS-RC-413' })
+  texts.length = 0
+  const refused = await start({ now: T0, email: 'r@example.test', phone: '504-555-0178', sendSms: true, sendEmail: false })
+  await tick(T0)
+  await tick(new Date(T0.getTime() + 30 * 1000))
+  assert.equal((await steps(refused.testId)).ack_sms, 'failed:send_failed')
+  assert.equal(texts.length, 1)
+  // A sender that throws is treated as "may have gone", not as a crash.
+  smsAnswer = () => { throw new Error('socket hang up') }
+  const thrown = await start({ now: T0, email: 't@example.test', phone: '504-555-0179', sendSms: true, sendEmail: false })
+  await tick(T0)
+  assert.equal((await steps(thrown.testId)).ack_sms, 'failed:unknown_delivery')
+})
+
+test('a phone a lead or client already has needs a person to confirm it; from the website the texts are held back', { skip: SKIP }, async () => {
+  await reset()
+  await seedLeads()
+  const body = (extra = {}) => ({ firstName: 'Ana', email: 'mine@example.test', phone: '+1 (504) 555-0101', smsConsent: true, sendEmail: false, sendSms: true, ...extra })
+  const refused = await asAdmin('POST', '/api/test-channel/automation/tests', body())
+  assert.equal(refused.status, 409)
+  assert.deepEqual([refused.json.code, refused.json.leads, refused.json.phones], ['address_on_a_lead', 0, 1])
+  assert.match(refused.json.error, /phone number/)
+  assert.equal(await count('test_submissions'), 0)
+  // A billing client's WhatsApp number counts too.
+  const client = (await db.query("INSERT INTO billing_clients (display_name) VALUES ('Cliente Real') RETURNING id")).rows[0].id
+  await db.query("INSERT INTO billing_client_contacts (client_id, phone_e164) VALUES ($1, '+15045550155')", [client])
+  assert.equal((await asAdmin('POST', '/api/test-channel/automation/tests', body({ phone: '504-555-0155' }))).status, 409)
+
+  // From the website, started on its own: held back, the rest of the test still runs.
+  await asAdmin('PUT', '/api/test-channel/automation/prefs', { autoStart: true, timing: 'accelerated', sendEmail: false, sendSms: true, notifyMe: false })
+  assert.equal((await asAdmin('GET', '/api/test-channel/automation')).json.prefs.sendSms, true)
+  const me = (await db.query('SELECT id, token_version FROM admin_users WHERE id = $1', [ids.admin])).rows[0]
+  const { token } = mintTestToken({ accountId: me.id, tokenVersion: me.token_version })
+  const viaSite = await call('POST', '/api/submissions', { body: { firstName: 'Ana', lastName: 'Cliente', email: 'other@example.test', phone: '504-555-0101', message: 'Prueba', consultationType: 'daca', location: 'MX', language: 'es', smsConsent: true, testToken: token } })
+  assert.equal(viaSite.status, 201, viaSite.text)
+  await settle()
+  await tick(new Date(Date.now() + 3 * MIN))
+  const held = await A.describeTestRun(db, viaSite.json.id)
+  assert.equal(held.sendSms, false)
+  assert.equal(held.events[0].detail.smsHeld, 'address_on_a_lead')
+  assert.equal(texts.length, 0, 'nothing was texted to a number that belongs to a lead')
+
+  // Confirmed once: sent, and remembered.
+  const ok = await asAdmin('POST', '/api/test-channel/automation/tests', body({ confirmKnown: true }))
+  assert.equal(ok.status, 201, ok.text)
+  await tick(new Date())
+  assert.deepEqual(texts.map((m) => m.to), ['+15045550101'])
+  assert.equal((await asAdmin('POST', '/api/test-channel/automation/tests', body({ email: 'mine2@example.test' }))).status, 201, 'no second question for the same number')
+})
+
+test('the website form’s own tick is what counts as agreeing to texts, for a test as for a lead', { skip: SKIP }, async () => {
+  await reset()
+  await asAdmin('PUT', '/api/test-channel/automation/prefs', { autoStart: true, timing: 'accelerated', sendEmail: false, sendSms: true, notifyMe: false })
+  const me = (await db.query('SELECT id, token_version FROM admin_users WHERE id = $1', [ids.admin])).rows[0]
+  const { token } = mintTestToken({ accountId: me.id, tokenVersion: me.token_version })
+  const form = (extra) => ({ firstName: 'Rosa', lastName: 'Prueba', phone: '504-555-0123', message: 'Probando', consultationType: 'daca', location: 'MX', language: 'en', ...extra })
+
+  // Ticked: stored with the test form, and the texts go to the form's phone.
+  const ticked = await call('POST', '/api/submissions', { body: form({ email: 'yes@example.test', smsConsent: true, testToken: token }) })
+  // Not ticked: no agreement. A value that is not a real tick is refused outright.
+  const blank = await call('POST', '/api/submissions', { body: form({ email: 'no@example.test', phone: '504-555-0124', testToken: token }) })
+  const odd = await call('POST', '/api/submissions', { body: form({ email: 'odd@example.test', phone: '504-555-0125', smsConsent: 'yes', testToken: token }) })
+  assert.equal(odd.status, 400)
+  assert.equal(await count('test_submissions', "email = 'odd@example.test'"), 0)
+  await settle()
+  await tick(new Date(Date.now() + 3 * MIN))
+  const opened = async (r) => (await asAdmin('GET', `/api/test-channel/${r.json.id}`)).json
+  assert.deepEqual([(await opened(ticked)).sms_consent, (await opened(blank)).sms_consent], [true, false])
+  assert.equal((await opened(ticked)).language, 'en')
+  assert.deepEqual([...new Set(texts.map((m) => m.to))], ['+15045550123'], 'only the form that was ticked is texted')
+  assert.match(texts[0].text, /^\[TEST\] Campos Muños Law: we received your message/)
+  assert.equal((await steps(blank.json.id)).ack_sms, 'skipped:no_sms_consent')
+
+  // The same form without a test link is a lead, and its tick is recorded the same way.
+  const lead = await call('POST', '/api/submissions', { body: form({ email: 'lead@example.test', phone: '504-555-0126', smsConsent: true }) })
+  const leadNo = await call('POST', '/api/submissions', { body: form({ email: 'lead2@example.test', phone: '504-555-0127' }) })
+  assert.equal(lead.status, 201, lead.text)
+  const consent = async (r) => (await db.query('SELECT sms_consent_at FROM submissions WHERE id = $1', [r.json.id])).rows[0].sms_consent_at
+  assert.ok(await consent(lead), 'when they agreed is kept on the lead')
+  assert.equal(await consent(leadNo), null)
 })

@@ -23,6 +23,21 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'sms-consent-and-test-texts',
+    // Set to the real go-live time when this is merged and deployed.
+    at: '2026-11-12T02:00:00Z',
+    section: 'admin',
+    any: ['forms.test'],
+    title: 'A text-consent box on the website, and real test texts',
+    summary: 'The contact form and the chat now ask, optionally, whether the firm may text the person. And an automation test can really text your own phone.',
+    points: [
+      'The website’s box is optional and never ticked for the person. Only a lead who ticked it can ever get an automatic text; when they agreed is kept on the lead.',
+      'In the Test channel, tick “Really text the messages” to have a test send its texts to the phone you typed, from the firm’s RingCentral number, each starting [TEST].',
+      'A phone number that a lead or client already has needs a one-time “It is mine” first, as an email address does.',
+      'Each test form now shows its language and whether the texts box was ticked.',
+    ],
+  },
+  {
     id: 'test-automation-mode',
     at: '2026-11-12T00:45:00Z',
     section: 'admin',

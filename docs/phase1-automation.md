@@ -345,11 +345,13 @@ the message's record ten minutes later and records a failed delivery.
 
 ### Consent — decide before switching texts on
 - **Leads.** By default a lead is texted only if the form carried their
-  agreement (`smsConsent: true` → `sms_consent_at`). **The website forms do not
-  ask for it yet**: adding that checkbox needs wording the firm approves. Until
-  then no lead is texted, and each skipped text says why
-  (`no_sms_consent`). The firm can instead decide that an inquiry is itself
-  consent (settings → Timing).
+  agreement (`smsConsent: true` → `sms_consent_at`). The contact form and the
+  chat ask for it with an optional box that is never ticked for the person
+  (`contact.smsConsent` in `site/src/i18n/`; the wording is a draft for the
+  firm to approve, and should say what the number's carrier registration
+  says). A lead who did not tick it is not texted, and the skipped text says
+  why (`no_sms_consent`). The firm can instead decide that an inquiry is
+  itself consent (settings → Timing).
 - **Missed callers.** Nobody who merely called has agreed to a text. Whether
   an automatic text back is permitted is the firm's decision to take with
   counsel and against RingCentral's policy. It stays off until then.

@@ -28,12 +28,17 @@ Waiting on a decision or an asset from the firm, not on code:
 
 - **Wording** of the acknowledgment, follow-up and missed-call messages (the
   defaults are drafts).
-- **A consent checkbox on the website forms** for text messages. The API
-  already stores `smsConsent`; the forms do not send it, so no lead is texted.
+- **The wording of the text-consent box** on the contact form and the chat
+  (added 2026-11-11, optional, `contact.smsConsent` in `site/src/i18n/`). It
+  is a draft: the firm should approve it, and it should match the opt-in
+  described in the number's carrier (TCR) registration. The site has no
+  privacy policy page to link from it.
 - **Whether a missed caller may be texted** at all (consent; RingCentral's
   policy on automated texts).
-- **RingCentral**: the SMS and Read Messages permissions on the app, and TCR
-  (10DLC) registration of the number.
+- **RingCentral**: Walid says (2026-11-11) the app has the SMS and Read
+  Messages permissions and the number is registered. Not yet confirmed from
+  the portal: the first real test text, or the Automation page after "Ask
+  RingCentral now", will show it.
 - **Google Calendar**: a service account, the calendar shared with it, and
   one test booking to confirm how Google lists the person who booked.
 

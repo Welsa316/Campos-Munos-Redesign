@@ -249,12 +249,18 @@ if (automationWanted && !automationBlocked) {
     const { createResendMailer } = await import('./reminders/email.js')
     const emailReady = !emailProblems.includes('RESEND_API_KEY is not set') && !emailProblems.includes('RESEND_API_KEY is still the placeholder')
     const mailer = emailReady ? createResendMailer({ apiKey: process.env.RESEND_API_KEY, env: process.env }) : null
+    const { loadRingCentralConfig } = await import('./integrations/ringcentral/config.js')
+    const { createRingCentralSms } = await import('./integrations/ringcentral/sms.js')
     let running = false
     const runTests = async () => {
       if (running) return
       running = true
       try {
-        const done = await runDueTestSteps(getPool(), { mailer, env: process.env, log: logger })
+        // For a test whose administrator ticked "really text": the firm's
+        // own RingCentral connection, to the test's phone only.
+        const rc = loadRingCentralConfig(process.env)
+        const sms = rc.configured ? createRingCentralSms(getPool(), rc, { env: process.env }) : null
+        const done = await runDueTestSteps(getPool(), { mailer, sms, env: process.env, log: logger })
         if (done.length) logger.info({ steps: done.length }, 'Test automation steps run')
       } catch (err) {
         logger.warn({ err: { name: err?.name, code: err?.code, message: err?.message } }, 'Test automation run failed')

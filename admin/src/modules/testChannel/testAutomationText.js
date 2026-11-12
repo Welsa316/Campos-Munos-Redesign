@@ -21,10 +21,15 @@ const TEST_REASONS = {
   not_production: 'this server is not the live one',
   opted_out: 'this address is on the firm’s opt-out list',
   invalid_address: 'the address cannot receive email',
-  address_on_a_lead: 'a lead in the inbox has this address, and nobody confirmed it',
+  address_on_a_lead: 'a lead or client already has it, and nobody confirmed it is yours',
   texts_are_never_sent_in_test_mode: 'text messages are never sent in test mode',
+  texts_not_requested: 'you chose not to send the texts for real',
+  sms_not_configured: 'RingCentral is not set up on this server',
+  sms_unavailable: 'RingCentral cannot send text messages from this connection right now',
+  ringcentral_asked_to_wait: 'RingCentral asked the portal to slow down, so nothing was sent',
+  unknown_delivery: 'RingCentral did not confirm it, so it may or may not have arrived; it is not sent again',
   no_phone: 'the test has no phone number',
-  send_failed: 'the email service did not accept it',
+  send_failed: 'it was not accepted for sending',
   interrupted: 'the server restarted mid-way, and a test step is never tried twice',
   marked_by_staff: 'set by hand',
   test_gone: 'the test was removed',
@@ -52,9 +57,9 @@ export const isText = (type) => type === 'ack_sms' || String(type).startsWith('f
 export const stepIcon = (type) => (type === 'ack_email' ? 'envelope' : type === 'no_response' ? 'circle-pause' : String(type).startsWith('escalation') ? 'bell' : 'comment-dots')
 
 /** What a step does in a test, before it runs: the one real thing, or what is only shown. */
-export function stepPlan(type, { sendEmail = false, notifyMe = false } = {}) {
+export function stepPlan(type, { sendEmail = false, sendSms = false, notifyMe = false } = {}) {
   if (type === 'ack_email') return sendEmail ? 'really sent, to the test’s address only' : 'shown only, not sent'
-  if (isText(type)) return 'shown only: texts are never sent'
+  if (isText(type)) return sendSms ? 'really texted, to the test’s phone only' : 'shown only, not sent'
   if (String(type).startsWith('escalation')) return notifyMe ? 'a notice to you only' : 'shown only: nobody is notified'
   return 'the test’s own status, never a lead’s'
 }
@@ -92,7 +97,7 @@ export function stepState(step, { test = {}, now = Date.now() } = {}) {
   if (step.state === 'cancelled') return { tone: 'quiet', text: `Stopped because ${stopWhy(step.outcome)}` }
   if (step.state === 'skipped') return { tone: 'quiet', text: `Skipped: ${why(step.outcome)}` }
   if (step.state === 'failed') return { tone: 'bad', text: `Failed: ${why(step.outcome)}` }
-  if (step.outcome === 'sent') return { tone: 'good', text: `Really sent to ${test.email || 'the test’s address'}` }
+  if (step.outcome === 'sent') return { tone: 'good', text: `Really sent to ${(isText(step.type) ? test.phone : test.email) || 'the test’s own address'}` }
   if (step.outcome === 'simulated') return { tone: 'shown', text: 'Shown only, nothing was sent' }
   if (step.outcome === 'no_response') return { tone: 'shown', text: 'The test’s status changed to No response' }
   if (/^level_/.test(step.outcome || '')) return { tone: 'shown', text: 'Escalated in the test only' }
@@ -122,17 +127,20 @@ export function eventLine(e) {
   const preview = e.body ? { to: e.recipient || '', subject: e.subject || '', body: e.body } : null
   const who = e.by || 'An administrator'
   if (e.kind === 'started') {
+    const real = [d.sendEmail ? 'the acknowledgment email' : '', d.sendSms ? 'the text messages' : ''].filter(Boolean)
+    const held = [d.emailHeld ? `The acknowledgment email is shown only: ${why(d.emailHeld)}.` : '', d.smsHeld ? `The texts are shown only: ${why(d.smsHeld)}.` : ''].filter(Boolean)
     return {
       icon: 'play', tone: 'quiet', title: `Test started, ${d.timing === 'production' ? 'real timing' : 'accelerated timing'}`,
-      note: d.emailHeld ? `The acknowledgment email is shown only: ${why(d.emailHeld)}.` : d.sendEmail ? 'You asked for the acknowledgment email to be really sent, to the test’s address only.' : 'Nothing is really sent in this test.',
+      note: [real.length ? `You asked for ${real.join(' and ')} to be really sent, to the test’s own ${d.sendEmail && d.sendSms ? 'address and phone' : d.sendSms ? 'phone' : 'address'} only.` : held.length ? '' : 'Nothing is really sent in this test.', ...held].filter(Boolean).join(' '),
       preview: null,
     }
   }
+  if (e.kind === 'sent' && e.channel === 'sms') return { icon: 'comment-dots', tone: 'good', title: `${label} really sent to ${e.recipient}`, note: `From the firm’s RingCentral number${d.from ? ` ${d.from}` : ''}. It also shows in RingCentral’s own message history.`, preview }
   if (e.kind === 'sent') return { icon: 'envelope', tone: 'good', title: `${label} really sent to ${e.recipient}`, note: d.replyTo ? `A reply to it goes to ${d.replyTo}, not to the office.` : '', preview }
   if (e.kind === 'simulated' && String(e.step).startsWith('escalation')) {
     return { icon: 'bell', tone: 'shown', title: `${label}: ${NOTIFIED[d.notified] || 'nobody was notified'}`, note: 'For a real lead this tells its owner, or everyone who works leads.', preview: e.body ? { to: '', subject: e.subject || '', body: e.body } : null }
   }
-  if (e.kind === 'simulated') return { icon: e.channel === 'sms' ? 'comment-dots' : 'envelope', tone: 'shown', title: `${label} shown only`, note: `Not sent: ${why(d.reason)}.`, preview }
+  if (e.kind === 'simulated') return { icon: e.channel === 'sms' ? 'comment-dots' : 'envelope', tone: 'shown', title: `${label} shown only`, note: `Not sent: ${why(d.reason)}${d.why ? ` (${why(d.why)})` : ''}.`, preview }
   if (e.kind === 'skipped') return { icon: 'ban', tone: 'quiet', title: `${label} skipped`, note: `${why(d.reason)[0].toUpperCase()}${why(d.reason).slice(1)}.`, preview: null }
   if (e.kind === 'cancelled') return { icon: 'circle-pause', tone: 'quiet', title: `Stopped because ${stopWhy(d.reason)}`, note: steps(d.steps), preview: null }
   if (e.kind === 'failed') return { icon: 'triangle-exclamation', tone: 'bad', title: `${label} failed`, note: `${why(d.reason)[0].toUpperCase()}${why(d.reason).slice(1)}${d.error ? ` (${d.error})` : ''}.`, preview }

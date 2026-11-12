@@ -185,9 +185,10 @@ async function beginTestAutomation(accountId, testId) {
   if (!testAutomationOn(process.env)) return
   const prefs = await getTestPrefs(getPool(), accountId)
   if (!prefs.autoStart) return
-  // lenient: nobody is there to confirm an address a lead also has, so the
-  // email is held back instead of the test being refused.
-  await startTestRun(getPool(), { testId, by: accountId, timing: prefs.timing, sendEmail: prefs.sendEmail, notifyMe: prefs.notifyMe, lenient: true })
+  // lenient: nobody is there to confirm an address or number a lead also
+  // has, so that email or those texts are held back instead of the test
+  // being refused.
+  await startTestRun(getPool(), { testId, by: accountId, timing: prefs.timing, sendEmail: prefs.sendEmail, sendSms: prefs.sendSms, notifyMe: prefs.notifyMe, lenient: true })
 }
 
 async function handleTestChatMessage(req, res) {

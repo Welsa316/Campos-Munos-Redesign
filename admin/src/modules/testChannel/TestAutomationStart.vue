@@ -11,6 +11,7 @@
       <p class="text-xs text-gray-500 mt-1 max-w-3xl">
         Rehearse what the portal would do for a new website lead: the acknowledgment, the follow-ups, the escalation and the status changes.
         It runs on a test form only. No lead is made or changed, nobody at the firm is notified, and the automations themselves stay switched off.
+        Anything real goes only to the email and phone you type here.
       </p>
     </header>
 
@@ -27,7 +28,7 @@
           <label class="block text-xs font-semibold text-gray-700">Email for the test
             <input v-model.trim="form.email" type="email" autocomplete="off" inputmode="email" spellcheck="false" class="fld mt-1 w-full font-normal" :aria-describedby="uid + '-email'" />
           </label>
-          <label class="block text-xs font-semibold text-gray-700">Phone <span class="font-normal text-gray-500">(optional; never texted)</span>
+          <label class="block text-xs font-semibold text-gray-700">Phone <span class="font-normal text-gray-500">(optional)</span>
             <input v-model.trim="form.phone" type="tel" autocomplete="off" maxlength="30" class="fld mt-1 w-full font-normal tabular-nums" />
           </label>
           <label class="block text-xs font-semibold text-gray-700">Website language of the form
@@ -39,7 +40,7 @@
           </label>
         </div>
         <p :id="uid + '-email'" class="text-[11px] text-gray-500 -mt-2">
-          Use an address of your own. It is the only place a real email from this test can go.
+          Use an address and a phone of your own. They are the only places a real email or text from this test can go.
         </p>
 
         <fieldset class="space-y-2">
@@ -60,7 +61,12 @@
           <label class="flex items-start gap-2.5 text-xs text-gray-700 min-h-11 sm:min-h-0">
             <input v-model="form.smsConsent" type="checkbox" class="mt-0.5 rounded border-gray-300" />
             <span><span class="font-semibold text-gray-900">The person agreed to text messages on the form</span>
-              <span class="block text-gray-500">Without it the texts are skipped, as they would be for a lead. No text is ever sent in a test either way.</span></span>
+              <span class="block text-gray-500">Without it the texts are skipped, as they would be for a lead.</span></span>
+          </label>
+          <label class="flex items-start gap-2.5 text-xs text-gray-700 min-h-11 sm:min-h-0" :class="{ 'opacity-60': !canText }">
+            <input v-model="form.sendSms" type="checkbox" class="mt-0.5 rounded border-gray-300" :disabled="!canText" @change="savePrefs" />
+            <span><span class="font-semibold text-gray-900">Really text the messages</span>
+              <span class="block text-gray-500">{{ smsHint }}</span></span>
           </label>
           <label class="flex items-start gap-2.5 text-xs text-gray-700 min-h-11 sm:min-h-0">
             <input v-model="form.notifyMe" type="checkbox" class="mt-0.5 rounded border-gray-300" @change="savePrefs" />
@@ -70,7 +76,7 @@
         </fieldset>
 
         <p v-if="error" role="alert" class="text-sm text-brand-red bg-red-50 rounded-lg px-3 py-2">{{ error }}</p>
-        <ConfirmInline v-if="askKnown" tone="navy" :title="askKnown" body="Only continue if the address is your own. The email is marked as a test, and a reply to it comes to you."
+        <ConfirmInline v-if="askKnown" tone="navy" :title="askKnown" body="Only continue if it is your own. Every message is marked as a test."
           confirm-label="It is mine, send the test" :busy="starting" @confirm="submit(true)" @cancel="askKnown = ''" />
 
         <div class="flex flex-wrap items-center gap-3">
@@ -126,7 +132,7 @@ const emit = defineEmits(['started', 'options'])
 const { post, put } = useApi()
 const uid = useId()
 
-const form = reactive({ firstName: '', email: '', phone: '', language: 'es', smsConsent: true, timing: 'accelerated', sendEmail: true, notifyMe: false, autoStart: false })
+const form = reactive({ firstName: '', email: '', phone: '', language: 'es', smsConsent: true, timing: 'accelerated', sendEmail: true, sendSms: false, notifyMe: false, autoStart: false })
 const starting = ref(false)
 const error = ref('')
 const askKnown = ref('')
@@ -137,11 +143,11 @@ let seeded = false
 watch(() => props.overview.prefs, (p) => {
   if (!p || seeded) return
   seeded = true
-  Object.assign(form, { timing: p.timing, sendEmail: p.sendEmail, notifyMe: p.notifyMe, autoStart: p.autoStart })
+  Object.assign(form, { timing: p.timing, sendEmail: p.sendEmail, sendSms: Boolean(p.sendSms), notifyMe: p.notifyMe, autoStart: p.autoStart })
 }, { immediate: true })
 
 // What a test started from a received form uses too.
-watch(() => [form.timing, form.sendEmail, form.notifyMe], () => emit('options', { timing: form.timing, sendEmail: form.sendEmail, notifyMe: form.notifyMe }), { immediate: true })
+watch(() => [form.timing, form.sendEmail, form.sendSms, form.notifyMe], () => emit('options', { timing: form.timing, sendEmail: form.sendEmail, sendSms: form.sendSms, notifyMe: form.notifyMe }), { immediate: true })
 
 const timings = computed(() => [
   { value: 'accelerated', label: 'Accelerated', hint: `One step about every ${props.overview.acceleratedStepSeconds === 60 ? 'minute' : `${props.overview.acceleratedStepSeconds} seconds`}, so the whole sequence takes a few minutes.` },
@@ -154,18 +160,29 @@ const emailHint = computed(() => {
   return 'To the address above only, with [TEST] in the subject and a test notice at the top. A reply comes to you, not to the office.'
 })
 
+// A real text needs a phone to send to and the agreement a lead would need.
+const canText = computed(() => Boolean(form.phone) && (form.smsConsent || !props.overview.textConsentRequired))
+const smsHint = computed(() => {
+  if (!form.phone) return 'Add a phone number above first.'
+  if (!canText.value) return 'Tick the agreement to texts above first: without it no text goes out, here or for a lead.'
+  if (!form.sendSms) return 'Off: each text is shown on this page and nothing is sent.'
+  if (!props.overview.sms?.configured) return 'RingCentral is not set up on this server, so the texts will be shown here instead of sent.'
+  return 'To the phone above only, from the firm’s RingCentral number, each starting [TEST]. They also show in RingCentral’s own message history.'
+})
+
 const plan = computed(() => {
   const steps = props.overview.schedules?.[form.timing] || []
   const from = props.overview.schedules?.now
   const noTexts = props.overview.textConsentRequired && !form.smsConsent
   return steps.map((s) => {
     const skippedText = noTexts && isText(s.type)
-    const real = s.type === 'ack_email' && form.sendEmail && Boolean(props.overview.email?.configured)
+    const realText = isText(s.type) && form.sendSms && canText.value && Boolean(props.overview.sms?.configured)
+    const real = realText || (s.type === 'ack_email' && form.sendEmail && Boolean(props.overview.email?.configured))
     return {
       type: s.type, icon: stepIcon(s.type), label: stepLabel(s.type), when: offsetText(s.dueAt, from, form.timing), real,
       what: skippedText ? 'skipped: no agreement to texts'
         : noTexts && s.type === 'no_response' ? 'skipped: it needs every follow-up to have gone'
-          : stepPlan(s.type, { sendEmail: real, notifyMe: form.notifyMe }),
+          : stepPlan(s.type, { sendEmail: real, sendSms: realText, notifyMe: form.notifyMe }),
     }
   })
 })
@@ -173,7 +190,7 @@ const plan = computed(() => {
 async function savePrefs() {
   prefsNote.value = ''
   try {
-    await put('/api/test-channel/automation/prefs', { autoStart: form.autoStart, timing: form.timing, sendEmail: form.sendEmail, notifyMe: form.notifyMe })
+    await put('/api/test-channel/automation/prefs', { autoStart: form.autoStart, timing: form.timing, sendEmail: form.sendEmail, sendSms: form.sendSms, notifyMe: form.notifyMe })
     prefsNote.value = 'Saved.'
   } catch (err) {
     prefsNote.value = `Could not save this: ${err.message}`
@@ -189,7 +206,7 @@ async function submit(confirmKnown = false) {
   try {
     const r = await post('/api/test-channel/automation/tests', {
       firstName: form.firstName, email: form.email, phone: form.phone, language: form.language || null, smsConsent: form.smsConsent,
-      timing: form.timing, sendEmail: form.sendEmail, notifyMe: form.notifyMe, confirmKnown,
+      timing: form.timing, sendEmail: form.sendEmail, sendSms: form.sendSms && canText.value, notifyMe: form.notifyMe, confirmKnown,
     })
     askKnown.value = ''
     emit('started', r.id)

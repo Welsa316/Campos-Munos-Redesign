@@ -12,7 +12,7 @@
         <!-- Said once for the whole page, and again on everything a test produces. -->
         <p class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-amber-50 ring-1 ring-amber-300 px-4 py-3 text-xs text-amber-900" data-test-banner>
           <span class="inline-flex items-center gap-2 font-semibold tracking-[0.06em]"><FaIcon name="flask" class="text-[11px]" />{{ TEST_BANNER }}</span>
-          <span>Everything on this page stays in the test channel. Leads, clients, staff, reminders, billing and RingCentral are never touched.</span>
+          <span>Everything on this page stays in the test channel. Leads, clients, staff, reminders and billing are never touched. A real email or text goes only to the address and phone you type for a test.</span>
         </p>
 
         <!-- Send a test -->
@@ -142,6 +142,8 @@
                   <div><dt class="text-[11px] font-semibold text-gray-500">Phone</dt><dd class="text-gray-900 tabular-nums">{{ formatPhone(selected.phone) }}</dd></div>
                   <div><dt class="text-[11px] font-semibold text-gray-500">Service</dt><dd class="text-gray-900">{{ consultationLabel(selected.consultation_type) }}</dd></div>
                   <div><dt class="text-[11px] font-semibold text-gray-500">Location</dt><dd class="text-gray-900">{{ selected.location ? countryLabel(selected.location, adminLocale()) : '—' }}</dd></div>
+                  <div><dt class="text-[11px] font-semibold text-gray-500">Form language</dt><dd class="text-gray-900">{{ LANGUAGE[selected.language] || 'Not known' }}</dd></div>
+                  <div><dt class="text-[11px] font-semibold text-gray-500">Agreed to text messages</dt><dd class="text-gray-900">{{ selected.sms_consent ? 'Yes, ticked on the form' : 'No' }}</dd></div>
                 </dl>
 
                 <div class="mt-5 space-y-3">
@@ -194,6 +196,7 @@ import TestEventList from './TestEventList.vue'
 import { TEST_BANNER, stepLabel, dueText, listNote } from './testAutomationText.js'
 
 const SOURCE = { chat: 'Chat', contact: 'Form', portal: 'Portal' }
+const LANGUAGE = { es: 'Spanish', en: 'English' }
 const SOURCE_LONG = { chat: 'Chat', contact: 'Contact form', portal: 'Started from the portal' }
 
 const { get, post, del } = useApi()
@@ -262,7 +265,7 @@ async function open(id, reveal = false) {
 
 const overview = ref(null)
 const overviewError = ref('')
-const startOptions = ref({ timing: 'accelerated', sendEmail: true, notifyMe: false })
+const startOptions = ref({ timing: 'accelerated', sendEmail: true, sendSms: false, notifyMe: false })
 const acting = ref(false)
 const panelError = ref('')
 const askKnown = ref('')

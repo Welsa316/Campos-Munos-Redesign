@@ -32,6 +32,7 @@ import {
   describeTestRun, testHistory, pendingTests, getTestPrefs, saveTestPrefs, noteTestsRemoved, emailGate,
 } from '../testChannel/automation.js'
 import { loadSettings } from '../automation/settings.js'
+import { loadRingCentralConfig } from '../integrations/ringcentral/config.js'
 import { looksLikeEmail } from '../reminders/email.js'
 import { stripHtml } from '../utils/sanitize.js'
 
@@ -60,6 +61,7 @@ export function createTestChannelRouter({ db = null, env = process.env } = {}) {
   const options = (b) => ({
     timing: TIMINGS.includes(b?.timing) ? b.timing : 'accelerated',
     sendEmail: b?.sendEmail === true,
+    sendSms: b?.sendSms === true,
     notifyMe: b?.notifyMe === true,
     confirmKnown: b?.confirmKnown === true,
   })
@@ -102,6 +104,9 @@ export function createTestChannelRouter({ db = null, env = process.env } = {}) {
         // What a test started now would do, in each timing.
         schedules: { now, accelerated: schedule('accelerated'), production: schedule('production') },
         email: { configured: emailProblems.length === 0 },
+        // Whether RingCentral is set up on this server at all; whether it
+        // can text right now is only known when a text is tried.
+        sms: { configured: Boolean(loadRingCentralConfig(env).configured) },
         textConsentRequired: Boolean(settings.ack.smsRequiresFormConsent),
         prefs: await getTestPrefs(pool(), req.account.id),
         pending: await pendingTests(pool()),
@@ -113,7 +118,7 @@ export function createTestChannelRouter({ db = null, env = process.env } = {}) {
   router.put('/automation/prefs', async (req, res) => {
     try {
       const b = req.body || {}
-      res.json({ prefs: await saveTestPrefs(pool(), req.account.id, { autoStart: b.autoStart === true, timing: b.timing, sendEmail: b.sendEmail === true, notifyMe: b.notifyMe === true }) })
+      res.json({ prefs: await saveTestPrefs(pool(), req.account.id, { autoStart: b.autoStart === true, timing: b.timing, sendEmail: b.sendEmail === true, sendSms: b.sendSms === true, notifyMe: b.notifyMe === true }) })
     } catch (err) { fail(req, res, err, 'Test automation preferences error') }
   })
 
