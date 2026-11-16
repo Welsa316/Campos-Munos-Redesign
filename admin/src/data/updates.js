@@ -24,7 +24,7 @@ export const SECTIONS = {
 export const UPDATES = [
   {
     id: 'office-manager-role',
-    at: '2026-11-16T03:00:00Z',
+    at: '2026-11-16T03:18:00Z',
     section: 'admin',
     any: ['team.manage'],
     title: 'A new role on the Team tab: Office Manager',
