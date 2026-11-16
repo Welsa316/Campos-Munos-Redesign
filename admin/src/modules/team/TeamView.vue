@@ -300,6 +300,7 @@ const ROLE_SUMMARY = {
   admin: 'Everything, including integrations, the monday.com board setup, Team and the activity log.',
   front_desk: 'Website leads, WhatsApp, calls and payment status.',
   receptionist: 'Calls, WhatsApp, and website leads to read (no replies or changes).',
+  office_manager: 'Website leads (no CSV export), calls, and WhatsApp to assign, note and close (no replies). No billing.',
   billing_paralegal: 'Billing imports, sync, reminders and WhatsApp. No website leads.',
   staff: 'Website leads and billing to read (the original view-only login).',
 }
