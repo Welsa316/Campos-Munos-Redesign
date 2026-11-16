@@ -12,7 +12,7 @@ export const STAFF_SCHEMA_SQL = `
   -- ROLES in server/auth/capabilities.js.
   ALTER TABLE admin_users DROP CONSTRAINT IF EXISTS admin_users_role_chk;
   ALTER TABLE admin_users ADD CONSTRAINT admin_users_role_chk
-    CHECK (role IN ('admin', 'staff', 'front_desk', 'billing_paralegal', 'receptionist'));
+    CHECK (role IN ('admin', 'staff', 'front_desk', 'billing_paralegal', 'receptionist', 'office_manager'));
 
   -- Per-account adjustments on top of the role, set with scripts/staff.js.
   -- Unknown names in either list grant nothing.

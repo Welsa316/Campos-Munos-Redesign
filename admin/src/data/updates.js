@@ -23,6 +23,20 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'office-manager-role',
+    at: '2026-11-16T03:18:00Z',
+    section: 'admin',
+    any: ['team.manage'],
+    title: 'A new role on the Team tab: Office Manager',
+    summary: 'You can now give an account the Office Manager role when you add a person or change their role. Nobody has it yet.',
+    points: [
+      'Website leads: read, reply by email, change status, mark read or archived, add notes. No CSV export.',
+      'WhatsApp: read conversations and notes, assign and reassign, add notes, close and reopen. No replies, and no client numbers or consent.',
+      'Calls: the call log and missed calls, refresh, call out with RingOut, and mark missed calls handled.',
+      'No billing and nothing from the administrator area. Single permissions can still be added or taken away per person, as for any role.',
+    ],
+  },
+  {
     id: 'sms-consent-and-test-texts',
     at: '2026-11-12T03:35:00Z',
     section: 'admin',

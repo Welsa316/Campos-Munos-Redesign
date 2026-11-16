@@ -75,6 +75,19 @@ export const ROLES = {
     label: 'Receptionist',
     capabilities: ['crm.view', 'whatsapp.view', 'whatsapp.send', 'whatsapp.manage', 'calls.view', 'calls.place', 'calls.exclude'],
   },
+  // Supervises the intake channels without speaking for the firm on
+  // WhatsApp: works website leads (no CSV export), assigns, notes, closes
+  // and reopens WhatsApp conversations (no replies, no client numbers or
+  // consent), and works the call log (refresh, call out, mark missed calls
+  // handled). No billing and nothing from ADMIN_ONLY.
+  office_manager: {
+    label: 'Office Manager',
+    capabilities: [
+      'crm.view', 'crm.manage',
+      'whatsapp.view', 'whatsapp.manage',
+      'calls.view', 'calls.place', 'calls.exclude',
+    ],
+  },
   // No website leads (Messages: inbox and contacts); the firm keeps those
   // with the front desk.
   billing_paralegal: {

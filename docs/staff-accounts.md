@@ -41,31 +41,31 @@ every capability on every request; the portal only hides what an account
 cannot use. Changes take effect on the account's next click: there is no
 need to sign out.
 
-| Capability | Lets the account | admin | front_desk | receptionist | billing_paralegal | staff (legacy) |
-|---|---|:-:|:-:|:-:|:-:|:-:|
-| `crm.view` | Read website leads, their notes and email replies | ✓ | ✓ | ✓ |  | ✓ |
-| `crm.manage` | Reply to leads by email, change status, mark read/archived, add notes | ✓ | ✓ |  |  | ✓ |
-| `crm.export` | Download every lead as CSV | ✓ | ✓ |  |  | ✓ |
-| `whatsapp.view` | Read WhatsApp conversations, internal notes, assignments | ✓ | ✓ | ✓ | ✓ |  |
-| `whatsapp.send` | Reply on WhatsApp from the portal (rules below) | ✓ | ✓ | ✓ | ✓ |  |
-| `whatsapp.manage` | Assign conversations, add internal notes, close/reopen | ✓ | ✓ | ✓ | ✓ |  |
-| `whatsapp.contacts` | Client WhatsApp numbers and consent (opt in/out) | ✓ | ✓ |  | ✓ |  |
-| `billing.status` | Read-only invoice list: status, balance, next due date | ✓ | ✓ |  | ✓ | ✓ |
-| `billing.view` | All billing records: overview, invoice history, imports, sync runs, reminders | ✓ |  |  | ✓ | ✓ |
-| `billing.import` | Upload, map, approve or cancel eImmigration imports | ✓ |  |  | ✓ |  |
-| `billing.reconcile` | Link billing clients to monday.com items | ✓ |  |  | ✓ |  |
-| `billing.sync` | Preview and apply the monday.com payment-status sync | ✓ |  |  | ✓ |  |
-| `billing.reminders` | Draft, approve, cancel, retry and resolve payment reminders; client replies | ✓ |  |  | ✓ |  |
-| `billing.configure` | Reminder rules, templates, sending hours | ✓ |  |  |  |  |
-| `calls.view` | See the RingCentral call log (Calls) and refresh it (docs/ringcentral-call-log.md) | ✓ | ✓ | ✓ |  |  |
-| `calls.place` | Call a number from the portal (RingCentral RingOut rings your own phone first, then the client) | ✓ | ✓ | ✓ |  |  |
-| `calls.exclude` | Mark missed calls that need no callback (verification codes, test calls, spam) so they leave the missed-call counts | ✓ | ✓ | ✓ |  |  |
-| `integrations.view` | Status of every connected service (Billing → Integrations) | ✓ |  |  |  |  |
-| `integrations.manage` | Connect, check or disconnect the firm's RingCentral account (docs/ringcentral-oauth.md) | ✓ |  |  |  |  |
-| `monday.configure` | monday.com board and column mapping, status labels, connection check | ✓ |  |  |  |  |
-| `team.manage` | The Team tab: accounts, roles, single permissions, access, sessions, passwords | ✓ |  |  |  |  |
-| `activity.view` | The activity log | ✓ |  |  |  |  |
-| `forms.test` | The Test channel: test forms sent through the website that skip the inbox, lead counts and staff notifications | ✓ |  |  |  |  |
+| Capability | Lets the account | admin | front_desk | receptionist | billing_paralegal | office_manager | staff (legacy) |
+|---|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| `crm.view` | Read website leads, their notes and email replies | ✓ | ✓ | ✓ |  | ✓ | ✓ |
+| `crm.manage` | Reply to leads by email, change status, mark read/archived, add notes | ✓ | ✓ |  |  | ✓ | ✓ |
+| `crm.export` | Download every lead as CSV | ✓ | ✓ |  |  |  | ✓ |
+| `whatsapp.view` | Read WhatsApp conversations, internal notes, assignments | ✓ | ✓ | ✓ | ✓ | ✓ |  |
+| `whatsapp.send` | Reply on WhatsApp from the portal (rules below) | ✓ | ✓ | ✓ | ✓ |  |  |
+| `whatsapp.manage` | Assign conversations, add internal notes, close/reopen | ✓ | ✓ | ✓ | ✓ | ✓ |  |
+| `whatsapp.contacts` | Client WhatsApp numbers and consent (opt in/out) | ✓ | ✓ |  | ✓ |  |  |
+| `billing.status` | Read-only invoice list: status, balance, next due date | ✓ | ✓ |  | ✓ |  | ✓ |
+| `billing.view` | All billing records: overview, invoice history, imports, sync runs, reminders | ✓ |  |  | ✓ |  | ✓ |
+| `billing.import` | Upload, map, approve or cancel eImmigration imports | ✓ |  |  | ✓ |  |  |
+| `billing.reconcile` | Link billing clients to monday.com items | ✓ |  |  | ✓ |  |  |
+| `billing.sync` | Preview and apply the monday.com payment-status sync | ✓ |  |  | ✓ |  |  |
+| `billing.reminders` | Draft, approve, cancel, retry and resolve payment reminders; client replies | ✓ |  |  | ✓ |  |  |
+| `billing.configure` | Reminder rules, templates, sending hours | ✓ |  |  |  |  |  |
+| `calls.view` | See the RingCentral call log (Calls) and refresh it (docs/ringcentral-call-log.md) | ✓ | ✓ | ✓ |  | ✓ |  |
+| `calls.place` | Call a number from the portal (RingCentral RingOut rings your own phone first, then the client) | ✓ | ✓ | ✓ |  | ✓ |  |
+| `calls.exclude` | Mark missed calls that need no callback (verification codes, test calls, spam) so they leave the missed-call counts | ✓ | ✓ | ✓ |  | ✓ |  |
+| `integrations.view` | Status of every connected service (Billing → Integrations) | ✓ |  |  |  |  |  |
+| `integrations.manage` | Connect, check or disconnect the firm's RingCentral account (docs/ringcentral-oauth.md) | ✓ |  |  |  |  |  |
+| `monday.configure` | monday.com board and column mapping, status labels, connection check | ✓ |  |  |  |  |  |
+| `team.manage` | The Team tab: accounts, roles, single permissions, access, sessions, passwords | ✓ |  |  |  |  |  |
+| `activity.view` | The activity log | ✓ |  |  |  |  |  |
+| `forms.test` | The Test channel: test forms sent through the website that skip the inbox, lead counts and staff notifications | ✓ |  |  |  |  |  |
 
 **Administrator only.** The last six rows, and `calls.clear`
 (docs/ringcentral-call-log.md), (`ADMIN_ONLY` in
@@ -85,6 +85,33 @@ The front desk role sees payment **status** (paid, partly paid, overdue,
 balance, next due date) in the invoice list and beside a WhatsApp
 conversation, but not invoice history, imports, reconciliation, monday.com
 or integration settings.
+
+**Office Manager** (`office_manager`) supervises the intake channels without
+speaking for the firm on WhatsApp. It works website leads (read, reply by
+email, change status, mark read or archived, notes) but cannot download them
+as CSV; reads WhatsApp conversations, assigns and reassigns them, adds
+internal notes, closes and reopens them, but cannot reply and cannot see or
+change client WhatsApp numbers or consent; and works the call log (missed
+calls, refresh, RingOut, marking missed calls handled or as needing no
+callback). No billing, not even payment status, and nothing administrator-only.
+Its screens are the receptionist's (Messages, WhatsApp, Calls); what differs
+is inside them.
+
+What the existing capabilities bundle together, and so comes with the role:
+
+- `crm.manage` also lets the account choose who follows a lead up, stop or
+  allow a lead's automatic messages, mark a lead spam or not spam, mark a
+  lead's text replies as seen to, remove lead notes, and set callback
+  reminders on leads.
+- `calls.exclude` covers both "handled" and "needs no callback", including
+  the "every call from this number" scope, and undoing either; it also lets
+  the account add and edit notes on calls and decide whether a call and a
+  lead are the same person (with `crm.view`).
+- `calls.view` includes refreshing the call log from RingCentral (at most
+  every 30 seconds), and new-lead and new-missed-caller notifications go to
+  everyone with `crm.view` or `calls.view`, this role included.
+- `whatsapp.view` shows assignments and internal notes together; there is no
+  separate "see assignments" capability.
 
 ## Home and profile pictures
 
@@ -320,6 +347,18 @@ node scripts/staff.js create --email <their email> --name <first name> --role bi
 Give them the temporary password in person (not by email or chat) and ask
 them to change it on first sign-in. They land on Billing. Use the name they
 go by: it is what colleagues see beside their replies and notes.
+
+### Give someone the Office Manager role
+
+On the **Team** tab (administrators): *Add a person* and pick **Office
+Manager** under Role, or open an existing person's row and change Role to
+**Office Manager**, then confirm. It applies on their next click; any single
+permissions already changed for them stay. Or, on the server:
+
+```bash
+node scripts/staff.js set-role --email <their email> --role office_manager
+node scripts/staff.js create --email <their email> --name <first name> --role office_manager
+```
 
 ### When someone leaves
 

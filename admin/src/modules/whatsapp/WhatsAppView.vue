@@ -2,12 +2,14 @@
   <div class="h-dvh flex flex-col bg-brand-surface overflow-hidden">
     <PortalHeader title="WhatsApp" current="whatsapp" label-at="xl" actions-label-at="lg" show-email :notifications="false" />
 
-    <!-- What sending means right now, before anyone types. -->
-    <p v-if="status && !status.sendingEnabled" class="flex-shrink-0 px-4 sm:px-6 py-2 text-xs font-ui text-amber-900 bg-amber-50 border-b border-amber-100">
+    <!-- What sending means right now, before anyone types. Only for accounts
+         that may reply: to one that cannot, "replies wait" would promise a
+         reply box they will never get. -->
+    <p v-if="status && can('whatsapp.send') && !status.sendingEnabled" class="flex-shrink-0 px-4 sm:px-6 py-2 text-xs font-ui text-amber-900 bg-amber-50 border-b border-amber-100">
       <i class="fa-solid fa-circle-pause mr-1.5" aria-hidden="true"></i>
       Sending is switched off. Conversations can be read, assigned and noted; replies wait until an administrator turns WhatsApp sending on.
     </p>
-    <p v-else-if="status && status.mode === 'mock'" class="flex-shrink-0 px-4 sm:px-6 py-2 text-xs font-ui text-violet-900 bg-violet-50 border-b border-violet-100">
+    <p v-else-if="status && can('whatsapp.send') && status.mode === 'mock'" class="flex-shrink-0 px-4 sm:px-6 py-2 text-xs font-ui text-violet-900 bg-violet-50 border-b border-violet-100">
       <i class="fa-solid fa-flask mr-1.5" aria-hidden="true"></i>
       Simulated sending: replies go to a simulator and no client receives them.
     </p>
