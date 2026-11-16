@@ -8,6 +8,7 @@
 //   node scripts/staff.js roles
 //   node scripts/staff.js create  --email a@b.com --name Yoletty --role front_desk
 //   node scripts/staff.js set-role --email a@b.com --role billing_paralegal
+//   node scripts/staff.js set-role --email a@b.com --role office_manager
 //   node scripts/staff.js grant   --email a@b.com --capability billing.configure
 //   node scripts/staff.js revoke  --email a@b.com --capability crm.export
 //   node scripts/staff.js clear-overrides --email a@b.com
