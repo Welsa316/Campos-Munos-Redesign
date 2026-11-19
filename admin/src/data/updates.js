@@ -24,7 +24,7 @@ export const SECTIONS = {
 export const UPDATES = [
   {
     id: 'language-switch-everywhere',
-    at: '2026-11-20T00:00:00Z',
+    at: '2026-11-19T21:36:00Z',
     section: 'everyone',
     any: [],
     title: 'Switch the portal to Spanish from any page',
@@ -38,7 +38,7 @@ export const UPDATES = [
   },
   {
     id: 'custom-theme-colours',
-    at: '2026-11-20T00:00:00Z',
+    at: '2026-11-19T21:36:00Z',
     section: 'everyone',
     any: [],
     title: 'Choose your own portal colours',
@@ -53,7 +53,7 @@ export const UPDATES = [
   },
   {
     id: 'entry-colors',
-    at: '2026-11-20T00:00:00Z',
+    at: '2026-11-19T21:36:00Z',
     section: 'everyone',
     any: ['calls.exclude', 'crm.manage'],
     title: 'Give callers, leads and reminders a color',
