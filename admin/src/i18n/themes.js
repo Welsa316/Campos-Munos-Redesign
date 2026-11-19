@@ -4,6 +4,16 @@
 
 export const THEME_WORDS = {
   en: {
+    'folder.title': 'Themes',
+    'folder.note': 'Saved to your account; colleagues keep their own.',
+    'folder.close': 'Close themes',
+    'folder.group': 'Theme',
+    'desc.classic': 'Official firm branding',
+    'desc.midnight-executive': 'Premium, modern, professional',
+    'desc.coastal-teal': 'Calm, contemporary workspace',
+    'desc.graphite': 'Neutral, distraction-free',
+    'desc.violet': 'Sophisticated, quietly distinctive',
+    'desc.midnight-dark': 'Dark mode for long workdays',
     'tile.name': 'Custom',
     'tile.new': 'Make your own colours',
     'tile.yours': 'Your own colours',
@@ -68,14 +78,24 @@ export const THEME_WORDS = {
     'error.save': 'Could not save your colours',
   },
   es: {
+    'folder.title': 'Temas',
+    'folder.note': 'Se guarda en su cuenta; cada colega conserva el suyo.',
+    'folder.close': 'Cerrar temas',
+    'folder.group': 'Tema',
+    'desc.classic': 'Los colores oficiales de la firma',
+    'desc.midnight-executive': 'Elegante, moderno, profesional',
+    'desc.coastal-teal': 'Tranquilo y actual',
+    'desc.graphite': 'Neutro, sin distracciones',
+    'desc.violet': 'Sofisticado, discretamente distinto',
+    'desc.midnight-dark': 'Modo oscuro para jornadas largas',
     'tile.name': 'Personalizado',
-    'tile.new': 'Crea tus propios colores',
-    'tile.yours': 'Tus propios colores',
+    'tile.new': 'Cree sus propios colores',
+    'tile.yours': 'Sus propios colores',
     'tile.edit': 'Editar',
     'tile.selected': 'Seleccionado',
 
-    'editor.title': 'Tus colores',
-    'editor.intro': 'Solo tú los ves. El portal cambia mientras eliges.',
+    'editor.title': 'Sus colores',
+    'editor.intro': 'Solo usted los ve. El portal cambia mientras elige.',
     'editor.close': 'Cerrar sin guardar',
     'editor.start': 'Empezar desde',
     'editor.start_current': 'Lo que tengo ahora',
@@ -106,7 +126,7 @@ export const THEME_WORDS = {
     'hint.summaryB': 'La segunda cifra en Inicio',
 
     'editor.more': 'Más colores',
-    'editor.more_hint': 'Opcional. En Automático, cada uno se calcula a partir de lo que elegiste arriba.',
+    'editor.more_hint': 'Opcional. En Automático, cada uno se calcula a partir de lo que eligió arriba.',
     'color.text': 'Texto principal',
     'color.link': 'Enlaces',
     'color.border': 'Líneas y bordes',
@@ -129,7 +149,7 @@ export const THEME_WORDS = {
     'cancel': 'Cancelar',
     'save': 'Guardar',
     'saving': 'Guardando…',
-    'error.save': 'No se pudieron guardar tus colores',
+    'error.save': 'No se pudieron guardar sus colores',
   },
 }
 

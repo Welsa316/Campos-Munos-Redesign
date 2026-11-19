@@ -10,7 +10,7 @@
         <span v-for="t in THEMES.slice(0, 3)" :key="t.key" class="rounded-[5px]" :style="{ background: t.tokens['sidebar-bg'] }"></span>
         <span class="rounded-[5px] bg-white/80 flex items-center justify-center text-brand-navy"><FaIcon name="palette" class="text-[11px]" /></span>
       </span>
-      <span class="text-[11px] font-ui font-semibold text-gray-600 group-hover:text-gray-900">Themes</span>
+      <span class="text-[11px] font-ui font-semibold text-gray-600 group-hover:text-gray-900">{{ tr('folder.title') }}</span>
     </button>
 
     <div v-if="open" id="theme-folder-panel" ref="panelRef" role="dialog" aria-modal="false" aria-labelledby="theme-folder-title"
@@ -18,16 +18,16 @@
       @keydown.esc.stop.prevent="close(true)" @focusout="onFocusOut">
       <div ref="headRef" class="flex items-start justify-between gap-3 mb-3.5 px-1">
         <div>
-          <h2 id="theme-folder-title" class="text-[17px] font-semibold tracking-tight text-gray-900">Themes</h2>
-          <p class="text-[12px] text-gray-500 mt-0.5">Saved to your account; colleagues keep their own.</p>
+          <h2 id="theme-folder-title" class="text-[17px] font-semibold tracking-tight text-gray-900">{{ tr('folder.title') }}</h2>
+          <p class="text-[12px] text-gray-500 mt-0.5">{{ tr('folder.note') }}</p>
         </div>
-        <button type="button" @click="close(true)" aria-label="Close themes"
+        <button type="button" @click="close(true)" :aria-label="tr('folder.close')"
           class="w-8 h-8 rounded-full text-gray-500 hover:text-gray-800 hover:bg-gray-900/5 flex items-center justify-center transition-colors">
           <FaIcon name="xmark" class="text-sm" />
         </button>
       </div>
 
-      <div ref="gridRef" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3" role="group" aria-label="Theme" @keydown="onArrows">
+      <div ref="gridRef" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3" role="group" :aria-label="tr('folder.group')" @keydown="onArrows">
         <button v-for="(t, i) in tiles" :key="t.key" type="button" :data-index="i"
           :aria-pressed="t.key === CUSTOM_THEME ? undefined : current === t.key" :aria-haspopup="t.key === CUSTOM_THEME ? 'dialog' : undefined"
           :tabindex="focusIndex === i ? 0 : -1"
@@ -65,7 +65,7 @@
           <span class="block mt-2 px-1 text-[13px] font-semibold text-gray-900 leading-tight">{{ t.name }}</span>
           <span class="block px-1 mt-0.5 text-[11px] text-gray-500 leading-snug min-h-[28px]">{{ t.description }}</span>
           <span v-if="current === t.key" class="flex items-center gap-1 px-1 mt-1 text-[11px] font-semibold text-brand-navy">
-            <FaIcon name="circle-check" class="text-[11px]" />{{ t.key === CUSTOM_THEME ? tr('tile.selected') : 'Selected' }}
+            <FaIcon name="circle-check" class="text-[11px]" />{{ tr('tile.selected') }}
           </span>
           <span v-else-if="t.key === CUSTOM_THEME && t.tokens" class="flex items-center gap-1 px-1 mt-1 text-[11px] font-semibold text-gray-600">
             <FaIcon name="pen" class="text-[10px]" />{{ tr('tile.edit') }}
@@ -108,7 +108,7 @@ const INVITE = ['#003F8D', '#E8A33D', '#176F6A', '#C2185B']
 const tiles = computed(() => {
   const own = buildCustomTheme(profile.value.customTheme)
   return [
-    ...THEMES,
+    ...THEMES.map((th) => ({ ...th, description: tr(`desc.${th.key}`) })),
     { key: CUSTOM_THEME, name: tr('tile.name'), description: own ? tr('tile.yours') : tr('tile.new'), tokens: own?.tokens || null },
   ]
 })
