@@ -13,25 +13,25 @@
         <div class="w-px h-8 bg-gray-200 hidden sm:block" aria-hidden="true"></div>
         <!-- Always in the document (announced, and focused after a move here);
              shown from 1280px. -->
-        <h1 class="font-heading text-lg text-brand-navy tracking-tight sr-only xl:not-sr-only whitespace-nowrap">Client Messages</h1>
-        <div class="hidden md:flex bg-brand-surface rounded-lg p-0.5 xl:ml-1" role="group" aria-label="Show">
+        <h1 class="font-heading text-lg text-brand-navy tracking-tight sr-only xl:not-sr-only whitespace-nowrap">{{ t('inbox.heading') }}</h1>
+        <div class="hidden md:flex bg-brand-surface rounded-lg p-0.5 xl:ml-1" role="group" :aria-label="t('inbox.show')">
           <button
             type="button"
             @click="changeView('inbox')"
             :aria-pressed="viewMode === 'inbox'"
             :class="viewMode === 'inbox' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
             class="text-xs font-ui font-medium px-3 py-1.5 rounded-md transition-colors"
-          >Inbox</button>
+          >{{ t('inbox.tab.inbox') }}</button>
           <button
             type="button"
             @click="changeView('contacts')"
             :aria-pressed="viewMode === 'contacts'"
             :class="viewMode === 'contacts' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
             class="text-xs font-ui font-medium px-3 py-1.5 rounded-md transition-colors"
-          >Contacts</button>
+          >{{ t('inbox.tab.contacts') }}</button>
         </div>
         <span v-if="viewMode === 'inbox' && unreadCount > 0" class="hidden md:inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-brand-red text-white text-xs font-ui font-bold tabular-nums">
-          {{ unreadCount }}<span class="sr-only"> unread</span>
+          {{ unreadCount }}<span class="sr-only">{{ t('inbox.unread_sr') }}</span>
         </span>
       </div>
       <div class="ml-auto flex items-center gap-1 lg:gap-2 2xl:gap-3">
@@ -44,19 +44,19 @@
           @click="enableNotifications"
           :class="ACTION"
           class="hidden lg:flex"
-          title="Get a desktop alert when a new inquiry arrives"
-          aria-label="Turn on desktop notifications"
+          :title="t('alerts.title')"
+          :aria-label="t('alerts.aria')"
         >
           <i class="fa-solid fa-bell text-xs" aria-hidden="true"></i>
-          <span class="hidden 2xl:inline">Alerts</span>
+          <span class="hidden 2xl:inline">{{ t('alerts.label') }}</span>
         </button>
         <span
           v-else-if="notifyPermission === 'denied'"
           class="hidden 2xl:flex items-center gap-2 px-3 py-2 text-xs text-gray-500 font-ui whitespace-nowrap"
-          title="Notifications are blocked for this site. Re-enable them in your browser's site settings."
+          :title="t('alerts.blocked_title')"
         >
           <i class="fa-solid fa-bell-slash text-xs" aria-hidden="true"></i>
-          Alerts blocked
+          {{ t('alerts.blocked') }}
         </span>
         <button
           v-if="can('crm.export')"
@@ -65,11 +65,11 @@
           :disabled="exporting"
           :class="ACTION"
           class="hidden lg:flex disabled:opacity-50 disabled:cursor-not-allowed"
-          :title="exportFailed ? 'Export failed — try again' : 'Export CSV'"
-          aria-label="Export messages as CSV"
+          :title="exportFailed ? t('export.failed_title') : t('export.title')"
+          :aria-label="t('export.aria')"
         >
           <FaIcon :name="exporting ? 'spinner' : exportFailed ? 'triangle-exclamation' : 'download'" :spin="exporting" :class="exportFailed ? 'text-brand-red' : ''" class="text-xs" />
-          <span class="hidden 2xl:inline">{{ exporting ? 'Exporting…' : (exportFailed ? 'Failed' : 'Export') }}</span>
+          <span class="hidden 2xl:inline">{{ exporting ? t('export.exporting') : (exportFailed ? t('export.failed') : t('export.label')) }}</span>
         </button>
         <span class="text-xs text-gray-500 font-ui hidden min-[1720px]:inline">{{ adminEmail }}</span>
         <button
@@ -77,36 +77,36 @@
           @click="showChangePassword = true"
           :class="ACTION"
           class="hidden lg:flex"
-          title="Change password"
-          aria-label="Change password"
+          :title="t('password.change')"
+          :aria-label="t('password.change')"
         >
           <i class="fa-solid fa-key text-xs" aria-hidden="true"></i>
-          <span class="hidden 2xl:inline">Password</span>
+          <span class="hidden 2xl:inline">{{ t('password.label') }}</span>
         </button>
 
         <!-- Below 1024px: the same three in one menu. -->
         <details ref="moreMenu" class="relative lg:hidden">
-          <summary :class="ACTION" class="list-none [&::-webkit-details-marker]:hidden" aria-label="More: alerts, export, password" title="More">
+          <summary :class="ACTION" class="list-none [&::-webkit-details-marker]:hidden" :aria-label="t('more.aria')" :title="t('more.title')">
             <FaIcon :name="exporting ? 'spinner' : 'ellipsis'" :spin="exporting" class="text-xs" />
           </summary>
           <ul class="absolute right-0 top-full mt-2 w-60 rounded-xl bg-white ring-1 ring-gray-200 shadow-lg py-1 z-30 font-ui">
-            <li v-if="adminEmail" class="px-3 pt-2 pb-2.5 text-[11px] text-gray-500 border-b border-gray-100 truncate" :title="adminEmail">Signed in as {{ adminEmail }}</li>
+            <li v-if="adminEmail" class="px-3 pt-2 pb-2.5 text-[11px] text-gray-500 border-b border-gray-100 truncate" :title="adminEmail">{{ t('more.signed_in_as', { email: adminEmail }) }}</li>
             <li v-if="notifyPermission === 'default'">
               <button type="button" @click="closeMore(); enableNotifications()" :class="MENU_ITEM">
-                <FaIcon name="bell" class="text-xs w-4" />Turn on desktop alerts
+                <FaIcon name="bell" class="text-xs w-4" />{{ t('more.alerts_on') }}
               </button>
             </li>
             <li v-else-if="notifyPermission === 'denied'" class="flex items-center gap-2.5 px-3 py-2.5 text-xs text-gray-500">
-              <FaIcon name="bell-slash" class="text-xs w-4" />Alerts are blocked in this browser
+              <FaIcon name="bell-slash" class="text-xs w-4" />{{ t('more.alerts_blocked') }}
             </li>
             <li v-if="can('crm.export')">
               <button type="button" @click="closeMore(); exportCsv()" :disabled="exporting" :class="MENU_ITEM" class="disabled:opacity-50">
-                <FaIcon :name="exportFailed ? 'triangle-exclamation' : 'download'" :class="exportFailed ? 'text-brand-red' : ''" class="text-xs w-4" />{{ exporting ? 'Exporting…' : exportFailed ? 'Export failed, try again' : 'Export as CSV' }}
+                <FaIcon :name="exportFailed ? 'triangle-exclamation' : 'download'" :class="exportFailed ? 'text-brand-red' : ''" class="text-xs w-4" />{{ exporting ? t('export.exporting') : exportFailed ? t('more.export_failed') : t('more.export') }}
               </button>
             </li>
             <li>
               <button type="button" @click="closeMore(); showChangePassword = true" :class="MENU_ITEM">
-                <FaIcon name="key" class="text-xs w-4" />Change password
+                <FaIcon name="key" class="text-xs w-4" />{{ t('password.change') }}
               </button>
             </li>
           </ul>
@@ -115,12 +115,12 @@
         <button
           type="button"
           @click="handleLogout"
-          aria-label="Sign out"
-          title="Sign out"
+          :aria-label="t('signout.aria')"
+          :title="t('signout.aria')"
           class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-brand-red hover:bg-red-50 text-sm font-ui font-medium transition-colors"
         >
           <i class="fa-solid fa-arrow-right-from-bracket text-xs" aria-hidden="true"></i>
-          <span class="hidden 2xl:inline">Sign Out</span>
+          <span class="hidden 2xl:inline">{{ t('signout.label') }}</span>
         </button>
       </div>
     </header>
@@ -128,7 +128,7 @@
     <!-- Phones: the Inbox/Contacts switch on its own row, full width, with
          the unread count inside Inbox. Part of the navigation chrome. -->
     <div class="nav-chrome md:hidden flex-shrink-0 bg-white border-b border-gray-200 px-4 py-2">
-      <div class="flex bg-brand-surface rounded-lg p-0.5" role="group" aria-label="Show">
+      <div class="flex bg-brand-surface rounded-lg p-0.5" role="group" :aria-label="t('inbox.show')">
         <button
           type="button"
           @click="changeView('inbox')"
@@ -136,8 +136,8 @@
           :class="viewMode === 'inbox' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
           class="flex-1 inline-flex items-center justify-center gap-2 min-h-9 text-sm font-ui font-medium rounded-md transition-colors"
         >
-          Inbox
-          <span v-if="unreadCount > 0" class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-brand-red text-white text-[11px] font-bold tabular-nums">{{ unreadCount }}<span class="sr-only"> unread</span></span>
+          {{ t('inbox.tab.inbox') }}
+          <span v-if="unreadCount > 0" class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-brand-red text-white text-[11px] font-bold tabular-nums">{{ unreadCount }}<span class="sr-only">{{ t('inbox.unread_sr') }}</span></span>
         </button>
         <button
           type="button"
@@ -145,7 +145,7 @@
           :aria-pressed="viewMode === 'contacts'"
           :class="viewMode === 'contacts' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
           class="flex-1 inline-flex items-center justify-center min-h-9 text-sm font-ui font-medium rounded-md transition-colors"
-        >Contacts</button>
+        >{{ t('inbox.tab.contacts') }}</button>
       </div>
     </div>
 
@@ -154,7 +154,7 @@
     <!-- A write that failed (status, mark as read, opening a lead): said where she is. -->
     <p v-if="inboxNotice" role="alert" class="flex items-center gap-3 px-4 sm:px-6 py-2 bg-amber-50 text-amber-900 text-[13px] font-ui border-b border-amber-100">
       <span class="flex-1">{{ inboxNotice }}</span>
-      <button type="button" @click="inboxNotice = ''" class="font-semibold underline">Dismiss</button>
+      <button type="button" @click="inboxNotice = ''" class="font-semibold underline">{{ t('dismiss') }}</button>
     </p>
 
     <!-- Always mounted, so screen readers hear the change (a region inserted
@@ -167,7 +167,7 @@
     <div v-if="loadingList && submissions.length === 0" class="flex-1 flex items-center justify-center">
       <div class="text-center">
         <i class="fa-solid fa-spinner fa-spin text-2xl text-brand-navy mb-3" aria-hidden="true"></i>
-        <p class="text-gray-500 text-sm font-ui">Loading messages...</p>
+        <p class="text-gray-500 text-sm font-ui">{{ t('loading_messages') }}</p>
       </div>
     </div>
 
@@ -175,9 +175,9 @@
     <div v-else-if="listError && submissions.length === 0" class="flex-1 flex items-center justify-center">
       <div class="text-center">
         <i class="fa-solid fa-exclamation-triangle text-2xl text-brand-red mb-3" aria-hidden="true"></i>
-        <p class="text-gray-500 text-sm font-ui mb-4">Failed to load messages</p>
+        <p class="text-gray-500 text-sm font-ui mb-4">{{ t('load_failed') }}</p>
         <button @click="fetchSubmissions" class="text-brand-navy text-sm font-ui font-medium hover:underline">
-          Try again
+          {{ t('try_again') }}
         </button>
       </div>
     </div>
@@ -196,9 +196,9 @@
       />
 
       <!-- Detail opens over the table so the table keeps its full width -->
-      <div v-if="selectedId !== null" ref="contactPanel" class="absolute inset-0 z-20 flex" role="dialog" aria-modal="true" aria-label="Contact details"
+      <div v-if="selectedId !== null" ref="contactPanel" class="absolute inset-0 z-20 flex" role="dialog" aria-modal="true" :aria-label="t('contact.details')"
         @keydown.esc="closeDetail" @keydown.tab="trapTab(contactPanel, $event)">
-        <button class="flex-1 scrim-soft" aria-label="Close contact details" tabindex="-1" @click="closeDetail"></button>
+        <button class="flex-1 scrim-soft" :aria-label="t('contact.close')" tabindex="-1" @click="closeDetail"></button>
         <div class="w-full max-w-2xl bg-white shadow-2xl flex flex-col">
           <SubmissionDetail
             :submission="selectedSubmission"
@@ -277,6 +277,10 @@ import SectionLinks from '../components/portal/SectionLinks.vue'
 import FaIcon from '../components/FaIcon.vue'
 import { signOutAndLeave } from '../utils/signOut.js'
 import { useVisiblePoll } from '../composables/useVisiblePoll.js'
+import { useT } from '../i18n/translator.js'
+import { MESSAGES } from '../i18n/messages.js'
+
+const { t } = useT(MESSAGES)
 
 const router = useRouter()
 const route = useRoute()
@@ -325,8 +329,8 @@ onMounted(() => { document.addEventListener('click', onMoreOutside); document.ad
 onUnmounted(() => { document.removeEventListener('click', onMoreOutside); document.removeEventListener('keydown', onMoreKey) })
 const listStatus = computed(() => {
   if (submissions.value.length) return ''
-  if (loadingList.value) return 'Loading messages…'
-  return listError.value ? 'Failed to load messages.' : ''
+  if (loadingList.value) return t('loading_messages')
+  return listError.value ? t('load_failed_sr') : ''
 })
 
 // --- Live inbox -------------------------------------------------------------
@@ -385,8 +389,8 @@ function notifyOnNewArrivals(list) {
 
   if (arrivals.length === 1) {
     const s = arrivals[0]
-    const body = (s.message || '').trim() || 'No message provided'
-    const note = new Notification(`New inquiry — ${leadName(s, 'no name given')}`, {
+    const body = (s.message || '').trim() || t('notify.no_message')
+    const note = new Notification(t('notify.one', { name: leadName(s, t('notify.no_name')) }), {
       body: body.length > 140 ? `${body.slice(0, 140)}…` : body,
       icon: NOTIFY_ICON,
       // Same tag replaces rather than stacks if this fires twice for one message.
@@ -394,8 +398,8 @@ function notifyOnNewArrivals(list) {
     })
     note.onclick = () => { open(s.id); note.close() }
   } else {
-    const note = new Notification(`${arrivals.length} new inquiries`, {
-      body: arrivals.map((s) => leadName(s, 'no name given')).join(', ').slice(0, 160),
+    const note = new Notification(t('notify.many', { count: arrivals.length }), {
+      body: arrivals.map((s) => leadName(s, t('notify.no_name'))).join(', ').slice(0, 160),
       icon: NOTIFY_ICON,
       tag: 'cm-submissions-batch',
     })
@@ -408,7 +412,7 @@ function notifyOnNewArrivals(list) {
 const active = ref(true)
 function setTitle() {
   const n = viewMode.value === 'inbox' ? unreadCount.value : 0
-  document.title = `${n > 0 ? `(${n}) ` : ''}Client Messages | Campos Muños Law`
+  document.title = `${n > 0 ? `(${n}) ` : ''}${t('inbox.doc_title')} | Campos Muños Law`
 }
 watchEffect(() => { if (active.value) setTitle() })
 
@@ -508,7 +512,7 @@ async function loadOlder() {
     older.value = [...older.value, ...add]
     submissions.value = [...submissions.value, ...add]
   } catch {
-    inboxNotice.value = 'Could not load older leads. Try again.'
+    inboxNotice.value = t('notice.older')
   } finally {
     loadingOlder.value = false
   }
@@ -536,7 +540,7 @@ async function selectSubmission(id) {
     if (selectedId.value === id) {
       selectedSubmission.value = null
       selectedId.value = null
-      inboxNotice.value = 'Could not open that lead. Try again.'
+      inboxNotice.value = t('notice.open')
     }
     return
   }
@@ -557,7 +561,7 @@ async function selectSubmission(id) {
         selectedSubmission.value.is_read = true
       }
     } catch {
-      inboxNotice.value = 'Could not mark it as read. It still shows as unread for everyone.'
+      inboxNotice.value = t('notice.read')
     }
   }
 }
@@ -578,7 +582,7 @@ async function updateStatus({ id, status }) {
   } catch (err) {
     if (row) row.status = previous
     if (selectedSubmission.value?.id === id) selectedSubmission.value.status = previous
-    inboxNotice.value = `Status not changed: ${err.message}`
+    inboxNotice.value = t('notice.status', { error: err.message })
   }
 }
 
