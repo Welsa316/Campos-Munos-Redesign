@@ -58,6 +58,13 @@ export const REMINDERS_SCHEMA_SQL = `
   -- Finished reminders are purged after REMINDER_RETENTION_DAYS.
   CREATE INDEX IF NOT EXISTS idx_follow_up_reminders_closed ON follow_up_reminders(updated_at) WHERE status IN ('done', 'cancelled');
 
+  -- follows_callback: the reminder was set on a caller waiting for a call
+  -- back, and closes by itself when they stop waiting (a connected
+  -- callback, the calls marked handled). FALSE: set on any other call (an
+  -- answered call, an outgoing one, a caller already dealt with); only a
+  -- person closes it. Existing reminders were all the first kind.
+  ALTER TABLE follow_up_reminders ADD COLUMN IF NOT EXISTS follows_callback BOOLEAN NOT NULL DEFAULT TRUE;
+
   -- One row per attempt to deliver one reminder on one channel, written
   -- before the attempt. The UNIQUE key is what stops two workers (or a
   -- restart) sending the same reminder twice: a row is created once, and

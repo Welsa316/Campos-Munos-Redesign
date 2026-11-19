@@ -3,8 +3,9 @@
 // is the HTTP shape and worker.js delivers them when they fall due.
 //
 // Who may do what (capabilities, never role names):
-//   a caller (a callback episode in Needs attention)  calls.exclude to set or
-//     change one, calls.view to see them
+//   a call (any call with a number to call back: a caller waiting in Needs
+//     attention, or any other call)  calls.exclude to set or change one,
+//     calls.view to see them
 //   a website lead  crm.view and (crm.manage or calls.exclude) to set or
 //     change one, crm.view to see them
 // A reminder can be assigned to any active account that can see its target.
@@ -82,11 +83,14 @@ async function loadTarget(db, { kind, id }) {
   if (kind === 'call') {
     const c = (await db.query('SELECT id, call_key, counterpart_key, direction, is_internal FROM rc_calls WHERE id = $1', [id])).rows[0]
     if (!c) throw new ReminderError('not_found', 'Call not found', 404)
-    if (c.direction !== 'inbound' || c.is_internal || !c.counterpart_key) {
-      throw new ReminderError('not_remindable', 'Only a caller waiting for a call back can have a reminder', 409)
+    if (c.is_internal || !c.counterpart_key) {
+      throw new ReminderError('not_remindable', 'This call has no number to call back', 409)
     }
-    if (!(await episodeOpen(db, id))) throw new ReminderError('resolved', 'This caller no longer needs a call back', 409)
-    return { kind, callId: Number(c.id), callKey: c.call_key, phoneKey: c.counterpart_key }
+    // A caller still waiting for a call back: the reminder closes by itself
+    // once they are dealt with. Any other call (answered, outgoing, already
+    // handled): a plain reminder, closed only by a person.
+    const followsCallback = c.direction === 'inbound' && (await episodeOpen(db, id))
+    return { kind, callId: Number(c.id), callKey: c.call_key, phoneKey: c.counterpart_key, followsCallback }
   }
   const s = (await db.query('SELECT id, is_archived FROM submissions WHERE id = $1', [id])).rows[0]
   if (!s) throw new ReminderError('not_found', 'Lead not found', 404)
@@ -96,7 +100,7 @@ async function loadTarget(db, { kind, id }) {
 
 /** Is the follow-up a reminder is about still waiting for someone? */
 export async function targetStillOpen(db, r) {
-  if (r.target_kind === 'call') return episodeOpen(db, Number(r.call_id))
+  if (r.target_kind === 'call') return r.follows_callback === false ? true : episodeOpen(db, Number(r.call_id))
   const s = (await db.query('SELECT is_archived FROM submissions WHERE id = $1', [r.submission_id])).rows[0]
   return Boolean(s && !s.is_archived)
 }
@@ -151,6 +155,9 @@ export function present(r) {
     completedBy: person(r.completed_by, r.db_email, r.db_name),
     // 'resolved': closed by the server because the follow-up was dealt with.
     completionReason: r.completion_reason,
+    // A call reminder that closes by itself when the caller is dealt with
+    // (false: only a person closes it).
+    followsCallback: r.target_kind === 'call' ? r.follows_callback !== false : null,
     cancelledAt: r.cancelled_at,
     // What happened when it fell due; nothing while it waits (again, after a snooze).
     delivery: r.status === 'open' ? {} : deliverySummary(r.deliveries),
@@ -241,9 +248,9 @@ export async function createReminder(db, { target, dueAt, assignee, note, allowD
       if (dup) return { duplicateOf: dup.id }
     }
     return (await client.query(
-      `INSERT INTO follow_up_reminders (target_kind, call_id, call_key, phone_key, submission_id, assigned_to, created_by, due_at, note)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-      [tgt.kind, tgt.callId ?? null, tgt.callKey ?? null, tgt.phoneKey ?? null, tgt.submissionId ?? null, assignedTo, accountId, at, text]
+      `INSERT INTO follow_up_reminders (target_kind, call_id, call_key, phone_key, submission_id, assigned_to, created_by, due_at, note, follows_callback)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+      [tgt.kind, tgt.callId ?? null, tgt.callKey ?? null, tgt.phoneKey ?? null, tgt.submissionId ?? null, assignedTo, accountId, at, text, tgt.followsCallback ?? true]
     )).rows[0].id
   })
   if (id?.tooMany) {
@@ -366,7 +373,9 @@ export async function cancelPendingDeliveries(db, reminderId, error = null, { cy
  * Returns the ids it closed.
  */
 export async function closeResolvedReminders(db, { phoneKeys = null, submissionId = null, limit = 500 } = {}) {
-  const where = [OPEN_SQL]
+  // Reminders set on a call that was not waiting for a call back are only
+  // ever closed by a person.
+  const where = [OPEN_SQL, "NOT (target_kind = 'call' AND follows_callback = FALSE)"]
   const params = []
   if (phoneKeys) { params.push(phoneKeys); where.push(`target_kind = 'call' AND phone_key = ANY($${params.length}::text[])`) }
   if (submissionId != null) { params.push(submissionId); where.push(`target_kind = 'submission' AND submission_id = $${params.length}`) }

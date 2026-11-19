@@ -314,7 +314,39 @@ test('callback reminders', { skip: SKIP }, async (t) => {
     await closeAll()
   })
 
-  await t.test('checked on the server: time, note length, a caller who no longer needs a call', async () => {
+  await t.test('any call with a number can have a reminder; one not waiting for a call back is closed only by a person', async () => {
+    // An answered call and an outgoing one: plain reminders.
+    const answered = await addCall({ at: '2026-11-04T16:30:00Z', number: newNumber(), cls: 'answered' })
+    const outgoing = await addCall({ at: '2026-11-04T16:40:00Z', number: newNumber(), direction: 'outbound' })
+    const a = await send('POST', '/api/reminders', { target: { kind: 'call', id: answered }, dueAt: 'in_60' })
+    assert.equal(a.status, 201, a.text)
+    assert.equal(a.json.reminder.followsCallback, false)
+    const o = await send('POST', '/api/reminders', { target: { kind: 'call', id: outgoing }, dueAt: 'in_60' })
+    assert.equal(o.status, 201, o.text)
+    assert.equal(o.json.reminder.followsCallback, false)
+    // A caller still waiting: closes by itself, as before.
+    const waiting = await make({ target: { kind: 'call', id: episode }, dueAt: 'in_60' })
+    assert.equal(waiting.followsCallback, true)
+    // The close sweep leaves the plain ones alone, and the worker delivers them when due.
+    await (await import('./reminders/reminders.js')).closeResolvedReminders(db)
+    assert.equal((await reminderRow(a.json.reminder.id)).status, 'open')
+    await run({}, later(61))
+    const row = await reminderRow(a.json.reminder.id)
+    assert.equal(row.status, 'due')
+    assert.ok((await deliveries(a.json.reminder.id)).some((d) => d.channel === 'email' && d.status === 'sent'))
+    // A person closes it.
+    const done = await send('POST', `/api/reminders/${a.json.reminder.id}/complete`, {})
+    assert.equal(done.json.reminder.status, 'done')
+    assert.equal(done.json.reminder.completionReason, 'completed')
+    // No number to call back: refused.
+    const withheld = await addCall({ at: '2026-11-04T16:50:00Z', number: '', cls: 'answered' })
+    const w = await send('POST', '/api/reminders', { target: { kind: 'call', id: withheld }, dueAt: 'in_60' })
+    assert.equal(w.status, 409)
+    assert.equal(w.json.code, 'not_remindable')
+    await closeAll()
+  })
+
+  await t.test('checked on the server: time, note length, a call that does not exist', async () => {
     const at = (dueAt) => send('POST', '/api/reminders', { target: { kind: 'call', id: episode }, dueAt })
     assert.equal((await at(new Date(clock.t.getTime() - 5 * MIN).toISOString())).status, 400)
     assert.equal((await at(new Date(clock.t.getTime() + 400 * 864e5).toISOString())).status, 400)
@@ -322,8 +354,6 @@ test('callback reminders', { skip: SKIP }, async (t) => {
     const long = await send('POST', '/api/reminders', { target: { kind: 'call', id: episode }, dueAt: 'in_60', note: 'x'.repeat(501) })
     assert.equal(long.json.code, 'note_too_long')
     assert.equal((await send('POST', '/api/reminders', { target: { kind: 'call', id: 999999 }, dueAt: 'in_60' })).status, 404)
-    const answered = await addCall({ at: '2026-11-04T16:30:00Z', number: newNumber(), cls: 'answered' })
-    assert.equal((await send('POST', '/api/reminders', { target: { kind: 'call', id: answered }, dueAt: 'in_60' })).status, 409)
   })
 
   await t.test('two people changing one reminder: the second is told, with what it is now', async () => {
@@ -487,8 +517,12 @@ test('callback reminders', { skip: SKIP }, async (t) => {
     const r4 = await make({ target: { kind: 'submission', id: l }, dueAt: 'in_60' })
     assert.equal((await send('PATCH', `/api/submissions/${l}/archive`, { archived: true })).status, 200)
     assert.equal((await reminderRow(r4.id)).completion_reason, 'resolved')
-    // One already marked handled can't get a new one.
-    assert.equal((await send('POST', '/api/reminders', { target: { kind: 'call', id: calls3[0] }, dueAt: 'in_60' })).json.code, 'resolved')
+    // A caller already marked handled can still get one, as a plain reminder
+    // that only a person closes; an archived lead cannot.
+    const again = await send('POST', '/api/reminders', { target: { kind: 'call', id: calls3[0] }, dueAt: 'in_60' })
+    assert.equal(again.status, 201, again.text)
+    assert.equal(again.json.reminder.followsCallback, false)
+    await send('POST', `/api/reminders/${again.json.reminder.id}/cancel`, {})
     assert.equal((await send('POST', '/api/reminders', { target: { kind: 'submission', id: l }, dueAt: 'in_60' })).json.code, 'resolved')
   })
 
