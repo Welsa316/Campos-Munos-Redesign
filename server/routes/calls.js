@@ -5,6 +5,7 @@
 //   GET  /api/calls        calls in a time range, with counts and import status
 //                          (businessHours=1: Mon–Fri 9–5 New Orleans time only)
 //   GET  /api/calls/changes a stamp that moves when anything on the page changes
+//   GET  /api/calls/:id    one call as the list shows it
 //   GET  /api/calls/:id/evidence  one call's steps, facts and live timeline
 //                          (each live party has a partyId unique in the call)
 //   GET  /api/calls/summary unanswered business-hours calls, last 30 days
@@ -30,7 +31,7 @@ import { route } from '../middleware/route.js'
 import { accountLimiter } from '../middleware/accountLimiter.js'
 import { loadRingCentralConfig } from '../integrations/ringcentral/config.js'
 import { getConnectionStatus } from '../integrations/ringcentral/service.js'
-import { queryCalls, syncCallLog, getSyncState, summarizeMissed, OUTCOME_FILTERS, callEvidence, listPeople, callKpis, callsStamp, openCalls } from '../integrations/ringcentral/callLog.js'
+import { queryCalls, getCall, syncCallLog, getSyncState, summarizeMissed, OUTCOME_FILTERS, callEvidence, listPeople, callKpis, callsStamp, openCalls } from '../integrations/ringcentral/callLog.js'
 import { UNANSWERED_CLASSES } from '../integrations/ringcentral/callEvidence.js'
 import { excludeCall, includeCall, markHandled, unmarkHandled, markEpisodeHandled, reopenEpisode, clearOpenCalls, undoClear, CallExclusionError } from '../integrations/ringcentral/callExclusions.js'
 import { closeResolvedReminders, reopenResolvedReminders, phoneKeysOf } from '../reminders/reminders.js'
@@ -79,9 +80,13 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
     // A RingCentral extension id (digits): calls proven offered to that person.
     const person = typeof req.query.person === 'string' && /^\d{1,20}$/.test(req.query.person) ? req.query.person : null
     // Independent reads run together: each costs a database round trip.
+    // "Show older calls": the oldest call already shown (its time and id).
+    const beforeAt = parse(req.query.beforeAt, null)
+    const beforeId = Number(req.query.beforeId)
+    const before = beforeAt && Number.isSafeInteger(beforeId) && beforeId > 0 ? { at: beforeAt, id: beforeId } : null
     const withKpis = ['1', 'true'].includes(String(req.query.kpis || ''))
     const [result, people, st, kpis, stamp] = await Promise.all([
-      queryCalls(pool(), { from, to, outcome, q, limit: req.query.limit, businessHours, person, now: n }),
+      queryCalls(pool(), { from, to, outcome, q, limit: req.query.limit, businessHours, person, before, now: n }),
       listPeople(pool()),
       status(req),
       withKpis ? callKpis(pool(), { now: n }) : null,
@@ -96,6 +101,13 @@ export function createCallsRouter({ db = null, env = process.env, fetchImpl, now
   // every few seconds and reloads the list only when the answer moves.
   router.get('/changes', route('Calls change check error')(async (req, res) => {
     res.json({ stamp: await callsStamp(pool()) })
+  }))
+
+  // One call, for a reminder's link to a call that is not in Needs attention.
+  router.get('/:id(\\d{1,15})', route('Get call error')(async (req, res) => {
+    const call = await getCall(pool(), Number(req.params.id), { now: clock() })
+    if (!call) return res.status(404).json({ error: 'Call not found' })
+    res.json({ call })
   }))
 
   // One call's evidence: every step RingCentral recorded, what each reason

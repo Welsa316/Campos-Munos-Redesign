@@ -23,6 +23,45 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'reminders-on-any-call',
+    at: '2026-11-19T19:52:00Z',
+    section: 'calls',
+    any: ['calls.exclude'],
+    title: 'Set a reminder on any call',
+    summary: 'Remind me… is now in the ⋯ menu of every call with a number, not only callers waiting in Needs attention.',
+    points: [
+      'Use it on an answered call, a call you made, or a caller already handled: for example, to call someone back next week about their documents.',
+      'On a caller still waiting in Needs attention, the reminder closes by itself once someone reaches them or marks their calls handled, as before.',
+      'On any other call it stays until someone marks it done or cancels it.',
+      'A reminder’s email or notification opens that call, wherever it is in the log.',
+    ],
+  },
+  {
+    id: 'calls-longer-ranges',
+    at: '2026-11-19T19:52:00Z',
+    section: 'calls',
+    any: ['calls.view'],
+    title: 'Look further back in All calls',
+    summary: 'The date range in All calls now goes back 90 days, 6 months or 12 months, or between any two dates you pick.',
+    points: [
+      'Open Filters on All calls and choose a range, or Dates… for your own two days.',
+      'A long range shows the newest calls first; Show older calls at the bottom loads the next ones.',
+      'Calls are kept for 12 months, and the log only has calls from when the RingCentral import started.',
+    ],
+  },
+  {
+    id: 'home-in-spanish',
+    at: '2026-11-19T19:52:00Z',
+    section: 'everyone',
+    any: [],
+    title: 'Home can now be shown in Spanish',
+    summary: 'Next to Themes on Home there is a small EN | ES switch. Press ES to see Home in Spanish, and EN to go back to English.',
+    points: [
+      'It changes Home only: the greeting, the date, the figures at the top, My follow-ups and the Go to cards. The other pages stay in English.',
+      'Your choice is kept on this computer or phone, so Home opens in the same language next time. Another device starts in English until you switch it there too.',
+    ],
+  },
+  {
     id: 'office-manager-role',
     at: '2026-11-16T03:18:00Z',
     section: 'admin',

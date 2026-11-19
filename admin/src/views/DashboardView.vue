@@ -1,36 +1,48 @@
 <template>
   <div class="h-dvh flex flex-col bg-brand-surface overflow-hidden">
-    <PortalHeader title="Home" current="home" label-at="xl" actions-label-at="lg" />
+    <PortalHeader :title="t('header.title')" current="home" label-at="xl" actions-label-at="lg" />
 
     <div class="flex-1 overflow-y-auto overflow-x-hidden">
-      <div class="min-h-full relative max-w-[1120px] mx-auto px-4 sm:px-8 pt-6 sm:pt-10 pb-10 flex flex-col gap-4 sm:gap-5 font-ui">
+      <!-- lang: Home's own words follow the EN | ES switch; the header and
+           its sections stay English. -->
+      <div :lang="lang" class="min-h-full relative max-w-[1120px] mx-auto px-4 sm:px-8 pt-6 sm:pt-10 pb-10 flex flex-col gap-4 sm:gap-5 font-ui">
         <!-- Greeting, top left, no card. The words rise in letter by letter
              (SplitText); the picture and role line settle in around them. -->
         <div class="flex items-start justify-between gap-4 px-1">
           <div class="flex items-center gap-4 min-w-0">
             <RiseIn :duration="0.7" :distance="10">
-              <button type="button" @click="showAvatarPicker = true" title="Change your picture" aria-label="Change your picture"
+              <button type="button" @click="showAvatarPicker = true" :title="t('avatar.change')" :aria-label="t('avatar.change')"
                 class="group relative flex-shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-navy">
-                <UserAvatar :avatar="profile.avatar" :size="avatarSize" label="Your picture" class="ring-4 ring-white shadow-sm" />
+                <UserAvatar :avatar="profile.avatar" :size="avatarSize" :label="t('avatar.label')" class="ring-4 ring-white shadow-sm" />
                 <span class="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-white shadow ring-1 ring-black/5 text-gray-700 inline-flex items-center justify-center">
                   <FaIcon name="pen" class="text-[10px]" />
                 </span>
               </button>
             </RiseIn>
             <div class="min-w-0">
-              <SplitText tag="h2" :text="greetingText" effect="rise" split-type="chars" :delay="35" :duration="1.1"
+              <!-- Keyed by language so a switch re-splits the new words. -->
+              <SplitText :key="lang" tag="h2" :text="greetingText" effect="rise" split-type="chars" :delay="35" :duration="1.1"
                 trigger="load" text-align="left" hover-effect="lift"
                 class-name="text-[28px] sm:text-[38px] font-semibold tracking-tight text-gray-900 leading-tight" />
               <RiseIn :delay="0.55" :distance="8">
                 <p class="text-[13px] text-gray-500 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span v-if="profile.roleLabel" class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-white text-gray-800 text-[11px] font-semibold ring-1 ring-gray-200">{{ profile.roleLabel }}</span>
+                  <span v-if="roleText" class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-white text-gray-800 text-[11px] font-semibold ring-1 ring-gray-200">{{ roleText }}</span>
                   <span class="truncate">{{ adminEmail }}</span>
                 </p>
               </RiseIn>
             </div>
           </div>
-          <div class="flex items-start gap-4 sm:gap-5 flex-shrink-0">
+          <!-- On a phone the switch stands upright under Themes, no wider than it,
+               so the greeting keeps its width. -->
+          <div class="flex flex-col-reverse items-end gap-2 sm:flex-row sm:items-start sm:gap-5 flex-shrink-0">
             <span class="hidden sm:block pt-3 text-[15px] font-medium tracking-tight text-gray-500 whitespace-nowrap">{{ today }}</span>
+            <!-- EN | ES: the language of Home, kept in this browser. -->
+            <div role="group" :aria-label="t('lang.group')" class="glass flex flex-col sm:flex-row items-center gap-0.5 rounded-full p-1 sm:mt-1.5 sm:pointer-coarse:mt-0">
+              <button v-for="l in LANGS" :key="l" type="button" :lang="l" :title="LANG_NAMES[l]"
+                :aria-pressed="lang === l" @click="setLang(l)"
+                :class="lang === l ? 'bg-brand-navy text-white' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-900/5'"
+                class="h-8 min-w-9 pointer-coarse:h-11 pointer-coarse:min-w-11 px-2.5 rounded-full text-[12px] font-semibold tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-navy">{{ l.toUpperCase() }}</button>
+            </div>
             <ThemeFolder />
           </div>
         </div>
@@ -65,7 +77,7 @@
         </RiseIn>
 
         <!-- Sections, side by side. -->
-        <p class="mt-2 px-1 text-[17px] font-semibold tracking-tight text-gray-900">Go to</p>
+        <p class="mt-2 px-1 text-[17px] font-semibold tracking-tight text-gray-900">{{ t('goto') }}</p>
         <!-- The row always fills its width: one or two big cards, three or
              four standard, five or more compact (a short last row stretches). -->
         <RiseIn v-if="cards.length" :delay="0.35" :stagger="0.1" class="flex flex-wrap gap-3 sm:gap-4">
@@ -87,12 +99,12 @@
           </router-link>
           </TiltedCard>
         </RiseIn>
-        <p v-else class="text-sm text-gray-600 bg-white rounded-3xl px-5 py-4">Use the links at the top to open the sections your account can use.</p>
+        <p v-else class="text-sm text-gray-600 bg-white rounded-3xl px-5 py-4">{{ t('cards.empty') }}</p>
 
         <footer class="mt-4 px-1 flex items-center gap-1.5 text-[13px] tracking-tight">
           <span class="font-semibold text-gray-800">Campos Muños Law</span>
           <span class="text-xs text-gray-400" aria-hidden="true">✦</span>
-          <span class="text-gray-500">Staff portal</span>
+          <span class="text-gray-500">{{ t('footer.portal') }}</span>
         </footer>
       </div>
     </div>
@@ -116,21 +128,36 @@ import RiseIn from '../components/RiseIn.vue'
 import UserAvatar from '../components/UserAvatar.vue'
 import AvatarPicker from '../components/AvatarPicker.vue'
 import MyFollowUps from '../modules/reminders/MyFollowUps.vue'
+import { usePortalLang } from '../composables/usePortalLang.js'
+import { LANGS, roleLabel } from '../i18n/dashboard.js'
 
 const { adminEmail, profile, can, canAny, updateProfile } = useAuth()
 const { get } = useApi()
+const { lang, setLang, t } = usePortalLang()
+// Each language named in itself, as language switches do.
+const LANG_NAMES = { en: 'English', es: 'Español' }
+const locale = computed(() => (lang.value === 'es' ? 'es-US' : 'en-US'))
 const showAvatarPicker = ref(false)
 const avatarSize = typeof window !== 'undefined' && window.innerWidth >= 640 ? 64 : 56
 
 // The name set with scripts/staff.js set-name. Accounts without one are
 // greeted without a name rather than by their email ("office").
 const firstName = computed(() => String(profile.value.displayName || '').trim().split(/\s+/)[0] || '')
-const greetingText = computed(() => (firstName.value ? `${timeOfDay}, ${firstName.value}` : timeOfDay))
-const timeOfDay = (() => {
+const timeOfDayKey = (() => {
   const h = new Date().getHours()
-  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
+  return h < 12 ? 'greeting.morning' : h < 18 ? 'greeting.afternoon' : 'greeting.evening'
 })()
-const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+const greetingText = computed(() => {
+  const hello = t(timeOfDayKey)
+  return firstName.value ? `${hello}, ${firstName.value}` : hello
+})
+// "Thursday, November 19" / "Jueves, 19 de noviembre" (capitalised: it
+// stands alone as a line).
+const today = computed(() => {
+  const s = new Date().toLocaleDateString(locale.value, { weekday: 'long', month: 'long', day: 'numeric' })
+  return s.charAt(0).toUpperCase() + s.slice(1)
+})
+const roleText = computed(() => roleLabel(lang.value, profile.value.role, profile.value.roleLabel))
 
 // --- the two summary cards ------------------------------------------------------
 
@@ -150,7 +177,12 @@ function shortDay(d) {
   const s = String(d || '')
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s)
   const date = m && s.length <= 10 ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : toDate(s)
-  return date ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'an unknown date'
+  return date ? date.toLocaleDateString(locale.value, { month: 'short', day: 'numeric' }) : ''
+}
+const reportOf = (day) => (day ? t('overdue.report_of', { date: day }) : t('overdue.report_unknown_date'))
+const oldestPill = (oldest) => {
+  const when = daysAgo(oldest, Date.now(), lang.value)
+  return when ? t('oldest_from', { when }) : null
 }
 
 
@@ -168,16 +200,16 @@ const summaries = computed(() => {
       span: 'md:col-span-7',
       bg: 'glass-rose',
       icon: 'phone-slash',
-      label: 'Missed calls in business hours',
+      label: t('missed.label'),
       labelTone: 'text-danger-ink',
       arrowTone: 'bg-white/70 text-danger-ink',
       numberTone: 'text-danger-ink-strong',
       subTone: 'text-danger-ink opacity-80',
       value: !m ? '·' : connected ? total : '—',
-      sub: m?.error ? COULD_NOT_LOAD : connected
-        ? `Last 30 days · Mon–Fri 9–5${m.missed.voicemail ? ` · ${m.missed.voicemail} went to voicemail` : ''}`
-        : m ? 'RingCentral is not connected yet' : 'Last 30 days · Mon–Fri 9–5',
-      pill: connected ? (notReturned ? `${notReturned} not called back` : 'All called back') : null,
+      sub: m?.error ? t('figures.could_not_load') : connected
+        ? `${t('missed.window')}${m.missed.voicemail ? ` · ${t('missed.voicemail', { count: m.missed.voicemail })}` : ''}`
+        : m ? t('missed.not_connected') : t('missed.window'),
+      pill: connected ? (notReturned ? t('missed.not_returned', { count: notReturned }) : t('missed.all_returned')) : null,
       pillTone: notReturned ? 'bg-brand-red text-white' : 'bg-white/80 text-danger-ink-strong',
     })
   }
@@ -189,14 +221,14 @@ const summaries = computed(() => {
       span: out.length ? 'md:col-span-5' : 'md:col-span-12',
       bg: 'glass-navy',
       icon: 'envelope-open-text',
-      label: 'Unread messages',
+      label: t('unread.label'),
       labelTone: 'text-glass-navy-ink opacity-85',
       arrowTone: 'bg-glass-navy-chip text-glass-navy-ink',
       numberTone: 'text-glass-navy-ink',
       subTone: 'text-glass-navy-ink opacity-70',
       value: !u ? '·' : u.error ? '—' : u.count,
-      sub: u?.error ? COULD_NOT_LOAD : firstName.value ? `Waiting for you, ${firstName.value}` : 'Website and chat inquiries',
-      pill: u && !u.error ? (u.count ? (daysAgo(u.oldest) ? `Oldest from ${daysAgo(u.oldest)}` : null) : 'All caught up') : null,
+      sub: u?.error ? t('figures.could_not_load') : firstName.value ? t('unread.waiting_for', { name: firstName.value }) : t('unread.sources'),
+      pill: u && !u.error ? (u.count ? oldestPill(u.oldest) : t('unread.all_caught_up')) : null,
       pillTone: 'bg-glass-navy-chip text-glass-navy-ink',
     })
   }
@@ -210,16 +242,16 @@ const summaries = computed(() => {
       span: 'md:col-span-7',
       bg: 'glass-rose',
       icon: 'file-invoice-dollar',
-      label: 'Overdue invoices',
+      label: t('overdue.label'),
       labelTone: 'text-danger-ink',
       arrowTone: 'bg-white/70 text-danger-ink',
       numberTone: 'text-danger-ink-strong',
       subTone: 'text-danger-ink opacity-80',
       value: !b ? '·' : imported ? overdue.count : '—',
-      sub: b?.error ? COULD_NOT_LOAD : imported
-        ? `From the eImmigration report of ${shortDay(b.lastImport.report_date || b.lastImport.applied_at)}`
-        : b ? 'No eImmigration report imported yet' : 'From the latest eImmigration report',
-      pill: imported && overdue.count ? `${money(overdue.owedCents)} owed` : imported ? 'Nothing overdue' : null,
+      sub: b?.error ? t('figures.could_not_load') : imported
+        ? reportOf(shortDay(b.lastImport.report_date || b.lastImport.applied_at))
+        : b ? t('overdue.no_report') : t('overdue.latest_report'),
+      pill: imported && overdue.count ? t('overdue.owed', { amount: money(overdue.owedCents) }) : imported ? t('overdue.none') : null,
       pillTone: overdue.count ? 'bg-brand-red text-white' : 'bg-white/80 text-danger-ink-strong',
     })
     const r = b?.remindersAwaitingApproval
@@ -229,14 +261,14 @@ const summaries = computed(() => {
       span: 'md:col-span-5',
       bg: 'glass-navy',
       icon: 'bell',
-      label: 'Reminders waiting for approval',
+      label: t('approval.label'),
       labelTone: 'text-glass-navy-ink opacity-85',
       arrowTone: 'bg-glass-navy-chip text-glass-navy-ink',
       numberTone: 'text-glass-navy-ink',
       subTone: 'text-glass-navy-ink opacity-70',
       value: !b ? '·' : b.error ? '—' : r?.count ?? 0,
-      sub: 'Payment reminders drafted by the rules',
-      pill: r?.count ? (daysAgo(r.oldest) ? `Oldest from ${daysAgo(r.oldest)}` : null) : b ? 'Nothing to approve' : null,
+      sub: t('approval.sub'),
+      pill: r?.count ? oldestPill(r.oldest) : b ? t('approval.none') : null,
       pillTone: 'bg-glass-navy-chip text-glass-navy-ink',
     })
   }
@@ -250,44 +282,44 @@ const cards = computed(() => [
   can('calls.view') && {
     key: 'calls', to: { name: 'Calls' }, icon: 'phone-volume',
     tile: 'bg-[color-mix(in_srgb,var(--color-brand-red)_14%,var(--color-white))] text-brand-red',
-    eyebrow: 'RingCentral', title: 'Call log',
-    description: 'Who called, who answered, and who still needs a call back.',
+    eyebrow: t('card.calls.eyebrow'), title: t('card.calls.title'),
+    description: t('card.calls.description'),
   },
   can('crm.view') && {
     key: 'inbox', to: { name: 'Inbox' }, icon: 'envelope-open-text',
     tile: 'bg-brand-navy text-white',
-    eyebrow: 'Website leads', title: 'Inbox',
-    description: 'Contact-form and chat inquiries, with replies and notes.',
+    eyebrow: t('card.inbox.eyebrow'), title: t('card.inbox.title'),
+    description: t('card.inbox.description'),
   },
   can('whatsapp.view') && {
     key: 'whatsapp', to: { name: 'WhatsApp' }, icon: 'comments',
     tile: 'bg-emerald-100 text-emerald-700',
-    eyebrow: 'Client conversations', title: 'WhatsApp',
-    description: 'Shared WhatsApp inbox: replies, assignments and notes.',
+    eyebrow: t('card.whatsapp.eyebrow'), title: t('card.whatsapp.title'),
+    description: t('card.whatsapp.description'),
   },
   canAny('billing.view', 'billing.status', 'whatsapp.contacts') && {
     key: 'billing', to: { name: 'BillingOverview' }, icon: 'file-invoice-dollar',
     tile: 'bg-[color-mix(in_srgb,var(--color-brand-navy)_14%,var(--color-white))] text-brand-navy',
-    eyebrow: 'Invoices & payments', title: 'Billing',
-    description: 'Payment status, balances and reminders.',
+    eyebrow: t('card.billing.eyebrow'), title: t('card.billing.title'),
+    description: t('card.billing.description'),
   },
   can('team.manage') && {
     key: 'team', to: { name: 'Team' }, icon: 'users',
     tile: 'bg-gray-100 text-gray-700',
-    eyebrow: 'Administrator', title: 'Team',
-    description: 'Who has access, their roles, and revoking or restoring it.',
+    eyebrow: t('card.admin.eyebrow'), title: t('card.team.title'),
+    description: t('card.team.description'),
   },
   can('activity.view') && {
     key: 'activity', to: { name: 'Activity' }, icon: 'clock-rotate-left',
     tile: 'bg-gray-100 text-gray-700',
-    eyebrow: 'Administrator', title: 'Activity',
-    description: 'Every change made in the portal, by whom and when.',
+    eyebrow: t('card.admin.eyebrow'), title: t('card.activity.title'),
+    description: t('card.activity.description'),
   },
   can('forms.test') && {
     key: 'test-channel', to: { name: 'TestChannel' }, icon: 'flask',
     tile: 'bg-gray-100 text-gray-700',
-    eyebrow: 'Administrator', title: 'Test channel',
-    description: 'Send test forms through the website without touching the inbox.',
+    eyebrow: t('card.admin.eyebrow'), title: t('card.test.title'),
+    description: t('card.test.description'),
   },
 ].filter(Boolean))
 
@@ -307,9 +339,9 @@ const SIZE = {
   sm: { card: 'p-4 sm:p-5 min-h-[180px]', tile: 'w-[48px] h-[48px] rounded-[14px]', icon: 'text-[21px]', eyebrow: 'mt-4', title: 'text-[19px]', text: 'text-[12.5px]' },
 }
 
-// A card whose figures failed to load says so, rather than claiming nothing
-// is connected or imported. Each is tried once more after a few seconds.
-const COULD_NOT_LOAD = 'Could not load these figures. Open the page, or reload to try again.'
+// A card whose figures failed to load says so (figures.could_not_load),
+// rather than claiming nothing is connected or imported. Each is tried once
+// more after a few seconds.
 const withRetry = (fn) => fn().catch(() => new Promise((r) => setTimeout(r, 4000)).then(fn))
 
 // Kept alive between sections (App.vue): coming back shows the figures at

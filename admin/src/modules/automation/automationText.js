@@ -3,6 +3,7 @@
 // admin/test/automation.test.js. The codes come from server/automation/.
 import { formatDue, formatTime } from '../reminders/dueChoices.js'
 import { sameFirmDay } from '../../utils/firmTime.js'
+import { translate } from '../../i18n/dashboard.js'
 
 /** Why the follow-ups to a lead stopped ("…because …"). */
 export const STOP_REASONS = {
@@ -85,7 +86,7 @@ export const jobLabel = (type) => JOB_LABELS[type] || String(type || '').replace
 
 const PURPOSE = { lead_ack: 'Acknowledgment', lead_followup: 'Follow-up', missed_call: 'Missed-call text' }
 const LANG = { es: 'Spanish', en: 'English', bi: 'Spanish and English' }
-const day = (at, now) => (sameFirmDay(at, now) ? formatTime(at) : formatDue(at))
+const day = (at, now, lang = 'en') => (sameFirmDay(at, now) ? formatTime(at, lang) : formatDue(at, lang))
 
 /**
  * A lead's automation as short lines, most useful first.
@@ -123,17 +124,25 @@ export function statusWhy(a) {
 }
 
 // Home's rows for leads that need a person (work queue kind 'lead_attention').
+// The words live in i18n/dashboard.js (attn.*), in English and Spanish.
 const ATTENTION = {
-  client_replied: { title: (who) => `${who} replied by text`, icon: 'comment-dots', tone: 'due', when: 'Waiting since' },
-  message_failed: { title: (who) => `An automatic message to ${who} was not sent`, icon: 'triangle-exclamation', tone: 'due', when: 'Since' },
-  booking_cancelled: { title: (who) => `${who}’s consultation was cancelled`, icon: 'calendar-xmark', tone: 'due', when: 'Since' },
-  overdue: { title: (who) => `Nobody has contacted ${who} yet`, icon: 'clock', tone: 'overdue', when: 'Due since' },
-  possible_spam: { title: (who) => `Check: possible vendor message from ${who}`, icon: 'ban', tone: 'quiet', when: 'Received' },
-  no_response: { title: (who) => `No response from ${who} after the follow-ups`, icon: 'circle-pause', tone: 'quiet', when: 'Since' },
+  client_replied: { icon: 'comment-dots', tone: 'due', when: 'waiting' },
+  message_failed: { icon: 'triangle-exclamation', tone: 'due', when: 'since' },
+  booking_cancelled: { icon: 'calendar-xmark', tone: 'due', when: 'since' },
+  overdue: { icon: 'clock', tone: 'overdue', when: 'due' },
+  possible_spam: { icon: 'ban', tone: 'quiet', when: 'received' },
+  no_response: { icon: 'circle-pause', tone: 'quiet', when: 'since' },
 }
-export function attentionText(item, now = Date.now()) {
-  const a = ATTENTION[item.reason] || { title: (who) => `${who} needs someone`, icon: 'bell', tone: 'quiet', when: 'Since' }
-  return { title: a.title(item.name || 'a website lead'), icon: a.icon, tone: a.tone, when: `${a.when} ${day(item.at, now)}` }
+export function attentionText(item, now = Date.now(), lang = 'en') {
+  const known = Object.hasOwn(ATTENTION, item.reason ?? '')
+  const a = known ? ATTENTION[item.reason] : { icon: 'bell', tone: 'quiet', when: 'since' }
+  const who = item.name || translate(lang, 'fu.a_website_lead')
+  return {
+    title: translate(lang, known ? `attn.${item.reason}` : 'attn.other', { who }),
+    icon: a.icon,
+    tone: a.tone,
+    when: `${translate(lang, `attn.when.${a.when}`)} ${day(item.at, now, lang)}`,
+  }
 }
 export const ATTENTION_LABELS = {
   client_replied: 'Replied by text', message_failed: 'Message not sent', booking_cancelled: 'Booking cancelled',
