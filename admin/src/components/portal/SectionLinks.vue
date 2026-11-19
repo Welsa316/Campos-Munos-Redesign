@@ -12,12 +12,12 @@
            covered; a "New" tag after the label where it has one. Both take
            the navigation's own colours (style.css), so they show on the
            header in every theme. -->
-      <span v-if="s.key === 'updates' && updatesNew" :class="unlabelledClass(labelAt)"
+      <span v-if="s.key === 'updates' && updatesNew" :class="unlabelledClass(at)"
         class="updates-dot absolute -top-1 -right-1 w-2 h-2 rounded-full" data-updates-dot aria-hidden="true"></span>
     </span>
     <!-- Labelled only where this header has room for every action. -->
-    <span :class="labelClass(labelAt)">{{ sectionLabel(s, lang) }}</span>
-    <span v-if="s.key === 'updates' && updatesNew" :class="labelClass(labelAt)"
+    <span :class="labelClass(at)">{{ sectionLabel(s, lang) }}</span>
+    <span v-if="s.key === 'updates' && updatesNew" :class="labelClass(at)"
       class="updates-tag px-1.5 rounded text-[10px] font-bold leading-[16px] uppercase tracking-wide" aria-hidden="true">{{ t('nav.new') }}</span>
   </router-link>
 
@@ -44,7 +44,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { canAny } from '../../composables/useAuth.js'
 import FaIcon from '../FaIcon.vue'
 import { UPDATES, hasNew } from '../../data/updates.js'
-import { visibleSections, labelClass, unlabelledClass, linkName, sectionLabel } from './sectionLinks.js'
+import { visibleSections, labelClass, unlabelledClass, linkName, sectionLabel, labelAtFor } from './sectionLinks.js'
 import { useT } from '../../i18n/translator.js'
 import { PORTAL } from '../../i18n/portal.js'
 
@@ -59,6 +59,8 @@ const props = defineProps({
 
 const LINK = 'flex items-center gap-2 px-2.5 sm:px-3 py-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface text-sm font-ui font-medium transition-colors'
 
+// Spanish labels are longer, so they appear one width later (sectionLinks.js).
+const at = computed(() => labelAtFor(props.labelAt, lang.value))
 const updatesNew = computed(() => hasNew(UPDATES, canAny))
 const visible = computed(() => visibleSections(props.current, canAny))
 const adminLinks = computed(() => visible.value.filter((s) => s.admin))

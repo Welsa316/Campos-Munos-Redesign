@@ -45,6 +45,13 @@ export const labelClass = (at) => (Object.hasOwn(LABEL_AT, at) ? LABEL_AT[at] : 
 /** The classes for what shows only while there is no label (the Updates dot). */
 export const unlabelledClass = (at) => (Object.hasOwn(UNLABELLED_AT, at) ? UNLABELLED_AT[at] : UNLABELLED_AT.never)
 
+// Spanish names are longer (Novedades, Facturación, Integraciones): in
+// Spanish a header gives its links their labels one width later, so the
+// same header still fits on one line.
+const LATER = { sm: 'lg', lg: 'xl', xl: '2xl', '2xl': '2xl', never: 'never' }
+/** From which width the links carry labels in lang (as given in English). */
+export const labelAtFor = (at, lang = 'en') => (lang === 'en' || !Object.hasOwn(LATER, at) ? at : LATER[at])
+
 /** A section's name in lang (English by default: the label above). */
 export const sectionLabel = (s, lang = 'en') => (lang === 'en' ? s.label : translate(lang, `section.${s.key}`))
 

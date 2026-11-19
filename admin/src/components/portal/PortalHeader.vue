@@ -48,7 +48,7 @@ import FaIcon from '../FaIcon.vue'
 import { useT } from '../../i18n/translator.js'
 import { PORTAL } from '../../i18n/portal.js'
 
-const { t } = useT(PORTAL)
+const { t, lang } = useT(PORTAL)
 
 const props = defineProps({
   title: { type: String, required: true },
@@ -65,7 +65,11 @@ const props = defineProps({
 
 // Whole class names, so Tailwind sees them.
 const ACTION_LABEL = { lg: 'hidden lg:inline', '2xl': 'hidden 2xl:inline' }
-const actionLabel = computed(() => ACTION_LABEL[props.actionsLabelAt] || ACTION_LABEL['2xl'])
+// Spanish (Contraseña, Notificaciones) is longer: labelled only on very
+// wide screens, so an administrator's full header still fits on one line
+// (icons with their tooltip and spoken name below that).
+const ACTION_LABEL_ES = 'hidden min-[1800px]:inline'
+const actionLabel = computed(() => (lang.value === 'en' ? ACTION_LABEL[props.actionsLabelAt] || ACTION_LABEL['2xl'] : ACTION_LABEL_ES))
 
 const router = useRouter()
 const { adminEmail, logout } = useAuth()

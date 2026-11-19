@@ -7,10 +7,11 @@
        it shows, <html> carries .lang-docked and style.css shortens every
        page by the strip's height (--lang-dock), so no list row, reply box,
        composer or bottom button can ever be underneath it, at any width,
-       including sections that know nothing about it. The strip is the
-       page's own background, so the pill still reads as floating. Dialogs,
-       slide-over panels and toasts sit above it. -->
-  <div v-if="shown" class="lang-dock fixed inset-x-0 bottom-0 z-20 flex items-center bg-brand-surface pointer-events-none" data-lang-dock>
+       including sections that know nothing about it. The strip takes the
+       page's own background, with a hairline above it so a page plainly ends
+       there rather than being cut off. Dialogs, slide-over panels and toasts
+       sit above it. -->
+  <div v-if="shown" class="lang-dock fixed inset-x-0 bottom-0 z-20 flex items-center bg-brand-surface border-t border-gray-200 pointer-events-none" data-lang-dock>
     <div role="group" :aria-label="t('lang.group')"
       class="pointer-events-auto ml-4 sm:ml-6 h-12 sm:h-[52px] p-1 sm:p-1.5 rounded-2xl bg-white ring-1 ring-gray-200 shadow-sm flex items-center gap-1 font-ui">
       <button v-for="l in ORDER" :key="l.code" type="button" :lang="l.code" :aria-label="t(`lang.${l.code}`)"
