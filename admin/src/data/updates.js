@@ -24,7 +24,7 @@ export const SECTIONS = {
 export const UPDATES = [
   {
     id: 'reminders-on-any-call',
-    at: '2026-11-19T00:00:00Z',
+    at: '2026-11-19T19:52:00Z',
     section: 'calls',
     any: ['calls.exclude'],
     title: 'Set a reminder on any call',
@@ -38,7 +38,7 @@ export const UPDATES = [
   },
   {
     id: 'calls-longer-ranges',
-    at: '2026-11-19T00:00:00Z',
+    at: '2026-11-19T19:52:00Z',
     section: 'calls',
     any: ['calls.view'],
     title: 'Look further back in All calls',
@@ -51,7 +51,7 @@ export const UPDATES = [
   },
   {
     id: 'home-in-spanish',
-    at: '2026-11-19T00:00:00Z',
+    at: '2026-11-19T19:52:00Z',
     section: 'everyone',
     any: [],
     title: 'Home can now be shown in Spanish',
