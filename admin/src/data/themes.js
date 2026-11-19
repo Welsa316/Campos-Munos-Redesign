@@ -418,8 +418,17 @@ export function buildCustomTheme(input) {
   // Measured versions of what derived() would mix or fix, where a pairing
   // must hold for any colour.
   t['primary-ring'] = readable(light ? primary : t['focus-ring'], [surface, page], UI)
-  t['inverse-bg'] = carries(light ? t['text-primary'] : mix(surface, WHITE, 0.16), onPrimary, TEXT)
-  t['inverse-bg-hover'] = carries(mix(t['inverse-bg'], away, 0.12), onPrimary, TEXT)
+  // The "inverse" button (Save) is near-black (light) or a lifted slate
+  // (dark) under white words; when the buttons carry dark words (a yellow
+  // or pink primary), it would turn a washed-out grey, so it takes the
+  // primary colour instead.
+  if (isLight(onPrimary)) {
+    t['inverse-bg'] = carries(light ? t['text-primary'] : mix(surface, WHITE, 0.16), onPrimary, TEXT)
+    t['inverse-bg-hover'] = carries(mix(t['inverse-bg'], away, 0.12), onPrimary, TEXT)
+  } else {
+    t['inverse-bg'] = primary
+    t['inverse-bg-hover'] = t['primary-hover']
+  }
   t['sidebar-danger'] = readable(isLight(onHeader) ? '#FFC2C2' : '#8F1D1D', barBgs, TEXT)
 
   // Home's two summary cards. Each is glass: its colour at 88–92 % over the
