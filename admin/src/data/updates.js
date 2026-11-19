@@ -24,7 +24,7 @@ export const SECTIONS = {
 export const UPDATES = [
   {
     id: 'reply-emoji',
-    at: '2026-11-19T20:30:00Z',
+    at: '2026-11-19T20:31:00Z',
     section: 'everyone',
     any: ['crm.manage', 'whatsapp.send'],
     title: 'Add emoji to your replies',
