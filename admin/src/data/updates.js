@@ -23,6 +23,20 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'reply-emoji',
+    at: '2026-11-19T20:31:00Z',
+    section: 'everyone',
+    any: ['crm.manage', 'whatsapp.send'],
+    title: 'Add emoji to your replies',
+    summary: 'The reply box in Messages and in WhatsApp now has a smiley button next to Send. Press it to pick an emoji for your reply.',
+    points: [
+      'The emoji goes where your cursor is in the reply, so you can add it in the middle of a sentence.',
+      'The list stays open so you can add more than one. Press Esc, the smiley again, or click outside it to close it.',
+      'The last ones you picked show at the top under Recently used, on the computer where you picked them.',
+      'Emoji are drawn by each phone and computer, so the client may see them looking slightly different.',
+    ],
+  },
+  {
     id: 'reminders-on-any-call',
     at: '2026-11-19T19:52:00Z',
     section: 'calls',

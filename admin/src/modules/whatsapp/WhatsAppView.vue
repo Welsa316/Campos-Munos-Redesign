@@ -193,11 +193,13 @@
             <p v-if="!detail.reply.allowed" class="text-xs font-ui text-gray-600 bg-brand-surface rounded-lg px-3 py-2.5">
               <i class="fa-solid fa-circle-info text-brand-navy/70 mr-1.5" aria-hidden="true"></i>{{ detail.reply.message }}
             </p>
-            <form v-else @submit.prevent="send" class="flex items-end gap-3">
+            <!-- relative: the emoji panel opens above the form, lined up with its right edge. -->
+            <form v-else @submit.prevent="send" class="relative flex items-end gap-2 sm:gap-3">
               <label for="wa-reply" class="sr-only">Reply on WhatsApp</label>
-              <textarea id="wa-reply" v-model="draft" rows="2" maxlength="4096" :disabled="busy === 'send'"
+              <textarea id="wa-reply" ref="replyField" v-model="draft" rows="2" maxlength="4096" :disabled="busy === 'send'"
                 :placeholder="`Reply to ${title} on WhatsApp`"
                 class="form-input resize-none text-sm flex-1" @keydown.enter.meta="(e) => { if (!isComposing(e)) { e.preventDefault(); send() } }" @keydown.enter.ctrl="(e) => { if (!isComposing(e)) { e.preventDefault(); send() } }"></textarea>
+              <EmojiPicker v-model="draft" :field="replyField" :maxlength="4096" :disabled="busy === 'send'" />
               <button type="submit" :disabled="busy === 'send' || !draft.trim()"
                 class="bg-brand-navy text-white font-ui font-semibold text-sm px-5 py-3 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0">
                 <FaIcon :name="busy === 'send' ? 'spinner' : 'paper-plane'" :spin="busy === 'send'" class="text-xs mr-1.5" />Send
@@ -220,6 +222,7 @@ import { formatPhone } from '../../utils/phone.js'
 import PortalHeader from '../../components/portal/PortalHeader.vue'
 import { useVisiblePoll } from '../../composables/useVisiblePoll.js'
 import FaIcon from '../../components/FaIcon.vue'
+import EmojiPicker from '../../components/EmojiPicker.vue'
 import { toDate, isComposing } from '../../utils/text.js'
 
 const route = useRoute()
@@ -257,6 +260,7 @@ const actionError = ref('')
 const notesOpen = ref(false)
 const noteDraft = ref('')
 const draft = ref('')
+const replyField = ref(null)
 const sendError = ref('')
 const threadEl = ref(null)
 // "New message from …" for screen readers when the open thread gets one.
