@@ -1,7 +1,12 @@
 // The rules behind SectionLinks.vue (every section's header links), apart
 // from the component so they are tested: which sections an account sees,
 // from which width each link carries its text label, and what a screen
-// reader hears for it. Tested in admin/test/sectionLinks.test.js.
+// reader hears for it, in English or Spanish. Tested in
+// admin/test/sectionLinks.test.js.
+import { makeTranslate } from '../../i18n/translator.js'
+import { PORTAL } from '../../i18n/portal.js'
+
+const translate = makeTranslate(PORTAL)
 
 export const SECTIONS = [
   { key: 'home', label: 'Home', icon: 'house', to: { name: 'Home' }, any: [] },
@@ -40,8 +45,14 @@ export const labelClass = (at) => (Object.hasOwn(LABEL_AT, at) ? LABEL_AT[at] : 
 /** The classes for what shows only while there is no label (the Updates dot). */
 export const unlabelledClass = (at) => (Object.hasOwn(UNLABELLED_AT, at) ? UNLABELLED_AT[at] : UNLABELLED_AT.never)
 
+/** A section's name in lang (English by default: the label above). */
+export const sectionLabel = (s, lang = 'en') => (lang === 'en' ? s.label : translate(lang, `section.${s.key}`))
+
 /**
  * What a screen reader hears for a link. The accessible name comes from
  * aria-label, which replaces the link's text, so "new" has to be in it.
  */
-export const linkName = (s, updatesNew) => (s.key === 'updates' && updatesNew ? `${s.label}, new` : s.label)
+export const linkName = (s, updatesNew, lang = 'en') => {
+  const label = sectionLabel(s, lang)
+  return s.key === 'updates' && updatesNew ? translate(lang, 'nav.link_new', { label }) : label
+}

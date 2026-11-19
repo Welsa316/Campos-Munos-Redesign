@@ -4,6 +4,12 @@
 // "Enable notifications".
 
 import { isPortalPath } from './portalPath.js'
+import { makeTranslate } from '../i18n/translator.js'
+import { PORTAL } from '../i18n/portal.js'
+
+// The help texts below, in English or Spanish. Menu paths stay as an
+// English browser and operating system show them.
+const translate = makeTranslate(PORTAL)
 
 const BASE = import.meta.env?.BASE_URL ?? '/'
 export const SW_URL = `${BASE}push-sw.js`
@@ -67,10 +73,9 @@ export async function subscribeThisBrowser(publicKey, win = globalThis) {
   return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key })
 }
 
-/** Where to allow notifications again, in plain words. */
-export function blockedHelp(host, nav = globalThis.navigator) {
-  if (browserName(nav) === 'Safari') return `Notifications are blocked for ${host}. To allow them, open Safari → Settings → Websites → Notifications, set ${host} to Allow, then reload the portal.`
-  return `Notifications are blocked for ${host}. To allow them, click the icon at the left of the address bar, open Site settings (Chrome) or Permissions for this site (Edge), set Notifications to Allow, then reload the portal.`
+/** Where to allow notifications again, in plain words (lang: 'en' or 'es'). */
+export function blockedHelp(host, nav = globalThis.navigator, lang = 'en') {
+  return translate(lang, browserName(nav) === 'Safari' ? 'push.blocked_safari' : 'push.blocked', { host })
 }
 
 /**
@@ -113,10 +118,10 @@ export function browserName(nav = globalThis.navigator) {
  * What to check when a test was sent but nothing appeared: the browser let
  * the portal notify, so the operating system is the usual block.
  */
-export function testSentHelp(nav = globalThis.navigator) {
+export function testSentHelp(nav = globalThis.navigator, lang = 'en') {
   const b = browserName(nav)
+  const browser = b === 'your browser' ? translate(lang, 'push.your_browser') : b
   const os = platformOf(nav)
-  if (os === 'mac') return `Test sent. It should appear in a few seconds. If it does not, open System Settings → Notifications → ${b}, turn on Allow notifications and choose Banners or Alerts, and check that Focus is off.`
-  if (os === 'windows') return `Test sent. It should appear in a few seconds. If it does not, open Settings → System → Notifications, make sure notifications are on for ${b}, and check that Do not disturb (Focus assist) is off.`
-  return `Test sent. It should appear in a few seconds. If it does not, check that your computer allows notifications from ${b}.`
+  const key = os === 'mac' ? 'push.test_mac' : os === 'windows' ? 'push.test_windows' : 'push.test_other'
+  return translate(lang, key, { browser })
 }

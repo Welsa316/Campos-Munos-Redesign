@@ -3,8 +3,8 @@
     <PortalHeader :title="t('header.title')" current="home" label-at="xl" actions-label-at="lg" />
 
     <div class="flex-1 overflow-y-auto overflow-x-hidden">
-      <!-- lang: Home's own words follow the EN | ES switch; the header and
-           its sections stay English. -->
+      <!-- lang: Home's words follow the language switch at the bottom left
+           (components/LanguageSwitch.vue). -->
       <div :lang="lang" class="min-h-full relative max-w-[1120px] mx-auto px-4 sm:px-8 pt-6 sm:pt-10 pb-10 flex flex-col gap-4 sm:gap-5 font-ui">
         <!-- Greeting, top left, no card. The words rise in letter by letter
              (SplitText); the picture and role line settle in around them. -->
@@ -32,17 +32,8 @@
               </RiseIn>
             </div>
           </div>
-          <!-- On a phone the switch stands upright under Themes, no wider than it,
-               so the greeting keeps its width. -->
           <div class="flex flex-col-reverse items-end gap-2 sm:flex-row sm:items-start sm:gap-5 flex-shrink-0">
             <span class="hidden sm:block pt-3 text-[15px] font-medium tracking-tight text-gray-500 whitespace-nowrap">{{ today }}</span>
-            <!-- EN | ES: the language of Home, kept in this browser. -->
-            <div role="group" :aria-label="t('lang.group')" class="glass flex flex-col sm:flex-row items-center gap-0.5 rounded-full p-1 sm:mt-1.5 sm:pointer-coarse:mt-0">
-              <button v-for="l in LANGS" :key="l" type="button" :lang="l" :title="LANG_NAMES[l]"
-                :aria-pressed="lang === l" @click="setLang(l)"
-                :class="lang === l ? 'bg-brand-navy text-white' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-900/5'"
-                class="h-8 min-w-9 pointer-coarse:h-11 pointer-coarse:min-w-11 px-2.5 rounded-full text-[12px] font-semibold tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-navy">{{ l.toUpperCase() }}</button>
-            </div>
             <ThemeFolder />
           </div>
         </div>
@@ -129,13 +120,11 @@ import UserAvatar from '../components/UserAvatar.vue'
 import AvatarPicker from '../components/AvatarPicker.vue'
 import MyFollowUps from '../modules/reminders/MyFollowUps.vue'
 import { usePortalLang } from '../composables/usePortalLang.js'
-import { LANGS, roleLabel } from '../i18n/dashboard.js'
+import { roleLabel } from '../i18n/dashboard.js'
 
 const { adminEmail, profile, can, canAny, updateProfile } = useAuth()
 const { get } = useApi()
-const { lang, setLang, t } = usePortalLang()
-// Each language named in itself, as language switches do.
-const LANG_NAMES = { en: 'English', es: 'Español' }
+const { lang, t } = usePortalLang()
 const locale = computed(() => (lang.value === 'es' ? 'es-US' : 'en-US'))
 const showAvatarPicker = ref(false)
 const avatarSize = typeof window !== 'undefined' && window.innerWidth >= 640 ? 64 : 56

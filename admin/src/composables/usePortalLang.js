@@ -1,6 +1,8 @@
-// The language Home is shown in (the EN | ES switch on Home): one choice
-// shared by every component that asks, kept in this browser. English until
-// someone picks Spanish; the browser's own language is not used.
+// The language the portal is shown in (the ES | EN switch at the bottom
+// left, components/LanguageSwitch.vue): one choice shared by every component
+// that asks, kept in this browser. English until someone picks Spanish; the
+// browser's own language is not used. The page's <html lang> follows it, so
+// screen readers and the browser's spelling and hyphenation read it right.
 import { ref } from 'vue'
 import { normalizeLang, translate } from '../i18n/dashboard.js'
 
@@ -19,11 +21,18 @@ function saveLang(value, store = storage()) {
   try { store?.setItem(STORAGE_KEY, value) } catch { /* storage blocked: the choice lasts this visit */ }
 }
 
+/** Sets <html lang> to the choice (no document, as in tests: nothing to do). */
+export function applyDocumentLang(value, doc = globalThis.document) {
+  try { if (doc?.documentElement) doc.documentElement.lang = normalizeLang(value) } catch { /* no document */ }
+}
+
 const lang = ref(readLang())
+applyDocumentLang(lang.value)
 
 function setLang(value) {
   lang.value = normalizeLang(value)
   saveLang(lang.value)
+  applyDocumentLang(lang.value)
 }
 
 const t = (key, vars) => translate(lang.value, key, vars)

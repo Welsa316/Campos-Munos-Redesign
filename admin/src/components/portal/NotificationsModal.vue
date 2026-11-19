@@ -15,12 +15,12 @@
       <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden font-ui">
         <div class="px-6 pt-6 pb-4 border-b border-gray-100 flex items-start justify-between gap-4">
           <div>
-            <h2 id="notifications-title" class="font-heading text-xl text-brand-navy">Desktop notifications</h2>
-            <p id="notifications-text" class="text-gray-500 text-sm mt-1">Receive callback reminders and new website messages on this computer, even when the portal tab is closed.</p>
+            <h2 id="notifications-title" class="font-heading text-xl text-brand-navy">{{ t('notif.title') }}</h2>
+            <p id="notifications-text" class="text-gray-500 text-sm mt-1">{{ t('notif.intro') }}</p>
           </div>
           <button ref="closeBtnRef" @click="close" type="button"
             class="w-8 h-8 pointer-coarse:w-11 pointer-coarse:h-11 pointer-coarse:-mt-1.5 pointer-coarse:-mr-1.5 flex-shrink-0 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700 flex items-center justify-center transition-colors"
-            aria-label="Close">
+            :aria-label="t('notif.close')">
             <FaIcon name="xmark" class="text-sm" />
           </button>
         </div>
@@ -30,7 +30,7 @@
             <span :class="badge.tone" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold">
               <FaIcon :name="badge.icon" class="text-[11px]" />{{ badge.label }}
             </span>
-            <span v-if="state === 'on' && devices > 1" class="text-xs text-gray-500">{{ devices }} computers in all</span>
+            <span v-if="state === 'on' && devices > 1" class="text-xs text-gray-500">{{ t('notif.devices', { count: devices }) }}</span>
           </p>
 
           <p v-if="explanation" class="text-sm text-gray-600 leading-relaxed">{{ explanation }}</p>
@@ -43,46 +43,42 @@
           <div class="flex flex-wrap items-center gap-2 pt-1">
             <button v-if="state === 'off'" type="button" @click="enable" :disabled="Boolean(busy)"
               class="flex-1 min-w-[180px] py-2.5 rounded-lg bg-brand-navy hover:bg-brand-navy-dark text-white text-sm font-bold tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-              <span v-if="busy === 'enable'" class="inline-flex items-center gap-1.5"><FaIcon name="spinner" spin class="text-xs" />Turning on…</span>
-              <span v-else>Enable notifications</span>
+              <span v-if="busy === 'enable'" class="inline-flex items-center gap-1.5"><FaIcon name="spinner" spin class="text-xs" />{{ t('notif.turning_on') }}</span>
+              <span v-else>{{ t('notif.enable') }}</span>
             </button>
             <button v-if="state.startsWith('desktop')" type="button" @click="sendDesktopTest" :disabled="Boolean(busy)"
               class="flex-1 min-w-[180px] py-2.5 rounded-lg bg-brand-navy hover:bg-brand-navy-dark text-white text-sm font-bold tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-              <span v-if="busy === 'test'" class="inline-flex items-center gap-1.5"><FaIcon name="spinner" spin class="text-xs" />Sending…</span>
-              <span v-else>Send test notification</span>
+              <span v-if="busy === 'test'" class="inline-flex items-center gap-1.5"><FaIcon name="spinner" spin class="text-xs" />{{ t('notif.sending') }}</span>
+              <span v-else>{{ t('notif.send_test') }}</span>
             </button>
             <button v-if="state === 'error'" type="button" @click="refresh"
               class="flex-1 min-w-[180px] py-2.5 rounded-lg border border-gray-200 hover:border-gray-300 text-gray-700 hover:text-gray-900 text-sm font-medium transition-colors">
-              Try again
+              {{ t('notif.try_again') }}
             </button>
             <template v-if="state === 'on'">
               <button type="button" @click="sendTest" :disabled="Boolean(busy)"
                 class="flex-1 min-w-[180px] py-2.5 rounded-lg bg-brand-navy hover:bg-brand-navy-dark text-white text-sm font-bold tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                <span v-if="busy === 'test'" class="inline-flex items-center gap-1.5"><FaIcon name="spinner" spin class="text-xs" />Sending…</span>
-                <span v-else>Send test notification</span>
+                <span v-if="busy === 'test'" class="inline-flex items-center gap-1.5"><FaIcon name="spinner" spin class="text-xs" />{{ t('notif.sending') }}</span>
+                <span v-else>{{ t('notif.send_test') }}</span>
               </button>
               <button type="button" @click="turnOff" :disabled="Boolean(busy)"
                 class="flex-1 min-w-[180px] py-2.5 rounded-lg border border-gray-200 hover:border-gray-300 text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                <span v-if="busy === 'off'" class="inline-flex items-center gap-1.5"><FaIcon name="spinner" spin class="text-xs" />Turning off…</span>
-                <span v-else>Turn off on this computer</span>
+                <span v-if="busy === 'off'" class="inline-flex items-center gap-1.5"><FaIcon name="spinner" spin class="text-xs" />{{ t('notif.turning_off') }}</span>
+                <span v-else>{{ t('notif.turn_off') }}</span>
               </button>
             </template>
           </div>
 
           <!-- Push is delivered to the browser: it must be running, even with no window open. -->
           <p v-if="state === 'on'" class="text-xs text-gray-600 leading-relaxed" data-background-tip>
-            Notifications show only while your browser is running. To get them with every window closed, let it keep running in the background:
-            in Chrome, Settings → System → Continue running background apps; in Edge, Settings → System and performance → Startup boost.
-            One sent while the browser was quit appears when it next starts, up to a day later.
+            {{ t('notif.background_tip') }}
           </p>
           <!-- Shown as the browser until the portal is installed as an app. -->
           <p v-if="state === 'on' && !installed" class="text-xs text-gray-600 leading-relaxed" data-install-tip>
-            To have notifications show as Campos Muños instead of your browser, install the portal as an app:
-            in Chrome or Edge, click the install icon at the right of the address bar
-            (or the ⋮ menu → Cast, save and share → Install page as app).
+            {{ t('notif.install_tip') }}
           </p>
 
-          <p class="text-xs text-gray-500">Turn it on separately on each computer you use. Notifications say only that a follow-up is ready, never who it is for.</p>
+          <p class="text-xs text-gray-500">{{ t('notif.per_computer') }}</p>
         </div>
       </div>
     </div>
@@ -98,6 +94,10 @@ import { useApi } from '../../composables/useApi.js'
 import { inDesktopApp, desktopNotificationState } from '../../utils/desktop.js'
 import { pushSupport, permissionState, currentSubscription, subscribeThisBrowser, blockedHelp, testSentHelp } from '../../utils/push.js'
 import FaIcon from '../FaIcon.vue'
+import { useT } from '../../i18n/translator.js'
+import { PORTAL } from '../../i18n/portal.js'
+
+const { t, lang } = useT(PORTAL)
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -117,30 +117,30 @@ const closeBtnRef = ref(null)
 let publicKey = null
 let previouslyFocused = null
 
+// The words are notif.badge.<state> in i18n/portal.js.
 const BADGES = {
-  loading: { label: 'Checking…', icon: 'spinner', tone: 'bg-gray-100 text-gray-600' },
-  error: { label: 'Could not check', icon: 'circle-exclamation', tone: 'bg-gray-100 text-gray-700' },
-  on: { label: 'On for this computer', icon: 'bell', tone: 'bg-green-50 text-green-800 ring-1 ring-green-200' },
-  off: { label: 'Off on this computer', icon: 'bell-slash', tone: 'bg-gray-100 text-gray-700' },
-  blocked: { label: 'Blocked in this browser', icon: 'ban', tone: 'bg-red-50 text-brand-red ring-1 ring-red-200' },
-  not_configured: { label: 'Not available yet', icon: 'circle-info', tone: 'bg-gray-100 text-gray-700' },
-  unsupported: { label: 'Not available in this browser', icon: 'circle-info', tone: 'bg-gray-100 text-gray-700' },
-  insecure: { label: 'Not available on this connection', icon: 'circle-info', tone: 'bg-gray-100 text-gray-700' },
-  desktop: { label: 'On in this app', icon: 'bell', tone: 'bg-green-50 text-green-800 ring-1 ring-green-200' },
-  desktop_paused: { label: 'Paused in this app', icon: 'circle-pause', tone: 'bg-amber-50 text-amber-900 ring-1 ring-amber-200' },
-  desktop_blocked: { label: 'Blocked on this computer', icon: 'ban', tone: 'bg-red-50 text-brand-red ring-1 ring-red-200' },
+  loading: { icon: 'spinner', tone: 'bg-gray-100 text-gray-600' },
+  error: { icon: 'circle-exclamation', tone: 'bg-gray-100 text-gray-700' },
+  on: { icon: 'bell', tone: 'bg-green-50 text-green-800 ring-1 ring-green-200' },
+  off: { icon: 'bell-slash', tone: 'bg-gray-100 text-gray-700' },
+  blocked: { icon: 'ban', tone: 'bg-red-50 text-brand-red ring-1 ring-red-200' },
+  not_configured: { icon: 'circle-info', tone: 'bg-gray-100 text-gray-700' },
+  unsupported: { icon: 'circle-info', tone: 'bg-gray-100 text-gray-700' },
+  insecure: { icon: 'circle-info', tone: 'bg-gray-100 text-gray-700' },
+  desktop: { icon: 'bell', tone: 'bg-green-50 text-green-800 ring-1 ring-green-200' },
+  desktop_paused: { icon: 'circle-pause', tone: 'bg-amber-50 text-amber-900 ring-1 ring-amber-200' },
+  desktop_blocked: { icon: 'ban', tone: 'bg-red-50 text-brand-red ring-1 ring-red-200' },
 }
-const badge = computed(() => BADGES[state.value] || BADGES.loading)
+const badge = computed(() => {
+  const key = Object.hasOwn(BADGES, state.value) ? state.value : 'loading'
+  return { ...BADGES[key], label: t(`notif.badge.${key}`) }
+})
 const host = () => (typeof window !== 'undefined' ? window.location.host : 'admin.camulaw.com')
-const explanation = computed(() => ({
-  blocked: blockedHelp(host()),
-  not_configured: 'Desktop notifications are not set up on the server yet. Ask the office administrator.',
-  unsupported: 'This browser cannot show desktop notifications. Use a current version of Chrome or Edge.',
-  insecure: 'Desktop notifications only work when the portal is opened over https.',
-  desktop: 'This app shows notifications itself while it is running, even with its window closed. Nothing to turn on here. If a test does not appear, check that notifications are allowed for Campos Muños in the computer’s notification settings.',
-  desktop_paused: 'The app cannot reach the server right now, so new notifications wait until it can. It keeps trying on its own.',
-  desktop_blocked: 'This computer does not let the app show notifications. Allow them for Campos Muños in the computer’s notification settings.',
-}[state.value] || ''))
+const EXPLAINED = ['not_configured', 'unsupported', 'insecure', 'desktop', 'desktop_paused', 'desktop_blocked']
+const explanation = computed(() => {
+  if (state.value === 'blocked') return blockedHelp(host(), undefined, lang.value)
+  return EXPLAINED.includes(state.value) ? t(`notif.explain.${state.value}`) : ''
+})
 
 // The portal's apiFetch: a refusal keeps the server's code (expired,
 // not_subscribed, push_not_configured), which decides what this shows.
@@ -182,13 +182,13 @@ async function enable() {
     const res = await post('/api/push/subscriptions', { subscription: sub.toJSON() })
     devices.value = res.devices
     state.value = 'on'
-    notice.value = 'Notifications are on for this computer. Send a test to check they appear.'
+    notice.value = t('notif.now_on')
   } catch (e) {
     if (e.code === 'denied') state.value = 'blocked'
-    else if (e.code === 'dismissed') error.value = 'Notifications were not allowed. Click Enable notifications again and choose Allow.'
+    else if (e.code === 'dismissed') error.value = t('notif.dismissed')
     else if (e.code === 'unsupported' || e.code === 'insecure') state.value = e.code
     else if (e.code === 'push_not_configured') state.value = 'not_configured'
-    else error.value = e.message || 'Could not turn notifications on. Try again.'
+    else error.value = e.message || t('notif.on_failed')
   } finally {
     busy.value = ''
   }
@@ -206,9 +206,9 @@ async function turnOff() {
       await sub.unsubscribe().catch(() => {})
     }
     state.value = 'off'
-    notice.value = 'Notifications are off for this computer.'
+    notice.value = t('notif.now_off')
   } catch (e) {
-    error.value = e.message || 'Could not turn notifications off. Try again.'
+    error.value = e.message || t('notif.off_failed')
   } finally {
     busy.value = ''
   }
@@ -221,7 +221,7 @@ async function sendDesktopTest() {
   busy.value = 'test'
   try {
     await post('/api/notifications/test', {})
-    notice.value = 'Test sent. It should appear within about 20 seconds.'
+    notice.value = t('notif.desktop_test_sent')
   } catch (e) {
     error.value = e.message
   } finally {
@@ -235,10 +235,10 @@ async function sendTest() {
   busy.value = 'test'
   try {
     const sub = await currentSubscription()
-    if (!sub) { state.value = 'off'; throw new Error('Notifications are not turned on on this computer.') }
+    if (!sub) { state.value = 'off'; throw new Error(t('notif.not_on')) }
     await post('/api/push/test', { endpoint: sub.endpoint })
     // Accepted by the push service; whether it shows is up to the browser and the operating system.
-    notice.value = testSentHelp()
+    notice.value = testSentHelp(undefined, lang.value)
   } catch (e) {
     if (e.code === 'expired' || e.code === 'not_subscribed') state.value = 'off'
     error.value = e.message

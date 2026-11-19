@@ -51,7 +51,7 @@ import { workItemText } from './workQueueText.js'
 import { usePortalLang } from '../../composables/usePortalLang.js'
 
 const { get } = useApi()
-// Shown on Home, so it follows Home's EN | ES switch.
+// Shown on Home, so it follows the portal's language switch.
 const { lang, t } = usePortalLang()
 const items = ref([])
 const hasMore = ref(false)
