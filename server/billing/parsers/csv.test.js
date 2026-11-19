@@ -75,6 +75,27 @@ test('a title row with 3 of 5 cells counts as the header (60% is inclusive)', ()
   assert.deepEqual(t2.headers, ['a', 'b', 'c', 'd', 'e'])
 })
 
+test('a summary strip above the table is not taken for the header', () => {
+  const t = parseCsv('Payment Plan Report,,,\n'
+    + 'PLANS,PAID,PENDING,BALANCE LEFT\n'
+    + '3,1,2,4500\n'
+    + '\n'
+    + 'Client Name,Invoice #,Balance Remaining,Payment Due Date\n'
+    + 'Prueba Uno,INV-1,1500,11/15/2026\n'
+    + 'Prueba Dos,INV-2,1000,11/20/2026\n'
+    + 'Prueba Tres,INV-3,2000,11/25/2026\n')
+  assert.deepEqual(t.headers, ['Client Name', 'Invoice #', 'Balance Remaining', 'Payment Due Date'])
+  assert.equal(t.meta.headerRowIndex, 4)
+  assert.equal(t.rows.length, 3)
+  assert.equal(t.rows[0][1], 'INV-1')
+})
+
+test('a header at the top keeps its place even when a later row is all text', () => {
+  const t = parseCsv('Client,Invoice,Status\nPrueba Uno,INV-1,Open\nPrueba Dos,INV-2,Paid\n')
+  assert.equal(t.meta.headerRowIndex, 0)
+  assert.equal(t.rows.length, 2)
+})
+
 test('ragged rows are padded/truncated and recorded', () => {
   const t = parseCsv('a,b,c\n1,2\n1,2,3,4\n1,2,3,\n')
   assert.deepEqual(t.rows, [['1', '2', ''], ['1', '2', '3'], ['1', '2', '3']])
