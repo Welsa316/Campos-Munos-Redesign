@@ -38,6 +38,20 @@ export const UPDATES = [
     ],
   },
   {
+    id: 'entry-colors',
+    at: '2026-11-20T00:00:00Z',
+    section: 'everyone',
+    any: ['calls.exclude', 'crm.manage'],
+    title: 'Give callers, leads and reminders a color',
+    summary: 'Mark anyone you want to spot again with a color, like a note in Google Keep. Everyone sees the same colors.',
+    points: [
+      'Calls: open a caller’s ⋯ menu (or the call details) and choose Color…. Every call from that number gets the color, in Needs attention, Handled and All calls.',
+      'Messages: use the color button on a lead in the list, or Color in the lead itself.',
+      'Reminders: use the color button on a reminder. It shows on the reminder under the call and in My follow-ups on Home.',
+      'Choose No color to take it off. Colors have no fixed meaning: agree among yourselves what each one is for.',
+    ],
+  },
+  {
     id: 'reminders-on-any-call',
     at: '2026-11-19T19:52:00Z',
     section: 'calls',

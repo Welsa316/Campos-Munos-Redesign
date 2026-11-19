@@ -10,7 +10,7 @@
 
     <template v-else>
       <!-- Contact info header -->
-      <div class="p-6 border-b border-gray-100 flex-shrink-0">
+      <div :data-entry-color="color || undefined" class="p-6 border-b border-gray-100 flex-shrink-0">
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-2 mb-1">
@@ -37,6 +37,7 @@
                 <i class="fa-solid fa-location-dot text-[10px]" aria-hidden="true"></i>
                 {{ formatCountry(submission.location) }}
               </span>
+              <ColorPickerButton v-if="canRemind" kind="lead" :id="submission.id" :color="submission.color" :targets="[submission]" />
             </div>
 
             <!-- Pipeline status -->
@@ -255,6 +256,8 @@ import { toDate, isComposing } from '../../utils/text.js'
 import { LEAD_STATUSES, statusMeta } from '../../data/leadStatuses.js'
 import { can } from '../../composables/useAuth.js'
 import FollowUpReminders from '../../modules/reminders/FollowUpReminders.vue'
+import ColorPickerButton from '../colors/ColorPickerButton.vue'
+import { entryColor } from '../colors/entryColorStore.js'
 import LeadAutomation from '../../modules/automation/LeadAutomation.vue'
 
 const formatCountry = (code) => countryLabel(code, adminLocale())
@@ -273,6 +276,8 @@ const { patch, post, del } = useApi()
 const canManage = computed(() => can('crm.manage'))
 // Callback reminders on a lead: whoever works leads, or answers the phones.
 const canRemind = computed(() => can('crm.view') && (can('crm.manage') || can('calls.exclude')))
+// The lead's shared colour (components/colors/); the same people can change it.
+const color = computed(() => (props.submission ? entryColor('lead', props.submission.id, props.submission.color) : null))
 
 // --- Pipeline status ---
 const statusOpen = ref(false)

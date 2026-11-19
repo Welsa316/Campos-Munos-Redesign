@@ -14,7 +14,7 @@
         <section ref="cardRef" role="dialog" aria-modal="true" :aria-labelledby="`call-card-title-${call.id}`"
           class="call-card pointer-events-auto relative w-full sm:max-w-[640px] max-h-[88dvh] sm:max-h-[min(760px,calc(100dvh-3rem))] overflow-y-auto overscroll-contain bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl ring-1 ring-gray-200 font-ui pb-[env(safe-area-inset-bottom)] sm:pb-0">
           <div class="sm:hidden mx-auto mt-2.5 h-1 w-10 rounded-full bg-gray-300" aria-hidden="true"></div>
-          <header class="sticky top-0 z-10 bg-white px-5 sm:px-6 pt-4 sm:pt-5 pb-4 border-b border-gray-100 flex items-start gap-3">
+          <header :data-entry-color="color || undefined" class="sticky top-0 z-10 bg-white px-5 sm:px-6 pt-4 sm:pt-5 pb-4 border-b border-gray-100 flex items-start gap-3">
             <span :class="call.exclusion ? 'bg-gray-100 text-gray-500' : look.badge"
               class="w-10 h-10 flex-shrink-0 rounded-full inline-flex items-center justify-center" :title="look.label">
               <FaIcon :name="look.icon" />
@@ -29,6 +29,7 @@
                 <span v-else-if="call.lead" class="tag bg-amber-100 text-amber-900">{{ t('tag.lead') }}</span>
               </p>
             </div>
+            <ColorPickerButton v-if="canExclude && call.number" icon-only kind="caller" :id="call.id" :match="call.number" :color="call.color" :targets="[call]" class="-mt-1.5" />
             <button type="button" @click="close" :aria-label="t('card.close')"
               class="w-11 h-11 -mr-2 -mt-1.5 flex-shrink-0 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-800 inline-flex items-center justify-center">
               <FaIcon name="xmark" />
@@ -118,6 +119,8 @@ import ContactHistory from '../contacts/ContactHistory.vue'
 import { can } from '../../composables/useAuth.js'
 import EpisodeCalls from './EpisodeCalls.vue'
 import FollowUpReminders from '../reminders/FollowUpReminders.vue'
+import ColorPickerButton from '../../components/colors/ColorPickerButton.vue'
+import { entryColor } from '../../components/colors/entryColorStore.js'
 import { telHref } from '../../utils/phone.js'
 import { statusLine } from './callEvidenceText.js'
 import { followUpLine, followUpDetail, outboundLine, when } from './callsInbox.js'
@@ -154,6 +157,8 @@ const headingRef = ref(null)
 const showEvidence = ref(false)
 
 const look = computed(() => lookOf(props.call, lang.value))
+// The caller's shared colour (components/colors/), on the card's header too.
+const color = computed(() => (props.call ? entryColor('caller', props.call.number, props.call.color) : null))
 const displayName = computed(() => props.call.name || t(props.call.number ? 'caller.unknown' : 'caller.private'))
 const status = computed(() => (props.call.direction === 'inbound' ? statusLine(props.call, lang.value) : outboundLine(props.call, lang.value)))
 const line = computed(() => followUpLine(props.call, props.now, lang.value))
@@ -188,7 +193,7 @@ watch(() => props.call?.id, (id) => { if (id) nextTick(focusHeading) })
 
 // Escape closes the card wherever focus is (it is the topmost layer).
 // A Remind me panel inside the card closes first.
-function onKey(e) { if (e.key === 'Escape' && props.call && !e.target.closest?.('[data-reminder-popover]')) { e.preventDefault(); e.stopImmediatePropagation(); close() } }
+function onKey(e) { if (e.key === 'Escape' && props.call && !e.target.closest?.('[data-reminder-popover], [data-color-picker]')) { e.preventDefault(); e.stopImmediatePropagation(); close() } }
 watch(() => Boolean(props.call), (open) => {
   if (open) document.addEventListener('keydown', onKey, true)
   else document.removeEventListener('keydown', onKey, true)

@@ -277,6 +277,7 @@ import SectionLinks from '../components/portal/SectionLinks.vue'
 import FaIcon from '../components/FaIcon.vue'
 import { signOutAndLeave } from '../utils/signOut.js'
 import { useVisiblePoll } from '../composables/useVisiblePoll.js'
+import { settleEntryColors } from '../components/colors/entryColorStore.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -463,9 +464,11 @@ async function fetchSubmissions({ silent = false } = {}) {
     const archived = viewMode.value === 'contacts'
       ? contactsArchived.value
       : viewMode.value === 'archived'
+    const started = Date.now()
     const r = await latestList(() => get(`/api/submissions?archived=${archived}&limit=${PAGE}&withTotal=1`))
     // A slow answer for a list she has since switched away from is dropped.
     if (!r.current) return
+    settleEntryColors('lead', started)
     const page = Array.isArray(r.value) ? r.value : r.value.rows
     total.value = Array.isArray(r.value) ? null : r.value.total
     // Replacing the array is safe for the open conversation: the detail pane

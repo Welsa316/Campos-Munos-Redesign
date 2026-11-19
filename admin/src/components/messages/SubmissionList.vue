@@ -113,6 +113,7 @@
       <div
         v-for="sub in filteredSubmissions"
         :key="sub.id"
+        :data-entry-color="entryColor('lead', sub.id, sub.color) || undefined"
         :class="[
           'border-b border-gray-50 transition-colors',
           sub.id === selectedId ? 'bg-brand-navy/[0.06]' : 'hover:bg-gray-50',
@@ -201,6 +202,7 @@
           <i class="fa-solid fa-note-sticky text-[11px]" aria-hidden="true"></i>
           <span v-if="sub.note_count">{{ sub.note_count }}</span>
         </button>
+        <ColorPickerButton v-if="canColor" icon-only kind="lead" :id="sub.id" :color="sub.color" :targets="[sub]" />
       </div>
       </div>
     </div>
@@ -220,9 +222,15 @@ import { adminLocale } from '../../utils/locale.js'
 import { LEAD_STATUSES, statusMeta } from '../../data/leadStatuses.js'
 import { can } from '../../composables/useAuth.js'
 import { leadName, plural } from '../../utils/text.js'
+import ColorPickerButton from '../colors/ColorPickerButton.vue'
+import { entryColor } from '../colors/entryColorStore.js'
+import { ensureEntryColorStyles } from '../../data/entryColors.js'
 
 // Status is shown to everyone who can read leads, changed only with crm.manage.
 const canManage = computed(() => can('crm.manage'))
+// A lead's shared colour: whoever works leads, or answers the phones.
+const canColor = computed(() => can('crm.view') && (can('crm.manage') || can('calls.exclude')))
+ensureEntryColorStyles()
 
 const props = defineProps({
   submissions: { type: Array, default: () => [] },

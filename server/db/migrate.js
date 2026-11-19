@@ -16,6 +16,7 @@ import { applyContactsSchema } from './contactsSchema.js'
 import { applyTestChannelSchema } from './testChannelSchema.js'
 import { applyRemindersSchema } from './remindersSchema.js'
 import { applyAutomationSchema } from './automationSchema.js'
+import { applyColorsSchema } from './colorsSchema.js'
 
 async function migrate() {
   const pool = getPool()
@@ -194,6 +195,9 @@ async function migrate() {
     // messages, opt-outs, lead ownership. Last: it adds to submissions,
     // contact_links, staff_activity and the billing reminder tables.
     await applyAutomationSchema(client)
+    // Entry colours on callers, leads and reminders (db/colorsSchema.js).
+    // Needs admin_users.
+    await applyColorsSchema(client)
     logger.info('Migration complete — tables created.')
   } finally {
     client.release()

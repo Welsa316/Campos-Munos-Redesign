@@ -10,7 +10,7 @@
     </div>
 
     <ul v-if="list.length" class="mt-2 space-y-2">
-      <li v-for="r in list" :key="r.id" :class="STATE_BOX[dueState(r, now)]" class="rounded-xl px-3.5 py-3">
+      <li v-for="r in list" :key="r.id" :data-entry-color="entryColor('reminder', r.id, r.color) || undefined" :class="STATE_BOX[dueState(r, now)]" class="rounded-xl px-3.5 py-3">
         <template v-if="form?.reminder?.id !== r.id">
           <div class="flex flex-wrap items-start gap-x-3 gap-y-2">
             <div class="min-w-0 flex-1">
@@ -23,6 +23,7 @@
               <p v-if="deliveryText(r)" class="mt-1 text-[12px]" :class="deliveryProblem(r) ? 'text-brand-red' : 'text-gray-500'">{{ deliveryText(r) }}</p>
             </div>
             <div v-if="canSet" class="flex items-center gap-1.5">
+              <ColorPickerButton icon-only kind="reminder" :id="r.id" :color="r.color" :targets="[r]" />
               <button type="button" @click="openForm(r)" :data-reminder-edit="r.id" class="fr-btn fr-quiet" :aria-label="`Change the reminder due ${dueLine(r, now)}`"><FaIcon name="pen" />Edit</button>
               <button type="button" @click="finish(r, 'complete')" :disabled="busyId === r.id" class="fr-btn fr-quiet" :aria-label="`Mark the reminder due ${dueLine(r, now)} done`"><FaIcon name="check" />Done</button>
               <button type="button" @click="finish(r, 'cancel')" :disabled="busyId === r.id" class="fr-btn fr-quiet" :aria-label="`Cancel the reminder due ${dueLine(r, now)}`"><FaIcon name="xmark" />Cancel</button>
@@ -48,6 +49,8 @@ import { loadAssignees } from './assignees.js'
 import { dueLine, dueState, formatTime } from './dueChoices.js'
 import { deliveryNote } from './reminderText.js'
 import { toast } from '../../composables/useToast.js'
+import ColorPickerButton from '../../components/colors/ColorPickerButton.vue'
+import { entryColor, settleEntryColors } from '../../components/colors/entryColorStore.js'
 
 const props = defineProps({
   // { kind: 'call' | 'submission', id }
@@ -77,7 +80,9 @@ async function load() {
   if (props.reminders || props.target.kind !== 'submission') return
   loading.value = true
   try {
+    const started = Date.now()
     own.value = (await remindersApi.forLead(props.target.id)).reminders
+    settleEntryColors('reminder', started)
     error.value = ''
   } catch (e) {
     error.value = e.message

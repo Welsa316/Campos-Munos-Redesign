@@ -3,7 +3,7 @@
        episode; c is its latest call). Caller · what happened · received ·
        next step on a wide screen; stacked on a phone, with the next step as
        full-size buttons. -->
-  <article class="call-row" :data-call="c.id" :data-episode="episode?.id" :aria-label="`${displayName}, ${summary || status}`"
+  <article class="call-row" :data-call="c.id" :data-episode="episode?.id" :data-entry-color="color || undefined" :aria-label="`${displayName}, ${summary || status}`"
     :class="c.needsAttention && group !== 'new' ? 'bg-amber-50/30' : ''">
     <div class="call-caller flex items-start gap-3 min-w-0">
       <span :class="c.exclusion ? 'bg-gray-100 text-gray-500' : look.badge"
@@ -41,7 +41,7 @@
         {{ t('row.dialled', { who: who({ name: c.firm.name, extension: c.firm.extension }, lang) }) }}
       </p>
       <!-- A reminder on this caller (or, outside Needs attention, this call): the soonest, and how many more. -->
-      <p v-if="nextReminder" :class="reminderState === 'upcoming' ? 'text-gray-600' : 'text-amber-800 font-semibold'" class="mt-1 pl-3.5 text-[12.5px] flex items-center gap-1.5" data-reminder-chip>
+      <p v-if="nextReminder" :data-entry-color="reminderColor || undefined" :class="reminderState === 'upcoming' ? 'text-gray-600' : 'text-amber-800 font-semibold'" class="mt-1 pl-3.5 text-[12.5px] flex items-center gap-1.5" data-reminder-chip>
         <FaIcon name="bell" class="text-[11px]" />
         <span class="tabular-nums">{{ reminderDue(nextReminder, now, lang) }} · {{ nextReminder.assignee.name }}<span v-if="reminders.length > 1" class="font-normal text-gray-500">{{ t('row.more_reminders', { count: reminders.length - 1 }) }}</span></span>
       </p>
@@ -82,6 +82,7 @@
             class="absolute right-0 top-full mt-1.5 z-30 w-56 rounded-xl bg-white ring-1 ring-gray-200 shadow-lg py-1 text-[13px]">
             <button type="button" role="menuitem" class="menu-item" @click="$emit('open', c, menuTrigger())"><FaIcon name="circle-info" />{{ t('menu.details') }}</button>
             <button v-if="canRemind" type="button" role="menuitem" class="menu-item" @click="$emit('remind', c)"><FaIcon name="bell" />{{ t(nextReminder ? 'menu.add_reminder' : 'menu.remind') }}</button>
+            <button v-if="canExclude && c.number" type="button" role="menuitem" class="menu-item" @click="openColor"><FaIcon name="palette" />{{ tc('menu.item') }}</button>
             <button v-if="canExclude && canMark && !c.exclusion && !c.handled" type="button" role="menuitem" class="menu-item" @click="$emit('exclude', c)"><FaIcon name="ban" />{{ t('act.no_callback') }}</button>
             <button v-if="canExclude && c.exclusion" type="button" role="menuitem" class="menu-item" @click="$emit('count-again', c)"><FaIcon name="rotate-left" />{{ t(c.exclusion.scope === 'number' ? 'menu.count_number_again' : 'menu.count_again') }}</button>
             <button v-if="canExclude && c.handled" type="button" role="menuitem" class="menu-item" @click="$emit('reopen', c)"><FaIcon name="rotate-left" />{{ t('menu.reopen') }}</button>
@@ -90,13 +91,14 @@
         </Transition>
         <ReminderPopover v-if="remindOpen" floating :target="{ kind: 'call', id: episode?.id ?? c.id }"
           @close="$emit('remind-close')" @saved="(r, how) => $emit('reminded', r, how)" />
+        <ColorSwatchMenu v-if="colorOpen" floating kind="caller" :id="c.id" :match="c.number" :current="color" :targets="[c]" @close="closeColor" />
       </div>
     </div>
   </article>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, nextTick } from 'vue'
 import FaIcon from '../../components/FaIcon.vue'
 import { telHref } from '../../utils/phone.js'
 import { statusLine, who } from './callEvidenceText.js'
@@ -106,6 +108,10 @@ import ReminderPopover from '../reminders/ReminderPopover.vue'
 import { dueState } from '../reminders/dueChoices.js'
 import { useT } from '../../i18n/translator.js'
 import { CALLS } from '../../i18n/calls.js'
+import ColorSwatchMenu from '../../components/colors/ColorSwatchMenu.vue'
+import { entryColor } from '../../components/colors/entryColorStore.js'
+import { ensureEntryColorStyles } from '../../data/entryColors.js'
+import { COLOURS } from '../../i18n/colours.js'
 
 const props = defineProps({
   c: { type: Object, required: true },
@@ -126,7 +132,7 @@ const props = defineProps({
   canRemind: Boolean,
   remindOpen: Boolean,
 })
-defineEmits(['open', 'callback', 'handled', 'menu', 'exclude', 'count-again', 'reopen', 'remind', 'remind-close', 'reminded'])
+const emit = defineEmits(['open', 'callback', 'handled', 'menu', 'exclude', 'count-again', 'reopen', 'remind', 'remind-close', 'reminded'])
 const { t, lang } = useT(CALLS)
 
 const look = computed(() => lookOf(props.c, lang.value))
@@ -141,6 +147,22 @@ const offered = computed(() => (props.episode?.offeredTo || []).map((p) => p.nam
 const duration = computed(() => durationText(props.c.durationSeconds))
 const nextReminder = computed(() => props.reminders[0] || null)
 const reminderState = computed(() => (nextReminder.value ? dueState(nextReminder.value, props.now) : null))
+
+// The caller's colour (every call from the number) and the reminder's, shared
+// with everyone (components/colors/). Color… in the menu opens the picker here.
+const { t: tc } = useT(COLOURS)
+ensureEntryColorStyles()
+const color = computed(() => entryColor('caller', props.c.number, props.c.color))
+const reminderColor = computed(() => (nextReminder.value ? entryColor('reminder', nextReminder.value.id, nextReminder.value.color) : null))
+const colorOpen = ref(false)
+function openColor() {
+  emit('menu', props.c.id)
+  colorOpen.value = true
+}
+function closeColor({ restore } = {}) {
+  colorOpen.value = false
+  if (restore) nextTick(() => menuTrigger()?.focus())
+}
 
 const DOT = { open: 'bg-amber-500', done: 'bg-green-500', quiet: 'bg-gray-400', none: 'bg-gray-300' }
 const TONE = { open: 'text-amber-800', done: 'text-green-800', quiet: 'text-gray-600' }
