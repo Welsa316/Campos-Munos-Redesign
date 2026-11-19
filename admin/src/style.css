@@ -292,11 +292,13 @@ textarea {
 .hover\:bg-black:hover { background-color: var(--inverse-bg-hover); }
 .group:hover .group-hover\:border-gray-900, .hover\:ring-gray-900:hover { border-color: var(--inverse-bg); --tw-ring-color: var(--inverse-bg); }
 
-/* Text on the tinted summary cards on Home. */
-.text-danger-ink { color: var(--error); }
-.text-danger-ink-strong { color: var(--error); }
-.text-glass-navy-ink { color: var(--text-on-sidebar); }
-.bg-glass-navy-chip { background-color: var(--sidebar-hover); }
+/* Text on the tinted summary cards on Home (summary-* tokens: a preset's
+   rose and navigation colours, or a person's own custom picks). Inside the
+   first card, white chips (bg-white/70, /80) take its chip colour. */
+.text-danger-ink { color: var(--summary-a-text); }
+.text-danger-ink-strong { color: var(--summary-a-text); }
+.text-glass-navy-ink { color: var(--summary-b-text); }
+.bg-glass-navy-chip { background-color: var(--summary-b-chip); }
 
 /* 3. Navigation chrome: each section's top bar is the portal's navigation
    and takes the theme's navigation colours (the counterpart of a sidebar). */
@@ -368,8 +370,8 @@ textarea {
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   backdrop-filter: blur(24px) saturate(180%);
 }
-.glass-rose { --glass-fill: var(--error-soft); --glass-amount: 88%; }
-.glass-navy { --glass-fill: var(--sidebar-bg); --glass-amount: 92%; border-color: color-mix(in srgb, var(--text-on-sidebar) 18%, transparent); }
+.glass-rose { --glass-fill: var(--summary-a-bg); --glass-amount: 88%; --color-white: var(--summary-a-chip); }
+.glass-navy { --glass-fill: var(--summary-b-bg); --glass-amount: 92%; border-color: color-mix(in srgb, var(--summary-b-text) 18%, transparent); }
 .glass-interactive { position: relative; }
 .glass-interactive::after {
   content: '';

@@ -158,21 +158,318 @@ function derived(t, scheme) {
     'shadow-color': dark ? 'rgb(0 0 0 / 0.45)' : 'rgb(22 28 45 / 0.22)',
     scrim: dark ? 'rgb(0 0 0 / 0.72)' : 'rgb(15 23 42 / 0.5)',
     'scrim-soft': dark ? 'rgb(0 0 0 / 0.62)' : 'rgb(15 23 42 / 0.2)',
+    // The two summary cards on Home (missed calls, unread messages): a card
+    // colour, its words, and the chips on it. A preset keeps the rose card
+    // and the navigation-coloured one; a custom theme picks its own.
+    'summary-a-bg': t['error-soft'],
+    'summary-a-text': t.error,
+    'summary-a-chip': t.surface,
+    'summary-b-bg': t['sidebar-bg'],
+    'summary-b-text': t['text-on-sidebar'],
+    'summary-b-chip': t['sidebar-hover'],
   }
 }
 for (const theme of THEMES) Object.assign(theme.tokens, derived(theme.tokens, theme.scheme))
 
 export const DEFAULT_THEME = 'classic'
+export const CUSTOM_THEME = 'custom'
 export const TOKEN_NAMES = Object.keys(THEMES[0].tokens)
 export const isTheme = (key) => THEMES.some((t) => t.key === key)
 export const themeByKey = (key) => THEMES.find((t) => t.key === key) || THEMES[0]
 
-const CACHE_KEY = 'cm.theme'
+// ---------------------------------------------------------------------------
+// Custom theme: a person's own colours, saved on their account only
+// (admin_users.custom_theme; server/auth/themes.js validates the same keys).
+//
+// They pick a handful of colours and light or dark; every other token is
+// derived here, so the whole portal follows without anyone choosing sixty
+// colours. Whatever they pick, every text colour is pushed until it meets
+// WCAG AA on the backgrounds it sits on (4.5:1 text, 3:1 icons, rings and
+// field edges); where a picked background cannot carry readable text, the
+// background itself is nudged and the editor says "adjusted for
+// readability". Pinned by test/customTheme.test.js.
+// ---------------------------------------------------------------------------
 
-/** Put a theme on the page: every token becomes a custom property on <html>. */
-export function applyTheme(key) {
-  if (typeof document === 'undefined') return
+/** The main colours everyone picks (all required). */
+export const CUSTOM_MAIN = ['header', 'primary', 'page', 'surface', 'summaryA', 'summaryB']
+/** Further colours under "More colours" (each optional: unset = derived). */
+export const CUSTOM_ADVANCED = ['text', 'link', 'border', 'navActive', 'focus', 'success', 'danger', 'input']
+export const CUSTOM_KEYS = ['base', ...CUSTOM_MAIN, ...CUSTOM_ADVANCED]
+const HEX = /^#[0-9a-f]{6}$/i
+
+/**
+ * The person's choices, cleaned: { base, header, …, [advanced] } with
+ * upper-case #RRGGBB values, or null when anything is unknown or malformed.
+ */
+export function normalizeCustom(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return null
+  if (Object.keys(input).some((k) => !CUSTOM_KEYS.includes(k))) return null
+  if (input.base !== 'light' && input.base !== 'dark') return null
+  const out = { base: input.base }
+  for (const k of CUSTOM_MAIN) {
+    if (typeof input[k] !== 'string' || !HEX.test(input[k])) return null
+    out[k] = input[k].toUpperCase()
+  }
+  for (const k of CUSTOM_ADVANCED) {
+    if (input[k] == null) continue
+    if (typeof input[k] !== 'string' || !HEX.test(input[k])) return null
+    out[k] = input[k].toUpperCase()
+  }
+  return out
+}
+
+/**
+ * A starting point: the colours of a preset, light or dark as it is, already
+ * settled (any colour the readability rules would move is moved), so the
+ * editor opens without an "adjusted" note the person did not cause.
+ */
+export function customFromTheme(key) {
   const theme = themeByKey(key)
+  const t = theme.tokens
+  return settleCustom({
+    base: theme.scheme,
+    header: t['sidebar-bg'], primary: t.primary, page: t['app-bg'], surface: t.surface,
+    summaryA: t['error-soft'], summaryB: t['sidebar-bg'],
+  })
+}
+
+// Where each main choice ends up in the built theme.
+const MAIN_TOKEN = { header: 'sidebar-bg', primary: 'primary', page: 'app-bg', surface: 'surface', summaryA: 'summary-a-bg', summaryB: 'summary-b-bg' }
+
+/** The choices with every adjusted main colour replaced by what is actually shown. */
+export function settleCustom(input) {
+  const built = buildCustomTheme(input)
+  if (!built) return null
+  const out = { ...built.choices }
+  for (const k of built.adjusted) if (MAIN_TOKEN[k]) out[k] = built.tokens[MAIN_TOKEN[k]]
+  return out
+}
+
+// --- colour arithmetic (sRGB, as the browser blends) --------------------------
+const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16))
+const toHex = (c) => '#' + c.map((v) => Math.round(Math.min(255, Math.max(0, v))).toString(16).padStart(2, '0')).join('').toUpperCase()
+/** a with t (0–1) of b mixed in. */
+export const mix = (a, b, t) => { const x = rgb(a); const y = rgb(b); return toHex(x.map((v, i) => v + (y[i] - v) * t)) }
+export function luminance(h) {
+  const [r, g, b] = rgb(h).map((v) => v / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+export function contrast(a, b) {
+  const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m)
+  return (x + 0.05) / (y + 0.05)
+}
+// AA is 4.5:1 for text and 3:1 for icons, rings and field edges; aimed a
+// hair above so a browser's rounding of a blend never lands just under.
+const TEXT = 4.55
+const UI = 3.05
+const WHITE = '#FFFFFF'
+const BLACK = '#000000'
+// Text at partial opacity, as the browser draws it.
+const faded = (fg, bg, alpha) => mix(bg, fg, alpha)
+const isLight = (c) => luminance(c) > 0.18
+
+/** The least of `color` pushed toward `to` that satisfies ok (or `to` itself). */
+function push(color, to, ok) {
+  if (ok(color)) return color
+  let lo = 0
+  let hi = 1
+  for (let i = 0; i < 18; i++) {
+    const mid = (lo + hi) / 2
+    if (ok(mix(color, to, mid))) hi = mid
+    else lo = mid
+  }
+  return mix(color, to, hi)
+}
+/** Lighter or darker, whichever reads better against these backgrounds. */
+function awayFrom(bgs) {
+  const w = Math.min(...bgs.map((b) => contrast(WHITE, b)))
+  const k = Math.min(...bgs.map((b) => contrast(BLACK, b)))
+  return w >= k ? WHITE : BLACK
+}
+/** A text/icon colour that reaches `min` on every one of `bgs`. */
+function readable(fg, bgs, min) {
+  return push(fg, awayFrom(bgs), (c) => bgs.every((b) => contrast(c, b) >= min))
+}
+/** A background that carries `fg` at `min`: pushed away from the text. */
+function carries(bg, fg, min) {
+  return push(bg, isLight(fg) ? BLACK : WHITE, (c) => contrast(fg, c) >= min)
+}
+/** White-ish or near-black text for a background, tinted toward it. */
+function inkFor(bg) {
+  const light = mix(WHITE, bg, 0.04)
+  const dark = mix('#10141A', bg, 0.12)
+  return contrast(light, bg) >= TEXT || contrast(light, bg) >= contrast(dark, bg) ? light : dark
+}
+
+const PAGE_LIGHT_MIN = 0.45 // a light page or card is at least this bright (about #B4B4B4)
+const PAGE_DARK_MAX = 0.06 // a dark one at most this (about #464646)
+function fitBase(color, light) {
+  return light
+    ? push(color, WHITE, (c) => luminance(c) >= PAGE_LIGHT_MIN)
+    : push(color, BLACK, (c) => luminance(c) <= PAGE_DARK_MAX)
+}
+
+/**
+ * A full theme ({ key: 'custom', scheme, tokens, choices, adjusted }) from a
+ * person's choices, or null when they do not validate. `adjusted` lists the
+ * choices that were changed to keep the portal readable.
+ */
+export function buildCustomTheme(input) {
+  const c = normalizeCustom(input)
+  if (!c) return null
+  const light = c.base === 'light'
+  const adjusted = new Set()
+  const note = (key, before, after) => { if (before.toUpperCase() !== after.toUpperCase()) adjusted.add(key) }
+
+  // Page and cards, kept in the range of the chosen base.
+  const page = fitBase(c.page, light)
+  note('page', c.page, page)
+  const surface = fitBase(c.surface, light)
+  note('surface', c.surface, surface)
+  const tint = c.primary
+  const t = {}
+  t['app-bg'] = page
+  t.surface = surface
+  t['content-bg'] = mix(page, surface, 0.4)
+  t['surface-elevated'] = light ? surface : mix(surface, WHITE, 0.06)
+  t['input-bg'] = fitBase(c.input || (light ? mix(surface, page, 0.15) : mix(surface, page, 0.35)), light)
+  if (c.input) note('input', c.input, t['input-bg'])
+  t['surface-subtle'] = light ? mix(surface, tint, 0.06) : mix(surface, WHITE, 0.04)
+  t['surface-hover'] = light ? mix(surface, tint, 0.09) : mix(surface, WHITE, 0.08)
+  t['surface-selected'] = light ? mix(surface, tint, 0.14) : mix(surface, tint, 0.26)
+  t['primary-soft'] = light ? mix(surface, tint, 0.12) : mix(surface, tint, 0.22)
+
+  // Text on the page and the cards.
+  const textBgs = ['surface', 'surface-elevated', 'app-bg', 'content-bg', 'surface-subtle', 'surface-hover', 'surface-selected', 'input-bg', 'primary-soft'].map((k) => t[k])
+  const quietBgs = ['surface', 'surface-elevated', 'app-bg', 'content-bg', 'surface-subtle', 'surface-hover', 'input-bg'].map((k) => t[k])
+  t['text-primary'] = readable(c.text || (light ? mix('#151A21', tint, 0.1) : mix('#F1F4F8', tint, 0.05)), textBgs, TEXT)
+  if (c.text) note('text', c.text, t['text-primary'])
+  t['text-secondary'] = readable(mix(t['text-primary'], surface, 0.3), quietBgs, TEXT)
+  t['text-muted'] = readable(mix(t['text-primary'], surface, 0.38), quietBgs, TEXT)
+  t['text-link'] = readable(c.link || (light ? c.primary : mix(c.primary, WHITE, 0.45)), [surface, page, t['content-bg'], t['surface-subtle'], t['primary-soft']], TEXT)
+  if (c.link) note('link', c.link, t['text-link'])
+  t['icon-primary'] = readable(mix(t['text-primary'], surface, 0.2), [surface, page], UI)
+  t['icon-secondary'] = readable(mix(t['text-primary'], surface, 0.4), [surface], UI)
+  t['icon-muted'] = mix(t['text-primary'], surface, 0.5)
+
+  // Buttons: the primary colour carries its own text, white or near-black.
+  // Every solid fill shares that text colour (it is the portal's one "text
+  // on a colour"), so the status fills are re-fitted to it as well.
+  const inkPick = inkFor(c.primary)
+  const onPrimary = contrast(inkPick, c.primary) >= TEXT ? inkPick : (contrast(WHITE, c.primary) >= contrast(BLACK, c.primary) ? WHITE : '#0B0D10')
+  const primary = carries(c.primary, onPrimary, TEXT)
+  note('primary', c.primary, primary)
+  const away = isLight(onPrimary) ? BLACK : WHITE
+  t.primary = primary
+  t['text-on-primary'] = onPrimary
+  t['primary-hover'] = carries(mix(primary, away, isLight(onPrimary) ? 0.14 : 0.2), onPrimary, TEXT)
+  t['icon-active'] = readable(primary, [surface], UI)
+
+  // Status colours: the base's own set, re-fitted to these cards.
+  const S = light ? LIGHT_STATUS : DARK_STATUS
+  for (const k of ['success', 'warning', 'error', 'info', 'neutral']) {
+    const soft = light ? mix(surface, S[k], 0.1) : mix(surface, S[k], 0.16)
+    t[`${k}-soft`] = soft
+    t[k] = readable(S[k], [soft, surface, page], TEXT)
+  }
+  for (const k of ['success-solid', 'warning-solid', 'info-solid']) t[k] = carries(S[k], onPrimary, TEXT)
+  if (c.success) {
+    t['success-solid'] = carries(c.success, onPrimary, TEXT)
+    note('success', c.success, t['success-solid'])
+  }
+  t['danger-solid'] = carries(c.danger || S['danger-solid'], onPrimary, TEXT)
+  if (c.danger) note('danger', c.danger, t['danger-solid'])
+  t['danger-solid-hover'] = carries(mix(t['danger-solid'], away, 0.12), onPrimary, TEXT)
+
+  // The header (the portal's navigation bar) and its text.
+  const onHeader = inkFor(c.header)
+  const header = carries(c.header, onHeader, TEXT)
+  note('header', c.header, header)
+  const toward = (n) => mix(header, onHeader, n)
+  t['sidebar-bg'] = header
+  t['text-on-sidebar'] = onHeader
+  t['sidebar-hover'] = carries(toward(0.08), onHeader, TEXT)
+  t['sidebar-active'] = carries(c.navActive || toward(0.16), onHeader, TEXT)
+  if (c.navActive) note('navActive', c.navActive, t['sidebar-active'])
+  t['sidebar-border'] = toward(0.18)
+  const barBgs = [header, t['sidebar-hover']]
+  t['text-sidebar-muted'] = readable(mix(onHeader, header, 0.25), barBgs, TEXT)
+  t['icon-on-sidebar'] = readable(mix(onHeader, header, 0.15), barBgs, UI)
+  t['icon-sidebar-active'] = onHeader
+
+  // Lines, field edges and focus.
+  t.border = c.border || mix(surface, t['text-primary'], 0.13)
+  t['border-strong'] = mix(surface, t['text-primary'], 0.24)
+  t.divider = mix(surface, t['text-primary'], 0.08)
+  t['input-border'] = readable(mix(surface, t['text-primary'], 0.45), [surface, t['input-bg'], page, t['content-bg'], t['surface-subtle']], UI)
+  t['focus-ring'] = readable(c.focus || (light ? c.primary : mix(c.primary, WHITE, 0.35)), [surface, page], UI)
+  if (c.focus) note('focus', c.focus, t['focus-ring'])
+
+  // Accent and charts: the person's colours, in steps.
+  t.accent = mix(c.primary, header, 0.45)
+  t['accent-soft'] = mix(surface, t.accent, 0.12)
+  t['chart-1'] = light ? primary : mix(primary, WHITE, 0.35)
+  t['chart-2'] = mix(t['chart-1'], surface, 0.35)
+  t['chart-3'] = mix(t['chart-1'], surface, 0.6)
+  t['chart-4'] = light ? header : mix(header, WHITE, 0.45)
+  t['chart-5'] = mix(t['text-primary'], surface, 0.55)
+
+  Object.assign(t, derived(t, c.base))
+  // Measured versions of what derived() would mix or fix, where a pairing
+  // must hold for any colour.
+  t['primary-ring'] = readable(light ? primary : t['focus-ring'], [surface, page], UI)
+  t['inverse-bg'] = carries(light ? t['text-primary'] : mix(surface, WHITE, 0.16), onPrimary, TEXT)
+  t['inverse-bg-hover'] = carries(mix(t['inverse-bg'], away, 0.12), onPrimary, TEXT)
+  t['sidebar-danger'] = readable(isLight(onHeader) ? '#FFC2C2' : '#8F1D1D', barBgs, TEXT)
+
+  // Home's two summary cards. Each is glass: its colour at 88–92 % over the
+  // page, a light sheen in the top corner (light base), some words at 70 %
+  // opacity, and chips of the chip colour at 70–80 % on the missed-calls
+  // card (the round arrow and the "all called back" pill).
+  for (const [k, key, amount] of [['a', 'summaryA', 0.88], ['b', 'summaryB', 0.92]]) {
+    // For one card colour: its words and chip, and whether they all read.
+    const fit = (bg) => {
+      const card = mix(page, bg, amount)
+      const sheen = light ? mix(card, WHITE, 0.22) : mix(card, WHITE, 0.03)
+      const lightInk = isLight(inkFor(card))
+      const chip = k === 'a' ? (lightInk ? mix(bg, BLACK, 0.3) : mix(bg, WHITE, 0.55)) : mix(bg, lightInk ? WHITE : BLACK, 0.1)
+      const chips = k === 'a' ? [mix(card, chip, 0.7), mix(card, chip, 0.8)] : [chip]
+      const solid = [card, sheen, ...chips]
+      const ok = (x) => solid.every((b) => contrast(x, b) >= TEXT) && [card, sheen].every((b) => contrast(faded(x, b, 0.7), b) >= TEXT)
+      const ink = push(inkFor(card), lightInk ? WHITE : BLACK, ok)
+      return { ink, chip, ok: ok(ink), lightInk }
+    }
+    const first = fit(c[key])
+    // Too close to the middle for any words: darken (or lighten) the card.
+    const bg = first.ok ? c[key] : push(c[key], first.lightInk ? BLACK : WHITE, (b) => fit(b).ok)
+    const { ink, chip } = fit(bg)
+    t[`summary-${k}-bg`] = bg
+    t[`summary-${k}-text`] = ink
+    t[`summary-${k}-chip`] = chip
+    note(key, c[key], bg)
+  }
+
+  const tokens = {}
+  for (const name of TOKEN_NAMES) tokens[name] = t[name]
+  return { key: CUSTOM_THEME, name: 'Custom', scheme: c.base, tokens, choices: c, adjusted: CUSTOM_KEYS.filter((k) => adjusted.has(k)) }
+}
+
+const CACHE_KEY = 'cm.theme'
+const CUSTOM_CACHE_KEY = 'cm.theme.custom'
+
+function cachedCustom() {
+  try { return JSON.parse(localStorage.getItem(CUSTOM_CACHE_KEY) || 'null') } catch { return null }
+}
+
+/**
+ * Put a theme on the page: every token becomes a custom property on <html>.
+ * 'custom' takes the person's choices (else the ones cached in this
+ * browser); without valid choices it falls back to Classic. A live preview
+ * passes { remember: false }, so a reload mid-edit paints the saved theme.
+ */
+export function applyTheme(key, custom, { remember = true } = {}) {
+  if (typeof document === 'undefined') return null
+  const theme = (key === CUSTOM_THEME && buildCustomTheme(custom ?? cachedCustom())) || themeByKey(key)
   const root = document.documentElement
   for (const [name, value] of Object.entries(theme.tokens)) root.style.setProperty(`--${name}`, value)
   root.setAttribute('data-theme', theme.key)
@@ -181,8 +478,15 @@ export function applyTheme(key) {
   // Native form controls and scrollbars follow too.
   root.style.colorScheme = theme.scheme
   root.style.backgroundColor = theme.tokens['app-bg']
-  // What public/theme-boot.js paints first on the next load, before this runs.
-  try { localStorage.setItem('cm-theme-paint', JSON.stringify({ bg: theme.tokens['app-bg'], scheme: theme.scheme })) } catch { /* private mode */ }
+  // What public/theme-boot.js paints first on the next load, before this
+  // runs. A custom theme's colours exist nowhere else, so all its tokens go
+  // too and the boot puts them on <html> straight away.
+  if (remember) {
+    const paint = { bg: theme.tokens['app-bg'], scheme: theme.scheme }
+    if (theme.key === CUSTOM_THEME) paint.tokens = theme.tokens
+    try { localStorage.setItem('cm-theme-paint', JSON.stringify(paint)) } catch { /* private mode */ }
+  }
+  return theme
 }
 
 /**
@@ -192,9 +496,13 @@ export function applyTheme(key) {
 export function cachedTheme() {
   try { return localStorage.getItem(CACHE_KEY) } catch { return null }
 }
-export function cacheTheme(key) {
+/** Remember the theme (and the person's custom colours) for the next load; cacheTheme(null) forgets both. */
+export function cacheTheme(key, custom) {
   try {
     if (key && key !== DEFAULT_THEME) localStorage.setItem(CACHE_KEY, key)
     else localStorage.removeItem(CACHE_KEY)
+    const c = normalizeCustom(custom)
+    if (c) localStorage.setItem(CUSTOM_CACHE_KEY, JSON.stringify(c))
+    else if (!key) localStorage.removeItem(CUSTOM_CACHE_KEY)
   } catch { /* private mode: no cache, no harm */ }
 }
