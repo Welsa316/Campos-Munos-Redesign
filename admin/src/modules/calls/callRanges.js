@@ -1,6 +1,8 @@
 // The All calls date ranges, in New Orleans days. Pure, tested in
 // admin/test/callRanges.test.js.
+// Labels take an optional lang ('en' by default; words in i18n/calls.js).
 import { zoneMidnight, zoneMidnightDaysAgo, firmInstant, firmDateKey } from '../../utils/firmTime.js'
+import { tc, callsLocale } from '../../i18n/calls.js'
 
 export const RANGES = Object.freeze([
   { key: 'today', label: 'Today' },
@@ -13,6 +15,8 @@ export const RANGES = Object.freeze([
   { key: 'custom', label: 'Dates…' },
 ])
 export const RANGE_KEYS = Object.freeze(RANGES.map((r) => r.key))
+/** The ranges with their labels in a language. */
+export const rangeOptions = (lang = 'en') => RANGES.map((r) => ({ key: r.key, label: tc(lang, `range.${r.key}`) }))
 
 // Calls are kept 12 months (server: RINGCENTRAL_CALL_RETENTION_DAYS), so no
 // range reaches further back than that.
@@ -66,19 +70,19 @@ export function rangeBounds(key, custom = {}, now = Date.now()) {
   return { from: zoneMidnight(now), to: soon }
 }
 
-const short = (key, withYear) => startOf(key).toLocaleDateString('en-US', {
+const short = (key, withYear, lang) => startOf(key).toLocaleDateString(callsLocale(lang), {
   timeZone: 'America/Chicago', month: 'short', day: 'numeric', ...(withYear ? { year: 'numeric' } : {}),
 })
 
 /** How the list names its range: "today", "last 90 days", "Aug 1 – Sep 30". */
-export function rangeLabel(key, custom = {}, now = Date.now()) {
+export function rangeLabel(key, custom = {}, now = Date.now(), lang = 'en') {
   if (key === 'custom') {
     const d = customDays(custom, now)
     const thisYear = firmDateKey(now).slice(0, 4)
     const withYear = d.from.slice(0, 4) !== thisYear || d.to.slice(0, 4) !== thisYear
-    return d.from === d.to ? short(d.from, withYear) : `${short(d.from, withYear)} – ${short(d.to, withYear)}`
+    return d.from === d.to ? short(d.from, withYear, lang) : `${short(d.from, withYear, lang)} – ${short(d.to, withYear, lang)}`
   }
-  const r = RANGES.find((x) => x.key === key)
-  if (!r) return ''
-  return key in DAYS_BACK ? `last ${r.label}` : r.label.toLowerCase()
+  if (!RANGE_KEYS.includes(key)) return ''
+  const label = tc(lang, `range.${key}`)
+  return key in DAYS_BACK ? tc(lang, 'range.last', { range: label }) : label.toLowerCase()
 }
