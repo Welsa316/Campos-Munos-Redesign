@@ -31,7 +31,7 @@ export function canColorKind(caps, kind) {
   return false
 }
 
-const forbidden = () => new ColorError('forbidden', 'Your account cannot change the colour of this', 403)
+const forbidden = () => new ColorError('forbidden', 'Your account cannot change the color of this', 403)
 const notFound = (what) => new ColorError('not_found', `${what} not found`, 404)
 
 /** The table key for { kind, id }, after checking the entry exists and the account may colour it. */
@@ -39,7 +39,7 @@ async function keyFor(db, { kind, id, caps }) {
   if (kind === 'caller') {
     const r = (await db.query('SELECT counterpart_key FROM rc_calls WHERE id = $1', [id])).rows[0]
     if (!r) throw notFound('Call')
-    if (!r.counterpart_key) throw new ColorError('no_number', 'This call has no number, so its caller cannot be given a colour')
+    if (!r.counterpart_key) throw new ColorError('no_number', 'This call has no number, so its caller cannot be given a color')
     return r.counterpart_key
   }
   if (kind === 'lead') {
@@ -62,7 +62,7 @@ export async function setEntryColor(db, { kind, id, color, accountId, caps }) {
   const n = Number(id)
   if (typeof id === 'boolean' || !Number.isSafeInteger(n) || n < 1) throw new ColorError('invalid_id', 'Choose what to colour')
   if (color !== null && !isEntryColor(color)) {
-    throw new ColorError('invalid_color', `Choose one of: ${ENTRY_COLORS.join(', ')}, or no colour`)
+    throw new ColorError('invalid_color', `Choose one of: ${ENTRY_COLORS.join(', ')}, or no color`)
   }
   if (!canColorKind(caps, kind)) throw forbidden()
   if (kind === 'lead' && n > 2147483647) throw notFound('Lead')

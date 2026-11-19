@@ -21,7 +21,7 @@ export function createColorsRouter({ db = null, writeLimit = COLOR_WRITES_PER_10
   router.use(requireAuth)
   const writes = accountLimiter({
     name: 'color-writes', windowMs: 10 * 60 * 1000, max: writeLimit,
-    error: 'Too many colour changes in a few minutes. Wait a moment and try again.', code: 'too_many_changes',
+    error: 'Too many color changes in a few minutes. Wait a moment and try again.', code: 'too_many_changes',
   })
   const wrap = route('Entry colour error', { errors: [ColorError] })
 
