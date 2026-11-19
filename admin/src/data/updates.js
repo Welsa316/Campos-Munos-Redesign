@@ -23,6 +23,21 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'custom-theme-colours',
+    at: '2026-11-20T00:00:00Z',
+    section: 'everyone',
+    any: [],
+    title: 'Choose your own portal colours',
+    summary: 'Besides the six themes, Themes on Home now has Custom: pick your own colours for the portal. Only you see them.',
+    points: [
+      'Open Themes on Home and choose Custom. Pick the colour of the bar at the top, the buttons and links, the page, the cards, and the two cards at the top of Home, and light or dark.',
+      'The portal changes as you pick. Save keeps it; Cancel puts back what you had.',
+      'More colours lets you change a few more things, such as the main text, links and the green and red buttons. Leave them on Automatic and they follow your other choices.',
+      'Writing always stays easy to read. If a colour would make words hard to read, the portal shows it a little lighter or darker and tells you.',
+      'Your colours are saved to your account, so they follow you to any computer. Colleagues keep their own. You can go back to one of the six themes at any time, and Custom remembers your colours.',
+    ],
+  },
+  {
     id: 'reminders-on-any-call',
     at: '2026-11-19T19:52:00Z',
     section: 'calls',

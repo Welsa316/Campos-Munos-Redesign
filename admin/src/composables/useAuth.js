@@ -10,7 +10,7 @@ const adminEmail = ref('')
 // Who is signed in and what they may do (server/auth/capabilities.js). The
 // portal only uses this to decide what to show; the API checks every
 // request on its own.
-const profile = ref({ name: '', displayName: '', role: '', roleLabel: '', capabilities: [], avatar: null, theme: DEFAULT_THEME })
+const profile = ref({ name: '', displayName: '', role: '', roleLabel: '', capabilities: [], avatar: null, theme: DEFAULT_THEME, customTheme: null })
 const loading = ref(false)
 let verified = false
 
@@ -29,25 +29,32 @@ function applyProfile(data) {
     avatar: data.avatar || null,
     // Colour theme (server/auth/themes.js); the whole portal follows it.
     theme: data.theme || DEFAULT_THEME,
+    // The person's own colours (Themes → Custom), kept even while a preset
+    // is on so they can go back to them; null until they make one.
+    customTheme: data.customTheme || null,
   }
-  applyTheme(profile.value.theme)
-  cacheTheme(profile.value.theme)
+  applyTheme(profile.value.theme, profile.value.customTheme)
+  cacheTheme(profile.value.theme, profile.value.customTheme)
 }
 
 function clearProfile() {
   isAuthenticated.value = false
   adminEmail.value = ''
-  profile.value = { name: '', displayName: '', role: '', roleLabel: '', capabilities: [], avatar: null, theme: DEFAULT_THEME }
+  profile.value = { name: '', displayName: '', role: '', roleLabel: '', capabilities: [], avatar: null, theme: DEFAULT_THEME, customTheme: null }
   // Signed out (or someone else signing in on this computer): back to Classic.
   applyTheme(DEFAULT_THEME)
   cacheTheme(null)
 }
 
-/** Switch this account's theme on screen (the caller saves it). */
-export function setTheme(key) {
-  profile.value = { ...profile.value, theme: key }
-  applyTheme(key)
-  cacheTheme(key)
+/**
+ * Switch this account's theme on screen (the caller saves it). For
+ * 'custom', `custom` is the person's colours (kept when omitted).
+ */
+export function setTheme(key, custom) {
+  const customTheme = custom === undefined ? profile.value.customTheme : custom
+  profile.value = { ...profile.value, theme: key, customTheme }
+  applyTheme(key, customTheme)
+  cacheTheme(key, customTheme)
 }
 
 /** True when the signed-in account has every named capability. */
