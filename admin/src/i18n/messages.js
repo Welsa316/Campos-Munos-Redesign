@@ -112,9 +112,10 @@ export const MESSAGES = {
     'rel.yesterday': 'Yesterday',
     'rel.days': '{count}d ago',
     // messagesText.js threadDate
-    'date.today': 'Today at {time}',
-    'date.yesterday': 'Yesterday at {time}',
-    'date.other': '{date} at {time}',
+    // count is the hour on the clock (1 to 12): Spanish says "a la 1:05".
+    'date.today': { one: 'Today at {time}', other: 'Today at {time}' },
+    'date.yesterday': { one: 'Yesterday at {time}', other: 'Yesterday at {time}' },
+    'date.other': { one: '{date} at {time}', other: '{date} at {time}' },
 
     // SubmissionDetail
     'detail.select': 'Select a message to view',
@@ -266,9 +267,9 @@ export const MESSAGES = {
     'rel.hours': 'hace {count} h',
     'rel.yesterday': 'Ayer',
     'rel.days': 'hace {count} d',
-    'date.today': 'Hoy a las {time}',
-    'date.yesterday': 'Ayer a las {time}',
-    'date.other': '{date} a las {time}',
+    'date.today': { one: 'Hoy a la {time}', other: 'Hoy a las {time}' },
+    'date.yesterday': { one: 'Ayer a la {time}', other: 'Ayer a las {time}' },
+    'date.other': { one: '{date} a la {time}', other: '{date} a las {time}' },
 
     'detail.select': 'Seleccione un mensaje para verlo',
     'detail.chat': 'Chat',

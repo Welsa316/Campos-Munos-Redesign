@@ -221,7 +221,7 @@ import PortalHeader from '../../components/portal/PortalHeader.vue'
 import { useVisiblePoll } from '../../composables/useVisiblePoll.js'
 import FaIcon from '../../components/FaIcon.vue'
 import { toDate, isComposing } from '../../utils/text.js'
-import { useT } from '../../i18n/translator.js'
+import { useT, clockCount } from '../../i18n/translator.js'
 import { WHATSAPP } from '../../i18n/whatsapp.js'
 
 const route = useRoute()
@@ -409,7 +409,9 @@ function fullTime(value, l = 'en') {
   const d = toDate(value)
   if (!d) return ''
   const day = dayWord(d, l)
-  return day ? t('day_at', { day, time: clock(d, l) }) : t('today_at', { time: clock(d, l) })
+  const time = clock(d, l)
+  // count: the hour shown, for Spanish "a la 1:05" against "a las 3:05".
+  return day ? t('day_at', { day, time, count: clockCount(time) }) : t('today_at', { time, count: clockCount(time) })
 }
 
 // --- live updates: same polling as the lead inbox -------------------------------

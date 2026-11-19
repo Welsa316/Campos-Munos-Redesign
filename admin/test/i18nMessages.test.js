@@ -71,4 +71,9 @@ test('when a message was sent: "Today at", "Yesterday at", or the date', () => {
   assert.match(threadDate(at(2, 9, 5), now), /^Nov 2 at 9:05/)
   assert.match(threadDate(at(2, 9, 5), now, 'es'), /^2 nov\.? a las 9:05/)
   assert.equal(threadDate('garbage', now, 'es'), '')
+  // One o'clock reads "a la", every other hour "a las"; English is the same either way.
+  assert.match(threadDate(at(19, 13, 5), now, 'es'), /^Hoy a la 1:05/)
+  assert.match(threadDate(at(18, 1, 5), now, 'es'), /^Ayer a la 1:05/)
+  assert.match(threadDate(at(19, 12, 5), now, 'es'), /^Hoy a las 12:05/)
+  assert.match(threadDate(at(19, 13, 5), now), /^Today at 1:05/)
 })

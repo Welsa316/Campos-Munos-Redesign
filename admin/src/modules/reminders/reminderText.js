@@ -1,6 +1,6 @@
 // Callback reminders in words, and which ones belong where. Pure, tested in
 // admin/test/reminders.test.js.
-import { makeTranslate } from '../../i18n/translator.js'
+import { makeTranslate, clockCount } from '../../i18n/translator.js'
 import { REMINDERS } from '../../i18n/reminders.js'
 
 const tr = makeTranslate(REMINDERS)
@@ -17,11 +17,17 @@ export function deliveryNote(r, formatTime, lang = 'en') {
   const t = (key, vars) => tr(lang, key, vars)
   const pushed = p?.status === 'sent'
   if (e?.status === 'sent') {
-    if (e.at) return t(pushed ? 'delivery.emailed_at_pushed' : 'delivery.emailed_at', { time: formatTime(e.at) })
+    if (e.at) {
+      const time = formatTime(e.at)
+      return t(pushed ? 'delivery.emailed_at_pushed' : 'delivery.emailed_at', { time, count: clockCount(time) })
+    }
     return t(pushed ? 'delivery.emailed_pushed' : 'delivery.emailed')
   }
   const parts = []
-  if (e?.status === 'pending' && e.nextAttemptAt) parts.push(t('delivery.retrying', { time: formatTime(e.nextAttemptAt) }))
+  if (e?.status === 'pending' && e.nextAttemptAt) {
+    const time = formatTime(e.nextAttemptAt)
+    parts.push(t('delivery.retrying', { time, count: clockCount(time) }))
+  }
   else if (e?.status === 'pending' || e?.status === 'sending') parts.push(t('delivery.sending'))
   else if (e?.status === 'failed') parts.push(t('delivery.failed'))
   else if (e?.status === 'skipped_no_email') parts.push(t('delivery.no_email'))

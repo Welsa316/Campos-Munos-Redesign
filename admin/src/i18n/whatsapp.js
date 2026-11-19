@@ -73,8 +73,9 @@ export const WHATSAPP = {
     'arrival': 'New message from {name}',
     'the_client': 'the client',
     'yesterday': 'Yesterday',
-    'today_at': 'Today at {time}',
-    'day_at': '{day} at {time}',
+    // count is the hour on the clock (clockCount): Spanish says "a la 1:05".
+    'today_at': { one: 'Today at {time}', other: 'Today at {time}' },
+    'day_at': { one: '{day} at {time}', other: '{day} at {time}' },
   },
 
   es: {
@@ -146,7 +147,7 @@ export const WHATSAPP = {
     'arrival': 'Nuevo mensaje de {name}',
     'the_client': 'el cliente',
     'yesterday': 'Ayer',
-    'today_at': 'Hoy a las {time}',
-    'day_at': '{day} a las {time}',
+    'today_at': { one: 'Hoy a la {time}', other: 'Hoy a las {time}' },
+    'day_at': { one: '{day} a la {time}', other: '{day} a las {time}' },
   },
 }

@@ -1,7 +1,7 @@
 // The inbox's times, in English or Spanish: how long ago a lead came in (the
 // list) and when a message in the conversation was sent (the lead). Pure,
 // so it is tested in admin/test/i18nMessages.test.js. English unless asked.
-import { makeTranslate } from '../../i18n/translator.js'
+import { makeTranslate, clockCount } from '../../i18n/translator.js'
 import { MESSAGES } from '../../i18n/messages.js'
 import { toDate } from '../../utils/text.js'
 
@@ -30,10 +30,12 @@ export function threadDate(value, now = new Date(), lang = 'en') {
   if (!d) return ''
   const locale = localeOf(lang)
   const time = d.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' })
-  if (d.toDateString() === now.toDateString()) return translate(lang, 'date.today', { time })
+  // The hour on the clock, for "a la 1:05" against "a las 3:05".
+  const count = clockCount(time)
+  if (d.toDateString() === now.toDateString()) return translate(lang, 'date.today', { time, count })
   const yesterday = new Date(now)
   yesterday.setDate(yesterday.getDate() - 1)
-  if (d.toDateString() === yesterday.toDateString()) return translate(lang, 'date.yesterday', { time })
+  if (d.toDateString() === yesterday.toDateString()) return translate(lang, 'date.yesterday', { time, count })
   const date = d.toLocaleDateString(locale, { month: 'short', day: 'numeric' })
-  return translate(lang, 'date.other', { date, time })
+  return translate(lang, 'date.other', { date, time, count })
 }

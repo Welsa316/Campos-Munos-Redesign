@@ -54,6 +54,10 @@ test('what happened to a reminder email, in Spanish and unchanged in English', (
   assert.equal(deliveryNote(r({ status: 'sent' }), t, 'es'), 'Enviado por correo.')
   assert.equal(deliveryNote(r({ status: 'failed' }, { status: 'sent' }), t, 'es'), 'No se pudo enviar el correo. Se envió una notificación.')
   assert.equal(deliveryNote(r({ status: 'sent', at: 'x' }, { status: 'sent' }), t), 'Emailed 9:01 and sent as a notification.')
+  // One o'clock: "a la 1:05", not "a las".
+  assert.equal(deliveryNote(r({ status: 'sent', at: 'x' }), () => '1:05 p.m.', 'es'), 'Enviado por correo a la 1:05 p.m.')
+  assert.equal(deliveryNote(r({ status: 'pending', nextAttemptAt: 'x' }), () => '1:05 p.m.', 'es'), 'El correo aún no se pudo enviar; se intentará de nuevo a la 1:05 p.m.')
+  assert.equal(deliveryNote(r({ status: 'sent', at: 'x' }), () => '11:05 a.m.', 'es'), 'Enviado por correo a las 11:05 a.m.')
   assert.equal(deliveryNote(r({ status: 'sent' }), t), 'Emailed.')
 })
 
