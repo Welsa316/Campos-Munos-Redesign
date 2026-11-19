@@ -23,6 +23,18 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'home-in-spanish',
+    at: '2026-11-19T00:00:00Z',
+    section: 'everyone',
+    any: [],
+    title: 'Home can now be shown in Spanish',
+    summary: 'Next to Themes on Home there is a small EN | ES switch. Press ES to see Home in Spanish, and EN to go back to English.',
+    points: [
+      'It changes Home only: the greeting, the date, the figures at the top, My follow-ups and the Go to cards. The other pages stay in English.',
+      'Your choice is kept on this computer or phone, so Home opens in the same language next time. Another device starts in English until you switch it there too.',
+    ],
+  },
+  {
     id: 'office-manager-role',
     at: '2026-11-16T03:18:00Z',
     section: 'admin',
