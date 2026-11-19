@@ -1,11 +1,18 @@
 // Why a missed call needs no callback. Keys match EXCLUSION_REASONS in
 // server/integrations/ringcentral/callExclusions.js and the CHECK on
-// rc_call_exclusions / rc_ignored_numbers.
-export const EXCLUSION_REASONS = [
-  { key: 'verification', label: 'Verification code or automated call', short: 'Verification code', hint: 'A machine reading out a code, an appointment reminder, a recorded message' },
-  { key: 'staff_test', label: 'Someone from the firm', short: 'Call from the firm', hint: 'A test of the line, or a colleague calling from their own phone' },
-  { key: 'spam', label: 'Spam or robocall', short: 'Spam', hint: 'Sales calls, scams, wrong numbers' },
-  { key: 'other', label: 'Something else', short: 'Other', hint: 'Say why in the note' },
-]
+// rc_call_exclusions / rc_ignored_numbers. The words are in i18n/calls.js.
+import { tc } from '../../i18n/calls.js'
 
-export const exclusionLabel = (key) => EXCLUSION_REASONS.find((r) => r.key === key)?.short || 'No callback needed'
+const KEYS = ['verification', 'staff_test', 'spam', 'other']
+
+/** The reasons, worded in a language (English by default). */
+export const exclusionReasons = (lang = 'en') => KEYS.map((key) => ({
+  key,
+  label: tc(lang, `excl.${key}`),
+  short: tc(lang, `excl.${key}.short`),
+  hint: tc(lang, `excl.${key}.hint`),
+}))
+
+export const EXCLUSION_REASONS = exclusionReasons('en')
+
+export const exclusionLabel = (key, lang = 'en') => (KEYS.includes(key) ? tc(lang, `excl.${key}.short`) : tc(lang, 'line.no_callback'))

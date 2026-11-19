@@ -380,7 +380,8 @@ router.get('/', requireAuth, requireCapability('crm.view'), async (req, res) => 
         s.is_archived, s.source, s.consultation_type, s.location, s.status, s.created_at,
         s.owner_id, s.spam_state, s.escalation_level, s.status_auto,
         (SELECT COUNT(*) FROM lead_notes n WHERE n.submission_id = s.id)::int AS note_count,
-        (SELECT n.body FROM lead_notes n WHERE n.submission_id = s.id ORDER BY n.created_at DESC LIMIT 1) AS latest_note
+        (SELECT n.body FROM lead_notes n WHERE n.submission_id = s.id ORDER BY n.created_at DESC LIMIT 1) AS latest_note,
+        (SELECT ec.color FROM entry_colors ec WHERE ec.kind = 'lead' AND ec.key = s.id::text) AS color
       FROM submissions s${where} ORDER BY s.created_at DESC${limitClause}`
 
     // withTotal=1: { rows, total }, total counting every lead the filters
@@ -440,7 +441,9 @@ router.get(
     try {
       const [submissionResult, repliesResult, chatMessagesResult, notesResult] = await Promise.all([
         getPool().query(
-          'SELECT id, first_name, last_name, email, phone, message, is_read, is_archived, source, consultation_type, location, status, created_at FROM submissions WHERE id = $1',
+          `SELECT id, first_name, last_name, email, phone, message, is_read, is_archived, source, consultation_type, location, status, created_at,
+                  (SELECT ec.color FROM entry_colors ec WHERE ec.kind = 'lead' AND ec.key = submissions.id::text) AS color
+             FROM submissions WHERE id = $1`,
           [req.params.id]
         ),
         getPool().query(

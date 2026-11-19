@@ -23,6 +23,49 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'language-switch-everywhere',
+    at: '2026-11-19T21:36:00Z',
+    section: 'everyone',
+    any: [],
+    title: 'Switch the portal to Spanish from any page',
+    summary: 'The language switch is now at the bottom left of every page, and on the sign-in page, with a Mexican flag for Spanish (ES) and a US flag for English (EN).',
+    points: [
+      'Press ES for Spanish and EN for English. The portal remembers your choice on this computer.',
+      'Calls, Messages, WhatsApp, reminders, notes and history, and the top bar of every page are now in Spanish too, as well as Home. Billing and the administrator pages are still in English.',
+      'The switch has its own space at the bottom of the screen, so it never covers a message, a reply box or a button.',
+      'These update notes stay in English.',
+    ],
+  },
+  {
+    id: 'custom-theme-colours',
+    at: '2026-11-19T21:36:00Z',
+    section: 'everyone',
+    any: [],
+    title: 'Choose your own portal colours',
+    summary: 'Besides the six themes, Themes on Home now has Custom: pick your own colours for the portal. Only you see them.',
+    points: [
+      'Open Themes on Home and choose Custom. Pick the colour of the bar at the top, the buttons and links, the page, the cards, and the two cards at the top of Home, and light or dark.',
+      'The portal changes as you pick. Save keeps it; Cancel puts back what you had.',
+      'More colours lets you change a few more things, such as the main text, links and the green and red buttons. Leave them on Automatic and they follow your other choices.',
+      'Writing always stays easy to read. If a colour would make words hard to read, the portal shows it a little lighter or darker and tells you.',
+      'Your colours are saved to your account, so they follow you to any computer. Colleagues keep their own. You can go back to one of the six themes at any time, and Custom remembers your colours.',
+    ],
+  },
+  {
+    id: 'entry-colors',
+    at: '2026-11-19T21:36:00Z',
+    section: 'everyone',
+    any: ['calls.exclude', 'crm.manage'],
+    title: 'Give callers, leads and reminders a color',
+    summary: 'Mark anyone you want to spot again with a color, like a note in Google Keep. Everyone sees the same colors.',
+    points: [
+      'Calls: open a caller’s ⋯ menu (or the call details) and choose Color…. Every call from that number gets the color, in Needs attention, Handled and All calls.',
+      'Messages: use the color button on a lead in the list, or Color in the lead itself.',
+      'Reminders: use the color button on a reminder. It shows on the reminder under the call and in My follow-ups on Home.',
+      'Choose No color to take it off. Colors have no fixed meaning: agree among yourselves what each one is for.',
+    ],
+  },
+  {
     id: 'reply-emoji',
     at: '2026-11-19T20:31:00Z',
     section: 'everyone',

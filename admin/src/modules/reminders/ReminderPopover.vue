@@ -7,14 +7,14 @@
     :class="floating ? ['rp-floating absolute right-0 z-40 w-[22rem] shadow-lg', above ? 'bottom-full mb-1.5 rp-above' : 'top-full mt-1.5'] : 'w-full'"
     class="rp rounded-xl bg-white ring-1 ring-gray-200 p-4 text-left font-ui text-[13px] text-gray-800">
     <div class="flex items-start gap-2">
-      <h3 :id="`${uid}-title`" class="flex-1 font-ui text-[14px] font-semibold text-gray-900">{{ editing ? 'Change reminder' : 'Remind me' }}</h3>
-      <button type="button" @click="$emit('close')" aria-label="Close" class="-mr-2 -mt-1.5 w-9 h-9 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-800">
+      <h3 :id="`${uid}-title`" class="flex-1 font-ui text-[14px] font-semibold text-gray-900">{{ editing ? t('pop.change') : t('pop.remind_me') }}</h3>
+      <button type="button" @click="$emit('close')" :aria-label="t('pop.close')" class="-mr-2 -mt-1.5 w-9 h-9 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-800">
         <FaIcon name="xmark" />
       </button>
     </div>
 
     <fieldset class="mt-2">
-      <legend class="sr-only">When</legend>
+      <legend class="sr-only">{{ t('pop.when') }}</legend>
       <div class="grid grid-cols-2 gap-1.5">
         <label v-for="c in choices" :key="c.key" :class="choice === c.key ? 'rp-picked' : 'ring-1 ring-gray-200 hover:bg-gray-50'"
           class="rp-choice relative flex items-center min-h-11 px-3 rounded-lg cursor-pointer">
@@ -24,11 +24,11 @@
       </div>
       <div v-if="choice === 'pick'" class="mt-2 grid grid-cols-[1fr_auto] gap-1.5">
         <label class="block">
-          <span class="sr-only">Date</span>
+          <span class="sr-only">{{ t('pop.date') }}</span>
           <input v-model="pickDate" type="date" :min="minDate" class="rp-input w-full" />
         </label>
         <label class="block">
-          <span class="sr-only">Time</span>
+          <span class="sr-only">{{ t('pop.time') }}</span>
           <input v-model="pickTime" type="time" step="300" class="rp-input" />
         </label>
       </div>
@@ -40,19 +40,19 @@
     <p class="mt-2.5 flex items-center gap-2 text-[13px]">
       <FaIcon name="clock" class="text-gray-400" />
       <span v-if="problem" class="text-brand-red">{{ problem }}</span>
-      <span v-else><span class="text-gray-600">Due</span> <strong class="font-semibold text-gray-900 tabular-nums">{{ formatDue(dueAt) }}</strong></span>
+      <span v-else><span class="text-gray-600">{{ t('pop.due') }}</span> <strong class="font-semibold text-gray-900 tabular-nums">{{ formatDue(dueAt, lang) }}</strong></span>
     </p>
     <span class="sr-only" aria-live="polite">{{ spoken }}</span>
 
     <label class="mt-3 block">
-      <span class="rp-label">For</span>
+      <span class="rp-label">{{ t('pop.for') }}</span>
       <select v-model="assignee" class="rp-input w-full" :disabled="!accounts.length">
-        <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.id === me ? `${a.name} (me)` : a.name }}</option>
+        <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.id === me ? t('pop.me', { name: a.name }) : a.name }}</option>
       </select>
     </label>
 
     <label class="mt-3 block">
-      <span class="rp-label">Note <span class="normal-case tracking-normal font-normal text-gray-500">optional, only staff see it</span></span>
+      <span class="rp-label">{{ t('pop.note') }} <span class="normal-case tracking-normal font-normal text-gray-500">{{ t('pop.note_hint') }}</span></span>
       <textarea v-model="note" rows="2" maxlength="500" class="rp-input w-full py-2 resize-y min-h-[2.75rem]"></textarea>
     </label>
 
@@ -60,16 +60,16 @@
     <div v-if="clash" role="alert" class="mt-3 rounded-lg bg-amber-50 ring-1 ring-amber-200 px-3 py-2.5 text-[12.5px] text-amber-900">
       <p>{{ clash.text }}</p>
       <div v-if="clash.kind === 'duplicate'" class="mt-2 flex flex-wrap gap-2">
-        <button type="button" @click="editExisting" class="rp-btn rp-quiet">Change that one</button>
-        <button type="button" @click="save(true)" class="rp-btn rp-quiet">Add another</button>
+        <button type="button" @click="editExisting" class="rp-btn rp-quiet">{{ t('pop.change_that') }}</button>
+        <button type="button" @click="save(true)" class="rp-btn rp-quiet">{{ t('pop.add_another') }}</button>
       </div>
     </div>
     <p v-if="error" role="alert" class="mt-3 text-[12.5px] text-brand-red">{{ error }}</p>
 
     <div class="mt-4 flex items-center justify-end gap-2">
-      <button type="button" @click="$emit('close')" class="rp-btn rp-quiet">Cancel</button>
+      <button type="button" @click="$emit('close')" class="rp-btn rp-quiet">{{ t('pop.cancel') }}</button>
       <button type="button" @click="save(false)" :disabled="saving || Boolean(problem)" :aria-busy="saving" class="rp-btn rp-primary">
-        <FaIcon :name="saving ? 'spinner' : 'bell'" :spin="saving" />{{ saving ? 'Saving…' : editing ? 'Save' : 'Set reminder' }}
+        <FaIcon :name="saving ? 'spinner' : 'bell'" :spin="saving" />{{ saving ? t('pop.saving') : editing ? t('pop.save') : t('pop.set') }}
       </button>
     </div>
   </div>
@@ -81,6 +81,8 @@ import FaIcon from '../../components/FaIcon.vue'
 import { dueChoices, formatDue, toInputs, fromInputs, dueProblem, nextBusinessMorning } from './dueChoices.js'
 import { remindersApi } from './remindersApi.js'
 import { loadAssignees } from './assignees.js'
+import { useT } from '../../i18n/translator.js'
+import { REMINDERS } from '../../i18n/reminders.js'
 
 const props = defineProps({
   // { kind: 'call' | 'submission', id }
@@ -92,12 +94,13 @@ const props = defineProps({
 const emit = defineEmits(['close', 'saved'])
 const uid = `rp-${useId()}`
 const root = ref(null)
+const { t, lang } = useT(REMINDERS)
 const above = ref(false)
 
 // The clock the quick choices count from; moves while the panel is open.
 const now = ref(Date.now())
 let tick = null
-const choices = computed(() => [...dueChoices(now.value).map((c) => ({ key: c.key, label: c.label })), { key: 'pick', label: 'Pick date and time' }])
+const choices = computed(() => [...dueChoices(now.value, lang.value).map((c) => ({ key: c.key, label: c.label })), { key: 'pick', label: t('pop.pick') }])
 
 const current = ref(props.reminder)
 const editing = computed(() => Boolean(current.value))
@@ -118,7 +121,7 @@ const dueAt = computed(() => {
   if (choice.value === 'pick') return fromInputs(pickDate.value, pickTime.value)
   return dueChoices(now.value).find((c) => c.key === choice.value)?.at || null
 })
-const problem = computed(() => dueProblem(dueAt.value, now.value))
+const problem = computed(() => dueProblem(dueAt.value, now.value, lang.value))
 
 function fill(r) {
   current.value = r
@@ -159,7 +162,7 @@ watch([choice, pickDate, pickTime, assignee], () => { error.value = '' })
 // Said once when the person changes the time, never when the clock ticks.
 const spoken = ref('')
 watch([choice, pickDate, pickTime], () => {
-  spoken.value = problem.value || `Due ${formatDue(dueAt.value)}`
+  spoken.value = problem.value || t('pop.due_at', { when: formatDue(dueAt.value, lang.value) })
 })
 
 async function save(allowDuplicate) {
@@ -179,10 +182,12 @@ async function save(allowDuplicate) {
   } catch (e) {
     if (e.code === 'duplicate' && e.data?.reminder) {
       const r = e.data.reminder
-      clash.value = { kind: 'duplicate', reminder: r, text: `${r.assignee?.id === me.value ? 'You already have' : `${r.assignee?.name || 'They'} already has`} a reminder for this, due ${formatDue(r.dueAt)}.` }
+      const when = formatDue(r.dueAt, lang.value)
+      const key = r.assignee?.id === me.value ? 'pop.dup_you' : r.assignee?.name ? 'pop.dup_them' : 'pop.dup_they'
+      clash.value = { kind: 'duplicate', reminder: r, text: t(key, { name: r.assignee?.name, when }) }
     } else if (e.code === 'conflict' && e.data?.reminder) {
       fill(e.data.reminder)
-      clash.value = { kind: 'conflict', text: 'Someone else changed this reminder meanwhile. It now shows their version; save again to change it.' }
+      clash.value = { kind: 'conflict', text: t('pop.conflict') }
     } else {
       error.value = e.message
     }

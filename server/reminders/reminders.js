@@ -110,7 +110,7 @@ export const targetPath = (r) => (r.target_kind === 'call' ? `/calls?call=${r.ca
 // --- reading -------------------------------------------------------------------------
 
 const SELECT = `
-  SELECT r.*, a.email AS a_email, a.display_name AS a_name, a.disabled_at AS a_disabled,
+  SELECT r.*, ecol.color AS entry_color, a.email AS a_email, a.display_name AS a_name, a.disabled_at AS a_disabled,
          cb.email AS cb_email, cb.display_name AS cb_name, db.email AS db_email, db.display_name AS db_name,
          (SELECT json_agg(json_build_object('kind', d.kind, 'channel', d.channel, 'attempt', d.attempt, 'status', d.status,
                   'error', d.error, 'at', COALESCE(d.finished_at, d.attempted_at, d.created_at), 'next', d.next_attempt_at) ORDER BY d.attempt)
@@ -118,7 +118,8 @@ const SELECT = `
     FROM follow_up_reminders r
     JOIN admin_users a ON a.id = r.assigned_to
     LEFT JOIN admin_users cb ON cb.id = r.created_by
-    LEFT JOIN admin_users db ON db.id = r.completed_by`
+    LEFT JOIN admin_users db ON db.id = r.completed_by
+    LEFT JOIN entry_colors ecol ON ecol.kind = 'reminder' AND ecol.key = r.id::text`
 
 const person = (id, email, name) => (id == null ? null : { id: Number(id), name: displayName({ display_name: name, email }) })
 
@@ -161,6 +162,8 @@ export function present(r) {
     cancelledAt: r.cancelled_at,
     // What happened when it fell due; nothing while it waits (again, after a snooze).
     delivery: r.status === 'open' ? {} : deliverySummary(r.deliveries),
+    // The colour staff gave it (server/colors/), or null.
+    color: r.entry_color ?? null,
   }
 }
 

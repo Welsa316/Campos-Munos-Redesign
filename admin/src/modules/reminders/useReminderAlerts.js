@@ -11,6 +11,8 @@ import { toast } from '../../composables/useToast.js'
 import { useVisiblePoll } from '../../composables/useVisiblePoll.js'
 import { remindersApi } from './remindersApi.js'
 import { dueToAnnounce, announceKey } from './reminderText.js'
+import { useT } from '../../i18n/translator.js'
+import { REMINDERS } from '../../i18n/reminders.js'
 
 export const POLL_MS = 60 * 1000
 const STORE = 'cm-reminders-announced'
@@ -26,6 +28,7 @@ export function useReminderAlerts() {
   const router = useRouter()
   const { isAuthenticated, canAny } = useAuth()
   const seen = loadSeen()
+  const { t } = useT(REMINDERS)
 
   async function check() {
     if (!isAuthenticated.value || !canAny('calls.view', 'crm.view')) return
@@ -37,10 +40,10 @@ export function useReminderAlerts() {
     // One toast however many fell due together; Open goes to the first.
     const first = fresh[0]
     toast({
-      text: fresh.length === 1 ? 'A callback reminder is due' : `${fresh.length} callback reminders are due`,
+      text: t('alert.due', { count: fresh.length }),
       tone: 'info',
       persistent: true,
-      action: { label: 'Open', run: () => router.push(first.target.path) },
+      action: { label: t('alert.open'), run: () => router.push(first.target.path) },
     })
   }
   // Visible tab only; a failed check is retried on the next tick.

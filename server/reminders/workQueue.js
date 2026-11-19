@@ -42,7 +42,7 @@ export async function workQueue(db, { accountId, caps, now = new Date(), limit =
     `SELECT r.id, r.target_kind, r.call_id, r.submission_id, r.due_at, r.status, r.note,
             c.counterpart_number AS number, c.caller_id_name,
             COALESCE(cl.name, NULLIF(TRIM(cs.first_name || ' ' || cs.last_name), '')) AS call_name,
-            NULLIF(TRIM(s.first_name || ' ' || s.last_name), '') AS lead_name
+            NULLIF(TRIM(s.first_name || ' ' || s.last_name), '') AS lead_name, ecol.color
        FROM follow_up_reminders r
        LEFT JOIN rc_calls c ON c.id = r.call_id
        LEFT JOIN LATERAL (
@@ -52,6 +52,7 @@ export async function workQueue(db, { accountId, caps, now = new Date(), limit =
          SELECT x.first_name, x.last_name FROM submissions x
           WHERE c.counterpart_key <> '' AND cm_phone_key(x.phone) = c.counterpart_key ORDER BY x.created_at DESC LIMIT 1) cs ON TRUE
        LEFT JOIN submissions s ON s.id = r.submission_id
+       LEFT JOIN entry_colors ecol ON ecol.kind = 'reminder' AND ecol.key = r.id::text
       WHERE r.assigned_to = $1 AND r.status IN ('open', 'due') AND r.target_kind = ANY($2::text[])
       ORDER BY r.due_at, r.id`,
     [accountId, kinds]
@@ -76,6 +77,8 @@ export async function workQueue(db, { accountId, caps, now = new Date(), limit =
       hasNote: Boolean(r.note),
       path: targetPath(r),
       leadId: call ? null : Number(r.submission_id),
+      // The reminder's colour (server/colors/), or null.
+      color: r.color ?? null,
     }
   })
 
