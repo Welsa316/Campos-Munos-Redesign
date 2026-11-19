@@ -52,7 +52,7 @@ import { usePortalLang } from '../../composables/usePortalLang.js'
 import { ensureEntryColorStyles } from '../../data/entryColors.js'
 
 const { get } = useApi()
-// Shown on Home, so it follows Home's EN | ES switch.
+// Shown on Home, so it follows the portal's language switch.
 const { lang, t } = usePortalLang()
 // A reminder's shared colour shows on its row (components/colors/).
 ensureEntryColorStyles()

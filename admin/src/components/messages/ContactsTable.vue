@@ -7,27 +7,27 @@
     <div class="px-6 py-4 border-b border-gray-100 flex-shrink-0">
       <div class="flex flex-wrap items-center gap-3 mb-3">
         <h2 class="font-ui font-semibold text-gray-900 text-sm tracking-wide">
-          {{ archivedView ? 'Archived' : 'Contacts' }}
-          <span class="ml-1 text-gray-500 font-normal tabular-nums">{{ filtered.length }} of {{ contacts.length }}<template v-if="total != null && total > contacts.length"> loaded, {{ total }} in all</template></span>
+          {{ archivedView ? t('list.archived') : t('inbox.tab.contacts') }}
+          <span class="ml-1 text-gray-500 font-normal tabular-nums">{{ t('contacts.count', { shown: filtered.length, all: contacts.length }) }}<template v-if="total != null && total > contacts.length">{{ t('contacts.loaded', { total }) }}</template></span>
         </h2>
 
         <!-- Archived leads are a separate book, not a sub-set of the live one:
              mixing them in made a closed lead look like work still to do. -->
-        <div class="flex bg-brand-surface rounded-lg p-0.5" role="group" aria-label="Show">
+        <div class="flex bg-brand-surface rounded-lg p-0.5" role="group" :aria-label="t('inbox.show')">
           <button
             type="button"
             @click="$emit('changeArchived', false)"
             :aria-pressed="!archivedView"
             :class="!archivedView ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
             class="text-xs font-ui font-medium px-3 py-1.5 rounded-md whitespace-nowrap transition-colors"
-          >Active</button>
+          >{{ t('contacts.active') }}</button>
           <button
             type="button"
             @click="$emit('changeArchived', true)"
             :aria-pressed="archivedView"
             :class="archivedView ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
             class="text-xs font-ui font-medium px-3 py-1.5 rounded-md whitespace-nowrap transition-colors"
-          >Archived</button>
+          >{{ t('list.archived') }}</button>
         </div>
 
         <div class="relative ml-auto w-full sm:w-64">
@@ -35,31 +35,31 @@
           <input
             v-model="search"
             type="search"
-            placeholder="Search name, email or phone"
-            aria-label="Search contacts"
+            :placeholder="t('search.placeholder')"
+            :aria-label="t('contacts.search_aria')"
             class="w-full text-xs font-ui pl-8 pr-3 py-2 rounded-lg bg-brand-surface border border-gray-300 focus:bg-white text-gray-700 transition-colors"
           />
         </div>
       </div>
 
-      <div class="flex flex-wrap gap-1.5" role="group" aria-label="Status">
+      <div class="flex flex-wrap gap-1.5" role="group" :aria-label="t('status.group')">
         <button
           type="button"
           @click="statusFilter = ''"
           :aria-pressed="statusFilter === ''"
           :class="statusFilter === '' ? 'bg-brand-navy text-white ring-brand-navy' : 'bg-brand-surface text-gray-600 ring-transparent hover:text-gray-900'"
           class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap tabular-nums transition-colors"
-        >All {{ contacts.length }}</button>
+        >{{ t('status.all', { count: contacts.length }) }}</button>
         <button
           v-for="st in LEAD_STATUSES"
           :key="st.key"
           type="button"
           @click="statusFilter = statusFilter === st.key ? '' : st.key"
-          :title="st.hint"
+          :title="t(`status.${st.key}.hint`)"
           :aria-pressed="statusFilter === st.key"
           :class="statusFilter === st.key ? 'bg-brand-navy text-white ring-brand-navy' : `${st.pill} hover:brightness-95`"
           class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap tabular-nums transition-colors"
-        >{{ st.label }} {{ counts[st.key] || 0 }}</button>
+        >{{ t(`status.${st.key}`) }} {{ counts[st.key] || 0 }}</button>
       </div>
     </div>
 
@@ -76,10 +76,10 @@
               :aria-sort="col.sortable ? (sortKey === col.key ? (sortAsc ? 'ascending' : 'descending') : 'none') : undefined"
               class="px-4 py-2.5 text-[10px] font-ui font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">
               <button v-if="col.sortable" type="button" @click="toggleSort(col.key)" class="inline-flex items-center gap-1 hover:text-gray-800">
-                {{ col.label }}
+                {{ t(col.label) }}
                 <i v-if="sortKey === col.key" :class="sortAsc ? 'fa-chevron-up' : 'fa-chevron-down'" class="fa-solid text-[8px]" aria-hidden="true"></i>
               </button>
-              <span v-else>{{ col.label }}</span>
+              <span v-else>{{ t(col.label) }}</span>
             </th>
           </tr>
         </thead>
@@ -93,14 +93,14 @@
             <td class="px-4 py-3 align-top max-md:p-0 max-md:col-start-1 max-md:row-start-1">
               <!-- The name opens the lead from the keyboard too; the row click is a mouse convenience. -->
               <button type="button" @click.stop="$emit('select', c.id)" class="font-ui text-sm text-gray-900 font-medium md:whitespace-nowrap text-left hover:underline">{{ c.first_name }} {{ c.last_name }}</button>
-              <span v-if="!c.is_read" class="ml-2 inline-block w-1.5 h-1.5 rounded-full bg-brand-red align-middle" title="Unread" aria-hidden="true"></span><span v-if="!c.is_read" class="sr-only">Unread</span>
+              <span v-if="!c.is_read" class="ml-2 inline-block w-1.5 h-1.5 rounded-full bg-brand-red align-middle" :title="t('list.unread')" aria-hidden="true"></span><span v-if="!c.is_read" class="sr-only">{{ t('list.unread') }}</span>
             </td>
             <td class="px-4 py-3 align-top whitespace-nowrap max-md:p-0 max-md:col-span-2 max-md:row-start-2 max-md:flex max-md:flex-wrap max-md:gap-x-3 max-md:min-w-0">
               <a :href="telHref(c.phone)" @click.stop class="block text-xs text-brand-navy hover:underline">{{ formatPhone(c.phone) }}</a>
               <a :href="'mailto:' + c.email" @click.stop class="block text-[11px] text-gray-500 hover:underline truncate max-w-[200px] max-md:max-w-full max-md:min-w-0">{{ c.email }}</a>
             </td>
             <td class="px-4 py-3 align-top max-md:p-0 max-md:col-start-1 max-md:row-start-3">
-              <span class="text-[11px] font-ui text-gray-600 md:whitespace-nowrap">{{ consultationLabel(c.consultation_type) }}</span>
+              <span class="text-[11px] font-ui text-gray-600 md:whitespace-nowrap">{{ consultationLabel(c.consultation_type, lang) }}</span>
             </td>
             <td class="px-4 py-3 align-top max-md:p-0 max-md:col-start-2 max-md:row-start-1 max-md:justify-self-end">
               <!-- Status is editable straight from the table -->
@@ -108,12 +108,12 @@
                 <button
                   @click.stop="openStatusFor = openStatusFor === c.id ? null : c.id"
                 :disabled="!canManage"
-                  :aria-label="`Change status for ${leadName(c)}, currently ${statusMeta(c.status).label}`"
+                  :aria-label="t('status.change_for', { name: leadName(c, t('lead.no_name')), status: t(`status.${statusMeta(c.status).key}`) })"
                   :class="statusMeta(c.status).pill"
                   class="inline-flex items-center gap-1.5 text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap transition-transform active:scale-95"
                 >
                   <span :class="statusMeta(c.status).dot" class="w-1.5 h-1.5 rounded-full" aria-hidden="true"></span>
-                  {{ statusMeta(c.status).label }}
+                  {{ t(`status.${statusMeta(c.status).key}`) }}
                   <i v-if="canManage" class="fa-solid fa-chevron-down text-[8px] opacity-60" aria-hidden="true"></i>
                 </button>
                 <div v-if="openStatusFor === c.id"
@@ -126,8 +126,8 @@
                   >
                     <span :class="st.dot" class="w-2 h-2 rounded-full flex-shrink-0" aria-hidden="true"></span>
                     <span class="flex-1 min-w-0">
-                      <span class="block text-xs font-ui font-semibold text-gray-800">{{ st.label }}</span>
-                      <span class="block text-[10px] text-gray-500 font-ui leading-tight">{{ st.hint }}</span>
+                      <span class="block text-xs font-ui font-semibold text-gray-800">{{ t(`status.${st.key}`) }}</span>
+                      <span class="block text-[10px] text-gray-500 font-ui leading-tight">{{ t(`status.${st.key}.hint`) }}</span>
                     </span>
                     <i v-if="c.status === st.key" class="fa-solid fa-check text-[10px] text-brand-navy" aria-hidden="true"></i>
                   </button>
@@ -136,7 +136,7 @@
             </td>
             <td class="px-4 py-3 align-top max-w-[280px] max-md:p-0 max-md:col-span-2 max-md:row-start-4 max-md:max-w-none">
               <p v-if="c.latest_note" class="text-[11px] text-gray-600 font-ui leading-snug line-clamp-2">{{ c.latest_note }}</p>
-              <p v-else class="text-[11px] text-gray-500 font-ui max-md:hidden"><span aria-hidden="true">—</span><span class="sr-only">No note</span></p>
+              <p v-else class="text-[11px] text-gray-500 font-ui max-md:hidden"><span aria-hidden="true">—</span><span class="sr-only">{{ t('contacts.no_note') }}</span></p>
             </td>
             <td class="px-4 py-3 align-top text-[11px] text-gray-500 font-ui whitespace-nowrap tabular-nums max-md:p-0 max-md:col-start-2 max-md:row-start-3 max-md:text-right">
               {{ shortDate(c.created_at) }}
@@ -147,8 +147,8 @@
     </div>
       <!-- More leads exist than are loaded: say so, and load the next page. -->
     <div v-if="total != null && total > contacts.length" class="px-6 py-3 border-t border-gray-100 flex flex-wrap items-center gap-3 text-xs font-ui text-gray-600 flex-shrink-0" data-load-older>
-      <span>Showing the {{ contacts.length }} most recent of {{ total }}.</span>
-      <button type="button" @click="$emit('loadOlder')" :disabled="loadingOlder" class="font-semibold text-brand-navy underline disabled:opacity-50">{{ loadingOlder ? 'Loading…' : 'Load older' }}</button>
+      <span>{{ t('older.showing', { shown: contacts.length, total }) }}</span>
+      <button type="button" @click="$emit('loadOlder')" :disabled="loadingOlder" class="font-semibold text-brand-navy underline disabled:opacity-50">{{ loadingOlder ? t('older.loading') : t('older.load') }}</button>
     </div>
   </div>
 </template>
@@ -163,6 +163,10 @@ import { can } from '../../composables/useAuth.js'
 const canManage = computed(() => can('crm.manage'))
 import { formatPhone, telHref } from '../../utils/phone.js'
 import { leadName } from '../../utils/text.js'
+import { useT } from '../../i18n/translator.js'
+import { MESSAGES } from '../../i18n/messages.js'
+
+const { t, lang, locale } = useT(MESSAGES)
 
 const props = defineProps({
   contacts: { type: Array, default: () => [] },
@@ -175,12 +179,12 @@ const emit = defineEmits(['select', 'setStatus', 'changeArchived', 'loadOlder'])
 
 
 const COLUMNS = [
-  { key: 'name', label: 'Name', sortable: true },
-  { key: 'contact', label: 'Contact', sortable: false },
-  { key: 'service', label: 'Service', sortable: false },
-  { key: 'status', label: 'Status', sortable: true },
-  { key: 'note', label: 'Latest note', sortable: false },
-  { key: 'created_at', label: 'Received', sortable: true },
+  { key: 'name', label: 'col.name', sortable: true },
+  { key: 'contact', label: 'col.contact', sortable: false },
+  { key: 'service', label: 'col.service', sortable: false },
+  { key: 'status', label: 'col.status', sortable: true },
+  { key: 'note', label: 'col.note', sortable: false },
+  { key: 'created_at', label: 'col.received', sortable: true },
 ]
 
 const search = ref('')
@@ -191,9 +195,9 @@ const sortAsc = ref(false)
 
 const emptyMessage = computed(() => {
   if (props.contacts.length === 0) {
-    return props.archivedView ? 'Nothing archived yet.' : 'No contacts yet.'
+    return props.archivedView ? t('contacts.empty_archived') : t('contacts.empty')
   }
-  return 'No contacts match this filter.'
+  return t('contacts.empty_filtered')
 })
 
 const counts = computed(() => {
@@ -264,6 +268,6 @@ onUnmounted(() => {
 function shortDate(value) {
   const d = new Date(value)
   const sameYear = d.getFullYear() === new Date().getFullYear()
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) })
+  return d.toLocaleDateString(locale.value, { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) })
 }
 </script>

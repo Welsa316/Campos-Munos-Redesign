@@ -31,6 +31,14 @@ export function useT(dict) {
   return { t, lang, locale: computed(() => (lang.value === 'es' ? 'es-US' : 'en-US')) }
 }
 
+/**
+ * The hour on a formatted clock time ("1:05 p.m." → 1), passed as count to
+ * an entry like { one: 'a la {time}', other: 'a las {time}' }: Spanish says
+ * "a la 1:05" but "a las 3:05". Read from the text, so it is the hour shown,
+ * in whatever time zone the time was formatted.
+ */
+export const clockCount = (time) => Number(String(time).match(/\d{1,2}/)?.[0] ?? 0)
+
 /** Keys present in one language and missing in the other (for tests). */
 export function missingKeys(dict) {
   const en = Object.keys(dict.en || {})

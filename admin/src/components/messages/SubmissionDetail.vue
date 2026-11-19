@@ -1,10 +1,14 @@
 <template>
-  <div class="h-full flex flex-col bg-white">
+  <!-- On a phone the lead, its thread and the reply box scroll as one, so
+       the reply box is always reachable however tall the lead's details
+       (reminders, notes) grow; wider screens keep the thread scrolling
+       between a fixed header and reply box. -->
+  <div class="h-full flex flex-col bg-white max-md:overflow-y-auto">
     <!-- Empty state -->
     <div v-if="!submission" class="flex-1 flex items-center justify-center">
       <div class="text-center">
         <i class="fa-solid fa-envelope-open text-4xl text-gray-200 mb-4" aria-hidden="true"></i>
-        <p class="text-gray-500 font-ui text-sm">Select a message to view</p>
+        <p class="text-gray-500 font-ui text-sm">{{ t('detail.select') }}</p>
       </div>
     </div>
 
@@ -17,7 +21,7 @@
               <h2 class="font-heading text-2xl text-gray-900 break-words min-w-0">{{ submission.first_name }} {{ submission.last_name }}</h2>
               <span v-if="submission.source === 'chat'" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-navy/10 text-brand-navy text-[10px] font-ui font-semibold uppercase tracking-wider">
                 <i class="fa-solid fa-comment-dots text-[10px]" aria-hidden="true"></i>
-                Chat
+                {{ t('detail.chat') }}
               </span>
             </div>
             <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-ui">
@@ -31,7 +35,7 @@
             <div class="flex flex-wrap items-center gap-3 text-xs font-ui mt-2">
               <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-navy/10 text-brand-navy font-semibold uppercase tracking-wider">
                 <i class="fa-solid fa-briefcase text-[10px]" aria-hidden="true"></i>
-                {{ consultationLabel(submission.consultation_type) }}
+                {{ consultationLabel(submission.consultation_type, lang) }}
               </span>
               <span v-if="submission.location" class="inline-flex items-center gap-1.5 text-gray-500">
                 <i class="fa-solid fa-location-dot text-[10px]" aria-hidden="true"></i>
@@ -46,12 +50,12 @@
                 @click.stop="statusOpen = !statusOpen"
                 :disabled="!canManage"
                 :aria-expanded="statusOpen"
-                :aria-label="canManage ? 'Change lead status' : `Lead status: ${statusMeta(submission.status).label}`"
+                :aria-label="canManage ? t('status.change') : t('status.current', { status: t(`status.${statusMeta(submission.status).key}`) })"
                 :class="statusMeta(submission.status).pill"
                 class="inline-flex items-center gap-2 text-xs font-ui font-semibold px-3 py-1.5 rounded-full ring-1 whitespace-nowrap transition-transform active:scale-95"
               >
                 <span :class="statusMeta(submission.status).dot" class="w-2 h-2 rounded-full" aria-hidden="true"></span>
-                {{ statusMeta(submission.status).label }}
+                {{ t(`status.${statusMeta(submission.status).key}`) }}
                 <i v-if="canManage" class="fa-solid fa-chevron-down text-[9px] opacity-60" aria-hidden="true"></i>
               </button>
               <div v-if="statusOpen"
@@ -64,8 +68,8 @@
                 >
                   <span :class="st.dot" class="w-2 h-2 rounded-full flex-shrink-0" aria-hidden="true"></span>
                   <span class="flex-1 min-w-0">
-                    <span class="block text-xs font-ui font-semibold text-gray-800">{{ st.label }}</span>
-                    <span class="block text-[10px] text-gray-500 font-ui leading-tight">{{ st.hint }}</span>
+                    <span class="block text-xs font-ui font-semibold text-gray-800">{{ t(`status.${st.key}`) }}</span>
+                    <span class="block text-[10px] text-gray-500 font-ui leading-tight">{{ t(`status.${st.key}.hint`) }}</span>
                   </span>
                   <i v-if="submission.status === st.key" class="fa-solid fa-check text-[10px] text-brand-navy" aria-hidden="true"></i>
                 </button>
@@ -73,17 +77,17 @@
             </div>
           </div>
           <div class="flex items-center gap-2">
-            <span v-if="!submission.is_read" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-red/10 text-brand-red text-xs font-ui font-medium">
+            <span v-if="!submission.is_read" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full whitespace-nowrap bg-brand-red/10 text-brand-red text-xs font-ui font-medium">
               <span class="w-1.5 h-1.5 rounded-full bg-brand-red" aria-hidden="true"></span>
-              Unread
+              {{ t('list.unread') }}
             </span>
             <button
               v-if="submission.is_read && canManage"
               @click="markUnread"
               :disabled="markingUnread"
               class="p-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface transition-colors"
-              title="Mark as unread"
-              aria-label="Mark as unread"
+              :title="t('detail.mark_unread')"
+              :aria-label="t('detail.mark_unread')"
             >
               <i class="fa-solid fa-envelope text-sm" aria-hidden="true"></i>
             </button>
@@ -93,13 +97,13 @@
               @click="toggleArchive"
               :disabled="archiving"
               class="p-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface transition-colors"
-              :title="submission.is_archived ? 'Move to Inbox' : 'Archive'"
-              :aria-label="submission.is_archived ? 'Move to inbox' : 'Archive'"
+              :title="submission.is_archived ? t('detail.move_inbox_title') : t('detail.archive')"
+              :aria-label="submission.is_archived ? t('detail.move_inbox') : t('detail.archive')"
             >
               <i :class="submission.is_archived ? 'fa-solid fa-inbox' : 'fa-solid fa-archive'" class="text-sm" aria-hidden="true"></i>
             </button>
             <!-- Back button for mobile -->
-            <button v-if="showBack" @click="$emit('back')" aria-label="Back to messages" class="p-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface transition-colors lg:hidden">
+            <button v-if="showBack" @click="$emit('back')" :aria-label="t('detail.back')" class="p-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface transition-colors lg:hidden">
               <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
             </button>
           </div>
@@ -116,7 +120,7 @@
       <LeadAutomation v-if="submission.automation" show="alerts" class="flex-shrink-0" :submission="submission" :can-manage="canManage" @changed="$emit('noteAdded')" />
 
       <!-- Conversation thread -->
-      <div class="flex-1 overflow-y-auto p-6 space-y-4">
+      <div class="flex-1 overflow-y-auto p-6 space-y-4 max-md:flex-none max-md:overflow-visible">
         <template v-for="item in threadItems" :key="`${item.type}-${item.id}`">
           <!-- User message (initial submission or chat follow-up) -->
           <div v-if="item.type === 'user'" class="max-w-[85%]">
@@ -151,7 +155,7 @@
         >
           <span class="flex items-center gap-2 text-xs font-ui font-semibold text-gray-700">
             <i class="fa-solid fa-note-sticky text-brand-navy/70 text-[11px]" aria-hidden="true"></i>
-            Internal notes
+            {{ t('notes.heading') }}
             <span v-if="notes.length" class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-brand-navy/10 text-brand-navy text-[10px] font-bold tabular-nums">
               {{ notes.length }}
             </span>
@@ -161,14 +165,14 @@
 
         <div v-if="notesOpen" class="px-5 pb-4">
           <form v-if="canManage" @submit.prevent="addNote" class="flex items-start gap-2 mb-3">
-            <label for="lead-note" class="sr-only">Add an internal note</label>
+            <label for="lead-note" class="sr-only">{{ t('notes.add_label') }}</label>
             <textarea
               id="lead-note"
               v-model="noteDraft"
               rows="2"
               maxlength="5000"
               :disabled="savingNote"
-              placeholder="Log a call, a voicemail, what they need…"
+              :placeholder="t('notes.placeholder')"
               class="form-input resize-none text-sm flex-1"
               @keydown.enter.exact="(e) => { if (!isComposing(e)) { e.preventDefault(); addNote() } }"
             ></textarea>
@@ -176,11 +180,11 @@
               type="submit"
               :disabled="savingNote || !noteDraft.trim()"
               class="bg-brand-navy text-white font-ui font-medium text-xs px-4 py-2.5 rounded-xl btn-magnetic disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none flex-shrink-0"
-            >{{ savingNote ? 'Saving…' : 'Add' }}</button>
+            >{{ savingNote ? t('notes.saving') : t('notes.add') }}</button>
           </form>
 
           <p v-if="notes.length === 0" class="text-xs text-gray-500 font-ui italic">
-            No notes yet. Anything logged here stays internal.
+            {{ t('notes.empty') }}
           </p>
           <ul v-else class="space-y-2 max-h-48 overflow-y-auto">
             <li v-for="note in notes" :key="note.id" class="group bg-brand-surface rounded-lg px-3 py-2">
@@ -196,16 +200,16 @@
                   @click="confirmingNoteId = note.id"
                   :aria-expanded="confirmingNoteId === note.id"
                   :disabled="deletingNoteId === note.id"
-                  :aria-label="`Delete note from ${formatDate(note.created_at)}`"
+                  :aria-label="t('notes.delete_aria', { when: formatDate(note.created_at) })"
                   class="flex-shrink-0 p-1.5 rounded-md text-gray-500 hover:text-brand-red hover:bg-brand-red/10 transition-[opacity,color,background-color] pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 focus-visible:opacity-100 disabled:opacity-40"
                 >
                   <FaIcon :name="deletingNoteId === note.id ? 'spinner' : 'trash'" :spin="deletingNoteId === note.id" class="text-[10px]" />
                 </button>
               </div>
               <div v-if="confirmingNoteId === note.id" role="alertdialog" :aria-labelledby="`note-del-${note.id}`" v-alert-focus class="mt-2 flex flex-wrap items-center gap-2" @keydown.esc.stop="confirmingNoteId = null">
-                <p :id="`note-del-${note.id}`" class="text-[11px] font-ui text-gray-700 flex-1 min-w-[10rem]">Delete this note? This cannot be undone.</p>
-                <button type="button" @click="removeNote(note)" class="px-2.5 py-1 rounded-md bg-brand-red text-white text-[11px] font-ui font-semibold hover:bg-brand-red-light">Delete</button>
-                <button type="button" data-autofocus @click="confirmingNoteId = null" class="px-2.5 py-1 rounded-md text-[11px] font-ui font-semibold text-gray-600 hover:bg-white">Keep</button>
+                <p :id="`note-del-${note.id}`" class="text-[11px] font-ui text-gray-700 flex-1 min-w-[10rem]">{{ t('notes.delete_confirm') }}</p>
+                <button type="button" @click="removeNote(note)" class="px-2.5 py-1 rounded-md bg-brand-red text-white text-[11px] font-ui font-semibold hover:bg-brand-red-light">{{ t('notes.delete') }}</button>
+                <button type="button" data-autofocus @click="confirmingNoteId = null" class="px-2.5 py-1 rounded-md text-[11px] font-ui font-semibold text-gray-600 hover:bg-white">{{ t('notes.keep') }}</button>
               </div>
             </li>
           </ul>
@@ -217,7 +221,7 @@
         <button type="button" @click="historyOpen = !historyOpen" :aria-expanded="historyOpen" :aria-controls="`lead-history-${submission.id}`"
           class="w-full flex items-center justify-between px-5 py-2.5 hover:bg-brand-surface transition-colors">
           <span class="flex items-center gap-2 text-xs font-ui font-semibold text-gray-700">
-            <FaIcon name="clock-rotate-left" class="text-brand-navy/70 text-[11px]" />Contact history
+            <FaIcon name="clock-rotate-left" class="text-brand-navy/70 text-[11px]" />{{ t('history.heading') }}
           </span>
           <FaIcon :name="historyOpen ? 'chevron-up' : 'chevron-down'" class="text-[10px] text-gray-400" />
         </button>
@@ -246,13 +250,15 @@ import { ref, computed, watch, nextTick, onBeforeUnmount, onMounted, onUnmounted
 import { useApi } from '../../composables/useApi.js'
 import { consultationLabel } from '../../data/consultationTypes.js'
 import { countryLabel } from '../../data/countries.js'
-import { adminLocale } from '../../utils/locale.js'
+import { useT } from '../../i18n/translator.js'
+import { MESSAGES } from '../../i18n/messages.js'
+import { threadDate } from './messagesText.js'
 import { formatPhone, telHref } from '../../utils/phone.js'
 import ReplyBox from './ReplyBox.vue'
 import ContactHistory from '../../modules/contacts/ContactHistory.vue'
 import FaIcon from '../FaIcon.vue'
 import { vAlertFocus } from '../../directives/alertFocus.js'
-import { toDate, isComposing } from '../../utils/text.js'
+import { isComposing } from '../../utils/text.js'
 import { LEAD_STATUSES, statusMeta } from '../../data/leadStatuses.js'
 import { can } from '../../composables/useAuth.js'
 import FollowUpReminders from '../../modules/reminders/FollowUpReminders.vue'
@@ -260,7 +266,8 @@ import ColorPickerButton from '../colors/ColorPickerButton.vue'
 import { entryColor } from '../colors/entryColorStore.js'
 import LeadAutomation from '../../modules/automation/LeadAutomation.vue'
 
-const formatCountry = (code) => countryLabel(code, adminLocale())
+const { t, lang } = useT(MESSAGES)
+const formatCountry = (code) => countryLabel(code, lang.value)
 
 const props = defineProps({
   submission: { type: Object, default: null },
@@ -332,7 +339,7 @@ async function removeNote(note) {
     await del(`/api/submissions/${props.submission.id}/notes/${note.id}`)
     emit('noteAdded') // reuse the refresh path so the log and count update
   } catch {
-    showActionError('Could not delete the note — please try again.')
+    showActionError(t('err.delete_note'))
   } finally {
     deletingNoteId.value = null
   }
@@ -347,7 +354,7 @@ async function addNote() {
     noteDraft.value = ''
     emit('noteAdded')
   } catch {
-    showActionError('Could not save the note — please try again.')
+    showActionError(t('err.save_note'))
   } finally {
     savingNote.value = false
   }
@@ -378,7 +385,7 @@ async function markUnread() {
     // stable control so keyboard/AT users don't get dropped to <body>.
     nextTick(() => archiveBtn.value?.focus())
   } catch {
-    showActionError('Could not mark as unread — please try again.')
+    showActionError(t('err.mark_unread'))
   } finally {
     markingUnread.value = false
   }
@@ -391,7 +398,7 @@ const threadItems = computed(() => {
     {
       type: 'user',
       id: `initial-${props.submission.id}`,
-      body: props.submission.message || '(no message provided)',
+      body: props.submission.message || t('detail.no_message'),
       timestamp: props.submission.created_at,
     },
     ...(props.submission.chat_messages || []).map(m => ({
@@ -422,26 +429,11 @@ async function toggleArchive() {
     await patch(`/api/submissions/${props.submission.id}/archive`, { archived: !wasArchived })
     emit('archived')
   } catch {
-    showActionError(wasArchived ? 'Could not move to inbox — please try again.' : 'Could not archive — please try again.')
+    showActionError(wasArchived ? t('err.move_inbox') : t('err.archive'))
   } finally {
     archiving.value = false
   }
 }
 
-function formatDate(dateStr) {
-  const d = toDate(dateStr)
-  if (!d) return ''
-  const now = new Date()
-  const isToday = d.toDateString() === now.toDateString()
-
-  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-
-  if (isToday) return `Today at ${time}`
-
-  const yesterday = new Date(now)
-  yesterday.setDate(yesterday.getDate() - 1)
-  if (d.toDateString() === yesterday.toDateString()) return `Yesterday at ${time}`
-
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ` at ${time}`
-}
+const formatDate = (value) => threadDate(value, new Date(), lang.value)
 </script>

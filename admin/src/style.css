@@ -388,3 +388,24 @@ textarea {
   .glass, .glass-float { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--glass-fill); }
 }
 }
+
+/* ===========================================================================
+   The language switch's strip (components/LanguageSwitch.vue).
+   While it shows, <html> has .lang-docked and every page is shortened by the
+   strip's height, so the switch never sits over a page's rows, reply box,
+   composer or bottom buttons. Pages are 100dvh tall (.h-dvh, scrolling
+   inside) or at least that (.min-h-dvh, the document scrolls, so <main>
+   also ends with the strip's height of space).
+   =========================================================================== */
+:root { --lang-dock: 0px; }
+.lang-docked { --lang-dock: calc(60px + env(safe-area-inset-bottom)); }
+@media (min-width: 640px) {
+  .lang-docked { --lang-dock: calc(68px + env(safe-area-inset-bottom)); }
+}
+.lang-docked #main { padding-bottom: var(--lang-dock); }
+.lang-docked #main > .h-dvh { height: calc(100dvh - var(--lang-dock)); }
+.lang-docked #main > .min-h-dvh { min-height: calc(100dvh - var(--lang-dock)); }
+.lang-dock {
+  height: var(--lang-dock);
+  padding-bottom: env(safe-area-inset-bottom);
+}

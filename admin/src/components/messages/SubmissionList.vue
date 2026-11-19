@@ -4,50 +4,50 @@
     <div class="p-5 border-b border-gray-100">
       <div class="flex items-center justify-between mb-4">
         <h2 class="font-ui font-semibold text-gray-900 text-sm tracking-wide">
-          {{ viewMode === 'archived' ? 'Archived' : 'Messages' }}
+          {{ viewMode === 'archived' ? t('list.archived') : t('list.messages') }}
           <span v-if="viewMode !== 'archived' && unreadCount > 0" class="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-brand-red text-white text-xs font-bold tabular-nums">
             {{ unreadCount }}
           </span>
         </h2>
-        <button ref="refreshBtn" @click="$emit('refresh')" :disabled="refreshing" class="p-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface transition-colors disabled:opacity-50" title="Refresh" aria-label="Refresh messages">
+        <button ref="refreshBtn" @click="$emit('refresh')" :disabled="refreshing" class="p-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface transition-colors disabled:opacity-50" :title="t('list.refresh')" :aria-label="t('list.refresh_aria')">
           <i class="fa-solid fa-rotate-right text-sm" :class="{ 'fa-spin': refreshing }" aria-hidden="true"></i>
         </button>
       </div>
 
       <!-- View toggle: Inbox / Archived -->
-      <div class="flex bg-brand-surface rounded-lg p-0.5 mb-3" role="group" aria-label="Folder">
+      <div class="flex bg-brand-surface rounded-lg p-0.5 mb-3" role="group" :aria-label="t('list.folder')">
         <button
           type="button"
           @click="$emit('changeView', 'inbox')"
           :aria-pressed="viewMode === 'inbox'"
           :class="viewMode === 'inbox' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
           class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-colors"
-        >Inbox</button>
+        >{{ t('inbox.tab.inbox') }}</button>
         <button
           type="button"
           @click="$emit('changeView', 'archived')"
           :aria-pressed="viewMode === 'archived'"
           :class="viewMode === 'archived' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
           class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-colors"
-        >Archived</button>
+        >{{ t('list.archived') }}</button>
       </div>
 
       <!-- Filter toggle (only in inbox view) -->
-      <div v-if="viewMode === 'inbox'" class="flex bg-brand-surface rounded-lg p-0.5" role="group" aria-label="Read state">
+      <div v-if="viewMode === 'inbox'" class="flex bg-brand-surface rounded-lg p-0.5" role="group" :aria-label="t('list.read_state')">
         <button
           type="button"
           @click="filter = 'all'"
           :aria-pressed="filter === 'all'"
           :class="filter === 'all' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
           class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-colors"
-        >All</button>
+        >{{ t('list.all') }}</button>
         <button
           type="button"
           @click="filter = 'unread'"
           :aria-pressed="filter === 'unread'"
           :class="filter === 'unread' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
           class="flex-1 text-xs font-ui font-medium py-1.5 rounded-md transition-colors"
-        >Unread</button>
+        >{{ t('list.unread') }}</button>
       </div>
 
       <!-- Search — the front desk is often on the phone with the person -->
@@ -56,11 +56,11 @@
         <input
           v-model="search"
           type="search"
-          placeholder="Search name, email or phone"
-          aria-label="Search leads by name, email or phone"
+          :placeholder="t('search.placeholder')"
+          :aria-label="t('list.search_aria')"
           class="w-full text-xs font-ui pl-8 pr-8 py-2 rounded-lg bg-brand-surface border border-gray-300 focus:bg-white text-gray-700 transition-colors"
         />
-        <button v-if="search" @click="search = ''" aria-label="Clear search"
+        <button v-if="search" @click="search = ''" :aria-label="t('search.clear')"
           class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-700">
           <i class="fa-solid fa-xmark text-xs" aria-hidden="true"></i>
         </button>
@@ -69,35 +69,35 @@
       <!-- Consultation type filter -->
       <div class="mt-3">
         <select v-model="consultationFilter"
-          aria-label="Filter by consultation type"
+          :aria-label="t('list.type_filter')"
           class="w-full text-xs font-ui font-medium px-3 py-2 rounded-lg bg-brand-surface border border-gray-300 focus:bg-white text-gray-700 transition-colors">
-          <option value="">All consultation types</option>
+          <option value="">{{ t('list.all_types') }}</option>
           <option v-for="key in CONSULTATION_KEYS" :key="key" :value="key">
-            {{ consultationLabel(key) }}
+            {{ consultationLabel(key, lang) }}
           </option>
         </select>
       </div>
 
       <!-- Pipeline at a glance: counts come from what's loaded, and clicking
            one narrows the list to that stage. -->
-      <div class="mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Status">
+      <div class="mt-3 flex flex-wrap gap-1.5" role="group" :aria-label="t('status.group')">
         <button
           type="button"
           @click="statusFilter = ''"
           :aria-pressed="statusFilter === ''"
           :class="statusFilter === '' ? 'bg-brand-navy text-white ring-brand-navy' : 'bg-brand-surface text-gray-600 ring-transparent hover:text-gray-900'"
           class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap tabular-nums transition-colors"
-        >All {{ props.submissions.length }}</button>
+        >{{ t('status.all', { count: props.submissions.length }) }}</button>
         <button
           v-for="st in LEAD_STATUSES"
           :key="st.key"
           type="button"
           @click="statusFilter = statusFilter === st.key ? '' : st.key"
-          :title="st.hint"
+          :title="t(`status.${st.key}.hint`)"
           :aria-pressed="statusFilter === st.key"
           :class="statusFilter === st.key ? 'bg-brand-navy text-white ring-brand-navy' : `${st.pill} hover:brightness-95`"
           class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap tabular-nums transition-colors"
-        >{{ st.label }} {{ statusCounts[st.key] || 0 }}</button>
+        >{{ t(`status.${st.key}`) }} {{ statusCounts[st.key] || 0 }}</button>
       </div>
     </div>
 
@@ -128,22 +128,22 @@
         <div class="flex items-start gap-3">
           <!-- Unread dot -->
           <div class="pt-1.5 w-2 flex-shrink-0">
-            <div v-if="!sub.is_read" class="w-2 h-2 rounded-full bg-brand-red"><span class="sr-only">Unread. </span></div>
+            <div v-if="!sub.is_read" class="w-2 h-2 rounded-full bg-brand-red"><span class="sr-only">{{ t('list.unread_sr') }}</span></div>
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-baseline justify-between gap-2 mb-1">
               <span :class="['font-ui text-sm truncate flex items-center gap-1.5', sub.is_read ? 'text-gray-700' : 'text-gray-900 font-semibold']">
-                <i v-if="sub.source === 'chat'" class="fa-solid fa-comment-dots text-brand-navy/60 text-[10px] flex-shrink-0" title="Chat session" aria-hidden="true"></i>
-                <span v-if="sub.source === 'chat'" class="sr-only">Chat session: </span>
+                <i v-if="sub.source === 'chat'" class="fa-solid fa-comment-dots text-brand-navy/60 text-[10px] flex-shrink-0" :title="t('list.chat')" aria-hidden="true"></i>
+                <span v-if="sub.source === 'chat'" class="sr-only">{{ t('list.chat_sr') }}</span>
                 <span class="truncate">{{ sub.first_name }} {{ sub.last_name }}</span>
               </span>
               <span class="text-xs text-gray-500 font-ui flex-shrink-0 tabular-nums">
-                {{ relativeTime(sub.created_at) }}
+                {{ relativeTime(sub.created_at, Date.now(), lang) }}
               </span>
             </div>
             <div class="flex items-center gap-2 mb-1">
               <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-brand-navy/10 text-brand-navy text-[10px] font-ui font-semibold uppercase tracking-wider">
-                {{ consultationLabel(sub.consultation_type) }}
+                {{ consultationLabel(sub.consultation_type, lang) }}
               </span>
               <span v-if="sub.location" class="text-[11px] text-gray-500 font-ui truncate">
                 <i class="fa-solid fa-location-dot text-[9px] mr-0.5" aria-hidden="true"></i>{{ formatCountry(sub.location) }}
@@ -151,7 +151,7 @@
             </div>
             <p class="text-xs text-gray-500 font-ui truncate leading-relaxed"
               :class="{ 'italic text-gray-500': !sub.message }">
-              {{ sub.message || '(no message)' }}
+              {{ sub.message || t('list.no_message') }}
             </p>
           </div>
         </div>
@@ -165,12 +165,12 @@
             @click.stop="openStatusFor = openStatusFor === sub.id ? null : sub.id"
             :disabled="!canManage"
             :aria-expanded="openStatusFor === sub.id"
-            :aria-label="`Change status for ${leadName(sub)}, currently ${statusMeta(sub.status).label}`"
+            :aria-label="t('status.change_for', { name: leadName(sub, t('lead.no_name')), status: t(`status.${statusMeta(sub.status).key}`) })"
             :class="statusMeta(sub.status).pill"
             class="inline-flex items-center gap-1.5 text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap transition-transform active:scale-95"
           >
             <span :class="statusMeta(sub.status).dot" class="w-1.5 h-1.5 rounded-full" aria-hidden="true"></span>
-            {{ statusMeta(sub.status).label }}
+            {{ t(`status.${statusMeta(sub.status).key}`) }}
             <i v-if="canManage" class="fa-solid fa-chevron-down text-[8px] opacity-60" aria-hidden="true"></i>
           </button>
 
@@ -184,8 +184,8 @@
             >
               <span :class="st.dot" class="w-2 h-2 rounded-full flex-shrink-0" aria-hidden="true"></span>
               <span class="flex-1 min-w-0">
-                <span class="block text-xs font-ui font-semibold text-gray-800">{{ st.label }}</span>
-                <span class="block text-[10px] text-gray-500 font-ui leading-tight">{{ st.hint }}</span>
+                <span class="block text-xs font-ui font-semibold text-gray-800">{{ t(`status.${st.key}`) }}</span>
+                <span class="block text-[10px] text-gray-500 font-ui leading-tight">{{ t(`status.${st.key}.hint`) }}</span>
               </span>
               <i v-if="sub.status === st.key" class="fa-solid fa-check text-[10px] text-brand-navy" aria-hidden="true"></i>
             </button>
@@ -194,8 +194,8 @@
 
         <button
           @click="$emit('openNotes', sub.id)"
-          :aria-label="`Notes for ${leadName(sub)}`"
-          :title="sub.note_count ? plural(sub.note_count, 'note') : 'Add a note'"
+          :aria-label="t('notes.for', { name: leadName(sub, t('lead.no_name')) })"
+          :title="sub.note_count ? t('notes.count', { count: sub.note_count }) : t('notes.add_title')"
           :class="sub.note_count ? 'text-brand-navy' : 'text-gray-500 hover:text-gray-600'"
           class="inline-flex items-center gap-1 text-[11px] font-ui font-semibold px-2 py-1 rounded-full hover:bg-brand-surface transition-colors"
         >
@@ -208,8 +208,8 @@
     </div>
       <!-- More leads exist than are loaded: say so, and load the next page. -->
     <div v-if="total != null && total > submissions.length" class="px-6 py-3 border-t border-gray-100 flex flex-wrap items-center gap-3 text-xs font-ui text-gray-600 flex-shrink-0" data-load-older>
-      <span>Showing the {{ submissions.length }} most recent of {{ total }}.</span>
-      <button type="button" @click="$emit('loadOlder')" :disabled="loadingOlder" class="font-semibold text-brand-navy underline disabled:opacity-50">{{ loadingOlder ? 'Loading…' : 'Load older' }}</button>
+      <span>{{ t('older.showing', { shown: submissions.length, total }) }}</span>
+      <button type="button" @click="$emit('loadOlder')" :disabled="loadingOlder" class="font-semibold text-brand-navy underline disabled:opacity-50">{{ loadingOlder ? t('older.loading') : t('older.load') }}</button>
     </div>
   </div>
 </template>
@@ -218,13 +218,17 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { CONSULTATION_KEYS, consultationLabel } from '../../data/consultationTypes.js'
 import { countryLabel } from '../../data/countries.js'
-import { adminLocale } from '../../utils/locale.js'
+import { useT } from '../../i18n/translator.js'
+import { MESSAGES } from '../../i18n/messages.js'
+import { relativeTime } from './messagesText.js'
 import { LEAD_STATUSES, statusMeta } from '../../data/leadStatuses.js'
 import { can } from '../../composables/useAuth.js'
-import { leadName, plural } from '../../utils/text.js'
+import { leadName } from '../../utils/text.js'
 import ColorPickerButton from '../colors/ColorPickerButton.vue'
 import { entryColor } from '../colors/entryColorStore.js'
 import { ensureEntryColorStyles } from '../../data/entryColors.js'
+
+const { t, lang } = useT(MESSAGES)
 
 // Status is shown to everyone who can read leads, changed only with crm.manage.
 const canManage = computed(() => can('crm.manage'))
@@ -285,16 +289,16 @@ onUnmounted(() => {
   document.removeEventListener('keydown', closeStatusMenu)
 })
 
-const formatCountry = (code) => countryLabel(code, adminLocale())
+const formatCountry = (code) => countryLabel(code, lang.value)
 
 const unreadCount = computed(() => props.submissions.filter(s => !s.is_read).length)
 
 // Nothing to show because nothing exists, or because the filters hide it.
 const filtering = computed(() => Boolean(search.value.trim() || consultationFilter.value || statusFilter.value))
 const emptyMessage = computed(() => {
-  if (filtering.value && props.submissions.length) return 'No messages match these filters.'
-  if (props.viewMode === 'archived') return 'No archived messages'
-  return filter.value === 'unread' ? 'No unread messages' : 'No messages yet'
+  if (filtering.value && props.submissions.length) return t('empty.filtered')
+  if (props.viewMode === 'archived') return t('empty.archived')
+  return filter.value === 'unread' ? t('empty.unread') : t('empty.none')
 })
 
 const filteredSubmissions = computed(() => {
@@ -328,20 +332,4 @@ const filteredSubmissions = computed(() => {
     return new Date(b.created_at) - new Date(a.created_at)
   })
 })
-
-function relativeTime(dateStr) {
-  const now = Date.now()
-  const then = new Date(dateStr).getTime()
-  const diff = now - then
-  const mins = Math.floor(diff / 60000)
-  const hours = Math.floor(diff / 3600000)
-  const days = Math.floor(diff / 86400000)
-
-  if (mins < 1) return 'Just now'
-  if (mins < 60) return `${mins}m ago`
-  if (hours < 24) return `${hours}h ago`
-  if (days === 1) return 'Yesterday'
-  if (days < 7) return `${days}d ago`
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
 </script>

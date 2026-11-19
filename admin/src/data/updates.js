@@ -23,6 +23,20 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'language-switch-everywhere',
+    at: '2026-11-20T00:00:00Z',
+    section: 'everyone',
+    any: [],
+    title: 'Switch the portal to Spanish from any page',
+    summary: 'The language switch is now at the bottom left of every page, and on the sign-in page, with a Mexican flag for Spanish (ES) and a US flag for English (EN).',
+    points: [
+      'Press ES for Spanish and EN for English. The portal remembers your choice on this computer.',
+      'Calls, Messages, WhatsApp, reminders, notes and history, and the top bar of every page are now in Spanish too, as well as Home. Billing and the administrator pages are still in English.',
+      'The switch has its own space at the bottom of the screen, so it never covers a message, a reply box or a button.',
+      'These update notes stay in English.',
+    ],
+  },
+  {
     id: 'custom-theme-colours',
     at: '2026-11-20T00:00:00Z',
     section: 'everyone',

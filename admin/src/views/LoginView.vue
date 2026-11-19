@@ -4,14 +4,14 @@
       <!-- Logo -->
       <div class="text-center mb-10">
         <img :src="LOGO_SRC" alt="Campos Muños Law" class="logo-on-page h-16 mx-auto mb-6" />
-        <h1 class="font-heading text-2xl text-brand-navy">Admin Portal</h1>
+        <h1 class="font-heading text-2xl text-brand-navy">{{ t('login.heading') }}</h1>
       </div>
 
       <!-- Login card -->
       <div class="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
         <form @submit.prevent="handleLogin" class="space-y-5">
           <div class="form-group">
-            <label for="admin-login-email" class="form-label">Email</label>
+            <label for="admin-login-email" class="form-label">{{ t('login.email') }}</label>
             <input
               id="admin-login-email"
               v-model="email"
@@ -24,7 +24,7 @@
           </div>
 
           <div class="form-group">
-            <label for="admin-login-password" class="form-label">Password</label>
+            <label for="admin-login-password" class="form-label">{{ t('login.password') }}</label>
             <input
               id="admin-login-password"
               ref="passwordRef"
@@ -42,8 +42,8 @@
             <!-- The hint is outside the label: inside it, it would be part of
                  the checkbox's name and then read again as its description. -->
             <div class="leading-snug">
-              <label for="admin-login-remember" class="block text-sm font-ui text-gray-700 cursor-pointer select-none">Keep me signed in on this computer</label>
-              <span id="admin-login-remember-hint" class="block text-xs font-ui text-gray-500">For 30 days. Leave it off on a shared computer.</span>
+              <label for="admin-login-remember" class="block text-sm font-ui text-gray-700 cursor-pointer select-none">{{ t('login.remember') }}</label>
+              <span id="admin-login-remember-hint" class="block text-xs font-ui text-gray-500">{{ t('login.remember_hint') }}</span>
             </div>
           </div>
 
@@ -59,15 +59,15 @@
             class="w-full bg-brand-navy text-white font-ui font-semibold tracking-wider text-sm py-4 rounded-xl btn-magnetic disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span v-if="loading">
-              <i class="fa-solid fa-spinner fa-spin mr-2" aria-hidden="true"></i>Signing in...
+              <i class="fa-solid fa-spinner fa-spin mr-2" aria-hidden="true"></i>{{ t('login.signing_in') }}
             </span>
-            <span v-else>Sign In</span>
+            <span v-else>{{ t('login.sign_in') }}</span>
           </button>
         </form>
       </div>
 
       <p class="text-center text-gray-500 text-xs font-ui mt-8">
-        Campos Mu&ntilde;os Law &mdash; Secure Admin Access
+        {{ t('login.footer') }}
       </p>
     </div>
   </div>
@@ -80,6 +80,10 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 import { safeNextPath } from '../utils/safeNext.js'
 import { readLoginEmail, saveLoginEmail } from '../utils/session.js'
+import { useT } from '../i18n/translator.js'
+import { PORTAL } from '../i18n/portal.js'
+
+const { t } = useT(PORTAL)
 
 const router = useRouter()
 const route = useRoute()
@@ -107,7 +111,7 @@ async function handleLogin() {
     // The guard redirects again if `next` is a screen this account cannot use.
     router.push(safeNextPath(route.query.next) || homeRoute())
   } catch (err) {
-    errorMsg.value = err.message || 'Invalid email or password'
+    errorMsg.value = err.message || t('login.invalid')
   } finally {
     loading.value = false
   }

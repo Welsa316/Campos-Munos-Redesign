@@ -1,6 +1,7 @@
-// Home's words in English and Spanish (the EN | ES switch on Home). Only
-// Home and its "My follow-ups" block use this; the rest of the portal is
-// English. Pure, tested in admin/test/portalLang.test.js.
+// Home's words in English and Spanish (the language switch at the bottom
+// left, components/LanguageSwitch.vue). Home and its "My follow-ups" block
+// use this; other sections have their own dictionary in i18n/. Pure, tested
+// in admin/test/portalLang.test.js.
 //
 // {name} placeholders are filled from vars. An entry with { one, other }
 // picks by vars.count. Every key must exist in both languages.
@@ -10,7 +11,6 @@ export const LANGS = ['en', 'es']
 export const DASHBOARD = {
   en: {
     'header.title': 'Home',
-    'lang.group': 'Language',
 
     'greeting.morning': 'Good morning',
     'greeting.afternoon': 'Good afternoon',
@@ -121,7 +121,6 @@ export const DASHBOARD = {
 
   es: {
     'header.title': 'Inicio',
-    'lang.group': 'Idioma',
 
     'greeting.morning': 'Buenos días',
     'greeting.afternoon': 'Buenas tardes',

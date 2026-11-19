@@ -4,36 +4,36 @@
        for the server before the list shows it. -->
   <section v-if="!compact || canSet || list.length" ref="box" :aria-labelledby="`${uid}-h`" class="font-ui">
     <div class="flex items-center gap-2">
-      <h3 :id="`${uid}-h`" :class="compact && !list.length && !form ? 'sr-only' : 'fr-label flex-1'">Reminders</h3>
+      <h3 :id="`${uid}-h`" :class="compact && !list.length && !form ? 'sr-only' : 'fr-label flex-1'">{{ t('list.heading') }}</h3>
       <button v-if="canSet && !form" type="button" data-reminder-trigger @click="openForm(null)" ref="addBtn"
-        class="fr-btn fr-quiet"><FaIcon name="bell" />Remind me</button>
+        class="fr-btn fr-quiet"><FaIcon name="bell" />{{ t('list.remind_me') }}</button>
     </div>
 
     <ul v-if="list.length" class="mt-2 space-y-2">
       <li v-for="r in list" :key="r.id" :data-entry-color="entryColor('reminder', r.id, r.color) || undefined" :class="STATE_BOX[dueState(r, now)]" class="rounded-xl px-3.5 py-3">
         <template v-if="form?.reminder?.id !== r.id">
           <div class="flex flex-wrap items-start gap-x-3 gap-y-2">
-            <div class="min-w-0 flex-1">
+            <div class="min-w-0 flex-[1_1_14rem]">
               <p class="text-[13.5px] text-gray-900">
                 <FaIcon name="clock" :class="dueState(r, now) === 'upcoming' ? 'text-gray-400' : 'text-amber-700'" class="mr-1.5" />
-                <span class="font-semibold tabular-nums">{{ dueLine(r, now) }}</span>
-                <span class="text-gray-600"> · {{ r.assignee.id === meId ? 'you' : r.assignee.name }}</span>
+                <span class="font-semibold tabular-nums">{{ dueLine(r, now, lang) }}</span>
+                <span class="text-gray-600"> · {{ r.assignee.id === meId ? t('list.you') : r.assignee.name }}</span>
               </p>
               <p v-if="r.note" class="mt-1 text-[13px] text-gray-700 whitespace-pre-wrap break-words">{{ r.note }}</p>
               <p v-if="deliveryText(r)" class="mt-1 text-[12px]" :class="deliveryProblem(r) ? 'text-brand-red' : 'text-gray-500'">{{ deliveryText(r) }}</p>
             </div>
             <div v-if="canSet" class="flex items-center gap-1.5">
               <ColorPickerButton icon-only kind="reminder" :id="r.id" :color="r.color" :targets="[r]" />
-              <button type="button" @click="openForm(r)" :data-reminder-edit="r.id" class="fr-btn fr-quiet" :aria-label="`Change the reminder due ${dueLine(r, now)}`"><FaIcon name="pen" />Edit</button>
-              <button type="button" @click="finish(r, 'complete')" :disabled="busyId === r.id" class="fr-btn fr-quiet" :aria-label="`Mark the reminder due ${dueLine(r, now)} done`"><FaIcon name="check" />Done</button>
-              <button type="button" @click="finish(r, 'cancel')" :disabled="busyId === r.id" class="fr-btn fr-quiet" :aria-label="`Cancel the reminder due ${dueLine(r, now)}`"><FaIcon name="xmark" />Cancel</button>
+              <button type="button" @click="openForm(r)" :data-reminder-edit="r.id" class="fr-btn fr-quiet" :aria-label="t('list.edit_label', { when: dueLine(r, now, lang) })"><FaIcon name="pen" />{{ t('list.edit') }}</button>
+              <button type="button" @click="finish(r, 'complete')" :disabled="busyId === r.id" class="fr-btn fr-quiet" :aria-label="t('list.done_label', { when: dueLine(r, now, lang) })"><FaIcon name="check" />{{ t('list.done') }}</button>
+              <button type="button" @click="finish(r, 'cancel')" :disabled="busyId === r.id" class="fr-btn fr-quiet" :aria-label="t('list.cancel_label', { when: dueLine(r, now, lang) })"><FaIcon name="xmark" />{{ t('list.cancel') }}</button>
             </div>
           </div>
         </template>
         <ReminderPopover v-else :target="target" :reminder="r" @close="closeForm" @saved="afterSave" />
       </li>
     </ul>
-    <p v-else-if="!form && !compact" class="mt-1 text-[13px] text-gray-600">{{ loading ? 'Loading…' : 'No reminder set.' }}</p>
+    <p v-else-if="!form && !compact" class="mt-1 text-[13px] text-gray-600">{{ loading ? t('list.loading') : t('list.none') }}</p>
 
     <ReminderPopover v-if="form && !form.reminder" class="mt-2" :target="target" @close="closeForm" @saved="afterSave" />
     <p v-if="error" role="alert" class="mt-2 text-[12.5px] text-brand-red">{{ error }}</p>
@@ -51,6 +51,8 @@ import { deliveryNote } from './reminderText.js'
 import { toast } from '../../composables/useToast.js'
 import ColorPickerButton from '../../components/colors/ColorPickerButton.vue'
 import { entryColor, settleEntryColors } from '../../components/colors/entryColorStore.js'
+import { useT } from '../../i18n/translator.js'
+import { REMINDERS } from '../../i18n/reminders.js'
 
 const props = defineProps({
   // { kind: 'call' | 'submission', id }
@@ -65,6 +67,7 @@ const emit = defineEmits(['changed'])
 const uid = `fr-${useId()}`
 const addBtn = ref(null)
 const box = ref(null)
+const { t, lang } = useT(REMINDERS)
 
 const own = ref([])
 const loading = ref(false)
@@ -118,11 +121,15 @@ function closeForm() {
 async function afterSave(r, { created }) {
   const id = form.value?.reminder?.id
   form.value = null
-  toast({ text: created ? `Reminder set for ${formatWhen(r)}.` : `Reminder changed to ${formatWhen(r)}.` })
+  toast({ text: t(created ? 'toast.set' : 'toast.changed', { when: formatWhen(r) }) })
   await refresh()
   focusBack(id)
 }
-const formatWhen = (r) => dueLine(r, Date.now()).replace(/^Due now$/, 'now')
+// "Reminder set for now." rather than "for Due now."
+const formatWhen = (r) => {
+  const line = dueLine(r, Date.now(), lang.value)
+  return line === t('due.now') ? t('list.now') : line
+}
 
 async function finish(r, how) {
   if (busyId.value) return
@@ -130,12 +137,12 @@ async function finish(r, how) {
   error.value = ''
   try {
     await (how === 'complete' ? remindersApi.complete(r.id, r.version) : remindersApi.cancel(r.id, r.version))
-    toast({ text: how === 'complete' ? 'Reminder done.' : 'Reminder cancelled.' })
+    toast({ text: t(how === 'complete' ? 'toast.done' : 'toast.cancelled') })
     await refresh()
     // Its row went, with the button that had focus.
     focusBack(null)
   } catch (e) {
-    error.value = e.code === 'conflict' ? 'Someone else changed this reminder meanwhile. Check it and try again.' : e.message
+    error.value = e.code === 'conflict' ? t('list.conflict') : e.message
     await refresh()
   } finally {
     busyId.value = null
@@ -146,7 +153,7 @@ async function refresh() {
   emit('changed')
 }
 
-const deliveryText = (r) => deliveryNote(r, formatTime)
+const deliveryText = (r) => deliveryNote(r, (at) => formatTime(at, lang.value), lang.value)
 const deliveryProblem = (r) => ['failed', 'skipped_no_email'].includes(r.delivery?.email?.status) && !r.delivery?.email?.nextAttemptAt
 const STATE_BOX = { upcoming: 'bg-gray-50 ring-1 ring-gray-200', due: 'bg-amber-50 ring-1 ring-amber-200', overdue: 'bg-amber-50 ring-1 ring-amber-300' }
 </script>

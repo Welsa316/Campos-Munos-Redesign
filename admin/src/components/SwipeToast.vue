@@ -20,9 +20,9 @@
         @keydown.esc="close(t)">
         <FaIcon :name="t.tone === 'error' ? 'circle-exclamation' : t.tone === 'info' ? 'circle-info' : 'circle-check'" class="flex-shrink-0" />
         <span class="flex-1 min-w-0">{{ t.text }}</span>
-        <button v-if="t.undo" type="button" @click="runUndo(t)" class="min-h-9 px-2 font-semibold underline">Undo</button>
+        <button v-if="t.undo" type="button" @click="runUndo(t)" class="min-h-9 px-2 font-semibold underline">{{ tr('toast.undo') }}</button>
         <button v-if="t.action" type="button" @click="runAction(t)" class="min-h-9 px-2 font-semibold underline">{{ t.action.label }}</button>
-        <button type="button" @click="close(t)" aria-label="Dismiss" class="w-9 h-9 -mr-2 inline-flex items-center justify-center rounded-lg hover:bg-white/10"><FaIcon name="xmark" /></button>
+        <button type="button" @click="close(t)" :aria-label="tr('toast.dismiss')" class="w-9 h-9 -mr-2 inline-flex items-center justify-center rounded-lg hover:bg-white/10"><FaIcon name="xmark" /></button>
       </div>
     </TransitionGroup>
   </div>
@@ -32,6 +32,10 @@
 import { ref, reactive, nextTick } from 'vue'
 import FaIcon from './FaIcon.vue'
 import { toasts, toastQueue, toast } from '../composables/useToast.js'
+import { useT } from '../i18n/translator.js'
+import { PORTAL } from '../i18n/portal.js'
+
+const { t: tr } = useT(PORTAL)
 
 const REGIONS = [
   { key: 'alerts', role: 'alert', live: 'assertive', items: () => toasts.items.filter((t) => t.tone === 'error') },
@@ -84,17 +88,19 @@ function endDrag(t) {
 function cancelDrag(t) { if (drag.id === t.id) { drag.id = null; toastQueue.release(t.id) } }
 async function runAction(t) {
   keepFocus(t.id)
-  try { await toastQueue.act(t.id) } catch (e) { toast({ text: e.message || 'Could not open that.', tone: 'error' }) }
+  try { await toastQueue.act(t.id) } catch (e) { toast({ text: e.message || tr('toast.open_failed'), tone: 'error' }) }
 }
 async function runUndo(t) {
   keepFocus(t.id)
-  try { await toastQueue.undo(t.id) } catch (e) { toast({ text: e.message || 'Could not undo that.', tone: 'error' }) }
+  try { await toastQueue.undo(t.id) } catch (e) { toast({ text: e.message || tr('toast.undo_failed'), tone: 'error' }) }
 }
 </script>
 
 <style scoped>
-.toast-stack { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
-@media (min-width: 640px) { .toast-stack { padding-bottom: max(24px, env(safe-area-inset-bottom)); } }
+/* Above the language switch's strip (--lang-dock, style.css), so a toast
+   never hides the switch. */
+.toast-stack { padding-bottom: calc(var(--lang-dock, 0px) + max(16px, env(safe-area-inset-bottom))); }
+@media (min-width: 640px) { .toast-stack { padding-bottom: calc(var(--lang-dock, 0px) + max(24px, env(safe-area-inset-bottom))); } }
 .toast-card { transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease; }
 .swipe-toast-enter-active { transition: opacity 220ms ease, transform 320ms cubic-bezier(0.22, 1, 0.36, 1); }
 .swipe-toast-leave-active { transition: opacity 180ms ease, transform 220ms ease-in; }
