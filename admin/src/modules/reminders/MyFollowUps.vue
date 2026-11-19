@@ -4,21 +4,21 @@
        has opened. Each row opens the record; View all opens the full lists. -->
   <section aria-labelledby="my-follow-ups-h" class="font-ui">
     <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-1">
-      <h2 id="my-follow-ups-h" class="font-ui text-[17px] font-semibold tracking-tight text-gray-900">My follow-ups</h2>
+      <h2 id="my-follow-ups-h" class="font-ui text-[17px] font-semibold tracking-tight text-gray-900">{{ t('fu.heading') }}</h2>
       <div class="ml-auto flex items-center gap-1 text-[13px]">
-        <span class="text-gray-600">View all:</span>
-        <router-link v-if="sections.calls" :to="{ name: 'Calls' }" class="mf-link">Needs attention</router-link>
+        <span class="text-gray-600">{{ t('fu.view_all') }}</span>
+        <router-link v-if="sections.calls" :to="{ name: 'Calls' }" class="mf-link">{{ t('fu.needs_attention') }}</router-link>
         <span v-if="sections.calls && sections.leads" class="text-gray-400" aria-hidden="true">·</span>
-        <router-link v-if="sections.leads" :to="{ name: 'Inbox' }" class="mf-link">Messages</router-link>
+        <router-link v-if="sections.leads" :to="{ name: 'Inbox' }" class="mf-link">{{ t('fu.messages') }}</router-link>
       </div>
     </div>
 
     <div class="mt-2 glass rounded-[24px] overflow-hidden">
-      <p v-if="error && !items.length" class="px-5 py-4 text-[13px] text-gray-600">Could not load your follow-ups. Reload the page to try again.</p>
+      <p v-if="error && !items.length" class="px-5 py-4 text-[13px] text-gray-600">{{ t('fu.error') }}</p>
       <p v-else-if="loaded && !items.length" class="flex items-center gap-2.5 px-5 py-4 text-[13.5px] text-gray-700">
-        <FaIcon name="circle-check" class="text-green-700" />Nothing waiting for you right now.
+        <FaIcon name="circle-check" class="text-green-700" />{{ t('fu.empty') }}
       </p>
-      <div v-else-if="!loaded" class="px-5 py-4 text-[13px] text-gray-500" aria-busy="true">Loading…</div>
+      <div v-else-if="!loaded" class="px-5 py-4 text-[13px] text-gray-500" aria-busy="true">{{ t('fu.loading') }}</div>
       <ul v-else class="divide-y divide-gray-100">
         <li v-for="item in rows" :key="item.key">
           <router-link :to="item.path"
@@ -35,8 +35,8 @@
         </li>
       </ul>
       <p v-if="hasMore" class="px-5 py-2.5 border-t border-gray-100 text-[12.5px] text-gray-600">
-        More waiting:
-        <router-link v-if="sections.calls" :to="{ name: 'Calls' }" class="mf-link">Needs attention</router-link><template v-if="sections.calls && sections.leads"> and </template><router-link v-if="sections.leads" :to="{ name: 'Inbox' }" class="mf-link">Messages</router-link>.
+        {{ t('fu.more') }}
+        <router-link v-if="sections.calls" :to="{ name: 'Calls' }" class="mf-link">{{ t('fu.needs_attention') }}</router-link><template v-if="sections.calls && sections.leads">{{ t('fu.and') }}</template><router-link v-if="sections.leads" :to="{ name: 'Inbox' }" class="mf-link">{{ t('fu.messages') }}</router-link>.
       </p>
     </div>
   </section>
@@ -48,8 +48,11 @@ import FaIcon from '../../components/FaIcon.vue'
 import { useApi, latestOnly } from '../../composables/useApi.js'
 import { useVisiblePoll } from '../../composables/useVisiblePoll.js'
 import { workItemText } from './workQueueText.js'
+import { usePortalLang } from '../../composables/usePortalLang.js'
 
 const { get } = useApi()
+// Shown on Home, so it follows Home's EN | ES switch.
+const { lang, t } = usePortalLang()
 const items = ref([])
 const hasMore = ref(false)
 const sections = ref({ calls: false, leads: false })
@@ -57,7 +60,7 @@ const loaded = ref(false)
 const error = ref(false)
 const now = ref(Date.now())
 
-const rows = computed(() => items.value.map((it, i) => ({ ...it, ...workItemText(it, now.value), key: `${it.kind}-${it.reminderId ?? it.path}-${i}` })))
+const rows = computed(() => items.value.map((it, i) => ({ ...it, ...workItemText(it, now.value, lang.value), key: `${it.kind}-${it.reminderId ?? it.path}-${i}` })))
 
 const latest = latestOnly()
 async function load() {
