@@ -277,6 +277,7 @@ import CallDetailCard from './CallDetailCard.vue'
 import { toast } from '../../composables/useToast.js'
 import { episodeSections, reviewSection, handledSections, daySections, animateChange, when } from './callsInbox.js'
 import { remindersApi } from '../reminders/remindersApi.js'
+import { settleEntryColors } from '../../components/colors/entryColorStore.js'
 import { remindersForEpisode } from '../reminders/reminderText.js'
 import { dueLine } from '../reminders/dueChoices.js'
 
@@ -452,8 +453,10 @@ async function load({ quiet = false } = {}) {
     if (personFilter.value) params.set('person', personFilter.value)
     // A slow answer for an earlier view is dropped. Reminders come with each
     // load: the change stamp moves when one is set, changed or closed.
+    const started = Date.now()
     const r = await latestCalls(() => get(`/api/calls?${params}`))
     if (!r.current) return
+    settleEntryColors('caller', started)
     loadReminders()
     const data = r.value
     // Same view: animate the few rows that changed. New view: no row motion.
@@ -519,8 +522,9 @@ const reminders = ref([])
 const latestReminders = latestOnly()
 async function loadReminders() {
   try {
+    const started = Date.now()
     const r = await latestReminders(() => remindersApi.forCalls())
-    if (r.current) reminders.value = r.value.reminders || []
+    if (r.current) { reminders.value = r.value.reminders || []; settleEntryColors('reminder', started) }
   } catch { /* the list still works; the next load tries again */ }
 }
 // The Remind me panel open on one row (its latest call's id).
