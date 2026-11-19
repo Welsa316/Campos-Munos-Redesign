@@ -40,7 +40,7 @@
       <p v-else-if="!summary && c.direction === 'inbound' && !c.offeredTo.length && c.firm.extension" class="mt-0.5 pl-3.5 text-[12px] text-gray-500">
         Dialled {{ who({ name: c.firm.name, extension: c.firm.extension }) }}
       </p>
-      <!-- A callback reminder on this caller: the soonest, and how many more. -->
+      <!-- A reminder on this caller (or, outside Needs attention, this call): the soonest, and how many more. -->
       <p v-if="nextReminder" :class="reminderState === 'upcoming' ? 'text-gray-600' : 'text-amber-800 font-semibold'" class="mt-1 pl-3.5 text-[12.5px] flex items-center gap-1.5" data-reminder-chip>
         <FaIcon name="bell" class="text-[11px]" />
         <span class="tabular-nums">{{ dueLine(nextReminder, now) }} · {{ nextReminder.assignee.name }}<span v-if="reminders.length > 1" class="font-normal text-gray-500"> · +{{ reminders.length - 1 }} more</span></span>
@@ -81,14 +81,14 @@
           <div v-if="menuOpen" :id="`call-menu-${c.id}`" role="menu" :aria-label="`Actions for ${displayName}`" @keydown="onMenuKey"
             class="absolute right-0 top-full mt-1.5 z-30 w-56 rounded-xl bg-white ring-1 ring-gray-200 shadow-lg py-1 text-[13px]">
             <button type="button" role="menuitem" class="menu-item" @click="$emit('open', c, menuTrigger())"><FaIcon name="circle-info" />Call details</button>
-            <button v-if="canRemind && open" type="button" role="menuitem" class="menu-item" @click="$emit('remind', c)"><FaIcon name="bell" />{{ nextReminder ? 'Add a reminder…' : 'Remind me…' }}</button>
+            <button v-if="canRemind" type="button" role="menuitem" class="menu-item" @click="$emit('remind', c)"><FaIcon name="bell" />{{ nextReminder ? 'Add a reminder…' : 'Remind me…' }}</button>
             <button v-if="canExclude && canMark && !c.exclusion && !c.handled" type="button" role="menuitem" class="menu-item" @click="$emit('exclude', c)"><FaIcon name="ban" />No callback needed</button>
             <button v-if="canExclude && c.exclusion" type="button" role="menuitem" class="menu-item" @click="$emit('count-again', c)"><FaIcon name="rotate-left" />{{ c.exclusion.scope === 'number' ? 'Count this number again' : 'Count it again' }}</button>
             <button v-if="canExclude && c.handled" type="button" role="menuitem" class="menu-item" @click="$emit('reopen', c)"><FaIcon name="rotate-left" />Reopen follow-up</button>
             <router-link v-if="c.lead && canSeeLeads" role="menuitem" class="menu-item" :to="{ name: 'Inbox', query: { lead: c.lead.id } }"><FaIcon name="inbox" />Open website lead</router-link>
           </div>
         </Transition>
-        <ReminderPopover v-if="remindOpen" floating :target="{ kind: 'call', id: episode.id }"
+        <ReminderPopover v-if="remindOpen" floating :target="{ kind: 'call', id: episode?.id ?? c.id }"
           @close="$emit('remind-close')" @saved="(r, how) => $emit('reminded', r, how)" />
       </div>
     </div>

@@ -88,11 +88,22 @@
             <div v-if="filtersOpen" id="calls-filters" class="px-4 sm:px-5 py-4 border-b border-gray-100 bg-gray-50/60 flex flex-wrap items-end gap-x-5 gap-y-3 text-[13px]">
               <div v-if="tab === 'all'">
                 <p class="flabel" id="calls-range-label">Date range</p>
-                <div class="inline-flex bg-white rounded-lg ring-1 ring-gray-200 p-0.5" role="group" aria-labelledby="calls-range-label">
-                  <button v-for="r in RANGES" :key="r.key" type="button" @click="range = r.key" :aria-pressed="range === r.key"
+                <div class="inline-flex flex-wrap bg-white rounded-lg ring-1 ring-gray-200 p-0.5" role="group" aria-labelledby="calls-range-label">
+                  <button v-for="r in RANGES" :key="r.key" type="button" @click="range = r.key" :aria-pressed="range === r.key" :data-range="r.key"
                     :class="range === r.key ? 'bg-brand-navy text-white' : 'text-gray-600 hover:text-gray-900'"
                     class="min-h-10 sm:min-h-8 px-3 rounded-md text-[12px] font-semibold transition-colors">{{ r.label }}</button>
                 </div>
+              </div>
+              <!-- Any two days within the last 12 months (calls are kept that long). -->
+              <div v-if="tab === 'all' && range === 'custom'" class="flex flex-wrap items-end gap-3" data-custom-range>
+                <label class="block">
+                  <span class="flabel">From</span>
+                  <input v-model="customFrom" type="date" :min="oldestDay" :max="customTo || todayKey" class="fselect" data-range-from />
+                </label>
+                <label class="block">
+                  <span class="flabel">To</span>
+                  <input v-model="customTo" type="date" :min="customFrom || oldestDay" :max="todayKey" class="fselect" data-range-to />
+                </label>
               </div>
               <!-- Outcomes, each with its count for the range; pressing one
                    again goes back to every call. -->
@@ -184,12 +195,20 @@
                   <CallRow v-else-if="r.type === 'call'" :c="r.call" :episode="r.episode" :now="now" :show-day="tab === 'attention'"
                     :can-call="canCall" :can-exclude="canExclude" :can-see-leads="canSeeLeads" :can-mark="canMark(r.call)"
                     :busy="busyId === r.call.id" :menu-open="menuId === r.call.id"
-                    :reminders="r.episode ? remindersForEpisode(reminders, r.episode) : []" :can-remind="canRemind && Boolean(r.episode)" :remind-open="remindId === r.call.id"
+                    :reminders="remindersForEpisode(reminders, r.episode || { callIds: [r.call.id] })" :can-remind="canRemind && Boolean(r.call.number)" :remind-open="remindId === r.call.id"
                     @remind="startRemind" @remind-close="closeRemind" @reminded="afterRemind"
                     @open="(c, el) => openDetail(c, el, r.episode)" @callback="openCall" @handled="(c) => markHandled(c, r.episode)" @menu="toggleMenu"
                     @exclude="(c) => startExclude(c, r.episode)" @count-again="countAgain" @reopen="reopen" />
                 </li>
               </TransitionGroup>
+            </div>
+
+            <!-- A long range comes in pages: the next one after the oldest call shown. -->
+            <div v-if="tab === 'all' && truncated && rows.length" class="px-4 sm:px-5 py-3 border-t border-gray-100 flex justify-center">
+              <button type="button" @click="loadOlder" :disabled="loadingOlder" :aria-busy="loadingOlder" data-load-older
+                class="inline-flex items-center gap-2 min-h-11 px-4 rounded-xl ring-1 ring-gray-200 bg-white text-[13px] font-semibold text-brand-navy hover:bg-gray-50 disabled:opacity-60">
+                <FaIcon :name="loadingOlder ? 'spinner' : 'chevron-down'" :spin="loadingOlder" />{{ loadingOlder ? 'Loading…' : 'Show older calls' }}
+              </button>
             </div>
 
             <div class="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 sm:px-5 py-3 border-t border-gray-100 text-[12px] text-gray-600">
@@ -213,7 +232,7 @@
             {{ counts.excluded }} {{ counts.excluded === 1 ? 'call was' : 'calls were' }} marked as needing no callback and {{ counts.excluded === 1 ? 'is' : 'are' }} left out of these counts.
             <button type="button" @click="filter = 'excluded'" class="font-semibold text-brand-navy underline">Show {{ counts.excluded === 1 ? 'it' : 'them' }}</button>
           </p>
-          <p v-if="truncated" class="text-gray-500">Showing the most recent calls in this range. Narrow the range or search to see older ones.</p>
+          <p v-if="truncated" class="text-gray-500">Showing the most recent {{ calls.length }} calls in this range.</p>
         </div>
         <p v-else-if="truncated" class="text-[12.5px] text-gray-500">Showing the {{ calls.length }} most recent open calls. Search for a caller to find an older one.</p>
 
@@ -241,7 +260,8 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
-import { zoneMidnight, zoneMidnightDaysAgo } from '../../utils/firmTime.js'
+import { firmDateKey, zoneMidnightDaysAgo } from '../../utils/firmTime.js'
+import { RANGES, RANGE_KEYS, KEEP_DAYS, rangeBounds, rangeLabel, customDays } from './callRanges.js'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../../composables/useAuth.js'
 import { useApi, latestOnly } from '../../composables/useApi.js'
@@ -270,18 +290,17 @@ const TABS = [
   { key: 'handled', label: 'Handled' },
   { key: 'all', label: 'All calls' },
 ]
-const RANGES = [
-  { key: 'today', label: 'Today' },
-  { key: 'yesterday', label: 'Yesterday' },
-  { key: 'week', label: '7 days' },
-  { key: 'month', label: '30 days' },
-]
 // Needs attention looks back this far (server: ATTENTION_DAYS).
 const ATTENTION_DAYS = 90
 
 // The Home card opens /calls?range=month&filter=unanswered&hours=business:
 // a narrowed All calls. Without one, the page opens on Needs attention.
 const range = ref('today')
+// The two days of a "Dates…" range (YYYY-MM-DD, New Orleans days).
+const customFrom = ref('')
+const customTo = ref('')
+const todayKey = firmDateKey(Date.now())
+const oldestDay = firmDateKey(zoneMidnightDaysAgo(KEEP_DAYS - 1))
 // The filters and the unanswered set come from the API with each list
 // (server: OUTCOME_FILTERS, UNANSWERED_CLASSES), so the page never keeps its
 // own copy to fall out of step. An unknown filter in a link is reset once
@@ -294,7 +313,12 @@ const businessHours = ref(false)
 const tab = ref('attention')
 const filtersOpen = ref(false)
 function fromLink(q) {
-  range.value = ['today', 'yesterday', 'week', 'month'].includes(q.range) ? q.range : 'today'
+  range.value = RANGE_KEYS.includes(q.range) ? q.range : 'today'
+  if (range.value === 'custom') {
+    const d = customDays({ from: q.from, to: q.to })
+    customFrom.value = d.from
+    customTo.value = d.to
+  }
   filter.value = typeof q.filter === 'string' && /^[a-z_]{1,20}$/.test(q.filter) ? q.filter : 'all'
   personFilter.value = typeof q.person === 'string' && /^\d+$/.test(q.person) ? q.person : ''
   businessHours.value = q.hours === 'business'
@@ -339,7 +363,9 @@ const canRefresh = computed(() => configured.value && connection.value === 'conn
 const canExclude = computed(() => can('calls.exclude'))
 // Clearing the whole list at once (calls.clear, administrators).
 const canClear = computed(() => can('calls.clear'))
-// Callback reminders on a caller (calls.exclude, the same as marking them handled).
+// Reminders on a call (calls.exclude, the same as marking calls handled). Any
+// call with a number can have one; on a caller waiting in Needs attention it
+// closes by itself once they are called back or marked handled.
 const canRemind = computed(() => can('calls.exclude'))
 const clearing = ref(false)
 // Only calls counted as missed can be marked as needing no callback: a
@@ -357,7 +383,8 @@ function openCall(c = null) {
 
 // What the list shows. Changing it swaps the list in one fade; within one
 // view, a reload animates only the rows that changed.
-const viewKey = computed(() => [tab.value, tab.value === 'all' ? range.value : '', tab.value === 'all' ? filter.value : '', personFilter.value, businessHours.value, searched.value].join('|'))
+const customKey = computed(() => (range.value === 'custom' ? `${customFrom.value}~${customTo.value}` : ''))
+const viewKey = computed(() => [tab.value, tab.value === 'all' ? range.value : '', tab.value === 'all' ? customKey.value : '', tab.value === 'all' ? filter.value : '', personFilter.value, businessHours.value, searched.value].join('|'))
 const renderedKey = ref('')
 const animateRows = ref(false)
 
@@ -402,17 +429,6 @@ const rows = computed(() => {
 })
 const visibleCalls = computed(() => rows.value.filter((r) => r.type === 'call').map((r) => r.call))
 
-// Days start at midnight in New Orleans (the page says so), not in the
-// browser's own time zone.
-function rangeBounds(key) {
-  const start = zoneMidnight()
-  const soon = new Date(Date.now() + 60 * 1000)
-  if (key === 'yesterday') return { from: zoneMidnightDaysAgo(1), to: start }
-  if (key === 'week') return { from: zoneMidnightDaysAgo(6), to: soon }
-  if (key === 'month') return { from: zoneMidnightDaysAgo(29), to: soon }
-  return { from: start, to: soon }
-}
-
 const latestCalls = latestOnly()
 async function load({ quiet = false } = {}) {
   if (!quiet) loading.value = true
@@ -426,7 +442,7 @@ async function load({ quiet = false } = {}) {
       params.set('outcome', tab.value)
       params.set('limit', '500')
     } else {
-      const { from, to } = rangeBounds(range.value)
+      const { from, to } = rangeBounds(range.value, { from: customFrom.value, to: customTo.value })
       params.set('from', from.toISOString())
       params.set('to', to.toISOString())
       params.set('outcome', filter.value)
@@ -470,6 +486,33 @@ async function load({ quiet = false } = {}) {
   }
 }
 
+// "Show older calls": the next page of a long range, after the oldest call
+// shown. A reload of the view starts again from the newest.
+const loadingOlder = ref(false)
+async function loadOlder() {
+  const last = calls.value[calls.value.length - 1]
+  if (!last || loadingOlder.value || tab.value !== 'all') return
+  loadingOlder.value = true
+  const key = viewKey.value
+  try {
+    const { from, to } = rangeBounds(range.value, { from: customFrom.value, to: customTo.value })
+    const params = new URLSearchParams({ from: from.toISOString(), to: to.toISOString(), outcome: filter.value, beforeAt: last.startedAt, beforeId: String(last.id) })
+    if (searched.value) params.set('q', searched.value)
+    if (businessHours.value) params.set('businessHours', '1')
+    if (personFilter.value) params.set('person', personFilter.value)
+    const data = await get(`/api/calls?${params}`)
+    // The view changed meanwhile: this page belongs to the old one.
+    if (key !== viewKey.value) return
+    const seen = new Set(calls.value.map((c) => c.id))
+    calls.value = [...calls.value, ...data.calls.filter((c) => !seen.has(c.id))]
+    truncated.value = data.truncated
+  } catch (e) {
+    toast({ text: `Could not load older calls: ${e.message}`, tone: 'error' })
+  } finally {
+    loadingOlder.value = false
+  }
+}
+
 // --- callback reminders -----------------------------------------------------------
 
 const reminders = ref([])
@@ -507,8 +550,12 @@ function openPendingCall() {
   router.replace({ query: Object.fromEntries(Object.entries(route.query).filter(([k]) => k !== 'call')) })
   const ep = allEpisodes.value.find((e) => e.callIds.includes(id) || e.id === id)
   const c = ep ? callById.value.get(ep.latestCallId) : null
-  if (c) openDetail(c, null, ep)
-  else toast({ text: 'That caller no longer needs a call back. Find the call under All calls or Handled.', tone: 'info' })
+  if (c) { openDetail(c, null, ep); return }
+  // Not waiting in Needs attention (a reminder set on any other call): the
+  // call on its own.
+  get(`/api/calls/${id}`)
+    .then((d) => { if (d?.call) openDetail(d.call, null) })
+    .catch(() => toast({ text: 'That call is no longer in the call log.', tone: 'info' }))
 }
 // A reminder's Open while this page is already showing.
 watch(() => route.query.call, (v) => {
@@ -567,6 +614,13 @@ function clearNarrowing() {
 }
 const activeFilters = computed(() => (tab.value === 'all' && filter.value !== 'all' ? 1 : 0) + (personFilter.value ? 1 : 0) + (businessHours.value ? 1 : 0))
 
+// Choosing "Dates…" starts from the last 30 days until two days are picked.
+watch(range, (k) => {
+  if (k !== 'custom' || (customFrom.value && customTo.value)) return
+  const d = customDays({ from: customFrom.value, to: customTo.value })
+  customFrom.value = d.from
+  customTo.value = d.to
+})
 watch(viewKey, () => load())
 let searchTimer = null
 watch(search, () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { searched.value = search.value.trim() }, 300) })
@@ -848,9 +902,9 @@ const listSummary = computed(() => {
 })
 const scopeLabel = computed(() => {
   if (tab.value !== 'all') return `last ${ATTENTION_DAYS} days`
-  const r = RANGES.find((x) => x.key === range.value)?.label || ''
+  const r = rangeLabel(range.value, { from: customFrom.value, to: customTo.value })
   const o = filter.value !== 'all' ? OUTCOMES.find((x) => x.key === filter.value)?.label : null
-  return [r === '7 days' || r === '30 days' ? `last ${r}` : r.toLowerCase(), o ? o.toLowerCase() : null].filter(Boolean).join(' · ')
+  return [r, o ? o.toLowerCase() : null].filter(Boolean).join(' · ')
 })
 const FOOTER = {
   attention: 'Each caller stays here until a callback connects, they get through on a later call, or someone marks their calls handled.',

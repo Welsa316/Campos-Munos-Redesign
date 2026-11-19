@@ -774,7 +774,9 @@ export function groupEpisodes(rows, { names = new Map(), now = new Date(), kind 
  * `review` (episodes of calls with no recorded outcome) and `reviewCalls`.
  * `calls` stays one row per call, as do the counts.
  */
-export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit = 300, businessHours = false, person = null, now = new Date() }) {
+// before: { at, id } of the oldest call already shown, for "Show older
+// calls": the list continues after it. The counts always cover the whole range.
+export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit = 300, businessHours = false, person = null, before = null, now = new Date() }) {
   const params = [from, to]
   const where = ['c.started_at >= $1', 'c.started_at < $2', 'NOT c.is_internal', 'c.is_primary']
   if (businessHours) where.push(businessHoursSql('c.started_at'))
@@ -833,12 +835,19 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
         COUNT(*) FILTER (WHERE ${UNANSWERED_SQL('classification')} AND classification_evidence->'notAnsweredBy' @> ${personParam}::jsonb AND ${kept})::int AS person_not_answered`
     : ''
   const lim = Math.max(1, Math.min(1000, Math.trunc(Number(limit)) || 300))
+  // The cursor applies to the list only, never to the counts (same params plus two).
+  const listParams = [...params]
+  let beforeSql = ''
+  if (before && before.at instanceof Date && !Number.isNaN(before.at.getTime()) && Number.isSafeInteger(before.id)) {
+    listParams.push(before.at, before.id)
+    beforeSql = ` AND (f.started_at, f.id) < ($${listParams.length - 1}::timestamptz, $${listParams.length}::bigint)`
+  }
   const attention = outcome === 'attention'
   // Where each open call's episode starts, only for the Needs attention view.
   const episodeCols = attention ? ', ep.at AS episode_after, et.n AS episode_tries' : ''
   const episodeJoins = attention ? `${EPISODE_START_JOIN('f')} ${EPISODE_TRIES_JOIN('f')}` : ''
   const [list, counts, names, reviewList] = await Promise.all([
-    db.query(`${base} SELECT f.*${episodeCols} FROM filtered f ${episodeJoins} WHERE ${outcomeSql} ORDER BY started_at DESC, id DESC LIMIT ${lim + 1}`, params),
+    db.query(`${base} SELECT f.*${episodeCols} FROM filtered f ${episodeJoins} WHERE ${outcomeSql}${beforeSql} ORDER BY started_at DESC, id DESC LIMIT ${lim + 1}`, listParams),
     db.query(`${base} SELECT
         COUNT(*) FILTER (WHERE ${inbound})::int AS incoming,
         COUNT(*) FILTER (WHERE ${inbound} AND classification = 'answered')::int AS answered,
@@ -873,6 +882,18 @@ export async function queryCalls(db, { from, to, outcome = 'all', q = '', limit 
         }
       : {}),
   }
+}
+
+/**
+ * One call as the list shows it, or null: what a reminder's link opens when
+ * the call is not in Needs attention.
+ */
+export async function getCall(db, id, { now = new Date() } = {}) {
+  const [r, names] = await Promise.all([
+    db.query(`${baseSql(['c.id = $1', 'NOT c.is_internal', 'c.is_primary'])} SELECT f.* FROM filtered f`, [id]),
+    linkedNames(db),
+  ])
+  return r.rows[0] ? present(r.rows[0], names, now) : null
 }
 
 // The review group is meant to stay small; past this many calls, the oldest wait.

@@ -78,10 +78,10 @@
               <button type="button" @click="$emit('callback', call)" class="btn btn-quiet"><FaIcon name="phone" />Call</button>
             </div>
 
-            <!-- Callback reminders on this caller, while they still need a call back
-                 (or still have one open from before). -->
-            <FollowUpReminders v-if="call.direction === 'inbound' && (call.needsAttention || call.needsReview || reminders.length)"
-              :target="{ kind: 'call', id: episode?.id ?? call.id }" :reminders="reminders" :can-set="canRemind && (call.needsAttention || call.needsReview)"
+            <!-- Reminders on this call (any call with a number to call back). On
+                 a caller still waiting they close once the caller is dealt with. -->
+            <FollowUpReminders v-if="call.number || reminders.length"
+              :target="{ kind: 'call', id: episode?.id ?? call.id }" :reminders="reminders" :can-set="canRemind && Boolean(call.number)"
               @changed="$emit('reminders-changed')" />
 
             <!-- Callback episode: the caller's unanswered calls, each with its evidence. -->

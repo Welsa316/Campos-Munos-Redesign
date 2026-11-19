@@ -372,6 +372,36 @@ test('RingCentral call log', { skip: SKIP }, async (t) => {
     assert.equal((await call('GET', '/api/calls?from=nope')).status, 400)
   })
 
+  await t.test('a long range in pages: "Show older calls" continues after the last call shown; the counts cover the whole range', async () => {
+    const all = (await list()).json
+    assert.ok(all.calls.length >= 4)
+    const first = (await list('&limit=2')).json
+    assert.equal(first.calls.length, 2)
+    assert.equal(first.truncated, true)
+    const pages = [...first.calls]
+    let page = first
+    // Bounded, so a cursor that is ignored fails here instead of looping.
+    for (let guard = 0; page.truncated; guard++) {
+      assert.ok(guard < all.calls.length, 'the pages end')
+      const last = pages[pages.length - 1]
+      page = (await list(`&limit=2&beforeAt=${encodeURIComponent(last.startedAt)}&beforeId=${last.id}`)).json
+      assert.deepEqual(page.counts, all.counts, 'counts are never narrowed by the cursor')
+      pages.push(...page.calls)
+    }
+    assert.deepEqual(pages.map((c) => c.id), all.calls.map((c) => c.id), 'every call once, newest first, none skipped')
+    // A junk cursor is ignored rather than refused.
+    assert.equal((await list('&beforeAt=nope&beforeId=x')).json.calls.length, all.calls.length)
+  })
+
+  await t.test('one call on its own, as the list shows it (a reminder link to a call outside Needs attention)', async () => {
+    const some = (await list()).json.calls[0]
+    const one = await call('GET', `/api/calls/${some.id}`)
+    assert.equal(one.status, 200, one.text)
+    assert.deepEqual(one.json.call, some)
+    assert.equal((await call('GET', '/api/calls/999999')).status, 404)
+    assert.equal((await call('GET', '/api/calls/1', { cookie: users.para.cookie })).status, 403)
+  })
+
   await t.test('refreshing again: overlapping window, no duplicates, updates applied; at most every 30 s', async () => {
     const before = (await db.query('SELECT COUNT(*)::int AS n FROM rc_calls')).rows[0].n
     const state = (await db.query('SELECT window_to FROM rc_call_sync_state')).rows[0]
