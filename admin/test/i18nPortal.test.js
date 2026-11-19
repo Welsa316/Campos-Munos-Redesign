@@ -9,7 +9,7 @@ import { renderVue, textOf } from './support/renderVue.js'
 import { PORTAL } from '../src/i18n/portal.js'
 import { missingKeys, makeTranslate } from '../src/i18n/translator.js'
 import { usePortalLang, applyDocumentLang, STORAGE_KEY } from '../src/composables/usePortalLang.js'
-import { SECTIONS, linkName, sectionLabel } from '../src/components/portal/sectionLinks.js'
+import { SECTIONS, linkName, sectionLabel, labelAtFor } from '../src/components/portal/sectionLinks.js'
 import { routeTitle } from '../src/router/title.js'
 import { blockedHelp, testSentHelp } from '../src/utils/push.js'
 
@@ -91,6 +91,11 @@ test('pages read in Spanish when it is chosen', async () => {
     assert.match(textOf(header), /Cerrar sesión/)
     assert.match(header, /aria-label="Cambiar contraseña"/)
     assert.match(header, /aria-label="Secciones del portal"/)
+
+    // The Updates frame is Spanish and says the notes are in English, with
+    // a space between the two sentences.
+    const updates = textOf(await renderVue('views/UpdatesView.vue', { route: 'Updates' }))
+    assert.match(updates, /empezando por lo más reciente\. Las notas en sí están en inglés\./)
   } finally {
     setLang('en')
   }
@@ -105,6 +110,12 @@ test('header links, tab titles and notification help: Spanish on request, Englis
   assert.equal(linkName(updates, true, 'es'), 'Novedades, nuevo')
   assert.equal(linkName(billing, true, 'es'), 'Facturación')
   assert.equal(sectionLabel(billing), 'Billing')
+  // Longer Spanish names take their labels one width later; English is unchanged.
+  assert.equal(labelAtFor('xl'), 'xl')
+  assert.equal(labelAtFor('xl', 'es'), '2xl')
+  assert.equal(labelAtFor('sm', 'es'), 'lg')
+  assert.equal(labelAtFor('never', 'es'), 'never')
+  assert.equal(labelAtFor('bogus', 'es'), 'bogus')
 
   assert.equal(routeTitle({ name: 'Updates', meta: { title: 'Updates' } }), 'Updates | Campos Muños Law')
   assert.equal(routeTitle({ name: 'Updates', meta: { title: 'Updates' } }, 'es'), 'Novedades | Campos Muños Law')

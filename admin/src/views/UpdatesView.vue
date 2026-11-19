@@ -4,7 +4,7 @@
 
     <div class="flex-1 overflow-y-auto">
       <div class="max-w-[760px] mx-auto px-4 sm:px-6 py-6 sm:py-8 font-ui">
-        <p class="text-[13px] text-gray-600">{{ t('updates.intro') }}<template v-if="lang !== 'en'"> {{ t('updates.entries_note') }}</template></p>
+        <p class="text-[13px] text-gray-600">{{ t('updates.intro') }}{{ lang === 'en' ? '' : ` ${t('updates.entries_note')}` }}</p>
 
         <p v-if="!list.length" class="mt-6 bg-white rounded-2xl ring-1 ring-gray-200 px-6 py-10 text-center text-[13px] text-gray-600">{{ t('updates.empty') }}</p>
 
