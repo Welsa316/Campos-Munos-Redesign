@@ -1,9 +1,11 @@
 <template>
   <div class="border-t border-gray-100 p-5 flex-shrink-0">
-    <form @submit.prevent="sendReply">
+    <!-- relative: the emoji panel opens above the form, lined up with its right edge. -->
+    <form @submit.prevent="sendReply" class="relative">
       <label for="reply-body" class="sr-only">Reply body</label>
       <textarea
         id="reply-body"
+        ref="field"
         v-model="body"
         rows="3"
         maxlength="10000"
@@ -19,7 +21,8 @@
           <span class="hidden sm:inline">Enter to send · Shift+Enter for a new line · </span>{{ body.length.toLocaleString() }} / 10,000
         </span>
 
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2">
+          <EmojiPicker v-model="body" :field="field" :maxlength="10000" :disabled="sending" />
           <button
             type="submit"
             :disabled="sending || !body.trim()"
@@ -43,6 +46,7 @@ import { ref } from 'vue'
 import { useApi } from '../../composables/useApi.js'
 import { toast } from '../../composables/useToast.js'
 import { isComposing } from '../../utils/text.js'
+import EmojiPicker from '../EmojiPicker.vue'
 
 const props = defineProps({
   submissionId: { type: Number, required: true },
@@ -52,6 +56,7 @@ const emit = defineEmits(['replied'])
 
 const { post } = useApi()
 const body = ref('')
+const field = ref(null)
 const sending = ref(false)
 // One key per reply: a retry after a timeout carries the same key, so the
 // server sends the email once even if the first attempt did get through.
