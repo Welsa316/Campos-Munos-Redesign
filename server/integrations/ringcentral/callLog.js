@@ -576,7 +576,9 @@ function baseSql(where, searchSql = '') {
              (c.direction = 'inbound' AND c.classification = 'unknown' AND c.counterpart_key <> ''
               AND fc.started_at IS NULL AND hd.call_key IS NULL AND ex.kind IS NULL) AS needs_review,
              ex.kind AS excluded_kind, ex.reason AS excluded_reason, ex.note AS excluded_note, ex.created_at AS excluded_at,
-             COALESCE(NULLIF(exu.display_name, ''), exu.email) AS excluded_by
+             COALESCE(NULLIF(exu.display_name, ''), exu.email) AS excluded_by,
+             -- The colour staff gave the caller (server/colors/), on every call from the number.
+             ecol.color AS entry_color
         FROM rc_calls c
         LEFT JOIN LATERAL (
           SELECT s.id, s.first_name, s.last_name, COUNT(*) OVER () AS n
@@ -622,6 +624,7 @@ function baseSql(where, searchSql = '') {
            WHERE c.direction = 'inbound' AND c.classification IS DISTINCT FROM 'answered'
            ORDER BY e.rank LIMIT 1) ex ON TRUE
         LEFT JOIN admin_users exu ON exu.id = ex.created_by
+        LEFT JOIN entry_colors ecol ON ecol.kind = 'caller' AND c.counterpart_key <> '' AND ecol.key = c.counterpart_key
        WHERE ${where.join(' AND ')}
     ), filtered AS (
       SELECT * FROM base b ${searchSql ? `WHERE ${searchSql}` : ''}
@@ -755,6 +758,8 @@ export function groupEpisodes(rows, { names = new Map(), now = new Date(), kind 
       // From the first unanswered call, by the same rule as each call's.
       attentionGroup: kind === 'attention' ? attentionGroup(first, now) : null,
       offeredTo,
+      // The caller's colour (every call from the number shares it).
+      color: latest.color,
     }
   })
 }
@@ -1100,8 +1105,8 @@ export async function openCallKeys(db, opts = {}) {
 
 /**
  * A cheap fingerprint of everything the Calls page shows: it changes when a
- * call is imported or re-read, a call is marked or unmarked, or a reminder
- * on a caller changes. The page polls this and reloads the list only when
+ * call is imported or re-read, a call is marked or unmarked, a reminder
+ * on a caller changes, or a caller or reminder is given a colour. The page polls this and reloads the list only when
  * it moves.
  */
 export async function callsStamp(db) {
@@ -1113,9 +1118,12 @@ export async function callsStamp(db) {
             -- Callback reminders on callers, so a reminder someone else set shows
             -- on the row. Every change to one moves updated_at (indexed), and
             -- only finished ones are ever deleted.
-            (SELECT COALESCE(MAX(updated_at)::text, '') FROM follow_up_reminders WHERE target_kind = 'call') AS reminders`
+            (SELECT COALESCE(MAX(updated_at)::text, '') FROM follow_up_reminders WHERE target_kind = 'call') AS reminders,
+            -- Colours on callers and on reminders (shown on the reminder
+            -- chips). Clearing one keeps its row, so this always moves.
+            (SELECT COALESCE(MAX(updated_at)::text, '') FROM entry_colors WHERE kind IN ('caller', 'reminder')) AS colors`
   )).rows[0]
-  return [r.calls?.toISOString?.() ?? '', r.handled, r.excluded, r.numbers, r.reminders].join('|')
+  return [r.calls?.toISOString?.() ?? '', r.handled, r.excluded, r.numbers, r.reminders, r.colors].join('|')
 }
 
 function present(r, names = new Map(), now = new Date()) {
@@ -1175,5 +1183,7 @@ function present(r, names = new Map(), now = new Date()) {
     exclusion: r.excluded_kind
       ? { scope: r.excluded_kind, reason: r.excluded_reason, note: r.excluded_note, by: r.excluded_by, at: r.excluded_at }
       : null,
+    // The colour staff gave this caller (server/colors/), or null.
+    color: r.entry_color ?? null,
   }
 }
