@@ -34,11 +34,14 @@ export function dueChoices(now = Date.now()) {
 
 const FULL = new Intl.DateTimeFormat('en-US', { timeZone: FIRM_TIME_ZONE, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 const TIME = new Intl.DateTimeFormat('en-US', { timeZone: FIRM_TIME_ZONE, hour: 'numeric', minute: '2-digit' })
+// Home's Spanish ("vie, 7 de nov, 9:00 a.m.").
+const FULL_ES = new Intl.DateTimeFormat('es-US', { timeZone: FIRM_TIME_ZONE, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+const TIME_ES = new Intl.DateTimeFormat('es-US', { timeZone: FIRM_TIME_ZONE, hour: 'numeric', minute: '2-digit' })
 
 /** "Fri, Nov 7, 9:00 AM" (New Orleans time). */
-export const formatDue = (at) => FULL.format(new Date(at)).replace(' at ', ', ')
+export const formatDue = (at, lang = 'en') => (lang === 'es' ? FULL_ES : FULL).format(new Date(at)).replace(' at ', ', ')
 /** "9:00 AM". */
-export const formatTime = (at) => TIME.format(new Date(at))
+export const formatTime = (at, lang = 'en') => (lang === 'es' ? TIME_ES : TIME).format(new Date(at))
 
 /** For the date and time inputs: { date: 'YYYY-MM-DD', time: 'HH:MM' } in New Orleans time. */
 export function toInputs(at) {

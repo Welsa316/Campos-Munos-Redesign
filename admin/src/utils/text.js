@@ -2,6 +2,7 @@
 // "1 invoices", "invoice(s)", "NaN days ago", "Invalid Date", "null null".
 
 import { zoneMidnight } from './firmTime.js'
+import { translate } from '../i18n/dashboard.js'
 
 /** "1 invoice", "3 invoices", "2 replies" (pass the plural when it is not +s). */
 export function plural(n, one, many = `${one}s`) {
@@ -22,15 +23,18 @@ export function leadName(lead, fallback = 'a lead with no name') {
   return name || String(lead?.email || '').trim() || fallback
 }
 
-/** "today", "yesterday", "5 days ago"; '' for a value that is not a date. */
-export function daysAgo(value, now = Date.now()) {
+/**
+ * "today", "yesterday", "5 days ago"; '' for a value that is not a date.
+ * lang 'es' (Home's Spanish): "hoy", "ayer", "hace 5 días".
+ */
+export function daysAgo(value, now = Date.now(), lang = 'en') {
   const d = toDate(value)
   if (!d) return ''
   // Calendar days in the firm's time zone, not 24-hour spans: a message from
   // 9 PM is "yesterday" at 1 AM.
   const days = Math.round((zoneMidnight(now) - zoneMidnight(d)) / 86400000)
-  if (days < 1) return 'today'
-  return days === 1 ? 'yesterday' : `${days} days ago`
+  if (days < 1) return translate(lang, 'days.today')
+  return days === 1 ? translate(lang, 'days.yesterday') : translate(lang, 'days.ago', { count: days })
 }
 
 /**
