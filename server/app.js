@@ -29,6 +29,7 @@ import { createPushRouter } from './routes/push.js'
 import { createNotificationsRouter } from './routes/notifications.js'
 import { createRemindersRouter } from './routes/reminders.js'
 import { createWorkQueueRouter } from './routes/workQueue.js'
+import { createColorsRouter } from './routes/colors.js'
 import { createRingCentralWebhookRouter } from './routes/ringcentralWebhook.js'
 import { createAutomationRouter } from './routes/automation.js'
 import { activityRecorder } from './activity/recorder.js'
@@ -173,6 +174,8 @@ export function createApp({ env = process.env, log = logger, beforeFallback, rea
   app.use('/api/reminders', createRemindersRouter())
   // Home's "My follow-ups" (read-only).
   app.use('/api/work-queue', createWorkQueueRouter())
+  // Shared colours on callers, website leads and reminders (server/colors/).
+  app.use('/api/colors', createColorsRouter())
   // What the portal does on its own: switches, health, exceptions, settings
   // (server/automation/). Administrators only.
   app.use('/api/automation', createAutomationRouter({ env }))
