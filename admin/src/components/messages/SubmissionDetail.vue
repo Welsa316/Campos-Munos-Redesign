@@ -1,5 +1,9 @@
 <template>
-  <div class="h-full flex flex-col bg-white">
+  <!-- On a phone the lead, its thread and the reply box scroll as one, so
+       the reply box is always reachable however tall the lead's details
+       (reminders, notes) grow; wider screens keep the thread scrolling
+       between a fixed header and reply box. -->
+  <div class="h-full flex flex-col bg-white max-md:overflow-y-auto">
     <!-- Empty state -->
     <div v-if="!submission" class="flex-1 flex items-center justify-center">
       <div class="text-center">
@@ -72,7 +76,7 @@
             </div>
           </div>
           <div class="flex items-center gap-2">
-            <span v-if="!submission.is_read" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-red/10 text-brand-red text-xs font-ui font-medium">
+            <span v-if="!submission.is_read" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full whitespace-nowrap bg-brand-red/10 text-brand-red text-xs font-ui font-medium">
               <span class="w-1.5 h-1.5 rounded-full bg-brand-red" aria-hidden="true"></span>
               {{ t('list.unread') }}
             </span>
@@ -115,7 +119,7 @@
       <LeadAutomation v-if="submission.automation" show="alerts" class="flex-shrink-0" :submission="submission" :can-manage="canManage" @changed="$emit('noteAdded')" />
 
       <!-- Conversation thread -->
-      <div class="flex-1 overflow-y-auto p-6 space-y-4">
+      <div class="flex-1 overflow-y-auto p-6 space-y-4 max-md:flex-none max-md:overflow-visible">
         <template v-for="item in threadItems" :key="`${item.type}-${item.id}`">
           <!-- User message (initial submission or chat follow-up) -->
           <div v-if="item.type === 'user'" class="max-w-[85%]">

@@ -13,7 +13,7 @@
       <li v-for="r in list" :key="r.id" :class="STATE_BOX[dueState(r, now)]" class="rounded-xl px-3.5 py-3">
         <template v-if="form?.reminder?.id !== r.id">
           <div class="flex flex-wrap items-start gap-x-3 gap-y-2">
-            <div class="min-w-0 flex-1">
+            <div class="min-w-0 flex-[1_1_14rem]">
               <p class="text-[13.5px] text-gray-900">
                 <FaIcon name="clock" :class="dueState(r, now) === 'upcoming' ? 'text-gray-400' : 'text-amber-700'" class="mr-1.5" />
                 <span class="font-semibold tabular-nums">{{ dueLine(r, now, lang) }}</span>
