@@ -7,20 +7,20 @@
          reply box they will never get. -->
     <p v-if="status && can('whatsapp.send') && !status.sendingEnabled" class="flex-shrink-0 px-4 sm:px-6 py-2 text-xs font-ui text-amber-900 bg-amber-50 border-b border-amber-100">
       <i class="fa-solid fa-circle-pause mr-1.5" aria-hidden="true"></i>
-      Sending is switched off. Conversations can be read, assigned and noted; replies wait until an administrator turns WhatsApp sending on.
+      {{ t('banner.off') }}
     </p>
     <p v-else-if="status && can('whatsapp.send') && status.mode === 'mock'" class="flex-shrink-0 px-4 sm:px-6 py-2 text-xs font-ui text-violet-900 bg-violet-50 border-b border-violet-100">
       <i class="fa-solid fa-flask mr-1.5" aria-hidden="true"></i>
-      Simulated sending: replies go to a simulator and no client receives them.
+      {{ t('banner.mock') }}
     </p>
 
     <div v-if="loadingList && !conversations.length" class="flex-1 flex items-center justify-center">
-      <p class="text-gray-500 text-sm font-ui"><i class="fa-solid fa-spinner fa-spin mr-2" aria-hidden="true"></i>Loading conversations…</p>
+      <p class="text-gray-500 text-sm font-ui"><i class="fa-solid fa-spinner fa-spin mr-2" aria-hidden="true"></i>{{ t('list.loading') }}</p>
     </div>
     <div v-else-if="listError && !conversations.length" class="flex-1 flex items-center justify-center">
       <div class="text-center">
         <p class="text-gray-500 text-sm font-ui mb-3">{{ listError }}</p>
-        <button @click="loadList()" class="text-brand-navy text-sm font-ui font-medium hover:underline">Try again</button>
+        <button @click="loadList()" class="text-brand-navy text-sm font-ui font-medium hover:underline">{{ t('try_again') }}</button>
       </div>
     </div>
 
@@ -29,17 +29,17 @@
       <div :class="['w-full lg:w-[380px] lg:flex-shrink-0 flex flex-col bg-white lg:border-r border-gray-200', selectedId ? 'hidden lg:flex' : 'flex']">
         <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
           <!-- Which conversations: the list's own filter, like Inbox/Archived on leads. -->
-          <div class="flex flex-1 min-w-0 bg-brand-surface rounded-lg p-0.5" role="group" aria-label="Which conversations">
+          <div class="flex flex-1 min-w-0 bg-brand-surface rounded-lg p-0.5" role="group" :aria-label="t('views.label')">
             <button v-for="v in VIEWS" :key="v.key" @click="setView(v.key)" :aria-pressed="view === v.key"
               :class="view === v.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-gray-900'"
-              class="flex-1 text-xs font-ui font-medium px-2 py-1.5 rounded-md transition-colors whitespace-nowrap">{{ v.label }}</button>
+              class="flex-1 text-xs font-ui font-medium px-2 py-1.5 rounded-md transition-colors whitespace-nowrap">{{ t(`view.${v.key}`) }}</button>
           </div>
-          <button @click="refresh" :disabled="loadingList" class="p-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface transition-colors disabled:opacity-50" aria-label="Refresh conversations">
+          <button @click="refresh" :disabled="loadingList" class="p-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface transition-colors disabled:opacity-50" :aria-label="t('refresh')">
             <FaIcon name="arrows-rotate" :spin="loadingList" class="text-xs" />
           </button>
         </div>
-        <p v-if="conversations.length" class="px-5 pt-3 pb-1 text-[11px] font-ui text-gray-500 tabular-nums">{{ conversations.length }} {{ conversations.length === 1 ? 'conversation' : 'conversations' }}</p>
-        <p v-if="!conversations.length" class="p-8 text-center text-sm text-gray-500 font-ui">{{ EMPTY[view] }}</p>
+        <p v-if="conversations.length" class="px-5 pt-3 pb-1 text-[11px] font-ui text-gray-500 tabular-nums">{{ t('count', { count: conversations.length }) }}</p>
+        <p v-if="!conversations.length" class="p-8 text-center text-sm text-gray-500 font-ui">{{ t(`empty.${view}`) }}</p>
         <ul v-else class="flex-1 overflow-y-auto divide-y divide-gray-100">
           <li v-for="c in conversations" :key="c.id">
             <button @click="select(c.id)" :aria-current="selectedId === c.id ? 'true' : undefined"
@@ -50,15 +50,15 @@
                 <div class="flex-1 min-w-0">
                   <div class="flex items-baseline gap-2">
                     <p :class="c.needsReply ? 'font-semibold' : 'font-medium'" class="text-sm font-ui text-gray-900 truncate flex-1">{{ c.name || waPhone(c.phone) }}</p>
-                    <span class="text-[11px] font-ui text-gray-600 whitespace-nowrap tabular-nums">{{ relTime(c.lastAt) }}</span>
+                    <span class="text-[11px] font-ui text-gray-600 whitespace-nowrap tabular-nums">{{ relTime(c.lastAt, lang) }}</span>
                   </div>
                   <p class="text-xs font-ui text-gray-600 truncate mt-0.5">
-                    <span v-if="c.lastDirection === 'out'" class="text-gray-600">You: </span>{{ c.preview || '—' }}
+                    <span v-if="c.lastDirection === 'out'" class="text-gray-600">{{ t('you') }}</span>{{ c.preview || '—' }}
                   </p>
                   <p class="flex items-center gap-2 mt-1.5 text-[11px] font-ui">
-                    <span v-if="c.needsReply" class="sr-only">Waiting for a reply.</span>
+                    <span v-if="c.needsReply" class="sr-only">{{ t('waiting_reply') }}</span>
                     <span v-if="c.assignee" class="inline-flex items-center gap-1 text-brand-navy"><i class="fa-solid fa-user text-[9px]" aria-hidden="true"></i>{{ c.assignee.name }}</span>
-                    <span v-else class="text-gray-600">Unassigned</span>
+                    <span v-else class="text-gray-600">{{ t('unassigned') }}</span>
                     <span v-if="c.name" class="text-gray-600 truncate">{{ waPhone(c.phone) }}</span>
                   </p>
                 </div>
@@ -73,7 +73,7 @@
         <div v-if="!selectedId" class="flex-1 flex items-center justify-center">
           <div class="text-center">
             <i class="fa-solid fa-comments text-4xl text-gray-200 mb-4" aria-hidden="true"></i>
-            <p class="text-gray-500 font-ui text-sm">Select a conversation</p>
+            <p class="text-gray-500 font-ui text-sm">{{ t('select') }}</p>
           </div>
         </div>
         <div v-else-if="!detail" class="flex-1 flex flex-col items-center justify-center gap-3 px-6 text-center">
@@ -81,8 +81,8 @@
             <p role="alert" class="text-sm font-ui text-gray-600">{{ detailError }}</p>
             <!-- On a phone the list is hidden while a conversation is open: give a way back. -->
             <div class="flex gap-4 text-sm font-ui">
-              <button type="button" @click="loadDetail()" class="font-semibold text-brand-navy underline">Try again</button>
-              <button type="button" @click="closeThread" class="font-semibold text-brand-navy underline lg:hidden">Back to conversations</button>
+              <button type="button" @click="loadDetail()" class="font-semibold text-brand-navy underline">{{ t('try_again') }}</button>
+              <button type="button" @click="closeThread" class="font-semibold text-brand-navy underline lg:hidden">{{ t('back') }}</button>
             </div>
           </template>
           <FaIcon v-else name="spinner" spin class="text-brand-navy" />
@@ -91,42 +91,42 @@
         <template v-else>
           <div class="px-5 sm:px-6 py-4 border-b border-gray-100 flex-shrink-0">
             <div class="flex items-start gap-3">
-              <button @click="closeThread" aria-label="Back to conversations" class="p-2 -ml-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface transition-colors lg:hidden">
+              <button @click="closeThread" :aria-label="t('back')" class="p-2 -ml-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface transition-colors lg:hidden">
                 <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
               </button>
               <div class="flex-1 min-w-0">
                 <h2 class="font-heading text-xl text-gray-900 truncate">{{ title }}</h2>
                 <p class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-ui mt-0.5">
                   <a :href="`tel:+${detail.phone}`" class="text-brand-navy hover:text-brand-navy-light"><i class="fa-solid fa-phone mr-1.5 text-xs" aria-hidden="true"></i>{{ waPhone(detail.phone) }}</a>
-                  <span v-if="detail.profileName && detail.profileName !== title" class="text-gray-500 text-xs">WhatsApp name: {{ detail.profileName }}</span>
-                  <span v-for="cl in detail.clients.filter((x) => x.optedOut)" :key="cl.id" class="text-[10px] font-semibold uppercase tracking-wider text-brand-red bg-red-50 px-2 py-0.5 rounded-full">Opted out</span>
+                  <span v-if="detail.profileName && detail.profileName !== title" class="text-gray-500 text-xs">{{ t('profile_name', { name: detail.profileName }) }}</span>
+                  <span v-for="cl in detail.clients.filter((x) => x.optedOut)" :key="cl.id" class="text-[10px] font-semibold uppercase tracking-wider text-brand-red bg-red-50 px-2 py-0.5 rounded-full">{{ t('opted_out') }}</span>
                 </p>
               </div>
               <button v-if="can('whatsapp.manage')" @click="toggleClosed" :disabled="Boolean(busy)"
                 class="flex-shrink-0 px-3 py-2 rounded-lg text-xs font-ui font-semibold text-gray-600 hover:text-brand-navy hover:bg-brand-surface transition-colors">
-                <FaIcon :name="detail.status === 'closed' ? 'rotate-left' : 'check'" class="mr-1.5" />{{ detail.status === 'closed' ? 'Reopen' : 'Close' }}
+                <FaIcon :name="detail.status === 'closed' ? 'rotate-left' : 'check'" class="mr-1.5" />{{ detail.status === 'closed' ? t('reopen') : t('close') }}
               </button>
             </div>
 
             <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-ui">
               <label v-if="can('whatsapp.manage')" class="inline-flex items-center gap-2 text-gray-600">
-                Assigned to
+                {{ t('assigned_to') }}
                 <select :value="detail.assignee?.id ?? ''" @change="reassign($event.target.value)" :disabled="Boolean(busy)"
                   class="text-xs font-ui px-2 py-1 rounded-lg border border-gray-300 bg-white focus:border-brand-navy focus:outline-none">
-                  <option value="">Nobody</option>
+                  <option value="">{{ t('nobody_option') }}</option>
                   <option v-for="a in assignees" :key="a.id" :value="a.id">{{ a.name }}</option>
                 </select>
               </label>
-              <span v-else class="text-gray-600">Assigned to {{ detail.assignee?.name || 'nobody' }}</span>
-              <span v-if="detail.clients.length" class="text-gray-500">Client: {{ detail.clients.map((x) => x.name).join(', ') }}</span>
+              <span v-else class="text-gray-600">{{ t('assigned_to_name', { name: detail.assignee?.name || t('nobody') }) }}</span>
+              <span v-if="detail.clients.length" class="text-gray-500">{{ t('client', { names: detail.clients.map((x) => x.name).join(', ') }) }}</span>
             </div>
 
             <!-- Payment status, read-only, for accounts with billing.status. -->
-            <div v-if="detail.invoices && detail.invoices.length" class="mt-3 flex flex-wrap gap-2" aria-label="Payment status">
+            <div v-if="detail.invoices && detail.invoices.length" class="mt-3 flex flex-wrap gap-2" :aria-label="t('payment_status')">
               <span v-for="inv in detail.invoices" :key="inv.invoiceId" class="inline-flex items-center gap-2 text-[11px] font-ui bg-brand-surface rounded-lg px-2.5 py-1.5">
                 <span class="text-gray-700">{{ inv.invoiceId }}</span>
-                <span :class="INVOICE_TONE[inv.status] || 'text-gray-700'" class="font-semibold">{{ INVOICE_LABEL[inv.status] || inv.status }}</span>
-                <span v-if="inv.balanceCents > 0" class="text-gray-600 tabular-nums">{{ money(inv.balanceCents) }} due{{ inv.nextDue ? ` ${shortDay(inv.nextDue)}` : '' }}</span>
+                <span :class="INVOICE_TONE[inv.status] || 'text-gray-700'" class="font-semibold">{{ INVOICE_KEYS.includes(inv.status) ? t(`invoice.${inv.status}`) : inv.status }}</span>
+                <span v-if="inv.balanceCents > 0" class="text-gray-600 tabular-nums">{{ inv.nextDue ? t('balance_due_on', { amount: money(inv.balanceCents), date: shortDay(inv.nextDue, lang) }) : t('balance_due', { amount: money(inv.balanceCents) }) }}</span>
               </span>
             </div>
             <p v-if="actionError" role="alert" class="mt-2 text-xs font-ui text-brand-red">{{ actionError }}</p>
@@ -136,24 +136,24 @@
                on every refresh); a client's new message is announced below. -->
           <p class="sr-only" role="status">{{ arrivalNote }}</p>
           <div ref="threadEl" class="flex-1 overflow-y-auto px-5 sm:px-6 py-5 space-y-4">
-            <p v-if="!detail.messages.length" class="text-center text-sm text-gray-500 font-ui">No messages yet.</p>
+            <p v-if="!detail.messages.length" class="text-center text-sm text-gray-500 font-ui">{{ t('no_messages') }}</p>
             <div v-for="m in detail.messages" :key="m.key" :class="m.direction === 'out' ? 'flex justify-end' : ''">
               <div class="max-w-[85%] sm:max-w-[70%]">
                 <div :class="m.direction === 'in' ? 'bg-brand-surface rounded-tl-sm' : m.kind === 'reminder' ? 'bg-amber-50 ring-1 ring-amber-100 rounded-tr-sm' : 'bg-brand-navy/[0.08] rounded-tr-sm'"
                   class="rounded-2xl px-4 py-3">
-                  <p v-if="m.kind === 'reminder'" class="text-[10px] font-ui font-semibold uppercase tracking-wider text-amber-800 mb-1">Payment reminder</p>
+                  <p v-if="m.kind === 'reminder'" class="text-[10px] font-ui font-semibold uppercase tracking-wider text-amber-800 mb-1">{{ t('payment_reminder') }}</p>
                   <p v-if="m.body" class="text-gray-800 text-sm font-ui leading-relaxed whitespace-pre-wrap break-words">{{ m.body }}</p>
-                  <p v-else class="text-gray-500 text-sm font-ui italic">{{ m.mediaType ? `Sent a ${m.mediaType} (open WhatsApp to see it)` : 'No text' }}</p>
+                  <p v-else class="text-gray-500 text-sm font-ui italic">{{ m.mediaType ? t('media', { type: m.mediaType }) : t('no_text') }}</p>
                 </div>
                 <p :class="m.direction === 'out' ? 'text-right mr-1' : 'ml-1'" class="text-[11px] text-gray-500 font-ui mt-1.5 tabular-nums">
-                  <span v-if="m.direction === 'out' && m.by">{{ m.by }} · </span>{{ fullTime(m.at) }}
+                  <span v-if="m.direction === 'out' && m.by">{{ m.by }} · </span>{{ fullTime(m.at, lang) }}
                   <template v-if="m.direction === 'out'">
-                    · <span :class="m.status === 'failed' ? 'text-brand-red font-semibold' : m.status === 'unknown' ? 'text-amber-800 font-semibold' : ''">{{ STATUS_LABEL[m.status] || m.status }}</span>
-                    <span v-if="m.simulated" class="text-violet-700"> · simulated</span>
+                    · <span :class="m.status === 'failed' ? 'text-brand-red font-semibold' : m.status === 'unknown' ? 'text-amber-800 font-semibold' : ''">{{ STATUS_KEYS.includes(m.status) ? t(`status.${m.status}`) : m.status }}</span>
+                    <span v-if="m.simulated" class="text-violet-700"> {{ t('simulated') }}</span>
                   </template>
                 </p>
                 <p v-if="m.status === 'failed' && m.error" class="text-[11px] text-brand-red font-ui mt-0.5 text-right mr-1">{{ m.error }}</p>
-                <p v-if="m.status === 'unknown'" class="text-[11px] text-amber-800 font-ui mt-0.5 text-right mr-1">It may or may not have arrived. Check WhatsApp before sending it again.</p>
+                <p v-if="m.status === 'unknown'" class="text-[11px] text-amber-800 font-ui mt-0.5 text-right mr-1">{{ t('unknown_hint') }}</p>
               </div>
             </div>
           </div>
@@ -164,25 +164,25 @@
               class="w-full flex items-center justify-between px-5 py-2.5 hover:bg-brand-surface transition-colors">
               <span class="flex items-center gap-2 text-xs font-ui font-semibold text-gray-700">
                 <i class="fa-solid fa-note-sticky text-brand-navy/70 text-[11px]" aria-hidden="true"></i>
-                Internal notes
+                {{ t('notes.heading') }}
                 <span v-if="detail.notes.length" class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-brand-navy/10 text-brand-navy text-[10px] font-bold tabular-nums">{{ detail.notes.length }}</span>
               </span>
               <FaIcon :name="notesOpen ? 'chevron-up' : 'chevron-down'" class="text-[10px] text-gray-400" />
             </button>
             <div v-if="notesOpen" id="wa-notes" class="px-5 pb-4">
               <form v-if="can('whatsapp.manage')" @submit.prevent="addNote" class="flex items-start gap-2 mb-3">
-                <label for="wa-note" class="sr-only">Add an internal note</label>
+                <label for="wa-note" class="sr-only">{{ t('notes.add_label') }}</label>
                 <textarea id="wa-note" v-model="noteDraft" rows="2" maxlength="2000" :disabled="busy === 'note'"
-                  placeholder="For colleagues only: what was agreed, who to call…"
+                  :placeholder="t('notes.placeholder')"
                   class="form-input resize-none text-sm flex-1" @keydown.enter.meta="(e) => { if (!isComposing(e)) { e.preventDefault(); addNote() } }" @keydown.enter.ctrl="(e) => { if (!isComposing(e)) { e.preventDefault(); addNote() } }"></textarea>
                 <button type="submit" :disabled="busy === 'note' || !noteDraft.trim()"
-                  class="bg-brand-navy text-white font-ui font-medium text-xs px-4 py-2.5 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0">{{ busy === 'note' ? 'Saving…' : 'Add' }}</button>
+                  class="bg-brand-navy text-white font-ui font-medium text-xs px-4 py-2.5 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0">{{ busy === 'note' ? t('notes.saving') : t('notes.add') }}</button>
               </form>
-              <p v-if="!detail.notes.length" class="text-xs text-gray-500 font-ui">No notes yet. Notes are never sent to the client.</p>
+              <p v-if="!detail.notes.length" class="text-xs text-gray-500 font-ui">{{ t('notes.none') }}</p>
               <ul v-else class="space-y-2 max-h-48 overflow-y-auto">
                 <li v-for="n in detail.notes" :key="n.id" class="bg-brand-surface rounded-lg px-3 py-2">
                   <p class="text-xs text-gray-800 font-ui leading-relaxed whitespace-pre-wrap break-words">{{ n.body }}</p>
-                  <p class="text-[10px] text-gray-500 font-ui mt-1">{{ n.author || 'Staff' }} · {{ fullTime(n.at) }}</p>
+                  <p class="text-[10px] text-gray-500 font-ui mt-1">{{ n.author || t('notes.staff') }} · {{ fullTime(n.at, lang) }}</p>
                 </li>
               </ul>
             </div>
@@ -194,13 +194,13 @@
               <i class="fa-solid fa-circle-info text-brand-navy/70 mr-1.5" aria-hidden="true"></i>{{ detail.reply.message }}
             </p>
             <form v-else @submit.prevent="send" class="flex items-end gap-3">
-              <label for="wa-reply" class="sr-only">Reply on WhatsApp</label>
+              <label for="wa-reply" class="sr-only">{{ t('reply.label') }}</label>
               <textarea id="wa-reply" v-model="draft" rows="2" maxlength="4096" :disabled="busy === 'send'"
-                :placeholder="`Reply to ${title} on WhatsApp`"
+                :placeholder="t('reply.placeholder', { name: title })"
                 class="form-input resize-none text-sm flex-1" @keydown.enter.meta="(e) => { if (!isComposing(e)) { e.preventDefault(); send() } }" @keydown.enter.ctrl="(e) => { if (!isComposing(e)) { e.preventDefault(); send() } }"></textarea>
               <button type="submit" :disabled="busy === 'send' || !draft.trim()"
                 class="bg-brand-navy text-white font-ui font-semibold text-sm px-5 py-3 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0">
-                <FaIcon :name="busy === 'send' ? 'spinner' : 'paper-plane'" :spin="busy === 'send'" class="text-xs mr-1.5" />Send
+                <FaIcon :name="busy === 'send' ? 'spinner' : 'paper-plane'" :spin="busy === 'send'" class="text-xs mr-1.5" />{{ t('reply.send') }}
               </button>
             </form>
             <p v-if="sendError" role="alert" class="mt-2 text-xs font-ui text-brand-red">{{ sendError }}</p>
@@ -221,26 +221,20 @@ import PortalHeader from '../../components/portal/PortalHeader.vue'
 import { useVisiblePoll } from '../../composables/useVisiblePoll.js'
 import FaIcon from '../../components/FaIcon.vue'
 import { toDate, isComposing } from '../../utils/text.js'
+import { useT } from '../../i18n/translator.js'
+import { WHATSAPP } from '../../i18n/whatsapp.js'
 
 const route = useRoute()
 const router = useRouter()
 const { can } = useAuth()
 const { get, post, put } = useApi()
+const { t, lang } = useT(WHATSAPP)
 
-const VIEWS = [
-  { key: 'open', label: 'Open' },
-  { key: 'mine', label: 'Mine' },
-  { key: 'unassigned', label: 'Unassigned' },
-  { key: 'closed', label: 'Closed' },
-]
-const EMPTY = {
-  open: 'No open conversations. Messages clients send to the firm’s WhatsApp number appear here.',
-  mine: 'Nothing assigned to you.',
-  unassigned: 'Every open conversation has someone on it.',
-  closed: 'No closed conversations.',
-}
-const STATUS_LABEL = { pending: 'sending…', sent: 'sent', delivered: 'delivered', read: 'read', failed: 'not delivered', unknown: 'delivery unknown' }
-const INVOICE_LABEL = { paid: 'Paid', partial: 'Partly paid', unpaid: 'Unpaid', overdue: 'Overdue', needs_review: 'Being checked' }
+// Labels, empty states, statuses and invoice states live in i18n/whatsapp.js
+// under view.*, empty.*, status.* and invoice.*.
+const VIEWS = [{ key: 'open' }, { key: 'mine' }, { key: 'unassigned' }, { key: 'closed' }]
+const STATUS_KEYS = ['pending', 'sent', 'delivered', 'read', 'failed', 'unknown']
+const INVOICE_KEYS = ['paid', 'partial', 'unpaid', 'overdue', 'needs_review']
 const INVOICE_TONE = { paid: 'text-green-800', partial: 'text-amber-800', unpaid: 'text-gray-800', overdue: 'text-brand-red', needs_review: 'text-gray-600' }
 
 const view = ref('open')
@@ -280,7 +274,7 @@ async function loadList({ silent = false } = {}) {
     conversations.value = r.value
     listError.value = ''
   } catch (err) {
-    if (!silent) listError.value = err.message || 'Could not load conversations'
+    if (!silent) listError.value = err.message || t('list.load_error')
   } finally {
     loadingList.value = false
   }
@@ -296,11 +290,11 @@ async function loadDetail({ silent = false, scroll = false } = {}) {
     const sameThread = detail.value?.id === d.id
     const grew = !detail.value || !sameThread || detail.value.messages.length !== d.messages.length
     const last = d.messages[d.messages.length - 1]
-    if (sameThread && grew && last?.direction === 'in') arrivalNote.value = `New message from ${title.value || 'the client'}`
+    if (sameThread && grew && last?.direction === 'in') arrivalNote.value = t('arrival', { name: title.value || t('the_client') })
     detail.value = d
     if (scroll || grew) { await nextTick(); threadEl.value?.scrollTo({ top: threadEl.value.scrollHeight }) }
   } catch (err) {
-    if (!silent) { detail.value = null; detailError.value = err.message || 'Could not open the conversation' }
+    if (!silent) { detail.value = null; detailError.value = err.message || t('open_error') }
   }
 }
 
@@ -344,7 +338,7 @@ async function send() {
   try {
     const r = await post(`/api/whatsapp/conversations/${selectedId.value}/messages`, { body, clientKey })
     if (r.message.status === 'failed') {
-      sendError.value = r.message.error || 'WhatsApp did not accept the message.'
+      sendError.value = r.message.error || t('reply.rejected')
     } else {
       draft.value = ''
     }
@@ -352,7 +346,7 @@ async function send() {
     await Promise.all([loadDetail({ scroll: true }), loadList({ silent: true })])
   } catch (err) {
     // Same key on the next try: if this one did reach the server, it is not sent twice.
-    sendError.value = err.message || 'Could not send. Try again.'
+    sendError.value = err.message || t('reply.failed')
     await loadDetail({ silent: true })
   } finally {
     busy.value = ''
@@ -366,7 +360,7 @@ async function act(name, fn) {
     await fn()
     await Promise.all([loadDetail({ silent: true }), loadList({ silent: true })])
   } catch (err) {
-    actionError.value = err.message || 'That did not work. Try again.'
+    actionError.value = err.message || t('action_failed')
   } finally {
     busy.value = ''
   }
@@ -389,26 +383,33 @@ async function addNote() {
 const waPhone = (d) => (/^1\d{10}$/.test(String(d)) ? formatPhone(d) : `+${d}`)
 const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
 const money = (cents) => usd.format(Number(cents) / 100)
-function shortDay(value) {
+// Dates follow the language switch (lang passed in, so the template
+// re-renders when it changes).
+const localeOf = (l) => (l === 'es' ? 'es-US' : 'en-US')
+function shortDay(value, l = 'en') {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value))
   const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(value)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return d.toLocaleDateString(localeOf(l), { month: 'short', day: 'numeric' })
 }
-function relTime(value) {
-  const d = toDate(value)
-  if (!d) return ''
+const clock = (d, l) => d.toLocaleTimeString(localeOf(l), { hour: 'numeric', minute: '2-digit' })
+// '' for today, otherwise "Yesterday" or "Nov 3".
+function dayWord(d, l) {
   const now = new Date()
-  if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  if (d.toDateString() === now.toDateString()) return ''
   const y = new Date(now); y.setDate(y.getDate() - 1)
-  if (d.toDateString() === y.toDateString()) return 'Yesterday'
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  if (d.toDateString() === y.toDateString()) return t('yesterday')
+  return d.toLocaleDateString(localeOf(l), { month: 'short', day: 'numeric' })
 }
-function fullTime(value) {
+function relTime(value, l = 'en') {
   const d = toDate(value)
   if (!d) return ''
-  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-  const day = relTime(value)
-  return day.includes(':') ? `Today at ${time}` : `${day} at ${time}`
+  return dayWord(d, l) || clock(d, l)
+}
+function fullTime(value, l = 'en') {
+  const d = toDate(value)
+  if (!d) return ''
+  const day = dayWord(d, l)
+  return day ? t('day_at', { day, time: clock(d, l) }) : t('today_at', { time: clock(d, l) })
 }
 
 // --- live updates: same polling as the lead inbox -------------------------------

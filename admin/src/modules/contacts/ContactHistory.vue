@@ -4,27 +4,27 @@
        same number is a possible match until someone says it is the same
        person; marked as someone else, it leaves this history. -->
   <div class="font-ui" data-contact-history>
-    <h3 class="label">Contact history</h3>
-    <p v-if="!hasNumber && loaded" class="mt-2 text-[13px] text-gray-600">The number was withheld, so there is nothing to match this call with.</p>
-    <p v-else-if="loading && !events.length" class="mt-2 text-[13px] text-gray-500"><FaIcon name="spinner" spin class="mr-1.5" />Loading…</p>
-    <p v-else-if="error && !events.length" class="mt-2 text-[13px] text-gray-600">Could not load the history. <button type="button" class="font-semibold text-brand-navy underline" @click="load()">Try again</button></p>
+    <h3 class="label">{{ t('history.heading') }}</h3>
+    <p v-if="!hasNumber && loaded" class="mt-2 text-[13px] text-gray-600">{{ t('history.withheld') }}</p>
+    <p v-else-if="loading && !events.length" class="mt-2 text-[13px] text-gray-500"><FaIcon name="spinner" spin class="mr-1.5" />{{ t('history.loading') }}</p>
+    <p v-else-if="error && !events.length" class="mt-2 text-[13px] text-gray-600">{{ t('history.load_error') }} <button type="button" class="font-semibold text-brand-navy underline" @click="load()">{{ t('history.try_again') }}</button></p>
     <template v-else>
       <!-- Different people on one number (a family phone): named, never merged. -->
       <div v-if="undecided.length" class="mt-2 rounded-xl bg-amber-50 ring-1 ring-amber-200 px-3.5 py-3 text-[13px] text-gray-800">
-        <p class="font-semibold text-gray-900">{{ undecided.length === 1 ? 'A website lead uses this number' : `${undecided.length} website leads use this number` }}</p>
-        <p class="mt-0.5 text-gray-700">The same number does not always mean the same person. Say who it is, so the history only shows them.</p>
+        <p class="font-semibold text-gray-900">{{ t('history.leads_use', { count: undecided.length }) }}</p>
+        <p class="mt-0.5 text-gray-700">{{ t('history.same_number') }}</p>
         <ul class="mt-2 space-y-2">
           <li v-for="m in undecided" :key="m.key" class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <span class="min-w-0"><span class="font-semibold">{{ m.name || 'No name' }}</span><span v-if="m.email" class="text-gray-600"> · {{ m.email }}</span></span>
+            <span class="min-w-0"><span class="font-semibold">{{ m.name || t('history.no_name') }}</span><span v-if="m.email" class="text-gray-600"> · {{ m.email }}</span></span>
             <span v-if="canDecide" class="flex gap-1.5">
-              <button type="button" class="mbtn" :disabled="deciding" @click="decide(m, 'confirmed')">Same person</button>
-              <button type="button" class="mbtn" :disabled="deciding" @click="decide(m, 'rejected')">Someone else</button>
+              <button type="button" class="mbtn" :disabled="deciding" @click="decide(m, 'confirmed')">{{ t('history.same_person') }}</button>
+              <button type="button" class="mbtn" :disabled="deciding" @click="decide(m, 'rejected')">{{ t('history.someone_else') }}</button>
             </span>
           </li>
         </ul>
       </div>
 
-      <p v-if="!events.length" class="mt-2 text-[13px] text-gray-600">Nothing else yet.</p>
+      <p v-if="!events.length" class="mt-2 text-[13px] text-gray-600">{{ t('history.nothing') }}</p>
       <ol v-else class="mt-2 divide-y divide-gray-100 rounded-xl ring-1 ring-gray-200">
         <li v-for="e in events" :key="e.id" :class="isCurrent(e) ? 'bg-gray-50' : ''">
           <component :is="linkFor(e) ? (linkFor(e).to ? 'router-link' : 'button') : 'div'" v-bind="linkFor(e)?.to ? { to: linkFor(e).to } : linkFor(e) ? { type: 'button' } : {}"
@@ -32,17 +32,17 @@
             @click="linkFor(e)?.call ? $emit('open-call', e.callId) : null">
             <FaIcon :name="HISTORY_ICON[e.type] || 'circle-info'" class="mt-0.5 text-gray-500 w-4" />
             <span class="min-w-0 flex-1">
-              <span class="text-gray-900">{{ historyLine(e, consultationLabel) }}</span>
-              <span v-if="isCurrent(e)" class="text-gray-500"> · this call</span>
-              <span v-if="e.type === 'submission' && e.name" class="block text-[12px] text-gray-600">{{ e.name }}<template v-if="possibleMatch(e)"> · same number, not confirmed as this person</template></span>
-              <span class="block text-[11.5px] text-gray-500">{{ e.source }}</span>
+              <span class="text-gray-900">{{ historyLine(e, consultationLabel, lang) }}</span>
+              <span v-if="isCurrent(e)" class="text-gray-500"> {{ t('history.this_call') }}</span>
+              <span v-if="e.type === 'submission' && e.name" class="block text-[12px] text-gray-600">{{ e.name }}<template v-if="possibleMatch(e)"> {{ t('history.not_confirmed') }}</template></span>
+              <span class="block text-[11.5px] text-gray-500">{{ sourceName(e.source, lang) }}</span>
             </span>
-            <time :datetime="e.at" class="text-gray-500 tabular-nums whitespace-nowrap">{{ when(e.at) }}</time>
+            <time :datetime="e.at" class="text-gray-500 tabular-nums whitespace-nowrap">{{ historyWhen(e.at, Date.now(), lang) }}</time>
           </component>
         </li>
       </ol>
       <button v-if="more" type="button" class="mt-2 inline-flex items-center gap-1.5 min-h-10 text-[13px] font-semibold text-brand-navy hover:underline" :disabled="loading" @click="load({ older: true })">
-        <FaIcon v-if="loading" name="spinner" spin />Show older
+        <FaIcon v-if="loading" name="spinner" spin />{{ t('history.show_older') }}
       </button>
     </template>
   </div>
@@ -54,8 +54,9 @@ import { useApi } from '../../composables/useApi.js'
 import { can } from '../../composables/useAuth.js'
 import { toast } from '../../composables/useToast.js'
 import FaIcon from '../../components/FaIcon.vue'
-import { when } from '../calls/callsInbox.js'
-import { historyLine, possibleMatch, olderPageParam, HISTORY_ICON } from './historyText.js'
+import { historyLine, historyWhen, sourceName, possibleMatch, olderPageParam, HISTORY_ICON } from './historyText.js'
+import { useT } from '../../i18n/translator.js'
+import { CONTACTS } from '../../i18n/contacts.js'
 import { consultationLabel } from '../../data/consultationTypes.js'
 
 const props = defineProps({
@@ -65,6 +66,7 @@ const props = defineProps({
 })
 defineEmits(['open-call'])
 const { get, put } = useApi()
+const { t, lang } = useT(CONTACTS)
 
 const events = ref([])
 const matches = ref([])
@@ -111,10 +113,10 @@ async function decide(m, state) {
     for (const s of m.submissions) {
       await put('/api/contacts/matches', { ...(props.callId ? { callId: props.callId } : { submissionId: props.submissionId }), lead: s.id, state })
     }
-    toast(state === 'confirmed' ? `${m.name || 'The lead'} is linked to this number.` : `${m.name || 'The lead'} is set aside as someone else.`)
+    toast(t(state === 'confirmed' ? 'history.linked' : 'history.set_aside', { name: m.name || t('history.the_lead') }))
     await load()
   } catch (e) {
-    toast({ text: `That was not saved: ${e.message}`, tone: 'error' })
+    toast({ text: t('history.not_saved', { error: e.message }), tone: 'error' })
   } finally {
     deciding.value = false
   }

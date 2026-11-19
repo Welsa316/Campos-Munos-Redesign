@@ -4,6 +4,10 @@
 // Friday), the same rule as the server (server/reminders/dueTime.js), so
 // the time shown before saving is the time saved.
 import { FIRM_TIME_ZONE, firmWall as wall, firmInstant, sameFirmDay } from '../../utils/firmTime.js'
+import { makeTranslate } from '../../i18n/translator.js'
+import { REMINDERS } from '../../i18n/reminders.js'
+
+const tr = makeTranslate(REMINDERS)
 
 export const MORNING_HOUR = 9
 
@@ -16,19 +20,21 @@ export function nextBusinessMorning(now = Date.now()) {
 }
 
 const WEEKDAY = new Intl.DateTimeFormat('en-US', { timeZone: FIRM_TIME_ZONE, weekday: 'long' })
+const WEEKDAY_ES = new Intl.DateTimeFormat('es-US', { timeZone: FIRM_TIME_ZONE, weekday: 'long' })
 
 /**
  * The quick choices, each with its exact time. The morning one says which
  * morning when it is not literally tomorrow ("Monday morning" on a Friday).
  */
-export function dueChoices(now = Date.now()) {
+export function dueChoices(now = Date.now(), lang = 'en') {
   const t = new Date(now).getTime()
   const morning = nextBusinessMorning(t)
   const isTomorrow = sameFirmDay(morning, t + 864e5)
+  const weekday = (lang === 'es' ? WEEKDAY_ES : WEEKDAY).format(morning)
   return [
-    { key: 'in_30', label: 'In 30 minutes', at: new Date(t + 30 * 60 * 1000) },
-    { key: 'in_60', label: 'In 1 hour', at: new Date(t + 60 * 60 * 1000) },
-    { key: 'tomorrow_morning', label: isTomorrow ? 'Tomorrow morning' : `${WEEKDAY.format(morning)} morning`, at: morning },
+    { key: 'in_30', label: tr(lang, 'due.in_30'), at: new Date(t + 30 * 60 * 1000) },
+    { key: 'in_60', label: tr(lang, 'due.in_60'), at: new Date(t + 60 * 60 * 1000) },
+    { key: 'tomorrow_morning', label: isTomorrow ? tr(lang, 'due.tomorrow_morning') : tr(lang, 'due.weekday_morning', { weekday }), at: morning },
   ]
 }
 
@@ -65,24 +71,24 @@ export function fromInputs(date, time) {
  * Why a picked time cannot be saved, or '' (the server checks the same:
  * not in the past, at most a year out).
  */
-export function dueProblem(at, now = Date.now()) {
-  if (!at) return 'Choose a date and time.'
+export function dueProblem(at, now = Date.now(), lang = 'en') {
+  if (!at) return tr(lang, 'due.problem.none')
   const t = new Date(at).getTime()
-  if (t < now - 60 * 1000) return 'That time has passed. Choose a time in the future.'
-  if (t > now + 366 * 864e5) return 'Choose a time within the next year.'
+  if (t < now - 60 * 1000) return tr(lang, 'due.problem.past')
+  if (t > now + 366 * 864e5) return tr(lang, 'due.problem.year')
   return ''
 }
 
 /** What a reminder's line says: "Fri, Nov 7, 9:00 AM", or "Due now" / "Overdue since 9:00 AM". */
-export function dueLine(r, now = Date.now()) {
+export function dueLine(r, now = Date.now(), lang = 'en') {
   const t = new Date(r.dueAt).getTime()
   if (r.status === 'due' || t <= now) {
     const mins = Math.round((now - t) / 60000)
-    if (mins < 5) return 'Due now'
+    if (mins < 5) return tr(lang, 'due.now')
     const sameDay = sameFirmDay(t, now)
-    return `Overdue since ${sameDay ? formatTime(t) : formatDue(t)}`
+    return tr(lang, 'due.overdue_since', { when: sameDay ? formatTime(t, lang) : formatDue(t, lang) })
   }
-  return formatDue(t)
+  return formatDue(t, lang)
 }
 
 /** Overdue (past due by 5 minutes or more), due (just now), or later. */
