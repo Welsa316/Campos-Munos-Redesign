@@ -1,6 +1,6 @@
 <template>
   <div class="h-dvh flex flex-col bg-brand-surface overflow-hidden">
-    <PortalHeader title="Calls" current="calls" label-at="xl" actions-label-at="lg" show-email :notifications="false" />
+    <PortalHeader :title="t('page.title')" current="calls" label-at="xl" actions-label-at="lg" show-email :notifications="false" />
     <CallDialog :visible="dialog.open" :number="dialog.number" :name="dialog.name" @close="dialog.open = false" />
     <ExcludeCallDialog :call="excluding" @close="excluding = null" @saved="afterExclude" />
     <ClearCallsDialog :open="clearing" @close="clearing = false" @cleared="afterClear" />
@@ -15,9 +15,9 @@
         <!-- The three company-wide counts. Search and filters never change them. -->
         <div class="flex flex-wrap items-center gap-x-6 gap-y-4">
           <!-- Each count opens the list behind it. -->
-          <ul class="flex flex-wrap items-center gap-x-2 sm:gap-x-3 gap-y-2" aria-label="Today's calls">
+          <ul class="flex flex-wrap items-center gap-x-2 sm:gap-x-3 gap-y-2" :aria-label="t('kpi.group')">
             <li v-for="(m, i) in metrics" :key="m.key" :class="i ? 'sm:pl-3 sm:border-l sm:border-gray-200' : ''">
-              <button type="button" @click="openMetric(m.key)" :aria-label="`${m.value} ${m.label}: show them`"
+              <button type="button" @click="openMetric(m.key)" :aria-label="t('kpi.show', { count: m.value, label: m.label })"
                 class="flex items-center gap-3 min-h-11 px-2.5 py-1.5 rounded-xl hover:bg-white transition-colors">
                 <span :class="m.tone" class="text-[30px] sm:text-[34px] font-light leading-none tracking-tight tabular-nums" aria-hidden="true">
                   <RollingNumber v-if="kpis" :value="m.value" />
@@ -31,13 +31,13 @@
             <span class="hidden sm:inline-flex items-center gap-1.5 text-[12px] text-gray-500" :title="sync?.lastSuccessAt ? fullDate(sync.lastSuccessAt) : ''">
               <span v-if="live" class="w-1.5 h-1.5 rounded-full bg-green-500" aria-hidden="true"></span>{{ updatedLabel }}
             </span>
-            <button type="button" @click="refresh" :disabled="Boolean(refreshing) || !canRefresh" aria-label="Refresh from RingCentral" title="Refresh from RingCentral"
+            <button type="button" @click="refresh" :disabled="Boolean(refreshing) || !canRefresh" :aria-label="t('refresh')" :title="t('refresh')"
               class="w-11 h-11 sm:w-9 sm:h-9 inline-flex items-center justify-center rounded-lg text-gray-600 hover:text-gray-900 hover:bg-white disabled:opacity-50">
               <FaIcon name="arrows-rotate" :spin="Boolean(refreshing)" />
             </button>
             <button v-if="canCall" type="button" @click="openCall()"
               class="inline-flex items-center gap-2 min-h-11 sm:min-h-9 px-4 rounded-lg bg-brand-navy hover:bg-brand-navy-dark text-white text-[13px] font-semibold">
-              <FaIcon name="phone" />New call
+              <FaIcon name="phone" />{{ t('new_call') }}
             </button>
           </div>
         </div>
@@ -46,21 +46,21 @@
         <p v-if="notice" role="status" :class="notice.tone" class="text-sm rounded-lg px-4 py-3 flex items-start gap-2">
           <FaIcon :name="notice.icon" class="mt-0.5 flex-shrink-0" />
           <span>{{ notice.text }}
-            <router-link v-if="notice.link && canManageConnection" :to="{ name: 'Integrations' }" class="font-semibold underline ml-1">Open Integrations</router-link>
+            <router-link v-if="notice.link && canManageConnection" :to="{ name: 'Integrations' }" class="font-semibold underline ml-1">{{ t('open_integrations') }}</router-link>
           </span>
         </p>
         <p v-if="error" role="alert" class="text-sm text-brand-red bg-red-50 rounded-lg px-4 py-3">{{ error }}</p>
 
-        <section class="bg-white rounded-2xl ring-1 ring-gray-200" aria-label="Calls">
+        <section class="bg-white rounded-2xl ring-1 ring-gray-200" :aria-label="t('section.calls')">
           <!-- Tabs, search, filters -->
           <div class="flex flex-wrap items-stretch gap-x-5 gap-y-3 px-4 sm:px-5 pt-3 sm:pt-0 border-b border-gray-100">
-            <div class="flex items-stretch gap-6 order-2 sm:order-none w-full sm:w-auto" role="tablist" aria-label="Call views" @keydown="onTabKey">
-              <button v-for="t in TABS" :key="t.key" :id="`calls-tab-${t.key}`" type="button" role="tab"
-                :aria-selected="tab === t.key" :aria-controls="'calls-panel'" :tabindex="tab === t.key ? 0 : -1" @click="setTab(t.key)"
-                :class="tab === t.key ? 'text-gray-900 after:bg-brand-navy' : 'text-gray-600 hover:text-gray-900 after:bg-transparent'"
+            <div class="flex items-stretch gap-6 order-2 sm:order-none w-full sm:w-auto" role="tablist" :aria-label="t('tabs.label')" @keydown="onTabKey">
+              <button v-for="tb in TABS" :key="tb.key" :id="`calls-tab-${tb.key}`" type="button" role="tab"
+                :aria-selected="tab === tb.key" :aria-controls="'calls-panel'" :tabindex="tab === tb.key ? 0 : -1" @click="setTab(tb.key)"
+                :class="tab === tb.key ? 'text-gray-900 after:bg-brand-navy' : 'text-gray-600 hover:text-gray-900 after:bg-transparent'"
                 class="relative inline-flex items-center gap-2 min-h-12 sm:min-h-[60px] text-[13.5px] font-semibold after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full">
-                {{ t.label }}
-                <span v-if="t.key === 'attention' && kpis" :class="kpis.needsAttention ? 'bg-amber-100 text-amber-900' : 'bg-gray-100 text-gray-600'"
+                {{ t(`tab.${tb.key}`) }}
+                <span v-if="tb.key === 'attention' && kpis" :class="kpis.needsAttention ? 'bg-amber-100 text-amber-900' : 'bg-gray-100 text-gray-600'"
                   class="min-w-[22px] px-1.5 py-0.5 rounded-md text-[11px] font-bold tabular-nums text-center">
                   <RollingNumber :value="kpis.needsAttention" />
                 </span>
@@ -68,15 +68,15 @@
             </div>
             <div class="order-1 sm:order-none flex items-center gap-2 w-full sm:w-auto sm:ml-auto sm:py-3">
               <label class="relative flex-1 sm:w-64">
-                <span class="sr-only">Search calls by name or number</span>
+                <span class="sr-only">{{ t('search.label') }}</span>
                 <FaIcon name="magnifying-glass" class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400" />
-                <input v-model="search" type="search" placeholder="Search name or number"
+                <input v-model="search" type="search" :placeholder="t('search.placeholder')"
                   class="w-full min-h-11 sm:min-h-9 pl-8 pr-3 rounded-lg bg-brand-surface ring-1 ring-gray-200 focus:ring-2 focus:ring-brand-navy outline-none text-[13px] text-gray-900" />
               </label>
               <button type="button" @click="filtersOpen = !filtersOpen" :aria-expanded="filtersOpen" aria-controls="calls-filters"
                 :class="filtersOpen || activeFilters ? 'ring-brand-navy text-gray-900' : 'ring-gray-200 text-gray-700'"
                 class="inline-flex items-center gap-2 min-h-11 sm:min-h-9 px-3.5 rounded-lg ring-1 bg-white hover:bg-gray-50 text-[13px] font-semibold">
-                <FaIcon name="sliders" />Filters
+                <FaIcon name="sliders" />{{ t('filters') }}
                 <span v-if="activeFilters" class="min-w-[18px] px-1 rounded bg-brand-navy text-white text-[11px] tabular-nums">{{ activeFilters }}</span>
               </button>
             </div>
@@ -87,9 +87,9 @@
           <Transition name="drawer">
             <div v-if="filtersOpen" id="calls-filters" class="px-4 sm:px-5 py-4 border-b border-gray-100 bg-gray-50/60 flex flex-wrap items-end gap-x-5 gap-y-3 text-[13px]">
               <div v-if="tab === 'all'">
-                <p class="flabel" id="calls-range-label">Date range</p>
+                <p class="flabel" id="calls-range-label">{{ t('filters.range') }}</p>
                 <div class="inline-flex flex-wrap bg-white rounded-lg ring-1 ring-gray-200 p-0.5" role="group" aria-labelledby="calls-range-label">
-                  <button v-for="r in RANGES" :key="r.key" type="button" @click="range = r.key" :aria-pressed="range === r.key" :data-range="r.key"
+                  <button v-for="r in rangeOptions(lang)" :key="r.key" type="button" @click="range = r.key" :aria-pressed="range === r.key" :data-range="r.key"
                     :class="range === r.key ? 'bg-brand-navy text-white' : 'text-gray-600 hover:text-gray-900'"
                     class="min-h-10 sm:min-h-8 px-3 rounded-md text-[12px] font-semibold transition-colors">{{ r.label }}</button>
                 </div>
@@ -97,18 +97,18 @@
               <!-- Any two days within the last 12 months (calls are kept that long). -->
               <div v-if="tab === 'all' && range === 'custom'" class="flex flex-wrap items-end gap-3" data-custom-range>
                 <label class="block">
-                  <span class="flabel">From</span>
+                  <span class="flabel">{{ t('filters.from') }}</span>
                   <input v-model="customFrom" type="date" :min="oldestDay" :max="customTo || todayKey" class="fselect" data-range-from />
                 </label>
                 <label class="block">
-                  <span class="flabel">To</span>
+                  <span class="flabel">{{ t('filters.to') }}</span>
                   <input v-model="customTo" type="date" :min="customFrom || oldestDay" :max="todayKey" class="fselect" data-range-to />
                 </label>
               </div>
               <!-- Outcomes, each with its count for the range; pressing one
                    again goes back to every call. -->
               <div v-if="tab === 'all'" class="basis-full" role="group" aria-labelledby="calls-outcome-label">
-                <p class="flabel" id="calls-outcome-label">Outcome</p>
+                <p class="flabel" id="calls-outcome-label">{{ t('filters.outcome') }}</p>
                 <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-1.5 sm:gap-2" data-outcome-filter>
                   <button v-for="o in outcomeOptions" :key="o.key" type="button" @click="setOutcome(o.key)" :aria-pressed="filter === o.key"
                     :class="filter === o.key ? 'ring-2 ring-brand-navy bg-white' : 'ring-1 ring-gray-200 bg-white hover:ring-gray-300'"
@@ -120,16 +120,16 @@
               </div>
               <!-- Calls a RingCentral step proves were offered to one person. -->
               <label v-if="people.length" class="block">
-                <span class="flabel">Offered to</span>
+                <span class="flabel">{{ t('filters.offered_to') }}</span>
                 <select v-model="personFilter" class="fselect" data-person-filter>
-                  <option value="">Anyone</option>
-                  <option v-for="p in people" :key="p.extensionId" :value="p.extensionId">{{ p.name }}{{ p.extension ? ` · ext. ${p.extension}` : '' }}</option>
+                  <option value="">{{ t('filters.anyone') }}</option>
+                  <option v-for="p in people" :key="p.extensionId" :value="p.extensionId">{{ p.name }}{{ p.extension ? t('filters.ext', { ext: p.extension }) : '' }}</option>
                 </select>
               </label>
               <label class="inline-flex items-center gap-2 min-h-10 text-gray-700">
-                <input v-model="businessHours" type="checkbox" class="w-4 h-4 accent-brand-navy" />Business hours only <span class="text-gray-500">(Mon–Fri 9–5)</span>
+                <input v-model="businessHours" type="checkbox" class="w-4 h-4 accent-brand-navy" />{{ t('filters.business_hours') }} <span class="text-gray-500">{{ t('filters.business_hours_when') }}</span>
               </label>
-              <button v-if="activeFilters" type="button" @click="clearNarrowing" class="min-h-10 font-semibold text-brand-navy underline">Clear filters</button>
+              <button v-if="activeFilters" type="button" @click="clearNarrowing" class="min-h-10 font-semibold text-brand-navy underline">{{ t('filters.clear') }}</button>
             </div>
           </Transition>
 
@@ -138,39 +138,39 @@
             <div class="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 sm:px-5 py-2.5 border-b border-gray-100 text-[12px] text-gray-600">
               <span class="font-semibold text-gray-800" aria-live="polite">{{ listSummary }}</span>
               <span aria-hidden="true">·</span><span>{{ scopeLabel }}</span>
-              <template v-if="personRow"><span aria-hidden="true">·</span><span>offered to {{ personRow.name }}</span></template>
-              <template v-if="businessHours"><span aria-hidden="true">·</span><span>business hours</span></template>
-              <span class="ml-auto">{{ tab === 'attention' ? 'Oldest first' : tab === 'handled' ? 'Most recently handled first' : 'Newest first' }}</span>
+              <template v-if="personRow"><span aria-hidden="true">·</span><span>{{ t('list.offered_to', { name: personRow.name }) }}</span></template>
+              <template v-if="businessHours"><span aria-hidden="true">·</span><span>{{ t('list.business_hours') }}</span></template>
+              <span class="ml-auto">{{ t(tab === 'attention' ? 'list.oldest_first' : tab === 'handled' ? 'list.recent_handled_first' : 'list.newest_first') }}</span>
               <!-- Administrators: empty the list in one go (after fixing the phone system's routing, say). -->
               <button v-if="tab === 'attention' && canClear && visibleCalls.length" type="button" @click="clearing = true" data-clear-list
                 class="inline-flex items-center gap-1.5 min-h-9 -my-1.5 px-2.5 rounded-lg font-semibold text-brand-navy hover:bg-gray-50">
-                <FaIcon name="check" />Clear the list…
+                <FaIcon name="check" />{{ t('list.clear') }}
               </button>
             </div>
 
             <!-- One person: what happened to the calls offered to them. -->
             <p v-if="personRow && tab === 'all'" class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 sm:px-5 py-2.5 border-b border-gray-100 text-[13px] text-gray-700" data-person-summary>
               <span class="font-semibold text-gray-900">{{ personRow.name }}</span>
-              <span>{{ counts.incoming || 0 }} offered</span>
-              <span class="text-green-700">{{ counts.person_answered || 0 }} answered by them</span>
-              <span class="text-brand-red">{{ counts.person_not_answered || 0 }} not answered by them</span>
-              <span class="text-gray-500 basis-full sm:basis-auto">Only calls where a RingCentral step shows the call offered to their extension.</span>
+              <span>{{ t('person.offered', { count: counts.incoming || 0 }) }}</span>
+              <span class="text-green-700">{{ t('person.answered', { count: counts.person_answered || 0 }) }}</span>
+              <span class="text-brand-red">{{ t('person.not_answered', { count: counts.person_not_answered || 0 }) }}</span>
+              <span class="text-gray-500 basis-full sm:basis-auto">{{ t('person.only') }}</span>
             </p>
 
             <!-- Column labels, wide screens only -->
             <div class="hidden lg:grid grid-cols-[var(--call-cols)] gap-x-5 px-5 py-2.5 border-b border-gray-100 text-[11px] font-semibold uppercase tracking-[0.1em] text-gray-500 calls-cols" aria-hidden="true">
-              <span class="pl-12">Caller</span><span>What happened</span><span>Received</span><span class="text-right">Next step</span>
+              <span class="pl-12">{{ t('col.caller') }}</span><span>{{ t('col.what') }}</span><span>{{ t('col.received') }}</span><span class="text-right">{{ t('col.next') }}</span>
             </div>
 
             <div v-if="loading && !rows.length" class="py-16 text-center text-sm text-gray-500">
-              <FaIcon name="spinner" spin class="mr-2" />Loading calls…
+              <FaIcon name="spinner" spin class="mr-2" />{{ t('loading_calls') }}
             </div>
 
             <div v-else-if="!rows.length" class="px-6 py-14 text-center">
               <span :class="caughtUp ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'" class="mx-auto w-11 h-11 rounded-full inline-flex items-center justify-center">
                 <FaIcon :name="caughtUp ? 'circle-check' : 'magnifying-glass'" />
               </span>
-              <p class="mt-3 text-[15px] font-semibold text-gray-900">{{ caughtUp ? 'You’re all caught up' : 'No calls in this view' }}</p>
+              <p class="mt-3 text-[15px] font-semibold text-gray-900">{{ t(caughtUp ? 'empty.caught_up' : 'empty.none') }}</p>
               <p class="mt-1 text-[13px] text-gray-600">{{ emptyText }}</p>
             </div>
 
@@ -190,7 +190,7 @@
                   <p v-if="r.type === 'group' && r.note" class="px-4 sm:px-5 -mt-1 pb-2 font-ui text-[12.5px] text-gray-600">{{ r.note }}</p>
                   <!-- Nobody waiting, while the review group still has calls. -->
                   <p v-else-if="r.type === 'empty'" class="flex items-center gap-2 px-4 sm:px-5 py-4 font-ui text-[13px] text-gray-700">
-                    <FaIcon name="circle-check" class="text-green-700" />Nobody is waiting for a call back.
+                    <FaIcon name="circle-check" class="text-green-700" />{{ t('empty.nobody_waiting') }}
                   </p>
                   <CallRow v-else-if="r.type === 'call'" :c="r.call" :episode="r.episode" :now="now" :show-day="tab === 'attention'"
                     :can-call="canCall" :can-exclude="canExclude" :can-see-leads="canSeeLeads" :can-mark="canMark(r.call)"
@@ -207,13 +207,13 @@
             <div v-if="tab === 'all' && truncated && rows.length" class="px-4 sm:px-5 py-3 border-t border-gray-100 flex justify-center">
               <button type="button" @click="loadOlder" :disabled="loadingOlder" :aria-busy="loadingOlder" data-load-older
                 class="inline-flex items-center gap-2 min-h-11 px-4 rounded-xl ring-1 ring-gray-200 bg-white text-[13px] font-semibold text-brand-navy hover:bg-gray-50 disabled:opacity-60">
-                <FaIcon :name="loadingOlder ? 'spinner' : 'chevron-down'" :spin="loadingOlder" />{{ loadingOlder ? 'Loading…' : 'Show older calls' }}
+                <FaIcon :name="loadingOlder ? 'spinner' : 'chevron-down'" :spin="loadingOlder" />{{ t(loadingOlder ? 'loading' : 'older') }}
               </button>
             </div>
 
             <div class="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 sm:px-5 py-3 border-t border-gray-100 text-[12px] text-gray-600">
-              <span>{{ FOOTER[tab] }}</span>
-              <span class="ml-auto inline-flex items-center gap-1.5"><FaIcon name="clock" class="text-gray-400" />Times in New Orleans</span>
+              <span>{{ t(`footer.${tab}`) }}</span>
+              <span class="ml-auto inline-flex items-center gap-1.5"><FaIcon name="clock" class="text-gray-400" />{{ t('times_in') }}</span>
             </div>
           </div>
         </section>
@@ -221,35 +221,35 @@
         <!-- Calls left out of the counts, and where to see them (All calls). -->
         <div v-if="tab === 'all'" class="space-y-1.5 text-[12.5px] text-gray-600">
           <p v-if="counts.system && filter !== 'system'">
-            {{ counts.system }} {{ counts.system === 1 ? 'call was' : 'calls were' }} ended by the phone system (a blocked number or a refused call) and {{ counts.system === 1 ? 'needs' : 'need' }} no callback.
-            <button type="button" @click="filter = 'system'" class="font-semibold text-brand-navy underline">Show {{ counts.system === 1 ? 'it' : 'them' }}</button>
+            {{ t('counts.system', { count: counts.system }) }}
+            <button type="button" @click="filter = 'system'" class="font-semibold text-brand-navy underline">{{ t('counts.show', { count: counts.system }) }}</button>
           </p>
           <p v-if="counts.unconfirmed && filter !== 'unconfirmed'">
-            {{ counts.unconfirmed }} {{ counts.unconfirmed === 1 ? 'call has' : 'calls have' }} no outcome recorded by RingCentral. {{ counts.unconfirmed === 1 ? 'It is' : 'They are' }} not counted as missed or against anyone, and {{ counts.unconfirmed === 1 ? 'needs' : 'need' }} nothing from you.
-            <button type="button" @click="filter = 'unconfirmed'" class="font-semibold text-brand-navy underline">Show {{ counts.unconfirmed === 1 ? 'it' : 'them' }}</button>
+            {{ t('counts.unconfirmed', { count: counts.unconfirmed }) }}
+            <button type="button" @click="filter = 'unconfirmed'" class="font-semibold text-brand-navy underline">{{ t('counts.show', { count: counts.unconfirmed }) }}</button>
           </p>
           <p v-if="counts.excluded && filter !== 'excluded'">
-            {{ counts.excluded }} {{ counts.excluded === 1 ? 'call was' : 'calls were' }} marked as needing no callback and {{ counts.excluded === 1 ? 'is' : 'are' }} left out of these counts.
-            <button type="button" @click="filter = 'excluded'" class="font-semibold text-brand-navy underline">Show {{ counts.excluded === 1 ? 'it' : 'them' }}</button>
+            {{ t('counts.excluded', { count: counts.excluded }) }}
+            <button type="button" @click="filter = 'excluded'" class="font-semibold text-brand-navy underline">{{ t('counts.show', { count: counts.excluded }) }}</button>
           </p>
-          <p v-if="truncated" class="text-gray-500">Showing the most recent {{ calls.length }} calls in this range.</p>
+          <p v-if="truncated" class="text-gray-500">{{ t('counts.truncated_all', { count: calls.length }) }}</p>
         </div>
-        <p v-else-if="truncated" class="text-[12.5px] text-gray-500">Showing the {{ calls.length }} most recent open calls. Search for a caller to find an older one.</p>
+        <p v-else-if="truncated" class="text-[12.5px] text-gray-500">{{ t('counts.truncated_open', { count: calls.length }) }}</p>
 
         <div class="flex justify-end">
           <button type="button" @click="countsHelp = !countsHelp" :aria-expanded="countsHelp" aria-controls="calls-counts-help"
             class="inline-flex items-center gap-1.5 min-h-11 text-[12.5px] font-semibold text-brand-navy hover:underline">
-            How counts work <FaIcon name="circle-info" />
+            {{ t('help.toggle') }} <FaIcon name="circle-info" />
           </button>
         </div>
         <Transition name="drawer">
-          <section v-if="countsHelp" id="calls-counts-help" class="bg-white rounded-2xl ring-1 ring-gray-200 px-5 py-4 text-[13px] text-gray-700 space-y-3" aria-label="How counts work">
+          <section v-if="countsHelp" id="calls-counts-help" class="bg-white rounded-2xl ring-1 ring-gray-200 px-5 py-4 text-[13px] text-gray-700 space-y-3" :aria-label="t('help.toggle')">
             <dl class="grid gap-3 sm:grid-cols-3">
-              <div><dt class="font-semibold text-gray-900">Needs attention</dt><dd class="mt-1">People waiting for a call back: incoming calls from the last 90 days that nobody answered (not answered, the caller hung up, it ended before anyone was rung, or a voicemail), from a number we can call back, that nobody has dealt with yet. Several such calls in a row from one number count as one caller. They leave the list when a callback to the number connects, the caller gets through on a later call, or someone marks them handled or as needing no callback. A callback that does not connect is shown as tried and leaves them open.</dd></div>
-              <div><dt class="font-semibold text-gray-900">Handled today</dt><dd class="mt-1">Calls dealt with today, each counted on its own: marked handled today, or closed today by a connected callback or a later answered call. A caller with three unanswered calls, marked handled, counts three. Includes calls from earlier days. Calls marked as needing no callback are not counted.</dd></div>
-              <div><dt class="font-semibold text-gray-900">Total calls today</dt><dd class="mt-1">Every incoming and outgoing call that started today, each counted once however many steps RingCentral recorded. Calls between extensions are not counted.</dd></div>
+              <div><dt class="font-semibold text-gray-900">{{ t('help.attention.title') }}</dt><dd class="mt-1">{{ t('help.attention') }}</dd></div>
+              <div><dt class="font-semibold text-gray-900">{{ t('help.handled.title') }}</dt><dd class="mt-1">{{ t('help.handled') }}</dd></div>
+              <div><dt class="font-semibold text-gray-900">{{ t('help.total.title') }}</dt><dd class="mt-1">{{ t('help.total') }}</dd></div>
             </dl>
-            <p class="text-gray-600">“Today” is midnight to midnight in New Orleans. Search and filters never change these three counts. Withheld numbers are not listed in Needs attention. Calls RingCentral recorded no outcome for, from a number we can call back, are listed apart under “Check if they still need help”: they are not in the Needs attention count, and nobody is counted as missing them. Marking a call handled never changes how it is classified or who it is attributed to.</p>
+            <p class="text-gray-600">{{ t('help.note') }}</p>
           </section>
         </Transition>
       </div>
@@ -261,7 +261,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
 import { firmDateKey, zoneMidnightDaysAgo } from '../../utils/firmTime.js'
-import { RANGES, RANGE_KEYS, KEEP_DAYS, rangeBounds, rangeLabel, customDays } from './callRanges.js'
+import { rangeOptions, RANGE_KEYS, KEEP_DAYS, rangeBounds, rangeLabel, customDays } from './callRanges.js'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../../composables/useAuth.js'
 import { useApi, latestOnly } from '../../composables/useApi.js'
@@ -275,21 +275,20 @@ import ClearCallsDialog from './ClearCallsDialog.vue'
 import CallRow from './CallRow.vue'
 import CallDetailCard from './CallDetailCard.vue'
 import { toast } from '../../composables/useToast.js'
-import { episodeSections, reviewSection, handledSections, daySections, animateChange, when } from './callsInbox.js'
+import { episodeSections, reviewSection, handledSections, daySections, animateChange, when, inline, reminderDue } from './callsInbox.js'
 import { remindersApi } from '../reminders/remindersApi.js'
 import { remindersForEpisode } from '../reminders/reminderText.js'
-import { dueLine } from '../reminders/dueChoices.js'
+import { useT } from '../../i18n/translator.js'
+import { CALLS } from '../../i18n/calls.js'
 
 const router = useRouter()
 const route = useRoute()
 const { can } = useAuth()
 const { get, post, del } = useApi()
+// The page's words follow the EN | ES switch (i18n/calls.js).
+const { t, lang, locale } = useT(CALLS)
 
-const TABS = [
-  { key: 'attention', label: 'Needs attention' },
-  { key: 'handled', label: 'Handled' },
-  { key: 'all', label: 'All calls' },
-]
+const TABS = [{ key: 'attention' }, { key: 'handled' }, { key: 'all' }]
 // Needs attention looks back this far (server: ATTENTION_DAYS).
 const ATTENTION_DAYS = 90
 
@@ -403,25 +402,25 @@ const rows = computed(() => {
       const latest = callById.value.get(ep.latestCallId)
       if (latest) out.push({ type: 'call', key: ep.id, call: latest, episode: full.get(ep.id) })
     }
-    const open = episodeSections(episodes.value)
+    const open = episodeSections(episodes.value, lang.value)
     for (const s of open) {
       out.push({ type: 'group', key: `g-${s.key}`, label: s.label, hint: s.hint, count: s.episodes.length })
       s.episodes.forEach(push)
     }
-    const quiet = reviewSection(review.value)
+    const quiet = reviewSection(review.value, lang.value)
     if (quiet) {
       if (!open.length) out.push({ type: 'empty', key: 'empty' })
       out.push({ type: 'group', key: 'g-review', label: quiet.label, note: quiet.note, count: quiet.episodes.length })
       quiet.episodes.forEach(push)
     }
   } else if (tab.value === 'handled') {
-    for (const d of handledSections(calls.value, now.value)) {
-      out.push({ type: 'group', key: `h-${d.key}`, label: d.label === d.date ? `Handled ${d.label}` : `Handled ${d.label.toLowerCase()} · ${d.date}`, count: d.calls.length })
+    for (const d of handledSections(calls.value, now.value, lang.value)) {
+      out.push({ type: 'group', key: `h-${d.key}`, label: d.label === d.date ? t('group.handled_date', { date: d.label }) : t('group.handled_day', { day: d.label.toLowerCase(), date: d.date }), count: d.calls.length })
       for (const c of d.calls) out.push({ type: 'call', key: c.id, call: c })
     }
   } else {
-    for (const d of daySections(calls.value, now.value)) {
-      out.push({ type: 'group', key: `d-${d.key}`, label: d.label === d.date ? d.label : `${d.label} · ${d.date}`, count: d.calls.length })
+    for (const d of daySections(calls.value, now.value, lang.value)) {
+      out.push({ type: 'group', key: `d-${d.key}`, label: d.label === d.date ? d.label : t('group.day_date', { day: d.label, date: d.date }), count: d.calls.length })
       for (const c of d.calls) out.push({ type: 'call', key: c.id, call: c })
     }
   }
@@ -507,7 +506,7 @@ async function loadOlder() {
     calls.value = [...calls.value, ...data.calls.filter((c) => !seen.has(c.id))]
     truncated.value = data.truncated
   } catch (e) {
-    toast({ text: `Could not load older calls: ${e.message}`, tone: 'error' })
+    toast({ text: t('toast.older_failed', { error: e.message }), tone: 'error' })
   } finally {
     loadingOlder.value = false
   }
@@ -536,7 +535,7 @@ function closeRemind({ restore = true } = {}) {
 }
 async function afterRemind(r, { created }) {
   closeRemind()
-  toast({ text: `${created ? 'Reminder set' : 'Reminder changed'}: ${dueLine(r, Date.now())}.` })
+  toast({ text: t(created ? 'toast.reminder_set' : 'toast.reminder_changed', { due: reminderDue(r, Date.now(), lang.value) }) })
   await loadReminders()
 }
 const detailReminders = computed(() => remindersForEpisode(reminders.value, detailEpisode.value || (detailCall.value ? { callIds: [detailCall.value.id] } : null)))
@@ -555,7 +554,7 @@ function openPendingCall() {
   // call on its own.
   get(`/api/calls/${id}`)
     .then((d) => { if (d?.call) openDetail(d.call, null) })
-    .catch(() => toast({ text: 'That call is no longer in the call log.', tone: 'info' }))
+    .catch(() => toast({ text: t('toast.call_gone'), tone: 'info' }))
 }
 // A reminder's Open while this page is already showing.
 watch(() => route.query.call, (v) => {
@@ -689,7 +688,7 @@ async function openCallById(id) {
   // With the episode it belongs to, if any: never the previous caller's.
   const ep = allEpisodes.value.find((e) => e.callIds.includes(id)) || null
   if (c) { detail.value = { ...detail.value, id: c.id, snap: c, episodeId: ep?.id ?? null, episodeSnap: ep }; return }
-  toast({ text: 'That call is not in this list. Find it under All calls.', tone: 'info' })
+  toast({ text: t('toast.not_in_list'), tone: 'info' })
 }
 function closeDetail({ restore = true } = {}) {
   if (detail.value.id == null) return
@@ -716,7 +715,7 @@ async function afterExclude() {
   const c = excluding.value
   excluding.value = null
   await load({ quiet: true })
-  if (c) toast(`${c.name || 'The call'} marked as needing no callback.`)
+  if (c) toast(c.name ? t('toast.excluded_named', { name: c.name }) : t('toast.excluded_anon'))
   if (excludedFrom) focusAfter(excludedFrom.id, excludedFrom.index)
 }
 
@@ -727,7 +726,7 @@ async function afterClear(out) {
   nextTick(() => document.getElementById(`calls-tab-${tab.value}`)?.focus())
   if (!out?.cleared) return
   toast({
-    text: `${out.cleared} ${out.cleared === 1 ? 'call' : 'calls'} cleared from Needs attention.`,
+    text: t('toast.cleared', { count: out.cleared }),
     undo: async () => {
       await del(`/api/calls/handled/bulk/${out.batch}`)
       await load({ quiet: true })
@@ -749,9 +748,9 @@ async function markHandled(c, episode = null) {
       closeDetail({ restore: false })
       await load({ quiet: true })
       const marked = out.callIds || []
-      const name = c.name || 'The caller'
+      const vars = { name: c.name, count: marked.length > 1 ? marked.length : 1 }
       toast({
-        text: `${name} marked handled${marked.length > 1 ? ` (${marked.length} calls)` : ''}.`,
+        text: t(c.name ? 'toast.ep_handled_named' : 'toast.ep_handled_anon', vars),
         undo: marked.length ? async () => {
           await post('/api/calls/episodes/reopen', { callIds: marked })
           await load({ quiet: true })
@@ -765,7 +764,7 @@ async function markHandled(c, episode = null) {
     closeDetail({ restore: false })
     await load({ quiet: true })
     toast({
-      text: `${c.name || 'The call'} marked handled.`,
+      text: c.name ? t('toast.handled_named', { name: c.name }) : t('toast.handled_anon'),
       undo: async () => {
         await del(`/api/calls/${c.id}/handled`)
         await load({ quiet: true })
@@ -788,7 +787,7 @@ async function reopen(c) {
   try {
     await del(`/api/calls/${c.id}/handled`)
     await load({ quiet: true })
-    toast(`${c.name || 'The call'} is open again.`)
+    toast(c.name ? t('toast.reopened_named', { name: c.name }) : t('toast.reopened_anon'))
   } catch (e) {
     error.value = e.message
   } finally {
@@ -804,7 +803,7 @@ async function countAgain(c) {
   try {
     await del(`/api/calls/${c.id}/exclusion`)
     await load({ quiet: true })
-    toast(`${c.name || 'The call'} is counted again.`)
+    toast(c.name ? t('toast.counted_named', { name: c.name }) : t('toast.counted_anon'))
     focusAfter(c.id, indexOf(c.id))
   } catch (e) {
     error.value = e.message
@@ -864,30 +863,30 @@ onUnmounted(() => { stop(); clearTimeout(searchTimer) })
 // --- presentation -----------------------------------------------------------------
 
 const metrics = computed(() => [
-  { key: 'attention', label: 'Needs attention', value: kpis.value?.needsAttention ?? 0, tone: kpis.value?.needsAttention ? 'text-amber-800' : 'text-gray-900' },
-  { key: 'handled', label: 'Handled today', value: kpis.value?.handledToday ?? 0, tone: 'text-gray-900' },
-  { key: 'total', label: 'Total calls today', value: kpis.value?.totalToday ?? 0, tone: 'text-gray-900' },
+  { key: 'attention', label: t('kpi.attention'), value: kpis.value?.needsAttention ?? 0, tone: kpis.value?.needsAttention ? 'text-amber-800' : 'text-gray-900' },
+  { key: 'handled', label: t('kpi.handled'), value: kpis.value?.handledToday ?? 0, tone: 'text-gray-900' },
+  { key: 'total', label: t('kpi.total'), value: kpis.value?.totalToday ?? 0, tone: 'text-gray-900' },
 ])
 
 // The outcome filters (each one a count from the server for the range).
 const OUTCOMES = [
-  { key: 'all', label: 'All calls', tone: 'text-gray-900', count: (c) => (c.incoming || 0) + (c.outgoing || 0) },
-  { key: 'answered', label: 'Answered', tone: 'text-green-700', count: (c) => c.answered },
-  { key: 'unanswered', label: 'Unanswered, any kind', tone: 'text-brand-red', count: (c) => (c.missed || 0) + (c.hung_up || 0) + (c.ended || 0) + (c.voicemail || 0) },
-  { key: 'missed', label: 'Not answered', tone: 'text-brand-red', count: (c) => c.missed },
-  { key: 'hung_up', label: 'Caller hung up', tone: 'text-orange-800', count: (c) => c.hung_up },
-  { key: 'ended', label: 'Ended before ringing', tone: 'text-orange-800', count: (c) => c.ended },
-  { key: 'voicemail', label: 'Voicemail', tone: 'text-amber-700', count: (c) => c.voicemail },
-  { key: 'not_returned', label: 'Not called back', tone: 'text-brand-red', count: (c) => c.not_returned },
-  { key: 'handled', label: 'Handled', tone: 'text-green-700', count: (c) => c.handled },
-  { key: 'outgoing', label: 'Outgoing', tone: 'text-brand-navy', count: (c) => c.outgoing },
-  { key: 'unconfirmed', label: 'No outcome recorded', tone: 'text-gray-700', count: (c) => c.unconfirmed },
-  { key: 'system', label: 'Ended by the phone system', tone: 'text-gray-700', count: (c) => c.system },
-  { key: 'excluded', label: 'No callback needed', tone: 'text-gray-700', count: (c) => c.excluded },
+  { key: 'all', tone: 'text-gray-900', count: (c) => (c.incoming || 0) + (c.outgoing || 0) },
+  { key: 'answered', tone: 'text-green-700', count: (c) => c.answered },
+  { key: 'unanswered', tone: 'text-brand-red', count: (c) => (c.missed || 0) + (c.hung_up || 0) + (c.ended || 0) + (c.voicemail || 0) },
+  { key: 'missed', tone: 'text-brand-red', count: (c) => c.missed },
+  { key: 'hung_up', tone: 'text-orange-800', count: (c) => c.hung_up },
+  { key: 'ended', tone: 'text-orange-800', count: (c) => c.ended },
+  { key: 'voicemail', tone: 'text-amber-700', count: (c) => c.voicemail },
+  { key: 'not_returned', tone: 'text-brand-red', count: (c) => c.not_returned },
+  { key: 'handled', tone: 'text-green-700', count: (c) => c.handled },
+  { key: 'outgoing', tone: 'text-brand-navy', count: (c) => c.outgoing },
+  { key: 'unconfirmed', tone: 'text-gray-700', count: (c) => c.unconfirmed },
+  { key: 'system', tone: 'text-gray-700', count: (c) => c.system },
+  { key: 'excluded', tone: 'text-gray-700', count: (c) => c.excluded },
 ]
 const outcomeOptions = computed(() => OUTCOMES
   .filter((o) => o.key === 'all' || !outcomeFilters.value.length || outcomeFilters.value.includes(o.key))
-  .map((o) => ({ key: o.key, label: o.label, tone: o.tone, count: o.count(counts.value) ?? null })))
+  .map((o) => ({ key: o.key, label: t(`outcome.${o.key}`), tone: o.tone, count: o.count(counts.value) ?? null })))
 
 const listSummary = computed(() => {
   const n = visibleCalls.value.length
@@ -895,59 +894,51 @@ const listSummary = computed(() => {
     // Callers, and the unanswered calls behind them when that is more.
     const people = episodes.value.length
     const open = episodes.value.reduce((t, e) => t + e.attempts, 0)
-    return `${people} ${people === 1 ? 'caller' : 'callers'} to call back${open > people ? ` · ${open} unanswered calls` : ''}`
+    return t('list.callers', { count: people }) + (open > people ? t('list.open_calls', { count: open }) : '')
   }
-  if (tab.value === 'handled') return `${n} handled ${n === 1 ? 'call' : 'calls'}`
-  return `${n} ${n === 1 ? 'call' : 'calls'}`
+  if (tab.value === 'handled') return t('list.handled', { count: n })
+  return t('list.calls', { count: n })
 })
 const scopeLabel = computed(() => {
-  if (tab.value !== 'all') return `last ${ATTENTION_DAYS} days`
-  const r = rangeLabel(range.value, { from: customFrom.value, to: customTo.value })
-  const o = filter.value !== 'all' ? OUTCOMES.find((x) => x.key === filter.value)?.label : null
+  if (tab.value !== 'all') return t('list.last_days', { count: ATTENTION_DAYS })
+  const r = rangeLabel(range.value, { from: customFrom.value, to: customTo.value }, Date.now(), lang.value)
+  const o = filter.value !== 'all' && OUTCOMES.some((x) => x.key === filter.value) ? t(`outcome.${filter.value}`) : null
   return [r, o ? o.toLowerCase() : null].filter(Boolean).join(' · ')
 })
-const FOOTER = {
-  attention: 'Each caller stays here until a callback connects, they get through on a later call, or someone marks their calls handled.',
-  handled: 'Calls marked handled, or closed by a callback that connected or a later answered call. Reopen one from its ⋯ menu.',
-  all: 'Each call is counted once; its original outcome is kept.',
-}
 const caughtUp = computed(() => tab.value === 'attention' && !searched.value && !activeFilters.value && connection.value === 'connected')
 
-const fullDate = (d) => new Date(d).toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'medium', timeStyle: 'short' })
+const fullDate = (d) => new Date(d).toLocaleString(locale.value, { timeZone: 'America/Chicago', dateStyle: 'medium', timeStyle: 'short' })
 const updatedLabel = computed(() => {
-  const t = sync.value?.lastSuccessAt
-  if (!t) return 'Not imported yet'
-  const mins = Math.max(0, Math.round((now.value - new Date(t).getTime()) / 60000))
-  return mins < 1 ? 'Updated just now' : mins < 60 ? `Updated ${mins} min ago` : `Updated ${when(t, now.value)}`
+  const at = sync.value?.lastSuccessAt
+  if (!at) return t('updated.never')
+  const mins = Math.max(0, Math.round((now.value - new Date(at).getTime()) / 60000))
+  if (mins < 1) return t('updated.now')
+  if (mins < 60) return t('updated.mins', { count: mins })
+  return t('updated.at', { at: inline(when(at, now.value, lang.value), lang.value) })
 })
 
-const ERRORS = {
-  missing_permission: 'RingCentral did not allow reading the call log. Add the Read Call Log permission to the RingCentral app, then connect again.',
-  rate_limited: 'RingCentral asked us to slow down. The next update will catch up.',
-  network_error: 'Could not reach RingCentral at the last update. It will try again shortly.',
-  needs_reauth: 'RingCentral needs to be connected again before new calls can appear.',
-  encryption_key_mismatch: 'The server cannot read the saved RingCentral connection. Connect again.',
-  environment_mismatch: 'The saved RingCentral connection is for a different environment. Connect again.',
-}
+// The sync's error codes, worded here (the server sends only the code).
+const ERROR_CODES = ['missing_permission', 'rate_limited', 'network_error', 'needs_reauth', 'encryption_key_mismatch', 'environment_mismatch']
+const errorText = (code) => (ERROR_CODES.includes(code) ? t(`err.${code}`) : t('err.other', { code }))
 const notice = computed(() => {
-  if (!configured.value) return { icon: 'circle-info', tone: 'text-amber-900 bg-amber-50', text: 'RingCentral is not set up on the server yet.', link: true }
-  if (connection.value === 'not_connected') return { icon: 'circle-info', tone: 'text-amber-900 bg-amber-50', text: canManageConnection.value ? 'RingCentral is not connected yet.' : 'RingCentral is not connected yet. An administrator connects it.', link: true }
-  if (connection.value === 'needs_reauth') return { icon: 'triangle-exclamation', tone: 'text-amber-900 bg-amber-50', text: ERRORS.needs_reauth, link: true }
+  if (!configured.value) return { icon: 'circle-info', tone: 'text-amber-900 bg-amber-50', text: t('notice.not_configured'), link: true }
+  if (connection.value === 'not_connected') return { icon: 'circle-info', tone: 'text-amber-900 bg-amber-50', text: t(canManageConnection.value ? 'notice.not_connected' : 'notice.not_connected_admin'), link: true }
+  if (connection.value === 'needs_reauth') return { icon: 'triangle-exclamation', tone: 'text-amber-900 bg-amber-50', text: errorText('needs_reauth'), link: true }
   const code = sync.value?.lastErrorCode
-  if (code) return { icon: 'triangle-exclamation', tone: 'text-amber-900 bg-amber-50', text: ERRORS[code] || `The last update from RingCentral failed (${code}). It will try again shortly.`, link: ['missing_permission', 'needs_reauth', 'encryption_key_mismatch', 'environment_mismatch'].includes(code) }
-  if (sync.value?.directoryErrorCode) return { icon: 'triangle-exclamation', tone: 'text-amber-900 bg-amber-50', text: sync.value.directoryErrorCode === 'missing_permission' ? 'RingCentral did not allow reading the extension list (the Read Accounts permission), so calls cannot be confirmed as answered or missed by a person. They show as not confirmed until it can be read.' : 'The extension list could not be read from RingCentral at the last update. It will try again.', link: sync.value.directoryErrorCode === 'missing_permission' }
-  if (sync.value?.scope === 'extension') return { icon: 'circle-info', tone: 'text-sky-900 bg-sky-50', text: 'Showing only the calls of the RingCentral user who connected. To see every call to the firm, connect again signed in as a RingCentral administrator.', link: true }
+  if (code) return { icon: 'triangle-exclamation', tone: 'text-amber-900 bg-amber-50', text: errorText(code), link: ['missing_permission', 'needs_reauth', 'encryption_key_mismatch', 'environment_mismatch'].includes(code) }
+  if (sync.value?.directoryErrorCode) return { icon: 'triangle-exclamation', tone: 'text-amber-900 bg-amber-50', text: t(sync.value.directoryErrorCode === 'missing_permission' ? 'notice.directory_permission' : 'notice.directory_failed'), link: sync.value.directoryErrorCode === 'missing_permission' }
+  if (sync.value?.scope === 'extension') return { icon: 'circle-info', tone: 'text-sky-900 bg-sky-50', text: t('notice.extension_scope'), link: true }
   return null
 })
 
 const emptyText = computed(() => {
-  if (connection.value !== 'connected') return 'No calls to show yet.'
-  if (searched.value) return 'No calls match that search here. Try All calls, or a different name or number.'
-  if (tab.value === 'attention') return activeFilters.value ? 'No open calls match these filters.' : 'New calls that need a callback will appear here.'
-  if (tab.value === 'handled') return activeFilters.value ? 'No handled calls match these filters.' : 'Nothing has been handled in the last 90 days.'
-  if (filter.value === 'excluded') return 'No calls in this range are marked as needing no callback.'
-  if (filter.value !== 'all') return 'No calls of this kind in this range.'
-  return sync.value?.lastSuccessAt ? 'No calls in this range.' : 'Calls appear here after the first update from RingCentral. Press Refresh to fetch them now.'
+  if (connection.value !== 'connected') return t('emptytext.not_connected')
+  if (searched.value) return t('emptytext.search')
+  if (tab.value === 'attention') return t(activeFilters.value ? 'emptytext.attention_filtered' : 'emptytext.attention')
+  if (tab.value === 'handled') return t(activeFilters.value ? 'emptytext.handled_filtered' : 'emptytext.handled')
+  if (filter.value === 'excluded') return t('emptytext.excluded')
+  if (filter.value !== 'all') return t('emptytext.filtered')
+  return t(sync.value?.lastSuccessAt ? 'emptytext.range' : 'emptytext.first')
 })
 
 </script>

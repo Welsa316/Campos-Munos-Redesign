@@ -15,15 +15,15 @@
           class="group/name inline-flex max-w-full items-center gap-1.5 py-2.5 -my-2.5 lg:py-0 lg:my-0 rounded text-left text-[15px] font-ui font-semibold text-gray-900 hover:text-brand-navy">
           <span class="truncate">{{ displayName }}</span>
           <FaIcon name="chevron-right" class="text-[10px] text-gray-400 group-hover/name:text-brand-navy" />
-          <span class="sr-only">, open call details</span>
+          <span class="sr-only">{{ t('row.open_details') }}</span>
         </button>
         <p class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-ui text-gray-600">
           <a v-if="c.number" :href="telHref(c.number)" class="tabular-nums hover:text-brand-navy hover:underline">{{ phone(c.number) }}</a>
-          <span v-else class="text-gray-500">Number withheld</span>
+          <span v-else class="text-gray-500">{{ t('caller.withheld') }}</span>
           <span v-if="!c.name && c.callerLocation" class="text-gray-500">{{ c.callerLocation }}</span>
-          <span v-if="c.fromFirm" class="tag bg-gray-100 text-gray-700" title="Marked as someone from the firm for every call from this number">Firm</span>
-          <span v-else-if="c.client" class="tag bg-brand-navy/10 text-brand-navy">Client</span>
-          <span v-else-if="c.lead" class="tag bg-amber-100 text-amber-900">Website lead</span>
+          <span v-if="c.fromFirm" class="tag bg-gray-100 text-gray-700" :title="t('tag.firm_title')">{{ t('tag.firm') }}</span>
+          <span v-else-if="c.client" class="tag bg-brand-navy/10 text-brand-navy">{{ t('tag.client') }}</span>
+          <span v-else-if="c.lead" class="tag bg-amber-100 text-amber-900">{{ t('tag.lead') }}</span>
         </p>
       </div>
     </div>
@@ -36,56 +36,56 @@
       <p v-if="line" :class="TONE[line.tone]" class="mt-0.5 pl-3.5 text-[12.5px]">{{ line.text }}</p>
       <!-- Several calls: who they were offered to, across all of them; each
            call's own evidence is in the details. -->
-      <p v-if="summary && offered" class="mt-0.5 pl-3.5 text-[12px] text-gray-500 truncate">Offered to {{ offered }}</p>
+      <p v-if="summary && offered" class="mt-0.5 pl-3.5 text-[12px] text-gray-500 truncate">{{ t('row.offered_to', { list: offered }) }}</p>
       <p v-else-if="!summary && c.direction === 'inbound' && !c.offeredTo.length && c.firm.extension" class="mt-0.5 pl-3.5 text-[12px] text-gray-500">
-        Dialled {{ who({ name: c.firm.name, extension: c.firm.extension }) }}
+        {{ t('row.dialled', { who: who({ name: c.firm.name, extension: c.firm.extension }, lang) }) }}
       </p>
       <!-- A reminder on this caller (or, outside Needs attention, this call): the soonest, and how many more. -->
       <p v-if="nextReminder" :class="reminderState === 'upcoming' ? 'text-gray-600' : 'text-amber-800 font-semibold'" class="mt-1 pl-3.5 text-[12.5px] flex items-center gap-1.5" data-reminder-chip>
         <FaIcon name="bell" class="text-[11px]" />
-        <span class="tabular-nums">{{ dueLine(nextReminder, now) }} · {{ nextReminder.assignee.name }}<span v-if="reminders.length > 1" class="font-normal text-gray-500"> · +{{ reminders.length - 1 }} more</span></span>
+        <span class="tabular-nums">{{ reminderDue(nextReminder, now, lang) }} · {{ nextReminder.assignee.name }}<span v-if="reminders.length > 1" class="font-normal text-gray-500">{{ t('row.more_reminders', { count: reminders.length - 1 }) }}</span></span>
       </p>
     </div>
 
     <p class="call-time font-ui text-right lg:text-left tabular-nums">
-      <span class="block text-[13px] text-gray-900 whitespace-nowrap">{{ timeOf(c.startedAt) }}</span>
-      <span class="block text-[11.5px] text-gray-500 whitespace-nowrap">{{ showDay ? dayName(c.startedAt, now) : duration }}</span>
+      <span class="block text-[13px] text-gray-900 whitespace-nowrap">{{ timeOf(c.startedAt, lang) }}</span>
+      <span class="block text-[11.5px] text-gray-500 whitespace-nowrap">{{ showDay ? dayName(c.startedAt, now, lang) : duration }}</span>
     </p>
 
     <div class="call-actions flex items-center justify-end gap-1.5 font-ui">
       <template v-if="open">
         <button v-if="canCall && c.number" type="button" @click="$emit('callback', c)"
-          class="act act-call" :aria-label="`Call back ${displayName}`">
-          <FaIcon name="phone" />Call back
+          class="act act-call" :aria-label="t('act.call_back_aria', { name: displayName })">
+          <FaIcon name="phone" />{{ t('act.call_back') }}
         </button>
-        <span v-else-if="!c.number" class="px-2 text-[11.5px] text-gray-500">No number</span>
+        <span v-else-if="!c.number" class="px-2 text-[11.5px] text-gray-500">{{ t('act.no_number') }}</span>
         <button v-if="canExclude" type="button" @click="$emit('handled', c)" :disabled="busy" :aria-busy="busy" :data-handled="c.id"
-          class="act act-quiet" :aria-label="`Mark ${displayName} handled${summary ? `, all ${episode.attempts} calls` : ''}`">
-          <FaIcon :name="busy ? 'spinner' : 'check'" :spin="busy" />{{ busy ? 'Saving…' : 'Handled' }}
+          class="act act-quiet" :aria-label="summary ? t('act.mark_aria_all', { name: displayName, count: episode.attempts }) : t('act.mark_aria', { name: displayName })">
+          <FaIcon :name="busy ? 'spinner' : 'check'" :spin="busy" />{{ t(busy ? 'act.saving' : 'act.handled') }}
         </button>
       </template>
       <template v-else>
-        <span v-if="c.exclusion" class="pill bg-gray-100 text-gray-700"><FaIcon name="ban" />No callback needed</span>
-        <span v-else-if="line?.tone === 'done'" class="pill bg-green-50 text-green-800"><FaIcon name="circle-check" />{{ c.handled ? 'Handled' : c.connectedFollowUp?.kind === 'called_back' ? 'Called back' : 'Reached later' }}</span>
-        <button v-if="canCall && c.number" type="button" @click="$emit('callback', c)" class="act act-quiet" :aria-label="`Call ${displayName}`">
-          <FaIcon name="phone" />Call
+        <span v-if="c.exclusion" class="pill bg-gray-100 text-gray-700"><FaIcon name="ban" />{{ t('act.no_callback') }}</span>
+        <span v-else-if="line?.tone === 'done'" class="pill bg-green-50 text-green-800"><FaIcon name="circle-check" />{{ t(c.handled ? 'act.handled' : c.connectedFollowUp?.kind === 'called_back' ? 'act.called_back' : 'act.reached_later') }}</span>
+        <button v-if="canCall && c.number" type="button" @click="$emit('callback', c)" class="act act-quiet" :aria-label="t('act.call_aria', { name: displayName })">
+          <FaIcon name="phone" />{{ t('act.call') }}
         </button>
       </template>
 
       <div class="relative" data-row-menu data-reminder-trigger>
         <button type="button" @click="$emit('menu', c.id)" :data-menu="c.id"
-          class="act act-icon" :aria-label="`More actions for ${displayName}`" aria-haspopup="menu" :aria-expanded="menuOpen" :aria-controls="menuOpen ? `call-menu-${c.id}` : null">
+          class="act act-icon" :aria-label="t('menu.more', { name: displayName })" aria-haspopup="menu" :aria-expanded="menuOpen" :aria-controls="menuOpen ? `call-menu-${c.id}` : null">
           <FaIcon name="ellipsis" />
         </button>
         <Transition name="menu-pop">
-          <div v-if="menuOpen" :id="`call-menu-${c.id}`" role="menu" :aria-label="`Actions for ${displayName}`" @keydown="onMenuKey"
+          <div v-if="menuOpen" :id="`call-menu-${c.id}`" role="menu" :aria-label="t('menu.label', { name: displayName })" @keydown="onMenuKey"
             class="absolute right-0 top-full mt-1.5 z-30 w-56 rounded-xl bg-white ring-1 ring-gray-200 shadow-lg py-1 text-[13px]">
-            <button type="button" role="menuitem" class="menu-item" @click="$emit('open', c, menuTrigger())"><FaIcon name="circle-info" />Call details</button>
-            <button v-if="canRemind" type="button" role="menuitem" class="menu-item" @click="$emit('remind', c)"><FaIcon name="bell" />{{ nextReminder ? 'Add a reminder…' : 'Remind me…' }}</button>
-            <button v-if="canExclude && canMark && !c.exclusion && !c.handled" type="button" role="menuitem" class="menu-item" @click="$emit('exclude', c)"><FaIcon name="ban" />No callback needed</button>
-            <button v-if="canExclude && c.exclusion" type="button" role="menuitem" class="menu-item" @click="$emit('count-again', c)"><FaIcon name="rotate-left" />{{ c.exclusion.scope === 'number' ? 'Count this number again' : 'Count it again' }}</button>
-            <button v-if="canExclude && c.handled" type="button" role="menuitem" class="menu-item" @click="$emit('reopen', c)"><FaIcon name="rotate-left" />Reopen follow-up</button>
-            <router-link v-if="c.lead && canSeeLeads" role="menuitem" class="menu-item" :to="{ name: 'Inbox', query: { lead: c.lead.id } }"><FaIcon name="inbox" />Open website lead</router-link>
+            <button type="button" role="menuitem" class="menu-item" @click="$emit('open', c, menuTrigger())"><FaIcon name="circle-info" />{{ t('menu.details') }}</button>
+            <button v-if="canRemind" type="button" role="menuitem" class="menu-item" @click="$emit('remind', c)"><FaIcon name="bell" />{{ t(nextReminder ? 'menu.add_reminder' : 'menu.remind') }}</button>
+            <button v-if="canExclude && canMark && !c.exclusion && !c.handled" type="button" role="menuitem" class="menu-item" @click="$emit('exclude', c)"><FaIcon name="ban" />{{ t('act.no_callback') }}</button>
+            <button v-if="canExclude && c.exclusion" type="button" role="menuitem" class="menu-item" @click="$emit('count-again', c)"><FaIcon name="rotate-left" />{{ t(c.exclusion.scope === 'number' ? 'menu.count_number_again' : 'menu.count_again') }}</button>
+            <button v-if="canExclude && c.handled" type="button" role="menuitem" class="menu-item" @click="$emit('reopen', c)"><FaIcon name="rotate-left" />{{ t('menu.reopen') }}</button>
+            <router-link v-if="c.lead && canSeeLeads" role="menuitem" class="menu-item" :to="{ name: 'Inbox', query: { lead: c.lead.id } }"><FaIcon name="inbox" />{{ t('menu.open_lead') }}</router-link>
           </div>
         </Transition>
         <ReminderPopover v-if="remindOpen" floating :target="{ kind: 'call', id: episode?.id ?? c.id }"
@@ -100,10 +100,12 @@ import { computed } from 'vue'
 import FaIcon from '../../components/FaIcon.vue'
 import { telHref } from '../../utils/phone.js'
 import { statusLine, who } from './callEvidenceText.js'
-import { followUpLine, outboundLine, timeOf, dayName, episodeSummary, episodeLine } from './callsInbox.js'
+import { followUpLine, outboundLine, timeOf, dayName, episodeSummary, episodeLine, reminderDue } from './callsInbox.js'
 import { look as lookOf, phone, durationText } from './callLook.js'
 import ReminderPopover from '../reminders/ReminderPopover.vue'
-import { dueLine, dueState } from '../reminders/dueChoices.js'
+import { dueState } from '../reminders/dueChoices.js'
+import { useT } from '../../i18n/translator.js'
+import { CALLS } from '../../i18n/calls.js'
 
 const props = defineProps({
   c: { type: Object, required: true },
@@ -125,16 +127,17 @@ const props = defineProps({
   remindOpen: Boolean,
 })
 defineEmits(['open', 'callback', 'handled', 'menu', 'exclude', 'count-again', 'reopen', 'remind', 'remind-close', 'reminded'])
+const { t, lang } = useT(CALLS)
 
-const look = computed(() => lookOf(props.c))
-const displayName = computed(() => props.c.name || (props.c.number ? 'Unknown caller' : 'Private number'))
-const status = computed(() => (props.c.direction === 'inbound' ? statusLine(props.c) : outboundLine(props.c)))
-const line = computed(() => (props.episode ? episodeLine(props.episode, props.now) : followUpLine(props.c, props.now)))
+const look = computed(() => lookOf(props.c, lang.value))
+const displayName = computed(() => props.c.name || t(props.c.number ? 'caller.unknown' : 'caller.private'))
+const status = computed(() => (props.c.direction === 'inbound' ? statusLine(props.c, lang.value) : outboundLine(props.c, lang.value)))
+const line = computed(() => (props.episode ? episodeLine(props.episode, props.now, lang.value) : followUpLine(props.c, props.now, lang.value)))
 // Open: Needs attention, or the review group (same actions, quieter).
 const open = computed(() => props.c.needsAttention || props.c.needsReview)
 const group = computed(() => props.episode?.attentionGroup ?? props.c.attentionGroup)
-const summary = computed(() => episodeSummary(props.episode, props.now))
-const offered = computed(() => (props.episode?.offeredTo || []).map((p) => p.name || who(p)).join(', '))
+const summary = computed(() => episodeSummary(props.episode, props.now, lang.value))
+const offered = computed(() => (props.episode?.offeredTo || []).map((p) => p.name || who(p, lang.value)).join(', '))
 const duration = computed(() => durationText(props.c.durationSeconds))
 const nextReminder = computed(() => props.reminders[0] || null)
 const reminderState = computed(() => (nextReminder.value ? dueState(nextReminder.value, props.now) : null))
