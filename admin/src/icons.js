@@ -77,6 +77,7 @@ import {
   faPlay,
   faGear,
   faUserCheck,
+  faEyeSlash,
 } from '@fortawesome/free-solid-svg-icons'
 
 export const ICONS = [
@@ -89,6 +90,7 @@ export const ICONS = [
   faUsers, faClockRotateLeft, faUserPlus, faBan, faCopy, faTerminal, faCircleQuestion,
   faEllipsis, faSliders, faClock, faBullhorn,
   faBolt, faCalendarCheck, faCalendarXmark, faPause, faPlay, faGear, faUserCheck,
+  faEyeSlash,
 ]
 
 library.add(...ICONS)

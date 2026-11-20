@@ -1,5 +1,6 @@
 <template>
-  <div class="h-dvh flex flex-col bg-brand-surface overflow-hidden">
+  <!-- --wa-s: the person's chat text size (TextSizePicker), as a factor of standard. -->
+  <div class="h-dvh flex flex-col bg-brand-surface overflow-hidden" :style="{ '--wa-s': textScale(profile.textSize) }">
     <PortalHeader title="WhatsApp" current="whatsapp" label-at="xl" actions-label-at="lg" show-email :notifications="false" />
 
     <!-- What sending means right now, before anyone types. Only for accounts
@@ -46,16 +47,16 @@
               :class="selectedId === c.id ? 'bg-brand-navy/[0.06]' : 'hover:bg-brand-surface/70'"
               class="w-full text-left px-5 py-3.5 transition-colors">
               <div class="flex items-start gap-3">
-                <span :class="c.needsReply ? 'bg-brand-red' : 'bg-transparent'" class="mt-1.5 w-2 h-2 rounded-full flex-shrink-0" aria-hidden="true"></span>
+                <span :class="c.needsReply ? 'bg-brand-red' : 'bg-transparent'" class="wa-dot w-2 h-2 rounded-full flex-shrink-0" aria-hidden="true"></span>
                 <div class="flex-1 min-w-0">
                   <div class="flex items-baseline gap-2">
-                    <p :class="c.needsReply ? 'font-semibold' : 'font-medium'" class="text-sm font-ui text-gray-900 truncate flex-1">{{ c.name || waPhone(c.phone) }}</p>
-                    <span class="text-[11px] font-ui text-gray-600 whitespace-nowrap tabular-nums">{{ relTime(c.lastAt, lang) }}</span>
+                    <p :class="c.needsReply ? 'font-semibold' : 'font-medium'" class="wa-body font-ui text-gray-900 truncate flex-1">{{ c.name || waPhone(c.phone) }}</p>
+                    <span class="wa-meta font-ui text-gray-600 whitespace-nowrap tabular-nums">{{ relTime(c.lastAt, lang) }}</span>
                   </div>
-                  <p class="text-xs font-ui text-gray-600 truncate mt-0.5">
+                  <p class="wa-sub font-ui text-gray-600 truncate mt-0.5">
                     <span v-if="c.lastDirection === 'out'" class="text-gray-600">{{ t('you') }}</span>{{ c.preview || '—' }}
                   </p>
-                  <p class="flex items-center gap-2 mt-1.5 text-[11px] font-ui">
+                  <p class="flex items-center gap-2 mt-1.5 wa-meta font-ui">
                     <span v-if="c.needsReply" class="sr-only">{{ t('waiting_reply') }}</span>
                     <span v-if="c.assignee" class="inline-flex items-center gap-1 text-brand-navy"><i class="fa-solid fa-user text-[9px]" aria-hidden="true"></i>{{ c.assignee.name }}</span>
                     <span v-else class="text-gray-600">{{ t('unassigned') }}</span>
@@ -66,6 +67,11 @@
             </button>
           </li>
         </ul>
+        <!-- Numbers someone hid (a coworker, a personal chat): only when there are any. -->
+        <button v-if="can('whatsapp.delete') && hiddenCount > 0" type="button" @click="hiddenOpen = true"
+          class="flex-shrink-0 border-t border-gray-100 px-5 py-2.5 text-left text-xs font-ui font-medium text-gray-600 hover:text-brand-navy hover:bg-brand-surface transition-colors">
+          <FaIcon name="eye-slash" class="mr-1.5 text-[11px]" />{{ t('hidden.link', { count: hiddenCount }) }}
+        </button>
       </div>
 
       <!-- Thread -->
@@ -102,10 +108,17 @@
                   <span v-for="cl in detail.clients.filter((x) => x.optedOut)" :key="cl.id" class="text-[10px] font-semibold uppercase tracking-wider text-brand-red bg-red-50 px-2 py-0.5 rounded-full">{{ t('opted_out') }}</span>
                 </p>
               </div>
-              <button v-if="can('whatsapp.manage')" @click="toggleClosed" :disabled="Boolean(busy)"
-                class="flex-shrink-0 px-3 py-2 rounded-lg text-xs font-ui font-semibold text-gray-600 hover:text-brand-navy hover:bg-brand-surface transition-colors">
-                <FaIcon :name="detail.status === 'closed' ? 'rotate-left' : 'check'" class="mr-1.5" />{{ detail.status === 'closed' ? t('reopen') : t('close') }}
-              </button>
+              <div class="flex-shrink-0 flex items-center gap-0.5 -mr-2">
+                <TextSizePicker />
+                <button v-if="can('whatsapp.delete')" type="button" @click="deleteOpen = true" :disabled="Boolean(busy)" :title="t('chat.delete')"
+                  class="flex items-center px-2.5 sm:px-3 py-2 rounded-lg text-xs font-ui font-semibold text-gray-600 hover:text-brand-red hover:bg-red-50 transition-colors">
+                  <FaIcon name="trash" class="sm:mr-1.5" /><span class="sr-only sm:not-sr-only">{{ t('chat.delete') }}</span>
+                </button>
+                <button v-if="can('whatsapp.manage')" @click="toggleClosed" :disabled="Boolean(busy)"
+                  class="px-3 py-2 rounded-lg text-xs font-ui font-semibold text-gray-600 hover:text-brand-navy hover:bg-brand-surface transition-colors">
+                  <FaIcon :name="detail.status === 'closed' ? 'rotate-left' : 'check'" class="mr-1.5" />{{ detail.status === 'closed' ? t('reopen') : t('close') }}
+                </button>
+              </div>
             </div>
 
             <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-ui">
@@ -138,22 +151,35 @@
           <div ref="threadEl" class="flex-1 overflow-y-auto px-5 sm:px-6 py-5 space-y-4">
             <p v-if="!detail.messages.length" class="text-center text-sm text-gray-500 font-ui">{{ t('no_messages') }}</p>
             <div v-for="m in detail.messages" :key="m.key" :class="m.direction === 'out' ? 'flex justify-end' : ''">
-              <div class="max-w-[85%] sm:max-w-[70%]">
+              <div class="group max-w-[85%] sm:max-w-[70%]">
                 <div :class="m.direction === 'in' ? 'bg-brand-surface rounded-tl-sm' : m.kind === 'reminder' ? 'bg-amber-50 ring-1 ring-amber-100 rounded-tr-sm' : 'bg-brand-navy/[0.08] rounded-tr-sm'"
                   class="rounded-2xl px-4 py-3">
                   <p v-if="m.kind === 'reminder'" class="text-[10px] font-ui font-semibold uppercase tracking-wider text-amber-800 mb-1">{{ t('payment_reminder') }}</p>
-                  <p v-if="m.body" class="text-gray-800 text-sm font-ui leading-relaxed whitespace-pre-wrap break-words">{{ m.body }}</p>
-                  <p v-else class="text-gray-500 text-sm font-ui italic">{{ m.mediaType ? t('media', { type: m.mediaType }) : t('no_text') }}</p>
+                  <p v-if="m.body" class="text-gray-800 wa-body font-ui leading-relaxed whitespace-pre-wrap break-words">{{ m.body }}</p>
+                  <p v-else class="text-gray-500 wa-body font-ui italic">{{ m.mediaType ? t('media', { type: m.mediaType }) : t('no_text') }}</p>
                 </div>
-                <p :class="m.direction === 'out' ? 'text-right mr-1' : 'ml-1'" class="text-[11px] text-gray-500 font-ui mt-1.5 tabular-nums">
+                <p :class="m.direction === 'out' ? 'justify-end mr-1' : 'ml-1'" class="flex flex-wrap items-center gap-x-1 wa-meta text-gray-500 font-ui mt-1.5 tabular-nums">
+                  <span>
                   <span v-if="m.direction === 'out' && m.by">{{ m.by }} · </span>{{ fullTime(m.at, lang) }}
                   <template v-if="m.direction === 'out'">
                     · <span :class="m.status === 'failed' ? 'text-brand-red font-semibold' : m.status === 'unknown' ? 'text-amber-800 font-semibold' : ''">{{ STATUS_KEYS.includes(m.status) ? t(`status.${m.status}`) : m.status }}</span>
                     <span v-if="m.simulated" class="text-violet-700"> {{ t('simulated') }}</span>
                   </template>
+                  </span>
+                  <!-- Not on payment reminders: those are billing records. On a
+                       pointer device it shows with the message under the pointer
+                       or with focus; on touch it is always there. -->
+                  <button v-if="can('whatsapp.delete') && m.kind !== 'reminder'" type="button" @click="confirmKey = m.key"
+                    :aria-label="t('msg.delete')" :title="t('msg.delete')"
+                    class="wa-del -my-1 p-1.5 rounded-md text-gray-500 hover:text-brand-red hover:bg-red-50 focus-visible:opacity-100 transition-opacity">
+                    <FaIcon name="trash" class="text-[11px]" />
+                  </button>
                 </p>
-                <p v-if="m.status === 'failed' && m.error" class="text-[11px] text-brand-red font-ui mt-0.5 text-right mr-1">{{ m.error }}</p>
-                <p v-if="m.status === 'unknown'" class="text-[11px] text-amber-800 font-ui mt-0.5 text-right mr-1">{{ t('unknown_hint') }}</p>
+                <ConfirmInline v-if="confirmKey === m.key" class="mt-2" :title="t('msg.delete_q')" :body="t('msg.delete_body')"
+                  :confirm-label="t('msg.delete_confirm')" :cancel-label="t('cancel')" :busy="busy === 'delete-msg'"
+                  @confirm="deleteMessage(m)" @cancel="confirmKey = ''" />
+                <p v-if="m.status === 'failed' && m.error" class="wa-meta text-brand-red font-ui mt-0.5 text-right mr-1">{{ m.error }}</p>
+                <p v-if="m.status === 'unknown'" class="wa-meta text-amber-800 font-ui mt-0.5 text-right mr-1">{{ t('unknown_hint') }}</p>
               </div>
             </div>
           </div>
@@ -174,15 +200,15 @@
                 <label for="wa-note" class="sr-only">{{ t('notes.add_label') }}</label>
                 <textarea id="wa-note" v-model="noteDraft" rows="2" maxlength="2000" :disabled="busy === 'note'"
                   :placeholder="t('notes.placeholder')"
-                  class="form-input resize-none text-sm flex-1" @keydown.enter.meta="(e) => { if (!isComposing(e)) { e.preventDefault(); addNote() } }" @keydown.enter.ctrl="(e) => { if (!isComposing(e)) { e.preventDefault(); addNote() } }"></textarea>
+                  class="form-input resize-none wa-body flex-1" @keydown.enter.meta="(e) => { if (!isComposing(e)) { e.preventDefault(); addNote() } }" @keydown.enter.ctrl="(e) => { if (!isComposing(e)) { e.preventDefault(); addNote() } }"></textarea>
                 <button type="submit" :disabled="busy === 'note' || !noteDraft.trim()"
                   class="bg-brand-navy text-white font-ui font-medium text-xs px-4 py-2.5 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0">{{ busy === 'note' ? t('notes.saving') : t('notes.add') }}</button>
               </form>
               <p v-if="!detail.notes.length" class="text-xs text-gray-500 font-ui">{{ t('notes.none') }}</p>
               <ul v-else class="space-y-2 max-h-48 overflow-y-auto">
                 <li v-for="n in detail.notes" :key="n.id" class="bg-brand-surface rounded-lg px-3 py-2">
-                  <p class="text-xs text-gray-800 font-ui leading-relaxed whitespace-pre-wrap break-words">{{ n.body }}</p>
-                  <p class="text-[10px] text-gray-500 font-ui mt-1">{{ n.author || t('notes.staff') }} · {{ fullTime(n.at, lang) }}</p>
+                  <p class="wa-sub text-gray-800 font-ui leading-relaxed whitespace-pre-wrap break-words">{{ n.body }}</p>
+                  <p class="wa-meta text-gray-500 font-ui mt-1">{{ n.author || t('notes.staff') }} · {{ fullTime(n.at, lang) }}</p>
                 </li>
               </ul>
             </div>
@@ -198,7 +224,7 @@
               <label for="wa-reply" class="sr-only">{{ t('reply.label') }}</label>
               <textarea id="wa-reply" ref="replyField" v-model="draft" rows="2" maxlength="4096" :disabled="busy === 'send'"
                 :placeholder="t('reply.placeholder', { name: title })"
-                class="form-input resize-none text-sm flex-1" @keydown.enter.meta="(e) => { if (!isComposing(e)) { e.preventDefault(); send() } }" @keydown.enter.ctrl="(e) => { if (!isComposing(e)) { e.preventDefault(); send() } }"></textarea>
+                class="form-input resize-none wa-body flex-1" @keydown.enter.meta="(e) => { if (!isComposing(e)) { e.preventDefault(); send() } }" @keydown.enter.ctrl="(e) => { if (!isComposing(e)) { e.preventDefault(); send() } }"></textarea>
               <EmojiPicker v-model="draft" :field="replyField" :maxlength="4096" :disabled="busy === 'send'" />
               <button type="submit" :disabled="busy === 'send' || !draft.trim()"
                 class="bg-brand-navy text-white font-ui font-semibold text-sm px-5 py-3 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0">
@@ -210,6 +236,10 @@
         </template>
       </div>
     </div>
+
+    <DeleteChatDialog :open="deleteOpen" :conversation-id="detail?.id ?? null" :name="title" :phone="detail ? waPhone(detail.phone) : ''"
+      @close="deleteOpen = false" @deleted="onChatDeleted" />
+    <HiddenNumbersDialog :open="hiddenOpen" :wa-phone="waPhone" @close="hiddenOpen = false" @changed="(n) => { hiddenCount = n }" />
   </div>
 </template>
 
@@ -223,14 +253,20 @@ import PortalHeader from '../../components/portal/PortalHeader.vue'
 import { useVisiblePoll } from '../../composables/useVisiblePoll.js'
 import FaIcon from '../../components/FaIcon.vue'
 import EmojiPicker from '../../components/EmojiPicker.vue'
+import ConfirmInline from '../../components/ConfirmInline.vue'
+import TextSizePicker from './TextSizePicker.vue'
+import DeleteChatDialog from './DeleteChatDialog.vue'
+import HiddenNumbersDialog from './HiddenNumbersDialog.vue'
+import { textScale } from '../../data/textSizes.js'
+import { toast } from '../../composables/useToast.js'
 import { toDate, isComposing } from '../../utils/text.js'
 import { useT, clockCount } from '../../i18n/translator.js'
 import { WHATSAPP } from '../../i18n/whatsapp.js'
 
 const route = useRoute()
 const router = useRouter()
-const { can } = useAuth()
-const { get, post, put } = useApi()
+const { can, profile } = useAuth()
+const { get, post, put, del } = useApi()
 const { t, lang } = useT(WHATSAPP)
 
 // Labels, empty states, statuses and invoice states live in i18n/whatsapp.js
@@ -257,6 +293,12 @@ const draft = ref('')
 const replyField = ref(null)
 const sendError = ref('')
 const threadEl = ref(null)
+// Deleting: the message whose inline question is open, the chat dialog,
+// and the numbers someone hid.
+const confirmKey = ref('')
+const deleteOpen = ref(false)
+const hiddenOpen = ref(false)
+const hiddenCount = ref(0)
 // "New message from …" for screen readers when the open thread gets one.
 const arrivalNote = ref('')
 // One key per message being written: a retried or double-clicked send is
@@ -292,7 +334,9 @@ async function loadDetail({ silent = false, scroll = false } = {}) {
     const d = await get(`/api/whatsapp/conversations/${id}`)
     if (selectedId.value !== id) return // moved on while this loaded
     const sameThread = detail.value?.id === d.id
-    const grew = !detail.value || !sameThread || detail.value.messages.length !== d.messages.length
+    // More messages than before: a deletion makes the thread shorter, and
+    // must not be announced as a new message.
+    const grew = !detail.value || !sameThread || d.messages.length > detail.value.messages.length
     const last = d.messages[d.messages.length - 1]
     if (sameThread && grew && last?.direction === 'in') arrivalNote.value = t('arrival', { name: title.value || t('the_client') })
     detail.value = d
@@ -309,6 +353,7 @@ function select(id) {
     sendError.value = ''
     actionError.value = ''
     notesOpen.value = false
+    confirmKey.value = ''
     clientKey = crypto.randomUUID()
   }
   selectedId.value = id
@@ -381,6 +426,30 @@ async function addNote() {
   })
 }
 
+// Deleting removes it from the portal for everyone (never from the phone).
+async function deleteMessage(m) {
+  let done = false
+  await act('delete-msg', async () => {
+    await del(`/api/whatsapp/conversations/${selectedId.value}/messages/${m.key}`)
+    confirmKey.value = ''
+    done = true
+  })
+  if (done) arrivalNote.value = t('msg.deleted')
+}
+
+function onChatDeleted({ hidden }) {
+  deleteOpen.value = false
+  if (hidden) hiddenCount.value += 1
+  toast({ text: t(hidden ? 'chat.deleted_hidden' : 'chat.deleted') })
+  closeThread()
+  loadList({ silent: true })
+}
+
+function loadHiddenCount() {
+  if (!can('whatsapp.delete')) return
+  get('/api/whatsapp/hidden-numbers').then((rows) => { hiddenCount.value = rows.length }).catch(() => {})
+}
+
 // --- formatting ----------------------------------------------------------------
 // Meta's wa_id is E.164 digits without '+': US numbers read as (504) 555-0142,
 // everyone else keeps their country code.
@@ -439,6 +508,7 @@ const unlisten = () => poll.stop()
 onMounted(async () => {
   get('/api/whatsapp/status').then((s) => { status.value = s }).catch(() => {})
   if (can('whatsapp.manage')) get('/api/whatsapp/assignees').then((a) => { assignees.value = a }).catch(() => {})
+  loadHiddenCount()
   listen()
   await loadList()
   if (selectedId.value) loadDetail({ scroll: true })
@@ -460,3 +530,20 @@ onDeactivated(() => { active.value = false; unlisten() })
 onUnmounted(unlisten)
 
 </script>
+
+<style scoped>
+/* Chat text at the person's chosen size (--wa-s, set on the page root):
+   standard is exactly what Tailwind's text-sm / text-xs / 11px gave. */
+.wa-body { font-size: calc(0.875rem * var(--wa-s, 1)); }
+.wa-sub { font-size: calc(0.75rem * var(--wa-s, 1)); }
+.wa-meta { font-size: calc(11px * var(--wa-s, 1)); }
+/* The unread dot stays level with the name as it grows. */
+.wa-dot { margin-top: calc(0.375rem * var(--wa-s, 1)); }
+
+/* A message's delete button: with the message under the pointer or focus
+   inside it on a mouse or trackpad; always on touch, which has no hover. */
+@media (hover: hover) and (pointer: fine) {
+  .wa-del { opacity: 0; }
+  .group:hover .wa-del, .group:focus-within .wa-del { opacity: 1; }
+}
+</style>
