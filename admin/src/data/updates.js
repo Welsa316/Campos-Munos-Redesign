@@ -23,6 +23,19 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'spanish-billing-admin',
+    at: '2026-11-20T12:00:00Z',
+    section: 'everyone',
+    any: [],
+    title: 'Billing and the administrator pages in Spanish',
+    summary: 'With ES chosen on the language switch, Billing is now in Spanish too, and so are Team, Activity, Integrations, Automation and the Test channel. The whole portal can now be used in Spanish.',
+    points: [
+      'Dates and amounts follow the language as well.',
+      'Names, invoice numbers, spreadsheet columns and monday.com column names are shown as they are, and some explanations that come from the server stay in English.',
+      'These update notes stay in English.',
+    ],
+  },
+  {
     id: 'import-finds-the-table',
     at: '2026-11-20T03:45:00Z',
     section: 'billing',
