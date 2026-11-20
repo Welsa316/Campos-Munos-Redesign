@@ -49,6 +49,7 @@ need to sign out.
 | `whatsapp.view` | Read WhatsApp conversations, internal notes, assignments | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | `whatsapp.send` | Reply on WhatsApp from the portal (rules below) | ✓ | ✓ | ✓ | ✓ |  |  |
 | `whatsapp.manage` | Assign conversations, add internal notes, close/reopen | ✓ | ✓ | ✓ | ✓ | ✓ |  |
+| `whatsapp.delete` | Delete messages and whole chats from the portal; hide a number so it stops appearing (and show it again) | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | `whatsapp.contacts` | Client WhatsApp numbers and consent (opt in/out) | ✓ | ✓ |  | ✓ |  |  |
 | `billing.status` | Read-only invoice list: status, balance, next due date | ✓ | ✓ |  | ✓ |  | ✓ |
 | `billing.view` | All billing records: overview, invoice history, imports, sync runs, reminders | ✓ |  |  | ✓ |  | ✓ |

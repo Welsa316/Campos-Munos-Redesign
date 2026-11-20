@@ -27,13 +27,13 @@ const migrate = () => execFileSync(process.execPath, [join(__dirname, 'db', 'mig
 // What each role resolved to before the Office Manager existed, copied from
 // main at the time. Any change to an existing role fails here first.
 const BEFORE = {
-  admin: ['activity.view', 'billing.configure', 'billing.import', 'billing.reconcile', 'billing.reminders', 'billing.status', 'billing.sync', 'billing.view', 'calls.clear', 'calls.exclude', 'calls.place', 'calls.view', 'crm.export', 'crm.manage', 'crm.view', 'forms.test', 'integrations.manage', 'integrations.view', 'monday.configure', 'team.manage', 'whatsapp.contacts', 'whatsapp.manage', 'whatsapp.send', 'whatsapp.view'],
+  admin: ['activity.view', 'billing.configure', 'billing.import', 'billing.reconcile', 'billing.reminders', 'billing.status', 'billing.sync', 'billing.view', 'calls.clear', 'calls.exclude', 'calls.place', 'calls.view', 'crm.export', 'crm.manage', 'crm.view', 'forms.test', 'integrations.manage', 'integrations.view', 'monday.configure', 'team.manage', 'whatsapp.contacts', 'whatsapp.delete', 'whatsapp.manage', 'whatsapp.send', 'whatsapp.view'],
   staff: ['billing.status', 'billing.view', 'crm.export', 'crm.manage', 'crm.view'],
-  front_desk: ['billing.status', 'calls.exclude', 'calls.place', 'calls.view', 'crm.export', 'crm.manage', 'crm.view', 'whatsapp.contacts', 'whatsapp.manage', 'whatsapp.send', 'whatsapp.view'],
-  receptionist: ['calls.exclude', 'calls.place', 'calls.view', 'crm.view', 'whatsapp.manage', 'whatsapp.send', 'whatsapp.view'],
-  billing_paralegal: ['billing.import', 'billing.reconcile', 'billing.reminders', 'billing.status', 'billing.sync', 'billing.view', 'whatsapp.contacts', 'whatsapp.manage', 'whatsapp.send', 'whatsapp.view'],
+  front_desk: ['billing.status', 'calls.exclude', 'calls.place', 'calls.view', 'crm.export', 'crm.manage', 'crm.view', 'whatsapp.contacts', 'whatsapp.delete', 'whatsapp.manage', 'whatsapp.send', 'whatsapp.view'],
+  receptionist: ['calls.exclude', 'calls.place', 'calls.view', 'crm.view', 'whatsapp.delete', 'whatsapp.manage', 'whatsapp.send', 'whatsapp.view'],
+  billing_paralegal: ['billing.import', 'billing.reconcile', 'billing.reminders', 'billing.status', 'billing.sync', 'billing.view', 'whatsapp.contacts', 'whatsapp.delete', 'whatsapp.manage', 'whatsapp.send', 'whatsapp.view'],
 }
-const OFFICE_MANAGER = ['calls.exclude', 'calls.place', 'calls.view', 'crm.manage', 'crm.view', 'whatsapp.manage', 'whatsapp.view']
+const OFFICE_MANAGER = ['calls.exclude', 'calls.place', 'calls.view', 'crm.manage', 'crm.view', 'whatsapp.delete', 'whatsapp.manage', 'whatsapp.view']
 const resolved = (role, grants, revokes) => [...resolveCapabilities({ role, grants, revokes })].sort()
 
 test('every role that existed before resolves exactly as it did', () => {

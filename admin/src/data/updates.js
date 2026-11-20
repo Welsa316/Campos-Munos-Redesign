@@ -23,6 +23,34 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'whatsapp-delete-and-hide',
+    at: '2026-11-20T21:02:00Z',
+    section: 'whatsapp',
+    any: ['whatsapp.delete'],
+    title: 'Delete WhatsApp messages and chats, and hide numbers',
+    summary: 'You can now delete a message or a whole chat from the portal, and hide a number (a coworker, a personal chat) so its messages stop appearing.',
+    points: [
+      'Assigning a chat to yourself does not hide it: everyone who can open WhatsApp in the portal still sees every chat. To keep a chat private, delete it and hide the number.',
+      'Delete a message: point at it (or tap it on a phone) and press the bin. Delete a chat: Delete chat at the top of the chat.',
+      'When you delete a chat you can also tick Also hide this number. New messages from that number then never appear in the portal, and what they say is not saved.',
+      'Deleting only removes it from the portal, for everyone. Nothing is deleted on the phone, and the client keeps what they were sent. Payment reminders stay in Billing.',
+      'Changed your mind about a number? Open Hidden numbers under the chat list and press Show again. Its new messages appear again; what was deleted stays deleted.',
+    ],
+  },
+  {
+    id: 'whatsapp-text-size',
+    at: '2026-11-20T21:02:00Z',
+    section: 'whatsapp',
+    any: ['whatsapp.view'],
+    title: 'Choose how large WhatsApp text is',
+    summary: 'Text size, at the top of any chat, makes messages, names, times and notes larger, in five steps.',
+    points: [
+      'Pick a size and the chat changes at once. Each step shows its own letter at the size it gives.',
+      'It is only for you, and it is saved to your account, so it follows you to any computer. Colleagues keep their own.',
+      'Standard is the size chats always had.',
+    ],
+  },
+  {
     id: 'import-finds-the-table',
     at: '2026-11-20T03:45:00Z',
     section: 'billing',

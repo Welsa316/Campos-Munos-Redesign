@@ -15,6 +15,7 @@ export const CAPABILITIES = {
   'whatsapp.view': 'Read WhatsApp conversations, internal notes and assignments',
   'whatsapp.send': 'Send WhatsApp replies from the portal',
   'whatsapp.manage': 'Assign WhatsApp conversations, add internal notes, close and reopen',
+  'whatsapp.delete': 'Delete WhatsApp messages and chats from the portal, and hide numbers (a coworker, a personal chat) so they stop appearing',
   'whatsapp.contacts': 'Edit client WhatsApp numbers and record consent (opt in or out)',
   'billing.status': 'Read-only invoice list: status, balance and next due date',
   'billing.view': 'Read all billing records: overview, invoice history, imports, sync runs, reminders',
@@ -62,7 +63,7 @@ export const ROLES = {
     label: 'Front desk',
     capabilities: [
       'crm.view', 'crm.manage', 'crm.export',
-      'whatsapp.view', 'whatsapp.send', 'whatsapp.manage', 'whatsapp.contacts',
+      'whatsapp.view', 'whatsapp.send', 'whatsapp.manage', 'whatsapp.delete', 'whatsapp.contacts',
       'billing.status',
       'calls.view', 'calls.place', 'calls.exclude',
     ],
@@ -73,7 +74,7 @@ export const ROLES = {
   // Billing).
   receptionist: {
     label: 'Receptionist',
-    capabilities: ['crm.view', 'whatsapp.view', 'whatsapp.send', 'whatsapp.manage', 'calls.view', 'calls.place', 'calls.exclude'],
+    capabilities: ['crm.view', 'whatsapp.view', 'whatsapp.send', 'whatsapp.manage', 'whatsapp.delete', 'calls.view', 'calls.place', 'calls.exclude'],
   },
   // Supervises the intake channels without speaking for the firm on
   // WhatsApp: works website leads (no CSV export), assigns, notes, closes
@@ -84,7 +85,7 @@ export const ROLES = {
     label: 'Office Manager',
     capabilities: [
       'crm.view', 'crm.manage',
-      'whatsapp.view', 'whatsapp.manage',
+      'whatsapp.view', 'whatsapp.manage', 'whatsapp.delete',
       'calls.view', 'calls.place', 'calls.exclude',
     ],
   },
@@ -93,7 +94,7 @@ export const ROLES = {
   billing_paralegal: {
     label: 'Billing paralegal',
     capabilities: [
-      'whatsapp.view', 'whatsapp.send', 'whatsapp.manage', 'whatsapp.contacts',
+      'whatsapp.view', 'whatsapp.send', 'whatsapp.manage', 'whatsapp.delete', 'whatsapp.contacts',
       'billing.status', 'billing.view', 'billing.import', 'billing.reconcile', 'billing.sync', 'billing.reminders',
     ],
   },

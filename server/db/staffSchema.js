@@ -33,6 +33,8 @@ export const STAFF_SCHEMA_SQL = `
   -- { base, header, primary, … } with #RRGGBB values, validated by
   -- server/auth/themes.js. Kept when they go back to a preset; NULL = none.
   ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS custom_theme JSONB;
+  -- How large they read chat text (server/auth/textSizes.js); NULL = standard.
+  ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS text_size TEXT;
 
   -- Who wrote each lead note and sent each email reply. NULL on rows from
   -- before there was more than one account.
@@ -56,12 +58,30 @@ export const STAFF_SCHEMA_SQL = `
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
   CREATE INDEX IF NOT EXISTS idx_wa_conversations_assigned ON wa_conversations(assigned_to);
+  -- Deleting from the portal (server/whatsapp/inbox.js): a deleted message
+  -- keeps its row, so a redelivery from Meta is still recognised as one, but
+  -- loses what it said (payload emptied, contact_name cleared) and is never
+  -- shown again. Nothing is deleted on the phone or for the client.
+  ALTER TABLE whatsapp_events ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+
+  -- Numbers kept out of the portal: a coworker, a personal chat. Messages
+  -- from them are stored without their text and open no conversation, until
+  -- the number is shown again.
+  CREATE TABLE IF NOT EXISTS wa_hidden_numbers (
+    wa_id TEXT PRIMARY KEY,
+    hidden_by INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
+    hidden_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
   -- New messages open their conversation as they are stored
   -- (db/whatsappEvents.js). This catches up history stored before that.
   -- Idempotent; one scan of the events per deploy instead of one per inbox
-  -- poll.
+  -- poll. Deleted messages and hidden numbers stay out, or a chat deleted in
+  -- the portal would come back with the next deploy.
   INSERT INTO wa_conversations (wa_id)
-  SELECT DISTINCT from_wa_id FROM whatsapp_events WHERE kind = 'message' AND from_wa_id IS NOT NULL
+  SELECT DISTINCT e.from_wa_id FROM whatsapp_events e
+   WHERE e.kind = 'message' AND e.from_wa_id IS NOT NULL AND e.deleted_at IS NULL
+     AND NOT EXISTS (SELECT 1 FROM wa_hidden_numbers h WHERE h.wa_id = e.from_wa_id)
   ON CONFLICT (wa_id) DO NOTHING;
 
   -- Internal notes: seen by staff only, never sent.
@@ -94,6 +114,9 @@ export const STAFF_SCHEMA_SQL = `
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
   CREATE INDEX IF NOT EXISTS idx_wa_outbound_messages_conv ON wa_outbound_messages(conversation_id, created_at);
+  -- A reply deleted from the portal: its text is emptied and it is no
+  -- longer shown. The client still has it.
+  ALTER TABLE wa_outbound_messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 
   -- Activity log (server/activity/): every change made in the portal or with
   -- scripts/staff.js, by whom and when, including attempts that were refused
