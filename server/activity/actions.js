@@ -78,6 +78,11 @@ export const ACTIONS = {
     details: (req) => ({ assigneeId: body(req).accountId ?? null }) },
   'PUT /api/whatsapp/conversations/:id/status': { key: 'whatsapp.status', label: 'Closed or reopened a WhatsApp conversation', entity: 'conversation',
     details: (req) => ({ status: body(req).status }) },
+  'DELETE /api/whatsapp/conversations/:id/messages/:key': { key: 'whatsapp.message_deleted', label: 'Deleted a WhatsApp message from the portal', entity: 'conversation' },
+  'DELETE /api/whatsapp/conversations/:id': { key: 'whatsapp.conversation_deleted', label: 'Deleted a WhatsApp chat from the portal', entity: 'conversation',
+    details: (req) => ({ hidden: req.query?.hide === 'true' }) },
+  'DELETE /api/whatsapp/hidden-numbers/:phone': { key: 'whatsapp.number_shown', label: 'Let a hidden WhatsApp number back into the portal',
+    details: (req) => ({ number: last4(req.params?.phone) }) },
 
   // Calls (RingCentral)
   'POST /api/calls/sync': { key: 'calls.refreshed', label: 'Refreshed the call log' },
