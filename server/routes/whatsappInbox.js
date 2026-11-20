@@ -1,7 +1,8 @@
 // /api/whatsapp — the shared WhatsApp inbox (server/whatsapp/inbox.js).
 //
 // Reading needs whatsapp.view; replying whatsapp.send; assigning, notes and
-// closing whatsapp.manage. Payment status beside a conversation is included
+// closing whatsapp.manage; deleting messages and chats, and hiding or
+// showing numbers, whatsapp.delete. Payment status beside a conversation is included
 // only for accounts with billing.status. The webhook that receives messages
 // is a separate router (routes/whatsapp.js) at /webhooks/whatsapp.
 import { Router } from 'express'
@@ -13,6 +14,7 @@ import validate from '../middleware/validate.js'
 import { createWhatsAppProvider, whatsappSendingEnabled, whatsappProviderMode } from '../billing/providers/whatsapp/index.js'
 import {
   listConversations, getConversation, sendReply, addNote, assign, setStatus, listAssignees, InboxError,
+  deleteMessage, deleteConversation, listHiddenNumbers, unhideNumber,
 } from '../whatsapp/inbox.js'
 
 const idParam = param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid id')
@@ -87,6 +89,26 @@ export function createWhatsappInboxRouter({ db = null, env = process.env, whatsa
 
   router.put('/conversations/:id/status', need('whatsapp.manage'), idParam, validate, wrap(async (req, res) => {
     await setStatus(pool(), Number(req.params.id), req.body?.status, { account: req.account })
+    res.json({ ok: true })
+  }))
+
+  router.delete('/conversations/:id/messages/:key', need('whatsapp.delete'), idParam, validate, wrap(async (req, res) => {
+    await deleteMessage(pool(), Number(req.params.id), req.params.key, { account: req.account })
+    res.json({ ok: true })
+  }))
+
+  // ?hide=true also keeps the number out of the portal from now on.
+  router.delete('/conversations/:id', need('whatsapp.delete'), idParam, validate, wrap(async (req, res) => {
+    await deleteConversation(pool(), Number(req.params.id), { account: req.account, hide: req.query.hide === 'true' })
+    res.json({ ok: true })
+  }))
+
+  router.get('/hidden-numbers', need('whatsapp.delete'), wrap(async (_req, res) => {
+    res.json(await listHiddenNumbers(pool()))
+  }))
+
+  router.delete('/hidden-numbers/:phone', need('whatsapp.delete'), wrap(async (req, res) => {
+    await unhideNumber(pool(), req.params.phone, { account: req.account })
     res.json({ ok: true })
   }))
 

@@ -4,10 +4,11 @@
 import { resolveCapabilities, ROLES } from './capabilities.js'
 import { avatarFor } from './avatars.js'
 import { themeFor, parseCustomTheme } from './themes.js'
+import { textSizeFor } from './textSizes.js'
 
 export async function loadAccount(db, id) {
   const { rows } = await db.query(
-    `SELECT id, email, display_name, role, token_version, capability_grants, capability_revokes, disabled_at, avatar, avatar_bg, theme, custom_theme
+    `SELECT id, email, display_name, role, token_version, capability_grants, capability_revokes, disabled_at, avatar, avatar_bg, theme, custom_theme, text_size
        FROM admin_users WHERE id = $1`,
     [id]
   )
@@ -27,6 +28,7 @@ export async function loadAccount(db, id) {
     theme: themeFor(r.theme, r.custom_theme),
     // The person's own colours (Themes → Custom), or null.
     customTheme: parseCustomTheme(r.custom_theme),
+    textSize: textSizeFor(r.text_size),
     capabilities: capsOfRow(r),
   }
 }
@@ -74,6 +76,7 @@ export function profileJson(account) {
     avatar: account.avatar,
     theme: account.theme,
     customTheme: account.customTheme,
+    textSize: account.textSize,
   }
 }
 

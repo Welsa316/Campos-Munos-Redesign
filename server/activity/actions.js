@@ -20,8 +20,9 @@ export const ACTIONS = {
   'POST /api/auth/logout': { key: 'auth.sign_out', label: 'Signed out', entity: 'account' },
   'POST /api/auth/change-password': { key: 'auth.password_changed', label: 'Changed their own password', entity: 'account' },
   'PUT /api/auth/avatar': { key: 'auth.avatar_changed', label: 'Changed their profile picture', entity: 'account' },
-  // Colours only; not worth a line.
+  // Colours and text size only; not worth a line.
   'PUT /api/auth/theme': { skip: true },
+  'PUT /api/auth/text-size': { skip: true },
 
   // Desktop notifications (their own computers only)
   'POST /api/push/subscriptions': { key: 'push.enabled', label: 'Turned on desktop notifications on a computer', entity: 'account' },
@@ -78,6 +79,11 @@ export const ACTIONS = {
     details: (req) => ({ assigneeId: body(req).accountId ?? null }) },
   'PUT /api/whatsapp/conversations/:id/status': { key: 'whatsapp.status', label: 'Closed or reopened a WhatsApp conversation', entity: 'conversation',
     details: (req) => ({ status: body(req).status }) },
+  'DELETE /api/whatsapp/conversations/:id/messages/:key': { key: 'whatsapp.message_deleted', label: 'Deleted a WhatsApp message from the portal', entity: 'conversation' },
+  'DELETE /api/whatsapp/conversations/:id': { key: 'whatsapp.conversation_deleted', label: 'Deleted a WhatsApp chat from the portal', entity: 'conversation',
+    details: (req) => ({ hidden: req.query?.hide === 'true' }) },
+  'DELETE /api/whatsapp/hidden-numbers/:phone': { key: 'whatsapp.number_shown', label: 'Let a hidden WhatsApp number back into the portal',
+    details: (req) => ({ number: last4(req.params?.phone) }) },
 
   // Calls (RingCentral)
   'POST /api/calls/sync': { key: 'calls.refreshed', label: 'Refreshed the call log' },

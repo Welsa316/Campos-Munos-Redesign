@@ -22,6 +22,7 @@ import { audit } from '../billing/audit.js'
 import { classifyInbound, phoneVariants } from '../billing/whatsappInbound.js'
 import { whatsappSendingEnabled } from '../billing/providers/whatsapp/index.js'
 import { displayName, accountsWith } from '../auth/account.js'
+import inTransaction from '../db/transaction.js'
 
 export const WINDOW_HOURS = 24
 export const MAX_NOTE_LENGTH = 2000
@@ -58,9 +59,10 @@ export async function listConversations(db, { view = 'open', accountId }) {
     `WITH timeline AS (
        SELECT c.id AS conversation_id, ${AT_SQL} AS at, 'in' AS direction, ${INBOUND_TEXT_SQL} AS body, e.message_type
          FROM whatsapp_events e JOIN wa_conversations c ON c.wa_id = e.from_wa_id
-        WHERE e.kind = 'message'
+        WHERE e.kind = 'message' AND e.deleted_at IS NULL
        UNION ALL
-       SELECT o.conversation_id, o.created_at, 'out', o.body, 'text' FROM wa_outbound_messages o WHERE o.status <> 'failed'
+       SELECT o.conversation_id, o.created_at, 'out', o.body, 'text' FROM wa_outbound_messages o
+        WHERE o.status <> 'failed' AND o.deleted_at IS NULL
        UNION ALL
        SELECT c.id, m.created_at, 'out', r.preview, 'reminder'
          FROM billing_messages m JOIN wa_conversations c ON c.wa_id = m.to_phone
@@ -72,7 +74,7 @@ export async function listConversations(db, { view = 'open', accountId }) {
      )
      SELECT c.id, c.wa_id, c.status, c.assigned_to, ${NAME_SQL('u')} AS assigned_name,
             l.at AS last_at, l.direction AS last_direction, LEFT(l.body, 140) AS preview, l.message_type AS last_type,
-            (SELECT e.contact_name FROM whatsapp_events e WHERE e.from_wa_id = c.wa_id AND e.contact_name IS NOT NULL
+            (SELECT e.contact_name FROM whatsapp_events e WHERE e.from_wa_id = c.wa_id AND e.contact_name IS NOT NULL AND e.deleted_at IS NULL
               ORDER BY e.received_at DESC LIMIT 1) AS profile_name
        FROM wa_conversations c
        LEFT JOIN last l ON l.conversation_id = c.id
@@ -145,14 +147,14 @@ export async function getConversation(db, id, { canSeeBilling = false, env = pro
   const [inbound, outbound, reminders, notes, clients, profile] = await Promise.all([
     db.query(
       `SELECT e.id, ${AT_SQL} AS at, ${INBOUND_TEXT_SQL} AS body, e.message_type
-         FROM whatsapp_events e WHERE e.kind = 'message' AND e.from_wa_id = $1 ORDER BY at`, [c.wa_id]
+         FROM whatsapp_events e WHERE e.kind = 'message' AND e.from_wa_id = $1 AND e.deleted_at IS NULL ORDER BY at`, [c.wa_id]
     ),
     db.query(
       `SELECT o.id, o.created_at AS at, o.body, o.status, o.simulated, o.error_message, o.provider_message_id,
               ${NAME_SQL('u')} AS by_name,
               (SELECT array_agg(DISTINCT e.status) FROM whatsapp_events e WHERE e.kind = 'status' AND e.wa_message_id = o.provider_message_id) AS receipts
          FROM wa_outbound_messages o LEFT JOIN admin_users u ON u.id = o.sent_by
-        WHERE o.conversation_id = $1 ORDER BY o.created_at`, [id]
+        WHERE o.conversation_id = $1 AND o.deleted_at IS NULL ORDER BY o.created_at`, [id]
     ),
     db.query(
       `SELECT m.id, m.created_at AS at, r.preview AS body, m.status, m.simulated, ${NAME_SQL('u')} AS approved_by
@@ -171,7 +173,7 @@ export async function getConversation(db, id, { canSeeBilling = false, env = pro
         WHERE k.phone_e164 = ANY($1) ORDER BY bc.display_name`, [variants]
     ),
     db.query(
-      `SELECT contact_name FROM whatsapp_events WHERE from_wa_id = $1 AND contact_name IS NOT NULL ORDER BY received_at DESC LIMIT 1`, [c.wa_id]
+      `SELECT contact_name FROM whatsapp_events WHERE from_wa_id = $1 AND contact_name IS NOT NULL AND deleted_at IS NULL ORDER BY received_at DESC LIMIT 1`, [c.wa_id]
     ),
   ])
 
@@ -358,4 +360,92 @@ export async function setStatus(db, conversationId, status, { account }) {
   await audit(db, { actorId: account.id, action: `whatsapp.${status}`, entityType: 'conversation', entityId: conversationId })
 }
 
-export default { listConversations, getConversation, sendReply, addNote, assign, setStatus, listAssignees, replyBlocker }
+// --- Deleting and hiding -----------------------------------------------------
+//
+// The firm's WhatsApp number is also used from a phone, so the portal can
+// show chats that are nobody else's business (coworkers, family). Deleting
+// here removes what a message said from the portal's database for every
+// account; it does not touch the phone, and the client keeps what they were
+// sent. Payment reminders are billing records and stay under Billing.
+// Audit rows carry ids, never text or numbers.
+
+const MESSAGE_KEY_RE = /^(in|out|rem)-([1-9]\d{0,17})$/
+
+/** Delete one message (key as getConversation returns it: in-12, out-3). */
+export async function deleteMessage(db, conversationId, key, { account }) {
+  const m = MESSAGE_KEY_RE.exec(String(key ?? ''))
+  if (!m) throw new InboxError('Invalid message', 400, 'bad_message')
+  const [, kind, rawId] = m
+  if (kind === 'rem') {
+    throw new InboxError('Payment reminders are billing records and cannot be deleted here.', 409, 'reminder')
+  }
+  const c = await loadConversation(db, conversationId)
+  const { rowCount } = kind === 'in'
+    ? await db.query(
+      `UPDATE whatsapp_events SET payload = '{}'::jsonb, contact_name = NULL, deleted_at = NOW()
+        WHERE id = $1 AND kind = 'message' AND from_wa_id = $2 AND deleted_at IS NULL`,
+      [rawId, c.wa_id]
+    )
+    : await db.query(
+      `UPDATE wa_outbound_messages SET body = '', deleted_at = NOW(), updated_at = NOW()
+        WHERE id = $1 AND conversation_id = $2 AND deleted_at IS NULL`,
+      [rawId, c.id]
+    )
+  if (!rowCount) throw new InboxError('That message is not in this chat, or it was already deleted', 404, 'not_found')
+  await audit(db, { actorId: account.id, action: 'whatsapp.message_deleted', entityType: 'conversation', entityId: c.id, details: { message: `${kind}-${rawId}` } })
+}
+
+/**
+ * Delete a whole chat: every message the number sent, the replies sent from
+ * the portal, internal notes and the assignment. With hide, the number is
+ * also kept out of the portal from now on. Without it, the next message
+ * from the number starts a new, empty chat.
+ */
+export async function deleteConversation(db, conversationId, { account, hide = false }) {
+  const c = await loadConversation(db, conversationId)
+  // One unit: a chat half-deleted (messages gone, number not hidden) would
+  // let the coworker's next message straight back in.
+  await inTransaction(db, async (tx) => {
+    await tx.query(
+      `UPDATE whatsapp_events SET payload = '{}'::jsonb, contact_name = NULL, deleted_at = NOW()
+        WHERE kind = 'message' AND from_wa_id = $1 AND deleted_at IS NULL`,
+      [c.wa_id]
+    )
+    if (hide) {
+      await tx.query(
+        'INSERT INTO wa_hidden_numbers (wa_id, hidden_by) VALUES ($1, $2) ON CONFLICT (wa_id) DO NOTHING',
+        [c.wa_id, account.id]
+      )
+    }
+    // Notes and portal replies go with the row (ON DELETE CASCADE).
+    await tx.query('DELETE FROM wa_conversations WHERE id = $1', [c.id])
+    await audit(tx, { actorId: account.id, action: 'whatsapp.conversation_deleted', entityType: 'conversation', entityId: c.id, details: { hidden: Boolean(hide) } })
+  })
+}
+
+/** Numbers kept out of the portal, newest first. */
+export async function listHiddenNumbers(db) {
+  const { rows } = await db.query(
+    `SELECT h.wa_id, h.hidden_at, ${NAME_SQL('u')} AS hidden_by_name
+       FROM wa_hidden_numbers h LEFT JOIN admin_users u ON u.id = h.hidden_by
+      ORDER BY h.hidden_at DESC`
+  )
+  return rows.map((r) => ({ phone: r.wa_id, hiddenAt: r.hidden_at, hiddenBy: r.hidden_by_name ?? null }))
+}
+
+/**
+ * Show a hidden number again. Its next message opens a chat; what was
+ * deleted stays deleted.
+ */
+export async function unhideNumber(db, waId, { account }) {
+  const phone = String(waId ?? '')
+  if (!/^\d{6,20}$/.test(phone)) throw new InboxError('Invalid number', 400, 'bad_number')
+  const { rowCount } = await db.query('DELETE FROM wa_hidden_numbers WHERE wa_id = $1', [phone])
+  if (!rowCount) throw new InboxError('That number is not hidden', 404, 'not_found')
+  await audit(db, { actorId: account.id, action: 'whatsapp.number_shown', entityType: 'whatsapp_number', entityId: null, details: { last4: phone.slice(-4) } })
+}
+
+export default {
+  listConversations, getConversation, sendReply, addNote, assign, setStatus, listAssignees, replyBlocker,
+  deleteMessage, deleteConversation, listHiddenNumbers, unhideNumber,
+}

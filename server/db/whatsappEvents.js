@@ -14,17 +14,29 @@ import getPool from './pool.js'
  * backfilled by the staff schema at boot: db/staffSchema.js.)
  */
 export async function recordEvent(evt) {
+  // A message from a number staff hid from the portal (wa_hidden_numbers:
+  // a coworker, a personal chat) is kept only as a deleted row, so a
+  // redelivery is still recognised and nothing it said is stored. It opens
+  // no conversation. Billing still sees the event in memory (an opt-out
+  // still counts).
   const result = await getPool().query(
-    `WITH ins AS (
+    `WITH hidden AS (
+       SELECT EXISTS (SELECT 1 FROM wa_hidden_numbers WHERE wa_id = $5::text AND $2::text = 'message') AS yes
+     ), ins AS (
        INSERT INTO whatsapp_events
          (event_key, kind, wa_message_id, status, from_wa_id, contact_name, recipient_wa_id,
-          message_type, phone_number_id, display_phone_number, waba_id, event_timestamp, payload)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          message_type, phone_number_id, display_phone_number, waba_id, event_timestamp, payload, deleted_at)
+       -- Typed: in INSERT … SELECT an untyped parameter would be read as text.
+       SELECT $1::text, $2::text, $3::text, $4::text, $5::text, CASE WHEN hidden.yes THEN NULL ELSE $6::text END,
+              $7::text, $8::text, $9::text, $10::text, $11::text, $12::timestamptz,
+              CASE WHEN hidden.yes THEN '{}'::jsonb ELSE $13::jsonb END,
+              CASE WHEN hidden.yes THEN NOW() END
+         FROM hidden
        ON CONFLICT (event_key) DO NOTHING
-       RETURNING id, kind, from_wa_id
+       RETURNING id, kind, from_wa_id, deleted_at
      ), conv AS (
        INSERT INTO wa_conversations (wa_id)
-       SELECT from_wa_id FROM ins WHERE kind = 'message' AND from_wa_id IS NOT NULL
+       SELECT from_wa_id FROM ins WHERE kind = 'message' AND from_wa_id IS NOT NULL AND deleted_at IS NULL
        ON CONFLICT (wa_id) DO NOTHING
      )
      SELECT id FROM ins`,
