@@ -24,7 +24,7 @@ export const SECTIONS = {
 export const UPDATES = [
   {
     id: 'whatsapp-delete-and-hide',
-    at: '2026-11-20T12:00:00Z',
+    at: '2026-11-20T21:02:00Z',
     section: 'whatsapp',
     any: ['whatsapp.delete'],
     title: 'Delete WhatsApp messages and chats, and hide numbers',
@@ -39,7 +39,7 @@ export const UPDATES = [
   },
   {
     id: 'whatsapp-text-size',
-    at: '2026-11-20T12:00:00Z',
+    at: '2026-11-20T21:02:00Z',
     section: 'whatsapp',
     any: ['whatsapp.view'],
     title: 'Choose how large WhatsApp text is',
