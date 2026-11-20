@@ -26,14 +26,14 @@
         class="w-full flex items-center justify-between gap-3 px-5 py-2.5 hover:bg-brand-surface transition-colors">
         <span class="flex items-center gap-2 text-xs font-semibold text-gray-700 min-w-0">
           <FaIcon name="bolt" class="text-brand-navy/70 text-[11px] flex-shrink-0" />
-          <span class="flex-shrink-0">Automatic follow-up</span>
+          <span class="flex-shrink-0">{{ t('lead.panel') }}</span>
           <span class="font-normal text-gray-500 truncate">{{ summary }}</span>
         </span>
         <FaIcon :name="open ? 'chevron-up' : 'chevron-down'" class="text-[10px] text-gray-400 flex-shrink-0" />
       </button>
 
       <div v-if="open" :id="`lead-auto-${submission.id}`" class="px-5 pb-4 space-y-3">
-        <p v-if="why" class="text-xs text-gray-600"><span class="font-semibold text-gray-800">Status:</span> {{ why }}</p>
+        <p v-if="why" class="text-xs text-gray-600"><span class="font-semibold text-gray-800">{{ t('lead.status') }}</span> {{ why }}</p>
 
         <ul v-if="lines.length" class="space-y-1.5">
           <li v-for="l in lines" :key="l.key" class="flex items-start gap-2 text-xs leading-relaxed" :class="TONE[l.tone]">
@@ -41,23 +41,23 @@
             <span>{{ l.text }}</span>
           </li>
         </ul>
-        <p v-else class="text-xs text-gray-500">Nothing automatic has been sent or queued for this lead.</p>
+        <p v-else class="text-xs text-gray-500">{{ t('lead.nothing') }}</p>
 
         <div v-if="canManage" class="flex flex-wrap items-end gap-x-4 gap-y-3 pt-1">
           <div>
-            <label :for="`lead-owner-${submission.id}`" class="block text-[11px] font-semibold text-gray-700 mb-1">Followed up by</label>
+            <label :for="`lead-owner-${submission.id}`" class="block text-[11px] font-semibold text-gray-700 mb-1">{{ t('lead.owner') }}</label>
             <select :id="`lead-owner-${submission.id}`" :value="a.owner?.id ?? ''" @change="setOwner($event.target.value)" :disabled="busy"
               class="fld w-56">
-              <option value="">The front desk (nobody in particular)</option>
+              <option value="">{{ t('lead.front_desk') }}</option>
               <option v-for="p in people" :key="p.id" :value="p.id">{{ p.name }}</option>
             </select>
           </div>
           <button v-if="!submission.is_archived" type="button" @click="setPaused(!a.paused)" :disabled="busy" :aria-pressed="a.paused"
             class="inline-flex items-center gap-2 min-h-11 sm:min-h-0 px-3 py-1.5 rounded-lg text-xs font-semibold ring-1 ring-gray-300 text-gray-700 hover:bg-brand-surface transition-colors disabled:opacity-50">
-            <FaIcon :name="a.paused ? 'play' : 'pause'" class="text-[10px]" />{{ a.paused ? 'Allow automatic messages again' : 'Stop automatic messages to this lead' }}
+            <FaIcon :name="a.paused ? 'play' : 'pause'" class="text-[10px]" />{{ t(a.paused ? 'lead.allow' : 'lead.stop') }}
           </button>
         </div>
-        <p v-else-if="a.owner" class="text-xs text-gray-600">Followed up by {{ a.owner.name }}.</p>
+        <p v-else-if="a.owner" class="text-xs text-gray-600">{{ t('lead.owned_by', { name: a.owner.name }) }}</p>
         <p v-if="error" role="alert" class="text-xs text-amber-700">{{ error }}</p>
       </div>
     </div>
@@ -69,8 +69,10 @@ import { ref, computed, watch } from 'vue'
 import FaIcon from '../../components/FaIcon.vue'
 import { useApi } from '../../composables/useApi.js'
 import { loadAssignees } from '../reminders/assignees.js'
-import { leadAutomationLines, statusWhy, reasonText, jobLabel } from './automationText.js'
+import { leadAutomationLines, statusWhy, reasonText, jobLabel, MESSAGE_REASONS } from './automationText.js'
 import { formatDue } from '../reminders/dueChoices.js'
+import { useT } from '../../i18n/translator.js'
+import { AUTOMATION } from '../../i18n/automation.js'
 
 const props = defineProps({
   submission: { type: Object, required: true },
@@ -81,6 +83,7 @@ const props = defineProps({
 const emit = defineEmits(['changed'])
 
 const { patch, post, put } = useApi()
+const { t, lang } = useT(AUTOMATION)
 const a = computed(() => props.submission.automation || null)
 const open = ref(false)
 const busy = ref(false)
@@ -88,19 +91,19 @@ const error = ref('')
 const people = ref([])
 const TONE = { quiet: 'text-gray-600', good: 'text-gray-800', warn: 'text-amber-800' }
 
-const lines = computed(() => leadAutomationLines(a.value))
-const why = computed(() => statusWhy(a.value))
+const lines = computed(() => leadAutomationLines(a.value, Date.now(), lang.value))
+const why = computed(() => statusWhy(a.value, lang.value))
 
 // The one-line state beside the title: the next thing that matters.
 const summary = computed(() => {
   const x = a.value
   if (!x) return ''
-  if (x.paused) return 'Stopped for this lead'
+  if (x.paused) return t('lead.summary.paused')
   const next = (x.pending || []).find((j) => j.type === 'lead_followup')
-  if (next) return `Next text ${formatDue(next.at)}`
-  if (x.stopped) return 'Stopped'
+  if (next) return t('lead.summary.next', { when: formatDue(next.at, lang.value) })
+  if (x.stopped) return t('lead.summary.stopped')
   const sent = (x.messages || []).filter((m) => m.status === 'sent').length
-  return sent ? `${sent} sent` : 'Nothing queued'
+  return sent ? t('lead.summary.sent', { count: sent }) : t('lead.summary.nothing')
 })
 
 async function act(fn, failed) {
@@ -117,10 +120,10 @@ async function act(fn, failed) {
   }
 }
 const id = () => props.submission.id
-const setPaused = (paused) => act(() => patch(`/api/submissions/${id()}/automation`, { paused }), 'Could not change that. Try again.')
-const setOwner = (value) => act(() => put(`/api/submissions/${id()}/owner`, { ownerId: value === '' ? null : Number(value) }), 'Could not change who follows this up. Try again.')
-const markSpam = (state) => act(() => post(`/api/submissions/${id()}/spam`, { state }), 'Could not save that. Try again.')
-const repliesSeen = () => act(() => post(`/api/submissions/${id()}/text-replies/handled`, {}), 'Could not save that. Try again.')
+const setPaused = (paused) => act(() => patch(`/api/submissions/${id()}/automation`, { paused }), t('lead.error.paused'))
+const setOwner = (value) => act(() => put(`/api/submissions/${id()}/owner`, { ownerId: value === '' ? null : Number(value) }), t('lead.error.owner'))
+const markSpam = (state) => act(() => post(`/api/submissions/${id()}/spam`, { state }), t('lead.error.save'))
+const repliesSeen = () => act(() => post(`/api/submissions/${id()}/text-replies/handled`, {}), t('lead.error.save'))
 
 const alerts = computed(() => {
   const x = a.value
@@ -128,33 +131,33 @@ const alerts = computed(() => {
   const out = []
   if (x.textReplies?.waiting) {
     out.push({
-      key: 'reply', icon: 'comment-dots', title: x.textReplies.waiting > 1 ? `They sent ${x.textReplies.waiting} text replies.` : 'They replied by text.',
-      text: 'Read and answer it in RingCentral; the automatic follow-ups have stopped.',
-      actions: [{ label: 'Seen to', primary: true, run: repliesSeen }],
+      key: 'reply', icon: 'comment-dots', title: t('alert.replies', { count: x.textReplies.waiting > 1 ? x.textReplies.waiting : 1 }),
+      text: t('alert.replies_text'),
+      actions: [{ label: t('alert.seen'), primary: true, run: repliesSeen }],
     })
   }
   if (x.spam?.state === 'possible') {
     out.push({
-      key: 'spam', icon: 'ban', title: 'This may be a vendor message.',
-      text: 'A phrase on the firm’s list matched, so nothing automatic is sent to it until someone decides.',
-      actions: [{ label: 'Not spam', primary: true, run: () => markSpam('cleared') }, { label: 'Spam', primary: false, run: () => markSpam('spam') }],
+      key: 'spam', icon: 'ban', title: t('alert.possible_spam'),
+      text: t('alert.possible_spam_text'),
+      actions: [{ label: t('alert.not_spam'), primary: true, run: () => markSpam('cleared') }, { label: t('alert.spam'), primary: false, run: () => markSpam('spam') }],
     })
   } else if (x.spam?.state === 'spam') {
     out.push({
-      key: 'spam', icon: 'ban', title: 'Marked as spam.',
-      text: x.spam.reason === 'set_by_staff' ? 'A person marked it.' : 'The sender is on the firm’s vendor list, so it was archived.',
-      actions: [{ label: 'Not spam', primary: true, run: () => markSpam('cleared') }],
+      key: 'spam', icon: 'ban', title: t('alert.marked_spam'),
+      text: t(x.spam.reason === 'set_by_staff' ? 'alert.marked_by_person' : 'alert.marked_by_rule'),
+      actions: [{ label: t('alert.not_spam'), primary: true, run: () => markSpam('cleared') }],
     })
   }
   for (const f of x.failed || []) {
     // An uncertain send is said as uncertain, not as "not sent".
     out.push(f.reason === 'unknown_delivery'
-      ? { key: `f-${f.id}`, icon: 'triangle-exclamation', title: `${jobLabel(f.type)} could not be confirmed.`, text: 'It may or may not have reached them, so it was not sent again. Check RingCentral, or contact them yourself.', actions: [] }
-      : { key: `f-${f.id}`, icon: 'triangle-exclamation', title: `${jobLabel(f.type)} was not sent:`, text: `${reasonText(f.reason)}. Contact them yourself.`, actions: [] })
+      ? { key: `f-${f.id}`, icon: 'triangle-exclamation', title: t('alert.unconfirmed', { job: jobLabel(f.type, lang.value) }), text: t('alert.unconfirmed_text'), actions: [] }
+      : { key: `f-${f.id}`, icon: 'triangle-exclamation', title: t('alert.not_sent', { job: jobLabel(f.type, lang.value) }), text: t('alert.not_sent_text', { why: reasonText(f.reason, MESSAGE_REASONS, lang.value) }), actions: [] })
   }
   const cancelled = (x.bookings || []).some((b) => b.status === 'cancelled') && !(x.bookings || []).some((b) => b.status === 'booked')
   if (cancelled && props.submission.status === 'scheduled') {
-    out.push({ key: 'booking', icon: 'calendar-xmark', title: 'Their consultation was cancelled on the calendar.', text: 'The status still says Scheduled; change it once you know what happened.', actions: [] })
+    out.push({ key: 'booking', icon: 'calendar-xmark', title: t('alert.booking'), text: t('alert.booking_text'), actions: [] })
   }
   return out
 })

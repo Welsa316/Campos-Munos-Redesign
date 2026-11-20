@@ -1,78 +1,77 @@
 <template>
   <div class="max-w-[1320px] mx-auto px-4 sm:px-6 py-6 space-y-5">
     <router-link :to="{ name: 'BillingImports' }" class="inline-flex items-center gap-2 text-xs font-ui text-gray-500 hover:text-brand-navy">
-      <i class="fa-solid fa-arrow-left text-[10px]" aria-hidden="true"></i> All imports
+      <i class="fa-solid fa-arrow-left text-[10px]" aria-hidden="true"></i> {{ t('import.all') }}
     </router-link>
 
     <p v-if="error" role="alert" class="text-sm font-ui text-brand-red bg-red-50 rounded-lg px-4 py-3">{{ error }}</p>
-    <p v-if="loading && !job" class="py-12 text-center text-sm text-gray-500 font-ui">Loading…</p>
+    <p v-if="loading && !job" class="py-12 text-center text-sm text-gray-500 font-ui">{{ t('loading') }}</p>
 
     <template v-if="job">
       <header class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
         <h2 class="font-heading text-xl text-gray-900 break-all">{{ job.filename }}</h2>
-        <span class="text-xs font-ui text-gray-500">Import #{{ job.id }} · uploaded {{ shortDate(job.created_at) }}</span>
+        <span class="text-xs font-ui text-gray-500">{{ t('import.meta', { id: job.id, date: shortDate(job.created_at) }) }}</span>
         <span class="text-xs font-ui font-semibold" :class="stateTone">{{ stateLabel }}</span>
       </header>
 
       <p v-if="job.duplicateOf" class="text-sm font-ui bg-amber-50 text-amber-900 rounded-lg px-4 py-3">
-        This exact file was already applied (import #{{ job.duplicateOf.id }}, {{ shortDate(job.duplicateOf.applied_at) }}). Re-importing it is safe: every row will come back unchanged.
+        {{ t('import.duplicate', { id: job.duplicateOf.id, date: shortDate(job.duplicateOf.applied_at) }) }}
       </p>
       <p v-if="job.raw_purged_at && job.status !== 'applied'" class="text-sm font-ui bg-gray-100 text-gray-700 rounded-lg px-4 py-3">
-        The uploaded file was deleted after the retention period. Upload it again to continue.
+        {{ t('import.purged') }}
       </p>
 
       <!-- Step 1: mapping (until applied) -->
       <section v-if="editable" class="bg-white rounded-xl ring-1 ring-gray-200" aria-labelledby="map-h">
         <header class="px-5 py-4 border-b border-gray-100">
-          <h3 id="map-h" class="text-sm font-ui font-semibold text-gray-900">1 · What does each column mean?</h3>
+          <h3 id="map-h" class="text-sm font-ui font-semibold text-gray-900">{{ t('map.title') }}</h3>
           <p class="text-[11px] font-ui text-gray-500 mt-0.5">
-            Columns were matched by their names. The real eImmigration export layout has not been verified yet, so check each one against the sample values.
-            Your choices are remembered for files with the same columns.
+            {{ t('map.note') }}
           </p>
         </header>
         <div class="p-5 grid grid-cols-[minmax(0,1fr)] md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-4">
           <div v-for="f in FIELD_ORDER" :key="f" class="form-group">
-            <label :for="`map-${f}`" class="text-[11px] font-ui font-semibold text-gray-700">{{ FIELD_LABELS[f] }}</label>
+            <label :for="`map-${f}`" class="text-[11px] font-ui font-semibold text-gray-700">{{ t(`field.${f}`) }}</label>
             <select :id="`map-${f}`" v-model="mapping[f]"
               class="mt-1 w-full text-xs font-ui px-3 py-2 rounded-lg bg-white border border-gray-300 focus:border-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/10">
-              <option :value="null">Not in this report</option>
+              <option :value="null">{{ t('map.not_in_report') }}</option>
               <option v-for="h in job.headers" :key="h" :value="h" :disabled="usedElsewhere(h, f)">{{ h }}</option>
             </select>
             <p v-if="mapping[f] && samples(mapping[f]).length" class="mt-1 text-[10px] font-ui text-gray-500 truncate" :title="samples(mapping[f]).join(' · ')">
-              e.g. {{ samples(mapping[f]).join(' · ') }}
+              {{ t('map.example', { values: samples(mapping[f]).join(' · ') }) }}
             </p>
           </div>
         </div>
         <div class="px-5 pb-5 grid grid-cols-[minmax(0,1fr)] md:grid-cols-2 gap-x-6 gap-y-4 border-t border-gray-100 pt-4">
           <div>
-            <label for="report-type" class="text-[11px] font-ui font-semibold text-gray-700">What does this report contain?</label>
+            <label for="report-type" class="text-[11px] font-ui font-semibold text-gray-700">{{ t('map.report_type') }}</label>
             <select id="report-type" v-model="reportType"
               class="mt-1 w-full text-xs font-ui px-3 py-2 rounded-lg bg-white border border-gray-300 focus:border-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/10">
-              <option v-for="(label, key) in REPORT_TYPE_LABELS" :key="key" :value="key">{{ label }}</option>
+              <option v-for="key in REPORT_TYPES" :key="key" :value="key">{{ t(`report_type.${key}`) }}</option>
             </select>
-            <p class="mt-1 text-[10px] font-ui text-gray-500 leading-snug">{{ REPORT_TYPE_HELP[reportType] }}</p>
+            <p class="mt-1 text-[10px] font-ui text-gray-500 leading-snug">{{ REPORT_TYPES.includes(reportType) ? t(`report_help.${reportType}`) : '' }}</p>
           </div>
           <div>
-            <label for="report-date" class="text-[11px] font-ui font-semibold text-gray-700">Report generated on</label>
+            <label for="report-date" class="text-[11px] font-ui font-semibold text-gray-700">{{ t('map.report_date') }}</label>
             <input id="report-date" v-model="reportDate" type="date" :max="today"
               class="mt-1 w-full text-xs font-ui px-3 py-2 rounded-lg bg-white border border-gray-300 focus:border-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/10" />
-            <p class="mt-1 text-[10px] font-ui text-gray-500 leading-snug">Required. Overdue is judged as of this date, and an older report never overwrites a newer one. Leave it empty only if the file has a report-date column.</p>
+            <p class="mt-1 text-[10px] font-ui text-gray-500 leading-snug">{{ t('map.report_date_note') }}</p>
           </div>
         </div>
         <div v-if="canImport" class="px-5 pb-5 flex flex-wrap items-center gap-3">
           <button @click="runPreview" :disabled="busy || Boolean(job.raw_purged_at)"
             class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-navy text-white text-sm font-ui font-semibold hover:bg-brand-navy-dark disabled:opacity-50 transition-colors">
             <FaIcon v-if="busy === 'preview'" name="spinner" spin class="text-xs" />
-            {{ job.status === 'previewed' ? 'Preview again' : 'Preview import' }}
+            {{ t(job.status === 'previewed' ? 'map.preview_again' : 'map.preview') }}
           </button>
-          <button @click="confirmingCancel = true" :disabled="Boolean(busy)" :aria-expanded="confirmingCancel" class="px-3 py-2 rounded-lg text-sm font-ui text-gray-600 hover:text-brand-red hover:bg-red-50 transition-colors">Cancel import</button>
-          <ConfirmInline v-if="confirmingCancel" class="basis-full" title="Cancel this import?" body="Nothing from it has been applied."
-            confirm-label="Cancel import" cancel-label="Keep it" :busy="Boolean(busy)" @confirm="cancel" @cancel="confirmingCancel = false" />
+          <button @click="confirmingCancel = true" :disabled="Boolean(busy)" :aria-expanded="confirmingCancel" class="px-3 py-2 rounded-lg text-sm font-ui text-gray-600 hover:text-brand-red hover:bg-red-50 transition-colors">{{ t('map.cancel') }}</button>
+          <ConfirmInline v-if="confirmingCancel" class="basis-full" :title="t('map.cancel_title')" :body="t('map.cancel_body')"
+            :confirm-label="t('map.cancel')" :cancel-label="t('map.keep')" :busy="Boolean(busy)" @confirm="cancel" @cancel="confirmingCancel = false" />
         </div>
       </section>
 
       <!-- Missing-field problems -->
-      <section v-if="fieldWarnings.length" class="bg-white rounded-xl ring-1 ring-gray-200 p-5" aria-label="Column problems">
+      <section v-if="fieldWarnings.length" class="bg-white rounded-xl ring-1 ring-gray-200 p-5" :aria-label="t('problems.label')">
         <ul class="space-y-1.5 text-xs font-ui">
           <li v-for="w in fieldWarnings" :key="w.field + w.message" class="flex gap-2">
             <FaIcon :name="w.severity === 'error' ? 'circle-exclamation' : 'triangle-exclamation'" :class="w.severity === 'error' ? 'text-brand-red' : 'text-amber-600'" class="mt-0.5" />
@@ -85,92 +84,90 @@
       <section v-if="job.stats" class="bg-white rounded-xl ring-1 ring-gray-200" aria-labelledby="preview-h">
         <header class="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center gap-3">
           <div>
-            <h3 id="preview-h" class="text-sm font-ui font-semibold text-gray-900">{{ job.status === 'applied' ? 'What was applied' : '2 · Review the proposed changes' }}</h3>
-            <p class="text-[11px] font-ui text-gray-500 mt-0.5">{{ REPORT_TYPE_LABELS[job.report_type] || 'Type not set' }} · as of {{ job.report_date ? shortDate(job.report_date) : 'the upload date' }}</p>
+            <h3 id="preview-h" class="text-sm font-ui font-semibold text-gray-900">{{ t(job.status === 'applied' ? 'preview.applied' : 'preview.review') }}</h3>
+            <p class="text-[11px] font-ui text-gray-500 mt-0.5">{{ REPORT_TYPES.includes(job.report_type) ? t(`report_type.${job.report_type}`) : t('type_not_set') }} · {{ job.report_date ? t('preview.as_of', { date: shortDate(job.report_date) }) : t('preview.as_of_upload') }}</p>
           </div>
           <button type="button" @click="downloadExceptions" :disabled="csvBusy" class="ml-auto inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-ui font-semibold hover:bg-brand-surface disabled:opacity-60" :class="csvFailed ? 'text-brand-red' : 'text-brand-navy'">
-            <i class="fa-solid fa-download text-[10px]" aria-hidden="true"></i> <span aria-live="polite">{{ csvFailed ? 'Download failed. Try again' : 'Exceptions (CSV)' }}</span>
+            <i class="fa-solid fa-download text-[10px]" aria-hidden="true"></i> <span aria-live="polite">{{ t(csvFailed ? 'preview.download_failed' : 'preview.exceptions') }}</span>
           </button>
         </header>
 
         <div class="p-5 grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3">
-          <div v-for="t in tiles" :key="t.label" class="rounded-lg bg-brand-light ring-1 ring-gray-100 px-3 py-2.5">
-            <p class="text-[10px] font-ui text-gray-600 leading-tight">{{ t.label }}</p>
-            <p :class="t.count && t.tone ? t.tone : 'text-gray-900'" class="font-ui text-xl font-light tabular-nums mt-1">{{ t.count }}</p>
+          <div v-for="tile in tiles" :key="tile.label" class="rounded-lg bg-brand-light ring-1 ring-gray-100 px-3 py-2.5">
+            <p class="text-[10px] font-ui text-gray-600 leading-tight">{{ t(tile.label) }}</p>
+            <p :class="tile.count && tile.tone ? tile.tone : 'text-gray-900'" class="font-ui text-xl font-light tabular-nums mt-1">{{ tile.count }}</p>
           </div>
         </div>
 
         <p v-if="job.report_type === 'outstanding_only'" class="mx-5 mb-4 text-[11px] font-ui text-gray-600 bg-brand-surface rounded-lg px-3 py-2">
-          Outstanding-only report: invoices that are not in this file are left exactly as they are. Missing from this report does not mean paid.
+          {{ t('preview.outstanding_note') }}
         </p>
         <p v-if="job.stats.counts.absent" class="mx-5 mb-4 text-[11px] font-ui text-amber-900 bg-amber-50 rounded-lg px-3 py-2">
-          {{ plural(job.stats.counts.absent, 'invoice') }} we already have {{ job.stats.counts.absent === 1 ? 'is' : 'are' }} not in this full report. They will be flagged for review, not marked paid.
+          {{ t('preview.absent', { count: num(job.stats.counts.absent, lang) }) }}
         </p>
 
         <p v-if="phoneSummary" class="mx-5 mb-4 text-[11px] font-ui text-gray-700 bg-brand-surface rounded-lg px-3 py-2">
-          <span class="font-semibold">WhatsApp numbers:</span> {{ phoneSummary }}.
-          A number staff saved on the contacts page is never replaced by a report.
+          <span class="font-semibold">{{ t('phones.label') }}</span> {{ phoneSummary }}.
+          {{ t('phones.note') }}
         </p>
 
-        <div class="px-5 pb-3 flex flex-wrap gap-1.5" role="group" aria-label="Filter rows">
+        <div class="px-5 pb-3 flex flex-wrap gap-1.5" role="group" :aria-label="t('rows.filter_label')">
           <button v-for="f in ROW_FILTERS" :key="f.key" @click="setRowFilter(f.key)" :aria-pressed="rowFilter === f.key"
             :class="rowFilter === f.key ? 'bg-brand-navy text-white ring-brand-navy' : 'bg-brand-surface text-gray-600 ring-transparent hover:text-gray-900'"
-            class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap">{{ f.label }}</button>
+            class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap">{{ t(f.label) }}</button>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-xs font-ui min-w-[760px]">
             <thead>
               <tr class="text-[10px] uppercase tracking-[0.1em] text-gray-500 border-y border-gray-100">
-                <th scope="col" class="text-left font-semibold px-5 py-2">Row</th>
-                <th scope="col" class="text-left font-semibold px-2 py-2">Record</th>
-                <th scope="col" class="text-left font-semibold px-2 py-2">Client</th>
-                <th scope="col" class="text-left font-semibold px-2 py-2">Result</th>
+                <th scope="col" class="text-left font-semibold px-5 py-2">{{ t('col.row') }}</th>
+                <th scope="col" class="text-left font-semibold px-2 py-2">{{ t('col.record') }}</th>
+                <th scope="col" class="text-left font-semibold px-2 py-2">{{ t('col.client') }}</th>
+                <th scope="col" class="text-left font-semibold px-2 py-2">{{ t('col.result') }}</th>
                 <th scope="col" class="text-left font-semibold px-2 py-2">monday.com</th>
-                <th scope="col" class="text-left font-semibold px-5 py-2">Details</th>
+                <th scope="col" class="text-left font-semibold px-5 py-2">{{ t('col.details') }}</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-if="!job.rows.length"><td colspan="6" class="px-5 py-6 text-center text-gray-500">No rows in this view.</td></tr>
+              <tr v-if="!job.rows.length"><td colspan="6" class="px-5 py-6 text-center text-gray-500">{{ t('rows.none') }}</td></tr>
               <tr v-for="r in job.rows" :key="r.kind + r.row_number" class="border-b border-gray-50 align-top">
                 <td class="px-5 py-2.5 tabular-nums text-gray-500">{{ r.row_number }}</td>
                 <td class="px-2 py-2.5 text-gray-800 whitespace-nowrap">
-                  <span class="text-[9px] uppercase tracking-wider text-gray-500 mr-1">{{ r.kind }}</span>
+                  <span class="text-[9px] uppercase tracking-wider text-gray-500 mr-1">{{ word('kind.', r.kind) }}</span>
                   {{ r.kind === 'invoice' ? r.record.input.externalInvoiceId : (r.record.input.externalPaymentId || r.record.input.externalInvoiceId) }}
                   <span v-if="r.kind === 'payment'" class="block text-gray-500 tabular-nums">{{ money(r.record.input.amountCents) }} · {{ r.record.input.paymentType }}</span>
                 </td>
-                <td class="px-2 py-2.5 text-gray-800">{{ r.record.input.clientName || '—' }}<span class="block text-[10px] text-gray-500">{{ r.record.input.externalClientId || 'no client ID' }}</span></td>
+                <td class="px-2 py-2.5 text-gray-800">{{ r.record.input.clientName || '—' }}<span class="block text-[10px] text-gray-500">{{ r.record.input.externalClientId || t('rows.no_client_id') }}</span></td>
                 <td class="px-2 py-2.5">
-                  <span :class="ACTION[r.action]?.tone" class="inline-block text-[10px] font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded">{{ ACTION[r.action]?.label || r.action }}</span>
+                  <span :class="ACTION[r.action]?.tone" class="inline-block text-[10px] font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded">{{ word('action.', r.action) }}</span>
                   <div v-if="r.record.proposed" class="mt-1"><StatusPill :status="r.record.proposed.status" /></div>
                 </td>
-                <td class="px-2 py-2.5 text-gray-600 whitespace-nowrap">{{ MATCH[r.match_status] || r.match_status }}</td>
+                <td class="px-2 py-2.5 text-gray-600 whitespace-nowrap">{{ word('match.', r.match_status) }}</td>
                 <td class="px-5 py-2.5 text-gray-700 max-w-[28rem]">
                   <p v-for="i in r.issues" :key="i.code + i.field" :class="i.severity === 'error' ? 'text-brand-red' : 'text-amber-700'">{{ i.message }}</p>
                   <p v-if="r.record.reason && !r.issues.length" class="text-gray-600">{{ r.record.reason }}</p>
                   <p v-if="r.record.proposed?.reviewReason" class="text-violet-800">{{ r.record.proposed.reviewReason }}</p>
-                  <p v-if="r.action === 'update'" class="text-gray-600">{{ describe(r.changes) }}</p>
+                  <p v-if="r.action === 'update'" class="text-gray-600">{{ rowChanges(r.changes, lang) }}</p>
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
-        <p v-if="job.rows.length >= 500" class="px-5 py-3 text-[11px] font-ui text-gray-500">Showing the first 500 rows. The exceptions CSV lists every problem.</p>
+        <p v-if="job.rows.length >= 500" class="px-5 py-3 text-[11px] font-ui text-gray-500">{{ t('rows.first_500') }}</p>
 
         <!-- Step 3: approve -->
         <div v-if="canImport && job.status === 'previewed'" class="px-5 py-4 border-t border-gray-100 flex flex-wrap items-center gap-3 bg-brand-light rounded-b-xl">
           <p class="text-xs font-ui text-gray-700 flex-1 min-w-[16rem]">
-            Approving writes {{ job.stats.counts.invoice_insert }} new and {{ job.stats.counts.invoice_update }} changed {{ job.stats.counts.invoice_insert + job.stats.counts.invoice_update === 1 ? 'invoice' : 'invoices' }} and
-            {{ plural(job.stats.counts.payment_insert + job.stats.counts.payment_update, 'payment') }}<template v-if="phonesWritten">, and saves {{ plural(phonesWritten, 'WhatsApp number') }}</template>.
-            Skipped rows are not imported. monday.com is not touched.
+            {{ approveSummary(job.stats.counts, phonesWritten, lang) }}
           </p>
           <button @click="approve" :disabled="Boolean(busy)"
             class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-navy text-white text-sm font-ui font-semibold hover:bg-brand-navy-dark disabled:opacity-50">
             <FaIcon v-if="busy === 'approve'" name="spinner" spin class="text-xs" />
-            Approve import
+            {{ t('approve.button') }}
           </button>
         </div>
         <p v-if="applied" role="status" class="px-5 py-4 border-t border-gray-100 text-sm font-ui text-green-800 bg-green-50 rounded-b-xl">
-          Applied: {{ plural(applied.applied.invoices, 'invoice') }}, {{ plural(applied.applied.payments, 'payment') }}<span v-if="applied.applied.links">, {{ plural(applied.applied.links, 'client') }} linked to monday.com by eImmigration ID</span>.
+          {{ appliedSummary(applied.applied, lang) }}
         </p>
       </section>
     </template>
@@ -181,7 +178,11 @@
 import FaIcon from '../../../components/FaIcon.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useBillingApi, money, shortDate, REPORT_TYPE_LABELS, FIELD_LABELS } from '../api.js'
+import { useBillingApi, REPORT_TYPES, FIELD_KEYS } from '../api.js'
+import { money as moneyIn, shortDate as dateIn } from '../format.js'
+import { num, hasWord, rowChanges, phoneSummary as phoneLine, approveSummary, appliedSummary } from '../billingText.js'
+import { useT } from '../../../i18n/translator.js'
+import { BILLING } from '../../../i18n/billing.js'
 import { can } from '../../../composables/useAuth.js'
 
 // Previewing, approving and cancelling an import need billing.import.
@@ -189,32 +190,30 @@ const canImport = can('billing.import')
 import { rawFetch, goToLogin } from '../../../composables/useApi.js'
 import StatusPill from '../components/StatusPill.vue'
 import ConfirmInline from '../../../components/ConfirmInline.vue'
-import { plural } from '../../../utils/text.js'
 
-const FIELD_ORDER = Object.keys(FIELD_LABELS)
-const REPORT_TYPE_HELP = {
-  invoice_summary: 'Every invoice, paid or not. Invoices we have that are missing from it are flagged for review (never marked paid).',
-  outstanding_only: 'Only invoices with money owed. Invoices not in the file are left untouched.',
-  payment_transactions: 'One row per payment, credit or refund. Recorded as history; invoice balances only change from reports that state balances.',
-  mixed: 'Invoice rows and payment rows in the same file.',
-}
+const FIELD_ORDER = FIELD_KEYS
+// A row's result; its label is action.<key> in i18n/billing.js.
 const ACTION = {
-  insert: { label: 'New', tone: 'bg-green-100 text-green-800' },
-  update: { label: 'Changes', tone: 'bg-brand-navy/10 text-brand-navy' },
-  unchanged: { label: 'Unchanged', tone: 'bg-gray-100 text-gray-600' },
-  skip: { label: 'Skipped', tone: 'bg-red-100 text-brand-red' },
-  stale: { label: 'Older report', tone: 'bg-amber-100 text-amber-800' },
+  insert: { tone: 'bg-green-100 text-green-800' },
+  update: { tone: 'bg-brand-navy/10 text-brand-navy' },
+  unchanged: { tone: 'bg-gray-100 text-gray-600' },
+  skip: { tone: 'bg-red-100 text-brand-red' },
+  stale: { tone: 'bg-amber-100 text-amber-800' },
 }
-const MATCH = {
-  linked: 'Linked', matched_by_id: 'Matched by ID', ambiguous: 'Needs a decision', unmatched: 'Not found', no_client_id: 'No client ID',
-}
+// label: a word in i18n/billing.js.
 const ROW_FILTERS = [
-  { key: 'problems', label: 'Problems' },
-  { key: 'update', label: 'Changes' },
-  { key: 'insert', label: 'New' },
-  { key: '', label: 'All rows' },
+  { key: 'problems', label: 'rows.problems' },
+  { key: 'update', label: 'rows.update' },
+  { key: 'insert', label: 'rows.insert' },
+  { key: '', label: 'rows.all' },
 ]
-const CHANGE_NAMES = { totalCents: 'total', paidCents: 'paid', balanceCents: 'balance', status: 'status', dueDate: 'due', nextInstallmentDate: 'next installment', lastPaymentDate: 'last payment' }
+
+const { t, lang, locale } = useT(BILLING)
+const money = (cents) => moneyIn(cents, locale.value)
+const shortDate = (value) => dateIn(value, locale.value)
+// A value the server sends with a word for it (a row's kind, result, match),
+// or the value itself when it is new.
+const word = (prefix, value) => (hasWord(BILLING, prefix + value) ? t(prefix + value) : value)
 
 const api = useBillingApi()
 const route = useRoute()
@@ -235,7 +234,7 @@ const csvBusy = ref(false)
 const csvFailed = ref(false)
 const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 const editable = computed(() => job.value && ['uploaded', 'previewed'].includes(job.value.status))
-const stateLabel = computed(() => ({ uploaded: 'Needs mapping', previewed: 'Awaiting approval', applied: 'Applied', cancelled: 'Cancelled', failed: 'Failed' })[job.value?.status])
+const stateLabel = computed(() => (['uploaded', 'previewed', 'applied', 'cancelled', 'failed'].includes(job.value?.status) ? t(`job.${job.value.status}`) : undefined))
 const stateTone = computed(() => ({ applied: 'text-green-700', cancelled: 'text-gray-500', failed: 'text-brand-red' })[job.value?.status] || 'text-brand-navy')
 
 // Fetched and saved as a file rather than a plain link: the desktop app keeps
@@ -267,14 +266,14 @@ const tiles = computed(() => {
   const c = job.value?.stats?.counts || {}
   const m = job.value?.stats?.matching || {}
   return [
-    { label: 'New invoices', count: c.invoice_insert || 0 },
-    { label: 'Changed invoices', count: c.invoice_update || 0 },
-    { label: 'Unchanged', count: c.invoice_unchanged || 0 },
-    { label: 'Skipped (errors)', count: (c.invoice_skip || 0) + (c.payment_skip || 0), tone: 'text-brand-red' },
-    { label: 'Older than current data', count: c.invoice_stale || 0, tone: 'text-amber-700' },
-    { label: 'New payments', count: c.payment_insert || 0 },
-    { label: 'Clients needing a match', count: (m.ambiguous || 0) + (m.unmatched || 0), tone: 'text-amber-700' },
-    { label: 'Needs review', count: job.value?.stats?.statuses?.needs_review || 0, tone: 'text-violet-700' },
+    { label: 'tile.new_invoices', count: c.invoice_insert || 0 },
+    { label: 'tile.changed_invoices', count: c.invoice_update || 0 },
+    { label: 'tile.unchanged', count: c.invoice_unchanged || 0 },
+    { label: 'tile.skipped', count: (c.invoice_skip || 0) + (c.payment_skip || 0), tone: 'text-brand-red' },
+    { label: 'tile.stale', count: c.invoice_stale || 0, tone: 'text-amber-700' },
+    { label: 'tile.new_payments', count: c.payment_insert || 0 },
+    { label: 'tile.need_match', count: (m.ambiguous || 0) + (m.unmatched || 0), tone: 'text-amber-700' },
+    { label: 'tile.needs_review', count: job.value?.stats?.statuses?.needs_review || 0, tone: 'text-violet-700' },
   ]
 })
 
@@ -283,18 +282,7 @@ const phonesWritten = computed(() => {
   const p = job.value?.stats?.phones
   return p ? (p.new || 0) + (p.changed || 0) : 0
 })
-const phoneSummary = computed(() => {
-  const p = job.value?.stats?.phones
-  if (!p) return ''
-  return [
-    [p.new, 'new'],
-    [p.changed, 'replaced (an earlier report set them)'],
-    [p.same, 'already on file'],
-    [p.kept, 'left as staff saved them'],
-    [p.invalid, 'unreadable (need a 10-digit US number, or + and the country code)'],
-    [p.conflict, 'not saved (the client\u2019s rows disagree)'],
-  ].filter(([n]) => n).map(([n, label]) => `${n} ${label}`).join(' · ')
-})
+const phoneSummary = computed(() => phoneLine(job.value?.stats?.phones, lang.value))
 
 function samples(header) {
   const idx = job.value.headers.indexOf(header)
@@ -302,12 +290,6 @@ function samples(header) {
 }
 function usedElsewhere(header, field) {
   return Object.entries(mapping).some(([f, h]) => f !== field && h === header)
-}
-function describe(changes = []) {
-  return changes.filter((c) => CHANGE_NAMES[c.field]).map((c) => {
-    const fmt = (v) => (/Cents$/.test(c.field) ? money(v) : (v ?? '—'))
-    return `${CHANGE_NAMES[c.field]} ${fmt(c.from)} → ${fmt(c.to)}`
-  }).join('; ')
 }
 
 // The mapping form is filled from the server on the first load and after a
@@ -326,7 +308,7 @@ async function load(filter = rowFilter.value, { seedForm = true } = {}) {
     }
     fieldWarnings.value = (j.errors || []).filter((e) => e && e.message && (e.severity === 'error' || e.severity === 'warning'))
   } catch (err) {
-    error.value = `Could not load the import: ${err.message}`
+    error.value = t('import.load_error', { message: err.message })
   } finally {
     loading.value = false
   }

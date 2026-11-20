@@ -4,24 +4,24 @@
       <header class="px-4 sm:px-5 py-4 border-b border-gray-100 space-y-3">
         <div class="flex flex-wrap items-center gap-3">
           <h2 class="text-sm font-ui font-semibold text-gray-900">
-            Invoices <span class="text-gray-500 font-normal">{{ invoices.length }}<span v-if="invoices.length >= 500">+</span></span>
+            {{ t('invoices.heading') }} <span class="text-gray-500 font-normal">{{ invoices.length }}<span v-if="invoices.length >= 500">+</span></span>
           </h2>
           <div class="relative ml-auto w-full sm:w-72">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" aria-hidden="true"></i>
-            <input v-model="search" type="search" placeholder="Client, invoice or client ID" aria-label="Search invoices"
+            <input v-model="search" type="search" :placeholder="t('invoices.search_placeholder')" :aria-label="t('invoices.search_label')"
               class="w-full text-xs font-ui pl-8 pr-3 py-2 rounded-lg bg-brand-surface border border-gray-300 focus:bg-white text-gray-700" />
           </div>
         </div>
-        <div class="flex flex-wrap gap-1.5" role="group" aria-label="Filter by status">
+        <div class="flex flex-wrap gap-1.5" role="group" :aria-label="t('invoices.filter_label')">
           <button v-for="f in FILTERS" :key="f.key" @click="setFilter(f.key)" :aria-pressed="filter === f.key"
             :class="filter === f.key ? 'bg-brand-navy text-white ring-brand-navy' : 'bg-brand-surface text-gray-600 ring-transparent hover:text-gray-900'"
-            class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap transition-colors">{{ f.label }}</button>
+            class="text-[11px] font-ui font-semibold px-2.5 py-1 rounded-full ring-1 whitespace-nowrap transition-colors">{{ t(f.label) }}</button>
         </div>
       </header>
 
       <p v-if="error" role="alert" class="m-4 text-sm font-ui text-brand-red bg-red-50 rounded-lg px-4 py-3">{{ error }}</p>
-      <p v-else-if="loading && !invoices.length" class="p-8 text-center text-sm text-gray-500 font-ui">Loading…</p>
-      <p v-else-if="!invoices.length" class="p-8 text-center text-sm text-gray-500 font-ui">{{ search || filter ? 'No invoices match.' : 'No invoices imported yet.' }}</p>
+      <p v-else-if="loading && !invoices.length" class="p-8 text-center text-sm text-gray-500 font-ui">{{ t('loading') }}</p>
+      <p v-else-if="!invoices.length" class="p-8 text-center text-sm text-gray-500 font-ui">{{ t(search || filter ? 'invoices.none_match' : 'invoices.none_yet') }}</p>
 
       <template v-else>
         <!-- Desktop: full table -->
@@ -29,14 +29,14 @@
           <table class="w-full text-xs font-ui">
             <thead class="bg-white">
               <tr class="text-[10px] uppercase tracking-[0.1em] text-gray-500 border-b border-gray-100">
-                <th scope="col" class="text-left font-semibold px-5 py-2.5">Client</th>
-                <th scope="col" class="text-left font-semibold px-2 py-2.5">Invoice</th>
-                <th scope="col" class="text-right font-semibold px-2 py-2.5">Total</th>
-                <th scope="col" class="text-right font-semibold px-2 py-2.5">Paid</th>
-                <th scope="col" class="text-right font-semibold px-2 py-2.5">Balance</th>
-                <th scope="col" class="text-left font-semibold px-2 py-2.5">Due</th>
-                <th scope="col" class="text-left font-semibold px-2 py-2.5">Status</th>
-                <th scope="col" class="text-left font-semibold px-5 py-2.5">Verified</th>
+                <th scope="col" class="text-left font-semibold px-5 py-2.5">{{ t('col.client') }}</th>
+                <th scope="col" class="text-left font-semibold px-2 py-2.5">{{ t('col.invoice') }}</th>
+                <th scope="col" class="text-right font-semibold px-2 py-2.5">{{ t('col.total') }}</th>
+                <th scope="col" class="text-right font-semibold px-2 py-2.5">{{ t('col.paid') }}</th>
+                <th scope="col" class="text-right font-semibold px-2 py-2.5">{{ t('col.balance') }}</th>
+                <th scope="col" class="text-left font-semibold px-2 py-2.5">{{ t('col.due') }}</th>
+                <th scope="col" class="text-left font-semibold px-2 py-2.5">{{ t('col.status') }}</th>
+                <th scope="col" class="text-left font-semibold px-5 py-2.5">{{ t('col.verified') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -48,23 +48,23 @@
                 <td class="px-5 py-3">
                   <button v-if="canOpen" type="button" @click.stop="open(inv.id)" class="block text-left text-gray-900 font-medium hover:underline">{{ inv.clientName || '—' }}</button>
                   <span v-else class="block text-gray-900 font-medium">{{ inv.clientName || '—' }}</span>
-                  <span class="block text-[10px] text-gray-500">{{ inv.eimmigrationClientId || 'No client ID in report' }}</span>
+                  <span class="block text-[10px] text-gray-500">{{ inv.eimmigrationClientId || t('invoices.no_client_id') }}</span>
                 </td>
                 <td class="px-2 py-3 text-gray-700 whitespace-nowrap">{{ inv.invoiceId }}</td>
                 <td class="px-2 py-3 text-right tabular-nums text-gray-700">{{ money(inv.totalCents) }}</td>
                 <td class="px-2 py-3 text-right tabular-nums text-gray-700">{{ money(inv.paidCents) }}</td>
                 <td class="px-2 py-3 text-right tabular-nums font-semibold text-gray-900">
                   {{ money(inv.balanceCents) }}
-                  <span v-if="inv.balanceSource === 'computed'" class="block text-[9px] font-normal text-gray-500" title="Total minus amount paid; the report gave no balance">computed</span>
+                  <span v-if="inv.balanceSource === 'computed'" class="block text-[9px] font-normal text-gray-500" :title="t('invoices.computed_hint')">{{ t('invoices.computed') }}</span>
                 </td>
                 <td class="px-2 py-3 whitespace-nowrap text-gray-700 tabular-nums">
                   {{ shortDate(inv.nextInstallmentDate || inv.dueDate) }}
-                  <span v-if="inv.nextInstallmentDate" class="block text-[9px] text-gray-500">next installment</span>
+                  <span v-if="inv.nextInstallmentDate" class="block text-[9px] text-gray-500">{{ t('invoices.next_installment') }}</span>
                 </td>
                 <td class="px-2 py-3"><StatusPill :status="inv.status" /></td>
                 <td class="px-5 py-3 text-gray-500 whitespace-nowrap tabular-nums">
                   {{ shortDate(inv.lastReportDate) }}
-                  <span v-if="inv.notInLatestReport" class="block text-[9px] text-amber-700 font-semibold">not in latest report</span>
+                  <span v-if="inv.notInLatestReport" class="block text-[9px] text-amber-700 font-semibold">{{ t('invoices.not_in_latest') }}</span>
                 </td>
               </tr>
             </tbody>
@@ -78,7 +78,7 @@
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                   <p class="text-sm font-ui font-medium text-gray-900 truncate">{{ inv.clientName || '—' }}</p>
-                  <p class="text-[11px] font-ui text-gray-500">{{ inv.invoiceId }} · due {{ shortDate(inv.nextInstallmentDate || inv.dueDate) }}</p>
+                  <p class="text-[11px] font-ui text-gray-500">{{ inv.invoiceId }} · {{ t('due_on', { date: shortDate(inv.nextInstallmentDate || inv.dueDate) }) }}</p>
                 </div>
                 <p class="text-sm font-ui font-semibold tabular-nums text-gray-900">{{ money(inv.balanceCents) }}</p>
               </div>
@@ -91,26 +91,26 @@
 
     <!-- Detail panel -->
     <div v-if="selectedId" ref="panelRef" class="fixed inset-0 z-30 flex" role="dialog" aria-modal="true" aria-labelledby="inv-detail-h" @keydown.esc="close" @keydown.tab="trapTab(panelRef, $event)">
-      <button class="flex-1 scrim-soft" aria-label="Close invoice details" @click="close"></button>
+      <button class="flex-1 scrim-soft" :aria-label="t('invoices.close_details')" @click="close"></button>
       <div class="w-full max-w-xl bg-white shadow-2xl flex flex-col">
         <div class="px-5 py-4 border-b border-gray-100 flex items-start gap-3">
           <div class="min-w-0 flex-1">
-            <h2 id="inv-detail-h" class="font-heading text-xl text-gray-900 truncate">{{ detail?.clientName || 'Invoice' }}</h2>
-            <p class="text-xs font-ui text-gray-500 mt-0.5">{{ detail?.invoiceId }} <span v-if="detail?.eimmigrationClientId">· client {{ detail.eimmigrationClientId }}</span></p>
+            <h2 id="inv-detail-h" class="font-heading text-xl text-gray-900 truncate">{{ detail?.clientName || t('col.invoice') }}</h2>
+            <p class="text-xs font-ui text-gray-500 mt-0.5">{{ detail?.invoiceId }} <span v-if="detail?.eimmigrationClientId">· {{ t('invoices.client_id', { id: detail.eimmigrationClientId }) }}</span></p>
           </div>
-          <button ref="closeBtn" @click="close" class="p-2 rounded-lg text-gray-500 hover:bg-brand-surface" aria-label="Close">
+          <button ref="closeBtn" @click="close" class="p-2 rounded-lg text-gray-500 hover:bg-brand-surface" :aria-label="t('close')">
             <i class="fa-solid fa-xmark" aria-hidden="true"></i>
           </button>
         </div>
         <LoadError v-if="detailError" :message="detailError" @retry="open(selectedId)" />
-        <div v-else-if="!detail" class="p-8 text-center text-sm text-gray-500 font-ui">Loading…</div>
+        <div v-else-if="!detail" class="p-8 text-center text-sm text-gray-500 font-ui">{{ t('loading') }}</div>
         <div v-else class="flex-1 overflow-y-auto p-5 space-y-5 text-xs font-ui">
           <div class="flex flex-wrap items-center gap-2">
             <StatusPill :status="detail.status" />
-            <span v-if="detail.sourceStatus" class="text-gray-500">eImmigration says “{{ detail.sourceStatus }}”</span>
+            <span v-if="detail.sourceStatus" class="text-gray-500">{{ t('invoices.source_status', { status: detail.sourceStatus }) }}</span>
           </div>
           <p v-if="detail.reviewReason" class="bg-violet-50 text-violet-900 rounded-lg px-3 py-2">{{ detail.reviewReason }}</p>
-          <p v-if="detail.notInLatestReport" class="bg-amber-50 text-amber-900 rounded-lg px-3 py-2">This invoice was not in the latest full report. Its status was left unchanged: absence is not treated as payment. Check it in eImmigration.</p>
+          <p v-if="detail.notInLatestReport" class="bg-amber-50 text-amber-900 rounded-lg px-3 py-2">{{ t('invoices.absent_note') }}</p>
 
           <dl class="grid grid-cols-2 gap-x-4 gap-y-3">
             <div v-for="f in detailFields" :key="f.label">
@@ -120,8 +120,8 @@
           </dl>
 
           <section>
-            <h3 class="text-[10px] uppercase tracking-[0.1em] text-gray-500 font-semibold mb-2">Payments in imported reports</h3>
-            <p v-if="!detail.payments.length" class="text-gray-500">None imported for this invoice.</p>
+            <h3 class="text-[10px] uppercase tracking-[0.1em] text-gray-500 font-semibold mb-2">{{ t('detail.payments') }}</h3>
+            <p v-if="!detail.payments.length" class="text-gray-500">{{ t('detail.no_payments') }}</p>
             <ul v-else class="divide-y divide-gray-100 ring-1 ring-gray-100 rounded-lg">
               <li v-for="p in detail.payments" :key="p.id" class="px-3 py-2 flex items-center gap-3">
                 <span class="tabular-nums text-gray-700 w-24">{{ shortDate(p.payment_date) }}</span>
@@ -133,16 +133,16 @@
 
           <section>
             <h3 class="text-[10px] uppercase tracking-[0.1em] text-gray-500 font-semibold mb-2">monday.com</h3>
-            <p v-if="!detail.mondayLinks.length" class="text-gray-500">Client not linked yet. <router-link :to="{ name: 'BillingMatching' }" class="text-brand-navy underline">Link it</router-link>.</p>
-            <ul v-else><li v-for="l in detail.mondayLinks" :key="l.external_id" class="text-gray-700">{{ l.external_label || l.external_id }} <span class="text-gray-500">({{ l.method === 'manual' ? 'linked by staff' : 'matched by eImmigration ID' }})</span></li></ul>
+            <p v-if="!detail.mondayLinks.length" class="text-gray-500">{{ notLinked[0] }}<router-link :to="{ name: 'BillingMatching' }" class="text-brand-navy underline">{{ t('detail.link_it') }}</router-link>{{ notLinked[1] }}</p>
+            <ul v-else><li v-for="l in detail.mondayLinks" :key="l.external_id" class="text-gray-700">{{ l.external_label || l.external_id }} <span class="text-gray-500">({{ t(l.method === 'manual' ? 'detail.linked_by_staff' : 'detail.matched_by_id') }})</span></li></ul>
           </section>
 
           <section>
-            <h3 class="text-[10px] uppercase tracking-[0.1em] text-gray-500 font-semibold mb-2">History</h3>
+            <h3 class="text-[10px] uppercase tracking-[0.1em] text-gray-500 font-semibold mb-2">{{ t('history') }}</h3>
             <ol class="space-y-2">
               <li v-for="r in detail.revisions" :key="r.id" class="ring-1 ring-gray-100 rounded-lg px-3 py-2">
-                <p class="text-gray-500">{{ shortDate(r.created_at) }} · import #{{ r.import_job_id }}</p>
-                <p class="text-gray-800 mt-1">{{ describeChanges(r.changes) }}</p>
+                <p class="text-gray-500">{{ shortDate(r.created_at) }} · {{ t('detail.import_no', { id: r.import_job_id }) }}</p>
+                <p class="text-gray-800 mt-1">{{ invoiceHistory(r.changes, lang) }}</p>
               </li>
             </ol>
           </section>
@@ -154,9 +154,12 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
-import { plural } from '../../../utils/text.js'
 import { useRoute, useRouter } from 'vue-router'
-import { useBillingApi, money, shortDate } from '../api.js'
+import { useBillingApi } from '../api.js'
+import { money as moneyIn, shortDate as dateIn } from '../format.js'
+import { invoiceHistory, around } from '../billingText.js'
+import { useT } from '../../../i18n/translator.js'
+import { BILLING } from '../../../i18n/billing.js'
 import { can } from '../../../composables/useAuth.js'
 
 // The list is basic payment status (billing.status); an invoice's payments,
@@ -167,20 +170,23 @@ import LoadError from '../../../components/LoadError.vue'
 import { latestOnly } from '../../../composables/useApi.js'
 import { trapTab, rememberFocus } from '../../../utils/focusTrap.js'
 
+// label: a word in i18n/billing.js.
 const FILTERS = [
-  { key: '', label: 'All' },
-  { key: 'overdue', label: 'Overdue' },
-  { key: 'needs_review', label: 'Needs review' },
-  { key: 'partial', label: 'Partially paid' },
-  { key: 'unpaid', label: 'Unpaid' },
-  { key: 'paid', label: 'Paid' },
-  { key: 'void', label: 'Void' },
-  { key: 'absent', label: 'Not in latest report' },
+  { key: '', label: 'filter.all' },
+  { key: 'overdue', label: 'filter.overdue' },
+  { key: 'needs_review', label: 'filter.needs_review' },
+  { key: 'partial', label: 'filter.partial' },
+  { key: 'unpaid', label: 'filter.unpaid' },
+  { key: 'paid', label: 'filter.paid' },
+  { key: 'void', label: 'filter.void' },
+  { key: 'absent', label: 'filter.absent' },
 ]
-const FIELD_NAMES = {
-  totalCents: 'total', paidCents: 'paid', balanceCents: 'balance', status: 'status', dueDate: 'due date',
-  nextInstallmentDate: 'next installment', lastPaymentDate: 'last payment', reviewReason: 'review note',
-}
+
+const { t, lang, locale } = useT(BILLING)
+const money = (cents) => moneyIn(cents, locale.value)
+const shortDate = (value) => dateIn(value, locale.value)
+// "Client not linked yet. {link}." around the link.
+const notLinked = computed(() => around(t('detail.not_linked'), 'link'))
 
 const api = useBillingApi()
 const route = useRoute()
@@ -219,7 +225,7 @@ async function load() {
     const r = await latestList(() => api.invoices(params))
     if (r.current) invoices.value = r.value
   } catch (err) {
-    error.value = `Could not load invoices: ${err.message}`
+    error.value = t('invoices.load_error', { message: err.message })
   } finally {
     loading.value = false
   }
@@ -243,7 +249,7 @@ async function open(id) {
     const d = await api.invoice(id)
     if (selectedId.value === id) detail.value = d
   } catch (err) {
-    if (selectedId.value === id) detailError.value = `Could not load the invoice: ${err.message}`
+    if (selectedId.value === id) detailError.value = t('invoices.detail_error', { message: err.message })
   }
 }
 function close() {
@@ -258,29 +264,18 @@ const detailFields = computed(() => {
   const d = detail.value
   if (!d) return []
   return [
-    { label: 'Invoice total', value: money(d.totalCents) },
-    { label: 'Amount paid', value: money(d.paidCents) },
-    { label: 'Balance', value: `${money(d.balanceCents)}${d.balanceSource === 'computed' ? ' (computed)' : ''}` },
-    { label: 'Invoice date', value: shortDate(d.invoiceDate) },
-    { label: 'Due date', value: shortDate(d.dueDate) },
-    { label: 'Payment plan', value: d.paymentPlanText || '—' },
-    { label: 'Next installment', value: d.nextInstallmentDate ? `${shortDate(d.nextInstallmentDate)} · ${money(d.nextInstallmentCents)}` : '—' },
-    { label: 'Last payment', value: shortDate(d.lastPaymentDate) },
-    { label: 'Report date', value: shortDate(d.lastReportDate) },
-    { label: 'Last verified', value: shortDate(d.lastVerifiedAt) },
+    { label: t('detail.invoice_total'), value: money(d.totalCents) },
+    { label: t('detail.amount_paid'), value: money(d.paidCents) },
+    { label: t('detail.balance'), value: `${money(d.balanceCents)}${d.balanceSource === 'computed' ? t('detail.computed') : ''}` },
+    { label: t('detail.invoice_date'), value: shortDate(d.invoiceDate) },
+    { label: t('detail.due_date'), value: shortDate(d.dueDate) },
+    { label: t('detail.payment_plan'), value: d.paymentPlanText || '—' },
+    { label: t('detail.next_installment'), value: d.nextInstallmentDate ? `${shortDate(d.nextInstallmentDate)} · ${money(d.nextInstallmentCents)}` : '—' },
+    { label: t('detail.last_payment'), value: shortDate(d.lastPaymentDate) },
+    { label: t('detail.report_date'), value: shortDate(d.lastReportDate) },
+    { label: t('detail.last_verified'), value: shortDate(d.lastVerifiedAt) },
   ]
 })
-
-function describeChanges(changes = []) {
-  if (!changes.length) return 'Re-confirmed, no changes'
-  if (changes.every((c) => c.from == null)) return 'First imported from this report'
-  const shown = changes.filter((c) => FIELD_NAMES[c.field])
-  if (!shown.length) return `${plural(changes.length, 'field')} updated`
-  return shown.map((c) => {
-    const fmt = (v) => (v == null ? '—' : /Cents$/.test(c.field) ? money(v) : /Date$/.test(c.field) ? shortDate(v) : v)
-    return `${FIELD_NAMES[c.field]}: ${fmt(c.from)} → ${fmt(c.to)}`
-  }).join('; ')
-}
 
 onMounted(load)
 </script>

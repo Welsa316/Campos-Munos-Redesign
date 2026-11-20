@@ -1,72 +1,72 @@
 <template>
   <div class="max-w-[1320px] mx-auto px-4 sm:px-6 py-6 space-y-5">
     <p v-if="error" role="alert" class="text-sm font-ui text-brand-red bg-red-50 rounded-lg px-4 py-3">{{ error }}</p>
-    <p v-if="loading && !state" class="py-12 text-center text-sm text-gray-500 font-ui">Loading…</p>
+    <p v-if="loading && !state" class="py-12 text-center text-sm text-gray-500 font-ui">{{ t('loading') }}</p>
 
     <template v-if="state">
       <!-- Connection -->
-      <section class="bg-white rounded-xl ring-1 ring-gray-200 px-5 py-4 flex flex-wrap items-center gap-3" aria-label="Connection">
-        <span v-if="state.mode === 'mock'" class="inline-flex items-center gap-1.5 text-[10px] font-ui font-bold uppercase tracking-[0.14em] text-violet-800 bg-violet-100 px-2.5 py-1 rounded-full">Simulated board</span>
-        <span v-else class="inline-flex items-center gap-1.5 text-[10px] font-ui font-bold uppercase tracking-[0.14em] text-brand-navy bg-brand-navy/10 px-2.5 py-1 rounded-full">monday.com API</span>
+      <section class="bg-white rounded-xl ring-1 ring-gray-200 px-5 py-4 flex flex-wrap items-center gap-3" :aria-label="t('monday.connection')">
+        <span v-if="state.mode === 'mock'" class="inline-flex items-center gap-1.5 text-[10px] font-ui font-bold uppercase tracking-[0.14em] text-violet-800 bg-violet-100 px-2.5 py-1 rounded-full">{{ t('monday.simulated_board') }}</span>
+        <span v-else class="inline-flex items-center gap-1.5 text-[10px] font-ui font-bold uppercase tracking-[0.14em] text-brand-navy bg-brand-navy/10 px-2.5 py-1 rounded-full">{{ t('monday.api') }}</span>
         <p class="text-xs font-ui text-gray-700 flex-1 min-w-[16rem]">
-          <template v-if="state.mode === 'mock'">Synthetic clients only. Nothing here reaches monday.com, and the board resets when the server restarts.</template>
+          <template v-if="state.mode === 'mock'">{{ t('monday.mock_note') }}</template>
           <template v-else-if="state.configError">{{ state.configError }}</template>
-          <template v-else-if="!state.writesEnabled">Connected for reading. Writes are switched off on the server (MONDAY_WRITES_ENABLED), so applying a sync is a dry run.</template>
-          <template v-else>Writes are switched on: applying a sync updates the mapped columns on monday.com.</template>
-          <span v-if="state.lastCheck" class="block text-gray-500 mt-0.5">Last check {{ shortDate(state.lastCheck.checked_at) }}: {{ state.lastCheck.ok ? 'OK' : 'failed' }}</span>
+          <template v-else-if="!state.writesEnabled">{{ t('monday.read_only') }}</template>
+          <template v-else>{{ t('monday.writes_on') }}</template>
+          <span v-if="state.lastCheck" class="block text-gray-500 mt-0.5">{{ t('monday.last_check', { date: shortDate(state.lastCheck.checked_at), result: t(state.lastCheck.ok ? 'monday.check_ok' : 'monday.check_failed') }) }}</span>
         </p>
-        <button v-if="canConfigure" @click="check" :disabled="Boolean(busy)" class="px-3 py-2 rounded-lg text-xs font-ui font-semibold text-brand-navy ring-1 ring-brand-navy/30 hover:bg-brand-surface">Check connection</button>
+        <button v-if="canConfigure" @click="check" :disabled="Boolean(busy)" class="px-3 py-2 rounded-lg text-xs font-ui font-semibold text-brand-navy ring-1 ring-brand-navy/30 hover:bg-brand-surface">{{ t('monday.check') }}</button>
       </section>
 
       <!-- Board + column mapping (monday.configure, administrators only) -->
       <section v-if="canConfigure" class="bg-white rounded-xl ring-1 ring-gray-200" aria-labelledby="cfg-h">
         <header class="px-5 py-4 border-b border-gray-100">
-          <h2 id="cfg-h" class="text-sm font-ui font-semibold text-gray-900">Board and columns</h2>
-          <p class="text-[11px] font-ui text-gray-500 mt-0.5">Only the columns chosen here are ever written. Boards are never created or restructured, and status labels must already exist on the column.</p>
+          <h2 id="cfg-h" class="text-sm font-ui font-semibold text-gray-900">{{ t('monday.board_cols') }}</h2>
+          <p class="text-[11px] font-ui text-gray-500 mt-0.5">{{ t('monday.board_note') }}</p>
         </header>
         <div class="p-5 space-y-5">
           <div class="max-w-md">
-            <label for="board" class="text-[11px] font-ui font-semibold text-gray-700">Client board</label>
+            <label for="board" class="text-[11px] font-ui font-semibold text-gray-700">{{ t('monday.client_board') }}</label>
             <select id="board" v-model="boardId" @change="loadColumns"
               class="mt-1 w-full text-xs font-ui px-3 py-2 rounded-lg bg-white border border-gray-300 focus:border-brand-navy focus:outline-none">
-              <option value="">{{ boards.length ? 'Choose a board' : 'Load boards first' }}</option>
-              <option v-for="b in boards" :key="b.id" :value="b.id">{{ b.name }} ({{ b.itemsCount }} items)</option>
+              <option value="">{{ t(boards.length ? 'monday.choose_board' : 'monday.load_first') }}</option>
+              <option v-for="b in boards" :key="b.id" :value="b.id">{{ t('monday.board_option', { name: b.name ?? '', count: b.itemsCount ?? '' }) }}</option>
             </select>
-            <button v-if="!boards.length" @click="loadBoards" :disabled="Boolean(busy)" class="mt-2 text-xs font-ui text-brand-navy underline">Load boards</button>
+            <button v-if="!boards.length" @click="loadBoards" :disabled="Boolean(busy)" class="mt-2 text-xs font-ui text-brand-navy underline">{{ t('monday.load_boards') }}</button>
           </div>
 
           <div v-if="columns.length" class="grid grid-cols-[minmax(0,1fr)] md:grid-cols-2 gap-x-6 gap-y-4">
             <div v-for="f in FIELDS" :key="f.key">
-              <label :for="`col-${f.key}`" class="text-[11px] font-ui font-semibold text-gray-700">{{ f.label }}</label>
+              <label :for="`col-${f.key}`" class="text-[11px] font-ui font-semibold text-gray-700">{{ t(`mfield.${f.key}`) }}</label>
               <select :id="`col-${f.key}`" v-model="map[f.key]"
                 class="mt-1 w-full text-xs font-ui px-3 py-2 rounded-lg bg-white border border-gray-300 focus:border-brand-navy focus:outline-none">
-                <option value="">Don't sync this</option>
+                <option value="">{{ t('monday.dont_sync') }}</option>
                 <option v-for="c in columnsOfType(f.types)" :key="c.id" :value="c.id">{{ c.title }} ({{ c.type }})</option>
               </select>
-              <p class="mt-1 text-[10px] font-ui text-gray-500">{{ f.help }}</p>
+              <p class="mt-1 text-[10px] font-ui text-gray-500">{{ t(`mfield.${f.key}.help`) }}</p>
             </div>
             <div>
-              <label for="col-eim" class="text-[11px] font-ui font-semibold text-gray-700">Column holding the eImmigration client ID</label>
+              <label for="col-eim" class="text-[11px] font-ui font-semibold text-gray-700">{{ t('monday.eim_col') }}</label>
               <select id="col-eim" v-model="eimIdColumnId"
                 class="mt-1 w-full text-xs font-ui px-3 py-2 rounded-lg bg-white border border-gray-300 focus:border-brand-navy focus:outline-none">
-                <option value="">None (link clients by hand)</option>
+                <option value="">{{ t('monday.eim_none') }}</option>
                 <option v-for="c in columnsOfType(['text', 'numbers'])" :key="c.id" :value="c.id">{{ c.title }} ({{ c.type }})</option>
               </select>
-              <p class="mt-1 text-[10px] font-ui text-gray-500">Read only. An exact ID match links a client automatically; names never do.</p>
+              <p class="mt-1 text-[10px] font-ui text-gray-500">{{ t('monday.eim_note') }}</p>
             </div>
           </div>
 
           <!-- Status label mapping -->
           <div v-if="statusColumn" class="rounded-lg ring-1 ring-gray-100 p-4 space-y-5">
             <div>
-              <p class="text-[11px] font-ui font-semibold text-gray-700">Which label on “{{ statusColumn.title }}” means…</p>
-              <p class="text-[10px] font-ui text-gray-500 mt-0.5">A state with no matching label can be left out: clients in that state keep whatever Status shows.</p>
+              <p class="text-[11px] font-ui font-semibold text-gray-700">{{ t('monday.which_label', { column: statusColumn.title ?? '' }) }}</p>
+              <p class="text-[10px] font-ui text-gray-500 mt-0.5">{{ t('monday.which_note') }}</p>
               <div class="mt-3 grid grid-cols-[minmax(0,1fr)] sm:grid-cols-2 xl:grid-cols-3 gap-3">
                 <div v-for="s in SUMMARY_STATUSES" :key="s.key">
-                  <label :for="`lbl-${s.key}`" class="text-[11px] font-ui text-gray-600">{{ s.label }}</label>
+                  <label :for="`lbl-${s.key}`" class="text-[11px] font-ui text-gray-600">{{ t(`summary.${s.key}`) }}</label>
                   <select :id="`lbl-${s.key}`" v-model="labels[s.key]"
                     class="mt-1 w-full text-xs font-ui px-3 py-1.5 rounded-lg bg-white border border-gray-300 focus:border-brand-navy focus:outline-none">
-                    <option value="">Leave Status unchanged</option>
+                    <option value="">{{ t('monday.leave_status') }}</option>
                     <option v-for="l in statusLabels" :key="l" :value="l">{{ l }}</option>
                   </select>
                 </div>
@@ -74,8 +74,8 @@
             </div>
 
             <fieldset v-if="keepable.length">
-              <legend class="text-[11px] font-ui font-semibold text-gray-700">Labels the sync never changes</legend>
-              <p class="text-[10px] font-ui text-gray-500 mt-0.5">For labels your team sets by hand, such as on hold or autopay. A client showing one of these keeps it; their balance and dates still update.</p>
+              <legend class="text-[11px] font-ui font-semibold text-gray-700">{{ t('monday.keep_legend') }}</legend>
+              <p class="text-[10px] font-ui text-gray-500 mt-0.5">{{ t('monday.keep_note') }}</p>
               <div class="mt-2 flex flex-wrap gap-2">
                 <label v-for="l in keepable" :key="l"
                   :class="keep.includes(l) ? 'bg-brand-navy/10 ring-brand-navy/40 text-brand-navy' : 'ring-gray-300 text-gray-700 hover:bg-gray-50'"
@@ -88,8 +88,8 @@
           </div>
 
           <div v-if="columns.length" class="flex items-center gap-3">
-            <button @click="save" :disabled="busy || !boardId" class="px-4 py-2 rounded-lg bg-brand-navy text-white text-sm font-ui font-semibold hover:bg-brand-navy-dark disabled:opacity-50">Save mapping</button>
-            <span v-if="savedAt" role="status" class="text-xs font-ui text-green-700">Saved</span>
+            <button @click="save" :disabled="busy || !boardId" class="px-4 py-2 rounded-lg bg-brand-navy text-white text-sm font-ui font-semibold hover:bg-brand-navy-dark disabled:opacity-50">{{ t('monday.save_mapping') }}</button>
+            <span v-if="savedAt" role="status" class="text-xs font-ui text-green-700">{{ t('saved') }}</span>
           </div>
         </div>
       </section>
@@ -98,30 +98,30 @@
       <section class="bg-white rounded-xl ring-1 ring-gray-200" aria-labelledby="sync-h">
         <header class="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center gap-3">
           <div>
-            <h2 id="sync-h" class="text-sm font-ui font-semibold text-gray-900">Sync payment status</h2>
-            <p class="text-[11px] font-ui text-gray-500 mt-0.5">Preview first. Only linked clients with a real difference are listed.</p>
+            <h2 id="sync-h" class="text-sm font-ui font-semibold text-gray-900">{{ t('monday.sync_title') }}</h2>
+            <p class="text-[11px] font-ui text-gray-500 mt-0.5">{{ t('monday.sync_note') }}</p>
           </div>
           <button v-if="canSync" @click="preview" :disabled="busy || !state.config?.boardId" class="ml-auto px-4 py-2 rounded-lg bg-brand-navy text-white text-sm font-ui font-semibold hover:bg-brand-navy-dark disabled:opacity-50">
-            <FaIcon v-if="busy === 'preview'" name="spinner" spin class="text-xs mr-1" />Preview changes
+            <FaIcon v-if="busy === 'preview'" name="spinner" spin class="text-xs mr-1" />{{ t('monday.preview') }}
           </button>
         </header>
 
         <div v-if="plan" class="p-5 space-y-4">
-          <p v-if="!changed.length" class="text-sm font-ui text-gray-600">monday.com already matches the billing data. Nothing to write.</p>
+          <p v-if="!changed.length" class="text-sm font-ui text-gray-600">{{ t('monday.in_sync') }}</p>
           <ul v-else class="divide-y divide-gray-100 ring-1 ring-gray-100 rounded-lg">
             <li v-for="p in changed" :key="p.itemId" class="px-4 py-3 text-xs font-ui">
               <p class="font-medium text-gray-900">{{ p.itemName }}</p>
               <ul class="mt-1 space-y-0.5">
                 <li v-for="c in p.changes" :key="c.columnId" class="text-gray-700">
-                  <span class="text-gray-500">{{ c.columnTitle }}:</span> {{ c.from || 'empty' }} <span aria-hidden="true">→</span><span class="sr-only">becomes</span> <span class="font-semibold">{{ c.to || 'empty' }}</span>
+                  <span class="text-gray-500">{{ c.columnTitle }}:</span> {{ c.from || t('monday.empty') }} <span aria-hidden="true">→</span><span class="sr-only">{{ t('monday.becomes') }}</span> <span class="font-semibold">{{ c.to || t('monday.empty') }}</span>
                 </li>
               </ul>
             </li>
           </ul>
           <details v-if="skippedCount" class="text-xs font-ui text-gray-600">
-            <summary class="cursor-pointer">{{ plural(skippedCount, 'field') }} not synced, with reasons</summary>
+            <summary class="cursor-pointer">{{ t('monday.skipped', { count: num(skippedCount, lang) }) }}</summary>
             <ul class="mt-2 space-y-0.5">
-              <li v-for="(s, i) in skippedList" :key="i">{{ s.itemName }} · {{ s.field }}: {{ SKIP_REASONS[s.reason] || s.reason }}</li>
+              <li v-for="(s, i) in skippedList" :key="i">{{ s.itemName }} · {{ word('sfield.', s.field) }}: {{ word('skip.', s.reason) }}</li>
             </ul>
           </details>
           <div v-if="changed.length" class="flex flex-wrap items-center gap-3 pt-1">
@@ -129,28 +129,28 @@
               class="px-4 py-2 rounded-lg text-sm font-ui font-semibold text-white disabled:opacity-50"
               :class="plan.dryRun ? 'bg-amber-600 hover:bg-amber-700' : 'bg-brand-navy hover:bg-brand-navy-dark'">
               <FaIcon v-if="busy === 'apply'" name="spinner" spin class="text-xs mr-1" />
-              {{ plan.providerMode === 'mock' ? `Apply to the simulated board (${changed.length})` : plan.dryRun ? 'Run as dry run (writes off)' : `Write ${plural(changed.length, 'item')} to monday.com` }}
+              {{ plan.providerMode === 'mock' ? t('monday.apply_mock', { count: changed.length }) : plan.dryRun ? t('monday.apply_dry') : t('monday.apply_write', { count: num(changed.length, lang) }) }}
             </button>
-            <span class="text-[11px] font-ui text-gray-500">This preview expires in an hour.</span>
+            <span class="text-[11px] font-ui text-gray-500">{{ t('monday.expires') }}</span>
             <ConfirmInline v-if="confirmingApply" class="basis-full" :title="applyQuestion" :busy="Boolean(busy)"
-              :confirm-label="plan.providerMode === 'mock' ? 'Apply' : plan.dryRun ? 'Run dry run' : 'Write to monday.com'" tone="navy"
+              :confirm-label="t(plan.providerMode === 'mock' ? 'monday.confirm_mock' : plan.dryRun ? 'monday.confirm_dry' : 'monday.confirm_write')" :cancel-label="t('cancel')" tone="navy"
               @confirm="apply" @cancel="confirmingApply = false" />
           </div>
           <p v-if="result" role="status" class="text-sm font-ui rounded-lg px-4 py-3" :class="result.failed ? 'bg-red-50 text-brand-red' : 'bg-green-50 text-green-800'">
-            <template v-if="result.dryRun">Dry run complete: nothing was written.</template>
-            <template v-else>{{ plural(result.written, 'item') }} updated<span v-if="result.failed">, {{ result.failed }} failed</span>.</template>
+            <template v-if="result.dryRun">{{ t('monday.dry_done') }}</template>
+            <template v-else>{{ t('monday.updated', { count: num(result.written, lang) }) }}<span v-if="result.failed">{{ t('monday.failed', { count: result.failed }) }}</span>.</template>
           </p>
         </div>
 
         <div class="px-5 pb-5">
-          <h3 class="text-[10px] uppercase tracking-[0.1em] text-gray-500 font-semibold mt-2 mb-2">History</h3>
-          <p v-if="!state.history.length" class="text-xs font-ui text-gray-500">No syncs yet.</p>
+          <h3 class="text-[10px] uppercase tracking-[0.1em] text-gray-500 font-semibold mt-2 mb-2">{{ t('history') }}</h3>
+          <p v-if="!state.history.length" class="text-xs font-ui text-gray-500">{{ t('monday.no_syncs') }}</p>
           <ul v-else class="text-xs font-ui divide-y divide-gray-50">
             <li v-for="h in state.history" :key="h.id" class="py-2 flex flex-wrap gap-x-3 gap-y-0.5">
               <span class="text-gray-500 tabular-nums">#{{ h.id }}</span>
-              <span class="font-semibold" :class="HISTORY_TONE[h.status]">{{ HISTORY_LABEL[h.status] || h.status }}</span>
-              <span class="text-gray-600">{{ h.provider_mode === 'mock' ? 'simulated board' : 'monday.com' }}</span>
-              <span class="text-gray-600 tabular-nums">{{ h.stats?.withChanges ?? 0 }} items<span v-if="h.stats?.written != null"> · {{ h.stats.written }} written</span><span v-if="h.stats?.failed"> · {{ h.stats.failed }} failed</span></span>
+              <span class="font-semibold" :class="HISTORY_TONE[h.status]">{{ word('hist.', h.status) }}</span>
+              <span class="text-gray-600">{{ h.provider_mode === 'mock' ? t('overview.simulated_board') : 'monday.com' }}</span>
+              <span class="text-gray-600 tabular-nums">{{ t('hist.items', { count: h.stats?.withChanges ?? 0 }) }}<span v-if="h.stats?.written != null">{{ t('hist.written', { count: h.stats.written }) }}</span><span v-if="h.stats?.failed">{{ t('hist.failed_count', { count: h.stats.failed }) }}</span></span>
               <span class="ml-auto text-gray-500">{{ shortDate(h.applied_at || h.created_at) }} <span v-if="h.applied_by">· {{ h.applied_by }}</span></span>
             </li>
           </ul>
@@ -163,40 +163,44 @@
 <script setup>
 import FaIcon from '../../../components/FaIcon.vue'
 import { ref, reactive, computed, watch, onMounted } from 'vue'
-import { useBillingApi, shortDate } from '../api.js'
+import { useBillingApi } from '../api.js'
+import { shortDate as dateIn } from '../format.js'
+import { num, hasWord } from '../billingText.js'
+import { useT } from '../../../i18n/translator.js'
+import { BILLING } from '../../../i18n/billing.js'
 import { can } from '../../../composables/useAuth.js'
 import ConfirmInline from '../../../components/ConfirmInline.vue'
-import { plural } from '../../../utils/text.js'
 
 // The board mapping is the administrator's setup; running the sync is
 // day-to-day work.
 const canConfigure = can('monday.configure')
 const canSync = can('billing.sync')
 
+// The fields the sync can write; each one's label and help are
+// mfield.<key> and mfield.<key>.help in i18n/billing.js.
 const FIELDS = [
-  { key: 'status', label: 'Overall payment status', types: ['status'], help: 'A status column; map its labels below.' },
-  { key: 'outstanding', label: 'Total outstanding balance', types: ['numbers'], help: 'Written in dollars with cents.' },
-  { key: 'lastPaymentDate', label: 'Last verified payment date', types: ['date'], help: 'From imported reports.' },
-  { key: 'nextDueDate', label: 'Next payment due', types: ['date'], help: 'Next installment when on a plan.' },
-  { key: 'lastSync', label: 'Last billing sync', types: ['date', 'text', 'long_text'], help: 'Only updated when something else changed.' },
+  { key: 'status', types: ['status'] },
+  { key: 'outstanding', types: ['numbers'] },
+  { key: 'lastPaymentDate', types: ['date'] },
+  { key: 'nextDueDate', types: ['date'] },
+  { key: 'lastSync', types: ['date', 'text', 'long_text'] },
 ]
+// The payment states a status label can stand for (labels: summary.<key>).
 const SUMMARY_STATUSES = [
-  { key: 'paid', label: 'Paid in full' },
-  { key: 'partial', label: 'Partially paid' },
-  { key: 'unpaid', label: 'Unpaid (not due yet)' },
-  { key: 'overdue', label: 'Overdue' },
-  { key: 'needs_review', label: 'Needs review' },
-  { key: 'no_invoices', label: 'No invoices' },
+  { key: 'paid' },
+  { key: 'partial' },
+  { key: 'unpaid' },
+  { key: 'overdue' },
+  { key: 'needs_review' },
+  { key: 'no_invoices' },
 ]
-const SKIP_REASONS = {
-  item_not_found: 'item no longer on the board', not_mapped: 'not mapped', column_missing: 'column removed from the board',
-  wrong_column_type: 'column type changed', duplicate_column: 'column used twice', label_not_mapped: 'no label for this payment state, left as it is',
-  label_kept: 'label set by staff, left as it is',
-  unknown_label: 'label no longer exists', invalid_value: 'value not accepted', no_other_changes: 'nothing else changed',
-  duplicate_summary: 'item linked to two clients',
-}
-const HISTORY_LABEL = { previewed: 'Previewed', applying: 'Applying', applied: 'Applied', dry_run: 'Dry run', failed: 'Failed', superseded: 'Superseded' }
 const HISTORY_TONE = { applied: 'text-green-700', failed: 'text-brand-red', dry_run: 'text-amber-700' }
+
+const { t, lang, locale } = useT(BILLING)
+const shortDate = (value) => dateIn(value, locale.value)
+// A value the server sends with a word for it (a skipped field, the reason,
+// a sync's status), or the value itself when it is new.
+const word = (prefix, value) => (hasWord(BILLING, prefix + value) ? t(prefix + value) : value)
 
 const api = useBillingApi()
 const state = ref(null)
@@ -251,7 +255,7 @@ async function load() {
       await loadBoards()
     }
   } catch (err) {
-    error.value = `Could not load monday.com settings: ${err.message}`
+    error.value = t('monday.load_error', { message: err.message })
   } finally {
     loading.value = false
   }
@@ -305,8 +309,8 @@ async function preview() {
 
 const confirmingApply = ref(false)
 const applyQuestion = computed(() => (plan.value?.providerMode === 'mock'
-  ? 'Apply these changes to the simulated board?'
-  : plan.value?.dryRun ? 'Run a dry run? Nothing will be written.' : `Write ${plural(changed.value.length, 'item')} to monday.com?`))
+  ? t('monday.ask_mock')
+  : plan.value?.dryRun ? t('monday.ask_dry') : t('monday.ask_write', { count: num(changed.value.length, lang.value) })))
 async function apply() {
   confirmingApply.value = false
   busy.value = 'apply'

@@ -1,4 +1,5 @@
-// Billing API client + formatting shared by the billing views.
+// Billing API client, and the formatting and lists shared by the billing
+// views. Their words are in i18n/billing.js.
 import { useApi, rawFetch, goToLogin } from '../../composables/useApi.js'
 
 export function useBillingApi() {
@@ -40,39 +41,19 @@ export async function uploadReport(file) {
   return data
 }
 
-const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
-/** Integer cents → "$1,234.56". Division happens once, for display only. */
-export function money(cents) {
-  if (cents == null) return '—'
-  return usd.format(Number(cents) / 100)
-}
+// Formatting lives in format.js (importable without the API client).
+export { money, shortDate } from './format.js'
 
-export function shortDate(value) {
-  if (!value) return '—'
-  const s = String(value)
-  // DATE values arrive as 'YYYY-MM-DD'; format without a time zone shift.
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s.slice(0, 10))
-  if (m && s.length <= 10) {
-    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  }
-  const d = new Date(s)
-  if (Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
-}
+/** The report types an import can be, in the order the picker lists them. */
+export const REPORT_TYPES = ['invoice_summary', 'outstanding_only', 'payment_transactions', 'mixed']
 
-export const REPORT_TYPE_LABELS = {
-  invoice_summary: 'All invoices with balances',
-  outstanding_only: 'Outstanding invoices only',
-  payment_transactions: 'Payment transactions',
-  mixed: 'Invoices and payments mixed',
-}
-
-export const FIELD_LABELS = {
-  externalClientId: 'eImmigration client ID', clientName: 'Client name', clientPhone: 'Client phone (WhatsApp)', externalInvoiceId: 'Invoice ID',
-  invoiceDate: 'Invoice date', dueDate: 'Due date', totalAmount: 'Invoice total', paidAmount: 'Amount paid',
-  balanceAmount: 'Balance due', invoiceStatus: 'Invoice status', paymentPlan: 'Payment plan',
-  nextInstallmentDate: 'Next installment due', nextInstallmentAmount: 'Next installment amount',
-  lastPaymentDate: 'Last payment date', currency: 'Currency', reportDate: 'Report generated',
-  externalPaymentId: 'Payment ID', paymentDate: 'Payment date', paymentAmount: 'Payment amount',
-  paymentMethod: 'Payment method', paymentReference: 'Payment reference', paymentType: 'Transaction type',
-}
+/** The importer's fields, in the order the mapping form lists them. */
+export const FIELD_KEYS = [
+  'externalClientId', 'clientName', 'clientPhone', 'externalInvoiceId',
+  'invoiceDate', 'dueDate', 'totalAmount', 'paidAmount',
+  'balanceAmount', 'invoiceStatus', 'paymentPlan',
+  'nextInstallmentDate', 'nextInstallmentAmount',
+  'lastPaymentDate', 'currency', 'reportDate',
+  'externalPaymentId', 'paymentDate', 'paymentAmount',
+  'paymentMethod', 'paymentReference', 'paymentType',
+]

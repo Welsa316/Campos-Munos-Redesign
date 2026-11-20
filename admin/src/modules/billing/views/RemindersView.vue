@@ -3,30 +3,30 @@
     <p v-if="error" role="alert" class="text-sm font-ui text-brand-red bg-red-50 rounded-lg px-4 py-3">{{ error }}</p>
 
     <!-- Sending status -->
-    <section v-if="data" class="bg-white rounded-xl ring-1 ring-gray-200 px-5 py-4 flex flex-wrap items-center gap-3" aria-label="Sending status">
-      <span v-if="data.provider.mode === 'mock'" class="text-[10px] font-ui font-bold uppercase tracking-[0.14em] text-violet-800 bg-violet-100 px-2.5 py-1 rounded-full">Simulated sending</span>
-      <span v-else-if="data.provider.sendingEnabled" class="text-[10px] font-ui font-bold uppercase tracking-[0.14em] text-brand-red bg-red-100 px-2.5 py-1 rounded-full">Live sending on</span>
-      <span v-else class="text-[10px] font-ui font-bold uppercase tracking-[0.14em] text-amber-800 bg-amber-100 px-2.5 py-1 rounded-full">Sending off</span>
+    <section v-if="data" class="bg-white rounded-xl ring-1 ring-gray-200 px-5 py-4 flex flex-wrap items-center gap-3" :aria-label="t('sending.label')">
+      <span v-if="data.provider.mode === 'mock'" class="text-[10px] font-ui font-bold uppercase tracking-[0.14em] text-violet-800 bg-violet-100 px-2.5 py-1 rounded-full">{{ t('sending.simulated') }}</span>
+      <span v-else-if="data.provider.sendingEnabled" class="text-[10px] font-ui font-bold uppercase tracking-[0.14em] text-brand-red bg-red-100 px-2.5 py-1 rounded-full">{{ t('sending.live') }}</span>
+      <span v-else class="text-[10px] font-ui font-bold uppercase tracking-[0.14em] text-amber-800 bg-amber-100 px-2.5 py-1 rounded-full">{{ t('sending.off') }}</span>
       <p class="text-xs font-ui text-gray-700 flex-1 min-w-[16rem]">
-        <template v-if="data.provider.mode === 'mock'">Approved reminders are “sent” to a simulator. No client receives anything.</template>
-        <template v-else-if="data.provider.sendingEnabled">Approved reminders go to clients on WhatsApp, {{ hoursLabel }}.</template>
-        <template v-else>Approved reminders wait until sending is switched on (WHATSAPP_SENDING_ENABLED).</template>
-        Nothing is ever sent without a staff approval.
+        <template v-if="data.provider.mode === 'mock'">{{ t('sending.mock_note') }}</template>
+        <template v-else-if="data.provider.sendingEnabled">{{ t('sending.live_note', { hours: hoursLabel }) }}</template>
+        <template v-else>{{ t('sending.off_note') }}</template>
+        {{ t('sending.never_without') }}
       </p>
       <button v-if="canAct" @click="runEvaluate" :disabled="Boolean(busy)" class="px-3 py-2 rounded-lg text-xs font-ui font-semibold text-brand-navy ring-1 ring-brand-navy/30 hover:bg-brand-surface">
-        <FaIcon v-if="busy === 'evaluate'" name="spinner" spin class="mr-1" />Check for due reminders
+        <FaIcon v-if="busy === 'evaluate'" name="spinner" spin class="mr-1" />{{ t('evaluate') }}
       </button>
       <button v-if="canAct" @click="runDispatch" :disabled="Boolean(busy) || !(data.counts.approved > 0)" class="px-3 py-2 rounded-lg text-xs font-ui font-semibold text-white bg-brand-navy hover:bg-brand-navy-dark disabled:opacity-50">
-        <FaIcon v-if="busy === 'dispatch'" name="spinner" spin class="mr-1" />Send approved now
+        <FaIcon v-if="busy === 'dispatch'" name="spinner" spin class="mr-1" />{{ t('dispatch') }}
       </button>
     </section>
     <p v-if="notice" role="status" class="text-sm font-ui bg-brand-surface text-gray-800 rounded-lg px-4 py-3">{{ notice }}</p>
 
-    <nav class="flex flex-wrap gap-1.5" aria-label="Reminder views">
-      <button v-for="t in views" :key="t.key" @click="setView(t.key)" :aria-pressed="view === t.key"
-        :class="view === t.key ? 'bg-brand-navy text-white ring-brand-navy' : 'bg-white text-gray-700 ring-gray-200 hover:text-gray-900'"
+    <nav class="flex flex-wrap gap-1.5" :aria-label="t('views.label')">
+      <button v-for="v in views" :key="v" @click="setView(v)" :aria-pressed="view === v"
+        :class="view === v ? 'bg-brand-navy text-white ring-brand-navy' : 'bg-white text-gray-700 ring-gray-200 hover:text-gray-900'"
         class="text-xs font-ui font-semibold px-3 py-1.5 rounded-full ring-1 whitespace-nowrap">
-        {{ t.label }}<span v-if="badge(t.key)" class="ml-1.5 tabular-nums opacity-80">{{ badge(t.key) }}</span>
+        {{ t(`view.${v}`) }}<span v-if="badge(v)" class="ml-1.5 tabular-nums opacity-80">{{ badge(v) }}</span>
       </button>
     </nav>
 
@@ -34,45 +34,45 @@
     <section v-if="isQueue" class="bg-white rounded-xl ring-1 ring-gray-200">
       <header v-if="canAct && view === 'drafts' && list.length" class="px-5 py-3 border-b border-gray-100 flex flex-wrap items-center gap-3">
         <label class="inline-flex items-center gap-2 text-xs font-ui text-gray-700">
-          <input type="checkbox" :checked="allSelected" @change="toggleAll" class="rounded border-gray-300" /> Select all
+          <input type="checkbox" :checked="allSelected" @change="toggleAll" class="rounded border-gray-300" /> {{ t('select_all') }}
         </label>
         <button @click="approveSelected" :disabled="!selected.size || Boolean(busy)" class="ml-auto px-4 py-2 rounded-lg bg-brand-navy text-white text-xs font-ui font-semibold hover:bg-brand-navy-dark disabled:opacity-50">
-          Approve {{ selected.size || '' }} selected
+          {{ t('approve_selected', { count: selected.size || '' }) }}
         </button>
       </header>
-      <p v-if="loading && !data" class="p-8 text-center text-sm text-gray-500 font-ui">Loading…</p>
-      <p v-else-if="!list.length" class="p-8 text-center text-sm text-gray-500 font-ui">{{ EMPTY[view] }}</p>
+      <p v-if="loading && !data" class="p-8 text-center text-sm text-gray-500 font-ui">{{ t('loading') }}</p>
+      <p v-else-if="!list.length" class="p-8 text-center text-sm text-gray-500 font-ui">{{ t(`empty.${view}`) }}</p>
       <ul v-else class="divide-y divide-gray-100">
         <li v-for="r in list" :key="r.id" class="px-5 py-4 grid grid-cols-[auto_minmax(0,1fr)] lg:grid-cols-[auto_minmax(0,16rem)_minmax(0,1fr)_auto] gap-x-4 gap-y-2 text-xs font-ui">
           <div class="pt-0.5">
-            <input v-if="canAct && view === 'drafts'" type="checkbox" :checked="selected.has(r.id)" @change="toggle(r.id)" :aria-label="`Select reminder for ${r.client_name}`" class="rounded border-gray-300" />
+            <input v-if="canAct && view === 'drafts'" type="checkbox" :checked="selected.has(r.id)" @change="toggle(r.id)" :aria-label="t('select_for', { name: String(r.client_name) })" class="rounded border-gray-300" />
           </div>
           <div>
             <p class="text-sm font-medium text-gray-900">{{ r.client_name || '—' }}</p>
-            <p class="text-gray-500">{{ r.external_invoice_id }} · {{ money(r.balance_cents) }} · due {{ shortDate(r.due_date) }}</p>
-            <p class="text-gray-500">{{ ruleLabel(r.rule_key) }}<span v-if="r.to_phone"> · {{ r.to_phone }}</span> · {{ r.language === 'en' ? 'English' : 'Español' }}</p>
+            <p class="text-gray-500">{{ r.external_invoice_id }} · {{ money(r.balance_cents) }} · {{ t('due_on', { date: shortDate(r.due_date) }) }}</p>
+            <p class="text-gray-500">{{ ruleName(r.rule_key) }}<span v-if="r.to_phone"> · {{ r.to_phone }}</span> · {{ t(r.language === 'en' ? 'lang.en' : 'lang.es') }}</p>
           </div>
           <div class="col-start-2 lg:col-start-auto">
-            <p v-if="r.action === 'staff_followup'" class="text-amber-800 bg-amber-50 rounded-lg px-3 py-2">Staff follow-up: call or write to the client. Approving marks it done; no message is sent.</p>
+            <p v-if="r.action === 'staff_followup'" class="text-amber-800 bg-amber-50 rounded-lg px-3 py-2">{{ t('staff_followup_note') }}</p>
             <p v-else class="text-gray-800 bg-brand-light ring-1 ring-gray-100 rounded-lg px-3 py-2 leading-relaxed whitespace-pre-line">{{ r.preview }}</p>
             <p v-if="r.state === 'unknown'" class="mt-2 text-amber-800">{{ r.last_error }}</p>
             <p v-else-if="r.state === 'failed'" class="mt-2 text-brand-red">{{ r.last_error }}</p>
-            <p v-if="r.state === 'cancelled'" class="mt-2 text-gray-500">Cancelled: {{ data.cancelReasons[r.cancel_reason] || r.cancel_reason }}</p>
+            <p v-if="r.state === 'cancelled'" class="mt-2 text-gray-500">{{ t('cancelled_reason', { reason: data.cancelReasons[r.cancel_reason] || r.cancel_reason || '' }) }}</p>
           </div>
           <div class="col-start-2 lg:col-start-auto flex flex-wrap lg:flex-col items-start lg:items-end gap-2">
-            <span :class="known(STATE, r.state).tone" class="text-[10px] font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded">{{ known(STATE, r.state).label }}</span>
-            <span v-if="r.simulated" class="text-[10px] font-semibold text-violet-700">simulated</span>
-            <span v-if="r.sent_at" class="text-gray-500">sent {{ shortDate(r.sent_at) }}</span>
-            <button v-if="canAct && r.state === 'draft'" @click="approve([r.id])" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg bg-brand-navy text-white font-semibold hover:bg-brand-navy-dark">{{ r.action === 'staff_followup' ? 'Mark done' : 'Approve' }}</button>
-            <button v-if="canAct && ['draft', 'approved', 'unknown'].includes(r.state)" @click="ask(r, 'cancel')" :disabled="Boolean(busy)" :aria-expanded="isAsking(r, 'cancel')" class="px-3 py-1.5 rounded-lg text-gray-600 hover:text-brand-red hover:bg-red-50">Cancel</button>
-            <button v-if="canAct && r.state === 'failed' && r.last_error_retryable" @click="retry(r)" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg ring-1 ring-brand-navy/30 text-brand-navy font-semibold hover:bg-brand-surface">Retry</button>
+            <span :class="known(STATE, r.state).tone" class="text-[10px] font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded">{{ STATE[r.state] ? t(`state.${r.state}`) : known(STATE, r.state).label }}</span>
+            <span v-if="r.simulated" class="text-[10px] font-semibold text-violet-700">{{ t('simulated') }}</span>
+            <span v-if="r.sent_at" class="text-gray-500">{{ t('sent_on', { date: shortDate(r.sent_at) }) }}</span>
+            <button v-if="canAct && r.state === 'draft'" @click="approve([r.id])" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg bg-brand-navy text-white font-semibold hover:bg-brand-navy-dark">{{ t(r.action === 'staff_followup' ? 'mark_done' : 'approve') }}</button>
+            <button v-if="canAct && ['draft', 'approved', 'unknown'].includes(r.state)" @click="ask(r, 'cancel')" :disabled="Boolean(busy)" :aria-expanded="isAsking(r, 'cancel')" class="px-3 py-1.5 rounded-lg text-gray-600 hover:text-brand-red hover:bg-red-50">{{ t('cancel') }}</button>
+            <button v-if="canAct && r.state === 'failed' && r.last_error_retryable" @click="retry(r)" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg ring-1 ring-brand-navy/30 text-brand-navy font-semibold hover:bg-brand-surface">{{ t('retry') }}</button>
             <template v-if="canAct && r.state === 'unknown'">
-              <button @click="ask(r, 'arrived')" :disabled="Boolean(busy)" :aria-expanded="isAsking(r, 'arrived')" class="px-3 py-1.5 rounded-lg ring-1 ring-green-600/40 text-green-800 font-semibold hover:bg-green-50">It arrived</button>
-              <button @click="ask(r, 'not_arrived')" :disabled="Boolean(busy)" :aria-expanded="isAsking(r, 'not_arrived')" class="px-3 py-1.5 rounded-lg ring-1 ring-gray-300 text-gray-700 hover:bg-gray-50">It did not</button>
+              <button @click="ask(r, 'arrived')" :disabled="Boolean(busy)" :aria-expanded="isAsking(r, 'arrived')" class="px-3 py-1.5 rounded-lg ring-1 ring-green-600/40 text-green-800 font-semibold hover:bg-green-50">{{ t('it_arrived') }}</button>
+              <button @click="ask(r, 'not_arrived')" :disabled="Boolean(busy)" :aria-expanded="isAsking(r, 'not_arrived')" class="px-3 py-1.5 rounded-lg ring-1 ring-gray-300 text-gray-700 hover:bg-gray-50">{{ t('it_did_not') }}</button>
             </template>
           </div>
-          <ConfirmInline v-if="asking?.id === r.id" class="col-span-full" :title="ASK[asking.kind].title(r)" :body="ASK[asking.kind].body"
-            :confirm-label="ASK[asking.kind].action" :tone="asking.kind === 'cancel' ? 'danger' : 'navy'" :busy="Boolean(busy)"
+          <ConfirmInline v-if="asking?.id === r.id" class="col-span-full" :title="askTitle(asking.kind, r)" :body="ASK[asking.kind].body ? t(ASK[asking.kind].body) : ''"
+            :confirm-label="t(ASK[asking.kind].action)" :cancel-label="t('cancel')" :tone="asking.kind === 'cancel' ? 'danger' : 'navy'" :busy="Boolean(busy)"
             @confirm="answer(r)" @cancel="asking = null" />
         </li>
       </ul>
@@ -80,16 +80,16 @@
 
     <!-- Client replies -->
     <section v-if="view === 'responses'" class="bg-white rounded-xl ring-1 ring-gray-200">
-      <LoadError v-if="loadFailed && !responses.length" message="Could not load client replies." @retry="load" />
-      <p v-else-if="!responses.length" class="p-8 text-center text-sm text-gray-500 font-ui">No client replies waiting.</p>
+      <LoadError v-if="loadFailed && !responses.length" :message="t('responses.load_error')" @retry="load" />
+      <p v-else-if="!responses.length" class="p-8 text-center text-sm text-gray-500 font-ui">{{ t('responses.none') }}</p>
       <ul v-else class="divide-y divide-gray-100">
         <li v-for="m in responses" :key="m.id" class="px-5 py-4 flex flex-wrap items-start gap-3 text-xs font-ui">
           <div class="flex-1 min-w-[14rem]">
-            <p class="text-sm font-medium text-gray-900">{{ m.clientName || 'Unknown client' }} <span class="text-gray-500 font-normal">{{ m.phone }}</span></p>
-            <p class="text-gray-500">{{ shortDate(m.receivedAt) }}<span v-if="m.kind === 'opt_in'" class="ml-2 text-amber-800 font-semibold">asked to receive messages: confirm consent on the Contacts tab</span></p>
-            <p class="mt-1 text-gray-800 bg-brand-light rounded-lg px-3 py-2">{{ m.text || '(non-text message)' }}</p>
+            <p class="text-sm font-medium text-gray-900">{{ m.clientName || t('unknown_client') }} <span class="text-gray-500 font-normal">{{ m.phone }}</span></p>
+            <p class="text-gray-500">{{ shortDate(m.receivedAt) }}<span v-if="m.kind === 'opt_in'" class="ml-2 text-amber-800 font-semibold">{{ t('responses.opt_in') }}</span></p>
+            <p class="mt-1 text-gray-800 bg-brand-light rounded-lg px-3 py-2">{{ m.text || t('responses.non_text') }}</p>
           </div>
-          <button @click="markHandled(m)" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg ring-1 ring-brand-navy/30 text-brand-navy font-semibold hover:bg-brand-surface">Handled</button>
+          <button @click="markHandled(m)" :disabled="Boolean(busy)" class="px-3 py-1.5 rounded-lg ring-1 ring-brand-navy/30 text-brand-navy font-semibold hover:bg-brand-surface">{{ t('handled') }}</button>
         </li>
       </ul>
     </section>
@@ -97,92 +97,90 @@
     <!-- Rules, templates, hours. Read-only without billing.configure: the
          fieldset disables every control inside it. -->
     <fieldset v-if="view === 'setup' && config" :disabled="!canConfigure" class="space-y-5 min-w-0 border-0 p-0 m-0">
-      <p v-if="!canConfigure" class="text-xs font-ui text-gray-600 bg-brand-surface rounded-lg px-4 py-3">Shown for reference. Consent, rules, templates and sending hours are changed by an administrator.</p>
+      <p v-if="!canConfigure" class="text-xs font-ui text-gray-600 bg-brand-surface rounded-lg px-4 py-3">{{ t('setup.read_only') }}</p>
       <section class="bg-white rounded-xl ring-1 ring-gray-200 p-5 space-y-3" aria-labelledby="consent-h">
         <div>
-          <h2 id="consent-h" class="text-sm font-ui font-semibold text-gray-900">WhatsApp consent</h2>
+          <h2 id="consent-h" class="text-sm font-ui font-semibold text-gray-900">{{ t('consent.title') }}</h2>
           <p v-if="setupStatus.section === 'consent'" :role="setupStatus.ok ? 'status' : 'alert'" :class="setupStatus.ok ? 'text-green-700' : 'text-brand-red'" class="text-xs font-ui">{{ setupStatus.text }}</p>
           <p class="text-[11px] font-ui text-gray-500 mt-0.5">
-            Where the firm gets clients' agreement to WhatsApp messages. With the firm policy on, every client with a WhatsApp number counts as
-            having agreed, and nobody records consent one client at a time. A client who replies STOP or BAJA, or whom staff mark as opted out,
-            still gets nothing. Turning the policy off cancels the reminders waiting on it.
+            {{ t('consent.note') }}
           </p>
         </div>
         <label class="flex items-center sm:items-start gap-2.5 min-h-11 sm:min-h-0 text-xs font-ui text-gray-800 cursor-pointer">
           <input type="checkbox" v-model="consent.firmPolicy" class="mt-0.5 rounded border-gray-300" />
-          <span><span class="font-semibold">Firm policy:</span> clients agree when they sign</span>
+          <span><span class="font-semibold">{{ t('consent.policy') }}</span> {{ t('consent.policy_text') }}</span>
         </label>
         <div class="flex flex-wrap items-end gap-3">
           <label class="flex flex-col gap-1 flex-1 min-w-[14rem] text-[11px] font-ui font-semibold text-gray-700">
-            Where consent is taken (kept with every reminder)
+            {{ t('consent.basis') }}
             <input v-model="consent.basis" maxlength="200" class="text-xs font-normal px-3 py-1.5 rounded-lg border border-gray-300 focus:border-brand-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy" />
           </label>
-          <button @click="saveConsent()" :disabled="Boolean(busy) || !consentChanged" class="min-h-11 sm:min-h-0 px-3 py-1.5 rounded-lg bg-brand-navy text-white text-xs font-ui font-semibold hover:bg-brand-navy-dark disabled:opacity-50">Save</button>
+          <button @click="saveConsent()" :disabled="Boolean(busy) || !consentChanged" class="min-h-11 sm:min-h-0 px-3 py-1.5 rounded-lg bg-brand-navy text-white text-xs font-ui font-semibold hover:bg-brand-navy-dark disabled:opacity-50">{{ t('save') }}</button>
         </div>
-        <ConfirmInline v-if="confirmingPolicyOff" title="Turn the firm policy off?" body="Reminders waiting for clients without a recorded opt-in are cancelled."
-          confirm-label="Turn it off" :busy="Boolean(busy)" @confirm="saveConsent({ confirmed: true })" @cancel="confirmingPolicyOff = false" />
+        <ConfirmInline v-if="confirmingPolicyOff" :title="t('consent.off_title')" :body="t('consent.off_body')"
+          :confirm-label="t('consent.off_action')" :cancel-label="t('cancel')" :busy="Boolean(busy)" @confirm="saveConsent({ confirmed: true })" @cancel="confirmingPolicyOff = false" />
       </section>
 
       <section class="bg-white rounded-xl ring-1 ring-gray-200" aria-labelledby="rules-h">
         <header class="px-5 py-4 border-b border-gray-100">
-          <h2 id="rules-h" class="text-sm font-ui font-semibold text-gray-900">Rules</h2>
+          <h2 id="rules-h" class="text-sm font-ui font-semibold text-gray-900">{{ t('rules.title') }}</h2>
           <p v-if="setupStatus.section === 'rules'" :role="setupStatus.ok ? 'status' : 'alert'" :class="setupStatus.ok ? 'text-green-700' : 'text-brand-red'" class="text-xs font-ui">{{ setupStatus.text }}</p>
-          <p class="text-[11px] font-ui text-gray-500 mt-0.5">A rule only creates drafts for staff to approve. Reminders are never created for invoices that need review, clients without consent, or stale data.</p>
+          <p class="text-[11px] font-ui text-gray-500 mt-0.5">{{ t('rules.note') }}</p>
         </header>
         <ul class="divide-y divide-gray-100">
           <li v-for="r in config.rules" :key="r.key" class="px-5 py-3 flex flex-wrap items-center gap-3 text-xs font-ui">
             <label class="inline-flex items-center gap-2 min-w-[14rem] flex-1">
               <input type="checkbox" v-model="r.enabled" @change="saveRule(r)" :disabled="Boolean(busy)" class="rounded border-gray-300" />
-              <span class="text-gray-900 font-medium">{{ ruleLabel(r.key) }}</span>
+              <span class="text-gray-900 font-medium">{{ ruleName(r.key) }}</span>
             </label>
             <label class="inline-flex items-center gap-2 text-gray-600">
-              <input type="number" min="0" max="60" v-model.number="r.days" @change="saveRule(r)" :disabled="Boolean(busy)" class="w-16 px-2 py-1 rounded border border-gray-300 tabular-nums" :aria-label="`Days for ${r.label}`" />
-              days {{ r.trigger === 'before_due' ? 'before' : 'after' }} the due date
+              <input type="number" min="0" max="60" v-model.number="r.days" @change="saveRule(r)" :disabled="Boolean(busy)" class="w-16 px-2 py-1 rounded border border-gray-300 tabular-nums" :aria-label="t('rules.days_for', { rule: lang === 'es' ? ruleName(r.key) : String(r.label) })" />
+              {{ t(r.trigger === 'before_due' ? 'rules.days_before' : 'rules.days_after') }}
             </label>
-            <span class="text-gray-500 w-40">{{ r.action === 'staff_followup' ? 'Staff task, no message' : `Template: ${r.templateKey}` }}</span>
+            <span class="text-gray-500 w-40">{{ r.action === 'staff_followup' ? t('rules.staff_task') : t('rules.template', { key: String(r.templateKey) }) }}</span>
           </li>
         </ul>
       </section>
 
       <section class="bg-white rounded-xl ring-1 ring-gray-200" aria-labelledby="tpl-h">
         <header class="px-5 py-4 border-b border-gray-100">
-          <h2 id="tpl-h" class="text-sm font-ui font-semibold text-gray-900">Message templates</h2>
+          <h2 id="tpl-h" class="text-sm font-ui font-semibold text-gray-900">{{ t('tpl.title') }}</h2>
           <p v-if="setupStatus.section === 'templates'" :role="setupStatus.ok ? 'status' : 'alert'" :class="setupStatus.ok ? 'text-green-700' : 'text-brand-red'" class="text-xs font-ui">{{ setupStatus.text }}</p>
           <p class="text-[11px] font-ui text-gray-500 mt-0.5">
-            The text here is the preview staff approve. What clients receive is the version Meta approved under the same name in WhatsApp Manager (category: Utility), so keep the two identical, and tick "Approved by Meta" only once it is. Real sending refuses templates that are not ticked.
-            Placeholders: {{ '{' + '{1}' + '}' }} client's first name, {{ '{' + '{2}' + '}' }} amount, {{ '{' + '{3}' + '}' }} due date. Never add case details or immigration status.
+            {{ t('tpl.note') }}
+            {{ t('tpl.placeholders') }}
           </p>
         </header>
-        <div v-for="t in config.templates" :key="t.key" class="px-5 py-4 border-b border-gray-50 space-y-3">
+        <div v-for="tpl in config.templates" :key="tpl.key" class="px-5 py-4 border-b border-gray-50 space-y-3">
           <div class="flex flex-wrap items-center gap-3">
-            <label :for="`meta-${t.key}`" class="text-[11px] font-ui font-semibold text-gray-700">Name in WhatsApp Manager</label>
-            <input :id="`meta-${t.key}`" v-model="t.metaName" class="text-xs font-ui px-3 py-1.5 rounded-lg border border-gray-300 w-56" />
+            <label :for="`meta-${tpl.key}`" class="text-[11px] font-ui font-semibold text-gray-700">{{ t('tpl.meta_name') }}</label>
+            <input :id="`meta-${tpl.key}`" v-model="tpl.metaName" class="text-xs font-ui px-3 py-1.5 rounded-lg border border-gray-300 w-56" />
             <label class="inline-flex items-center gap-2 text-xs font-ui text-gray-700">
-              <input type="checkbox" v-model="t.metaApproved" class="rounded border-gray-300" /> Approved by Meta
+              <input type="checkbox" v-model="tpl.metaApproved" class="rounded border-gray-300" /> {{ t('tpl.approved') }}
             </label>
-            <button @click="saveTemplate(t)" :disabled="Boolean(busy)" class="ml-auto px-3 py-1.5 rounded-lg bg-brand-navy text-white text-xs font-ui font-semibold hover:bg-brand-navy-dark">Save</button>
+            <button @click="saveTemplate(tpl)" :disabled="Boolean(busy)" class="ml-auto px-3 py-1.5 rounded-lg bg-brand-navy text-white text-xs font-ui font-semibold hover:bg-brand-navy-dark">{{ t('save') }}</button>
           </div>
           <div class="grid grid-cols-[minmax(0,1fr)] md:grid-cols-2 gap-3">
-            <div v-for="(l, lang) in t.languages" :key="lang">
-              <label :for="`body-${t.key}-${lang}`" class="text-[11px] font-ui font-semibold text-gray-700">{{ lang === 'es' ? 'Spanish' : 'English' }} ({{ l.code }})</label>
-              <textarea :id="`body-${t.key}-${lang}`" v-model="l.body" rows="4" class="mt-1 w-full text-xs font-ui px-3 py-2 rounded-lg border border-gray-300 focus:border-brand-navy focus:outline-none leading-relaxed"></textarea>
+            <div v-for="(l, tongue) in tpl.languages" :key="tongue">
+              <label :for="`body-${tpl.key}-${tongue}`" class="text-[11px] font-ui font-semibold text-gray-700">{{ t(tongue === 'es' ? 'tpl.lang.es' : 'tpl.lang.en') }} ({{ l.code }})</label>
+              <textarea :id="`body-${tpl.key}-${tongue}`" v-model="l.body" rows="4" class="mt-1 w-full text-xs font-ui px-3 py-2 rounded-lg border border-gray-300 focus:border-brand-navy focus:outline-none leading-relaxed"></textarea>
             </div>
           </div>
         </div>
       </section>
 
       <section class="bg-white rounded-xl ring-1 ring-gray-200 p-5 space-y-3" aria-labelledby="hours-h">
-        <h2 id="hours-h" class="text-sm font-ui font-semibold text-gray-900">Sending hours</h2>
+        <h2 id="hours-h" class="text-sm font-ui font-semibold text-gray-900">{{ t('hours.title') }}</h2>
         <p v-if="setupStatus.section === 'hours'" :role="setupStatus.ok ? 'status' : 'alert'" :class="setupStatus.ok ? 'text-green-700' : 'text-brand-red'" class="text-xs font-ui">{{ setupStatus.text }}</p>
         <div class="flex flex-wrap items-center gap-3 text-xs font-ui text-gray-700">
-          <label class="inline-flex items-center gap-2">From <input type="number" min="0" max="23" v-model.number="hours.startHour" class="w-16 px-2 py-1 rounded border border-gray-300 tabular-nums" />:00</label>
-          <label class="inline-flex items-center gap-2">to <input type="number" min="1" max="24" v-model.number="hours.endHour" class="w-16 px-2 py-1 rounded border border-gray-300 tabular-nums" />:00</label>
+          <label class="inline-flex items-center gap-2">{{ t('hours.from') }} <input type="number" min="0" max="23" v-model.number="hours.startHour" class="w-16 px-2 py-1 rounded border border-gray-300 tabular-nums" />:00</label>
+          <label class="inline-flex items-center gap-2">{{ t('hours.to') }} <input type="number" min="1" max="24" v-model.number="hours.endHour" class="w-16 px-2 py-1 rounded border border-gray-300 tabular-nums" />:00</label>
           <span>{{ hours.timeZone }}</span>
-          <fieldset class="flex flex-wrap gap-2"><legend class="sr-only">Days</legend>
-            <label v-for="(d, i) in DAYS" :key="d" class="inline-flex items-center gap-1"><input type="checkbox" :checked="hours.days.includes(i)" @change="toggleDay(i)" class="rounded border-gray-300" />{{ d }}</label>
+          <fieldset class="flex flex-wrap gap-2"><legend class="sr-only">{{ t('hours.days') }}</legend>
+            <label v-for="i in DAYS" :key="i" class="inline-flex items-center gap-1"><input type="checkbox" :checked="hours.days.includes(i)" @change="toggleDay(i)" class="rounded border-gray-300" />{{ t(`day.${i}`) }}</label>
           </fieldset>
-          <label class="inline-flex items-center gap-2">Data older than <input type="number" min="1" max="60" v-model.number="hours.staleAfterDays" class="w-16 px-2 py-1 rounded border border-gray-300 tabular-nums" /> days is too old to remind from</label>
-          <button @click="saveHours" :disabled="Boolean(busy)" class="ml-auto px-3 py-1.5 rounded-lg bg-brand-navy text-white font-semibold hover:bg-brand-navy-dark">Save</button>
+          <label class="inline-flex items-center gap-2">{{ staleWords[0].trim() }} <input type="number" min="1" max="60" v-model.number="hours.staleAfterDays" class="w-16 px-2 py-1 rounded border border-gray-300 tabular-nums" /> {{ staleWords[1].trim() }}</label>
+          <button @click="saveHours" :disabled="Boolean(busy)" class="ml-auto px-3 py-1.5 rounded-lg bg-brand-navy text-white font-semibold hover:bg-brand-navy-dark">{{ t('save') }}</button>
         </div>
       </section>
     </fieldset>
@@ -197,40 +195,40 @@ import { can } from '../../../composables/useAuth.js'
 // Acting on reminders and changing their setup are separate capabilities.
 const canAct = can('billing.reminders')
 const canConfigure = can('billing.configure')
-import { money, shortDate } from '../api.js'
+import { money as moneyIn, shortDate as dateIn } from '../format.js'
+import { ruleLabel, sendingHours, evaluateNotice, dispatchNotice, approveNotice, around } from '../billingText.js'
+import { useT } from '../../../i18n/translator.js'
+import { BILLING_REMINDERS } from '../../../i18n/billingReminders.js'
 import FaIcon from '../../../components/FaIcon.vue'
 import LoadError from '../../../components/LoadError.vue'
 import ConfirmInline from '../../../components/ConfirmInline.vue'
-import { plural, known } from '../../../utils/text.js'
+import { known } from '../../../utils/text.js'
 
-const VIEWS = [
-  { key: 'drafts', label: 'Awaiting approval' },
-  { key: 'approved', label: 'Approved / scheduled' },
-  { key: 'sent', label: 'Sent' },
-  { key: 'problems', label: 'Delivery problems' },
-  { key: 'cancelled', label: 'Cancelled' },
-  { key: 'responses', label: 'Client replies' },
-  { key: 'setup', label: 'Rules & templates' },
-]
+// Each view's label is view.<key>, and a queue's empty line empty.<key>,
+// in i18n/billingReminders.js.
+const VIEWS = ['drafts', 'approved', 'sent', 'problems', 'cancelled', 'responses', 'setup']
 // Client replies are part of working the reminders.
-const views = VIEWS.filter((t) => t.key !== 'responses' || canAct)
+const views = VIEWS.filter((v) => v !== 'responses' || canAct)
+// A reminder's state; its label is state.<key>.
 const STATE = {
-  draft: { label: 'Draft', tone: 'bg-gray-100 text-gray-700' },
-  approved: { label: 'Approved', tone: 'bg-brand-navy/10 text-brand-navy' },
-  queued: { label: 'Sending', tone: 'bg-brand-navy/10 text-brand-navy' },
-  sent: { label: 'Sent', tone: 'bg-green-100 text-green-800' },
-  delivered: { label: 'Delivered', tone: 'bg-green-100 text-green-800' },
-  read: { label: 'Read', tone: 'bg-green-100 text-green-800' },
-  failed: { label: 'Failed', tone: 'bg-red-100 text-brand-red' },
-  unknown: { label: 'Unconfirmed', tone: 'bg-amber-100 text-amber-800' },
-  cancelled: { label: 'Cancelled', tone: 'bg-gray-100 text-gray-500' },
+  draft: { tone: 'bg-gray-100 text-gray-700' },
+  approved: { tone: 'bg-brand-navy/10 text-brand-navy' },
+  queued: { tone: 'bg-brand-navy/10 text-brand-navy' },
+  sent: { tone: 'bg-green-100 text-green-800' },
+  delivered: { tone: 'bg-green-100 text-green-800' },
+  read: { tone: 'bg-green-100 text-green-800' },
+  failed: { tone: 'bg-red-100 text-brand-red' },
+  unknown: { tone: 'bg-amber-100 text-amber-800' },
+  cancelled: { tone: 'bg-gray-100 text-gray-500' },
 }
-const EMPTY = {
-  drafts: 'Nothing waiting for approval. “Check for due reminders” creates drafts for payments that qualify today.',
-  approved: 'No approved reminders waiting to send.', sent: 'Nothing sent yet.',
-  problems: 'No delivery problems.', cancelled: 'Nothing cancelled.',
-}
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+// Sunday first, as the server counts them (day.<n>).
+const DAYS = [0, 1, 2, 3, 4, 5, 6]
+
+const { t, lang, locale } = useT(BILLING_REMINDERS)
+const money = (cents) => moneyIn(cents, locale.value)
+const shortDate = (value) => dateIn(value, locale.value)
+// "Data older than {input} days…" around the number box.
+const staleWords = computed(() => around(t('hours.stale'), 'input'))
 
 const { get, post, put } = useApi()
 
@@ -254,18 +252,12 @@ const selected = ref(new Set())
 const isQueue = computed(() => ['drafts', 'approved', 'sent', 'problems', 'cancelled'].includes(view.value))
 const list = computed(() => data.value?.reminders || [])
 const allSelected = computed(() => list.value.length > 0 && list.value.every((r) => selected.value.has(r.id)))
-const hoursLabel = computed(() => {
-  const s = data.value?.settings
-  return s ? `${s.startHour}:00–${s.endHour}:00 ${s.timeZone.split('/')[1]?.replace('_', ' ') || s.timeZone} time` : 'during business hours'
-})
-// Describe a rule by what it does now, not its starting label: staff can
-// change the days, and "due in 3 days" set to 7 would mislead.
-function ruleLabel(key) {
+const hoursLabel = computed(() => sendingHours(data.value?.settings, lang.value))
+// A rule by what it does now (billingText.ruleLabel), or its key before the
+// rules have loaded.
+function ruleName(key) {
   const r = config.value?.rules.find((x) => x.key === key)
-  if (!r) return key
-  if (r.action === 'staff_followup') return `Follow-up, ${r.days} days overdue`
-  if (r.trigger === 'before_due') return r.days === 0 ? 'Due today' : r.days === 1 ? 'Due tomorrow' : `${r.days} days before due`
-  return `${r.days} days overdue`
+  return r ? ruleLabel(r, lang.value) : key
 }
 
 function badge(key) {
@@ -327,13 +319,13 @@ async function act(name, fn, after) {
 const setupStatus = ref({ section: '', ok: true, text: '' })
 async function saveSetup(section, fn, { ok, revert, after }) {
   busy.value = section
-  setupStatus.value = { section, ok: true, text: 'Saving…' }
+  setupStatus.value = { section, ok: true, text: t('saving') }
   try {
     const r = await fn()
     setupStatus.value = { section, ok: true, text: typeof ok === 'function' ? ok(r) : ok }
     await after?.(r)
   } catch (err) {
-    setupStatus.value = { section, ok: false, text: `Not saved: ${err.message}` }
+    setupStatus.value = { section, ok: false, text: t('not_saved', { message: err.message }) }
     const fresh = await get('/api/billing/reminders/config').catch(() => null)
     if (fresh) revert(fresh)
   } finally {
@@ -341,25 +333,19 @@ async function saveSetup(section, fn, { ok, revert, after }) {
   }
 }
 
-const runEvaluate = () => act('evaluate', () => post('/api/billing/reminders/evaluate', {}), (r) => {
-  const why = (r.suppressed || []).map((s) => `${s.count} × ${String(s.label || s.reason || '').toLowerCase()}`).join('; ')
-  return `${plural(r.created, 'new draft')}.${why ? ` Not created: ${why}.` : ''}`
-})
-const runDispatch = () => act('dispatch', () => post('/api/billing/reminders/dispatch', {}), (r) => {
-  if (r.skipped === 'sending_disabled') return 'Sending is switched off on the server. Approved reminders are waiting.'
-  if (r.skipped === 'outside_hours') return `Outside sending hours. Next window: ${shortDate(r.nextOpenAt)}.`
-  return `${r.sent} sent, ${r.failed} failed, ${r.unknown} unconfirmed, ${r.cancelled} cancelled before sending.`
-})
-const approve = (ids) => act('approve', () => post('/api/billing/reminders/approve', { ids }), (r) =>
-  `${r.approved.length} approved${r.tasksDone ? `, ${plural(r.tasksDone, 'follow-up')} marked done` : ''}${r.notApproved ? `; ${r.notApproved} no longer qualified and were cancelled or skipped` : ''}.`)
+const runEvaluate = () => act('evaluate', () => post('/api/billing/reminders/evaluate', {}), (r) => evaluateNotice(r, lang.value))
+const runDispatch = () => act('dispatch', () => post('/api/billing/reminders/dispatch', {}), (r) => dispatchNotice(r, lang.value))
+const approve = (ids) => act('approve', () => post('/api/billing/reminders/approve', { ids }), (r) => approveNotice(r, lang.value))
 const approveSelected = () => approve([...selected.value])
 // Cancelling a reminder, and saying whether an unconfirmed one arrived, are
 // asked inline under that reminder (ConfirmInline) rather than in a browser dialog.
+// Words in i18n/billingReminders.js.
 const ASK = {
-  cancel: { title: (r) => `Cancel the reminder for ${r.client_name || 'this client'}?`, body: '', action: 'Cancel reminder' },
-  arrived: { title: () => 'Confirm the client received this message?', body: 'Only after checking in WhatsApp.', action: 'It arrived' },
-  not_arrived: { title: () => 'Confirm the client did not receive it?', body: 'It can then be retried.', action: 'It did not arrive' },
+  cancel: { title: 'ask.cancel.title', body: '', action: 'ask.cancel.action' },
+  arrived: { title: 'ask.arrived.title', body: 'ask.arrived.body', action: 'ask.arrived.action' },
+  not_arrived: { title: 'ask.not_arrived.title', body: 'ask.not_arrived.body', action: 'ask.not_arrived.action' },
 }
+const askTitle = (kind, r) => t(ASK[kind].title, { name: r.client_name || t('this_client') })
 const asking = ref(null)
 const ask = (r, kind) => { asking.value = { id: r.id, kind } }
 const isAsking = (r, kind) => asking.value?.id === r.id && asking.value.kind === kind
@@ -369,15 +355,15 @@ function answer(r) {
   if (kind === 'cancel') act('cancel', () => post(`/api/billing/reminders/${r.id}/cancel`, {}))
   else if (kind) act('resolve', () => post(`/api/billing/reminders/${r.id}/resolve`, { delivered: kind === 'arrived' }))
 }
-const retry = (r) => act('retry', () => post(`/api/billing/reminders/${r.id}/retry`, {}), () => 'Moved back to approved. It goes out with the next send.')
+const retry = (r) => act('retry', () => post(`/api/billing/reminders/${r.id}/retry`, {}), () => t('notice.retried'))
 const markHandled = (m) => act('handled', () => post(`/api/billing/responses/${m.id}/handled`, {}))
 const saveRule = (r) => saveSetup('rules', () => put(`/api/billing/reminders/rules/${r.key}`, { days: r.days, enabled: r.enabled }), {
-  ok: 'Rule saved.',
+  ok: () => t('saved.rule'),
   revert: (c) => { const f = c.rules.find((x) => x.key === r.key); if (f) Object.assign(r, f) },
 })
-const saveTemplate = (t) => saveSetup('templates', () => put(`/api/billing/reminders/templates/${t.key}`, { metaName: t.metaName, languages: t.languages, metaApproved: t.metaApproved }), {
-  ok: 'Template saved.',
-  revert: (c) => { const f = c.templates.find((x) => x.key === t.key); if (f) Object.assign(t, f) },
+const saveTemplate = (tpl) => saveSetup('templates', () => put(`/api/billing/reminders/templates/${tpl.key}`, { metaName: tpl.metaName, languages: tpl.languages, metaApproved: tpl.metaApproved }), {
+  ok: () => t('saved.template'),
+  revert: (c) => { const f = c.templates.find((x) => x.key === tpl.key); if (f) Object.assign(tpl, f) },
 })
 const confirmingPolicyOff = ref(false)
 function saveConsent({ confirmed = false } = {}) {
@@ -385,14 +371,14 @@ function saveConsent({ confirmed = false } = {}) {
   if (turningOff && !confirmed) { confirmingPolicyOff.value = true; return }
   confirmingPolicyOff.value = false
   saveSetup('consent', () => put('/api/billing/consent', { firmPolicy: consent.value.firmPolicy, basis: consent.value.basis.trim() }), {
-    ok: (r) => (r.firmPolicy ? 'Firm policy on: clients with a WhatsApp number get reminders unless they opted out.' : 'Firm policy off: each client needs a recorded opt-in.'),
+    ok: (r) => t(r.firmPolicy ? 'saved.policy_on' : 'saved.policy_off'),
     // Saved: it is now what the server has. Turning it off cancels waiting reminders.
     after: async () => { config.value.consent = { ...config.value.consent, ...consent.value } },
     revert: (c) => { consent.value = { firmPolicy: c.consent.firmPolicy, basis: c.consent.basis } },
   })
 }
 const saveHours = () => saveSetup('hours', () => put('/api/billing/reminders/settings', hours.value), {
-  ok: 'Sending hours saved.',
+  ok: () => t('saved.hours'),
   after: () => { config.value.settings = { ...hours.value } },
   revert: (c) => { hours.value = { ...c.settings } },
 })

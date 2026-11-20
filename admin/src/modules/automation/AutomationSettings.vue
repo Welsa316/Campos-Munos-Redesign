@@ -5,12 +5,12 @@
        own and says so beside its button. -->
   <section class="bg-white rounded-xl ring-1 ring-gray-200" aria-labelledby="set-h">
     <header class="px-5 py-4 border-b border-gray-100">
-      <h2 id="set-h" class="text-sm font-ui font-semibold text-gray-900">Settings</h2>
-      <p class="text-[11px] text-gray-500 mt-0.5">A change applies from the next run, within a minute. Nothing here switches an automation on.</p>
+      <h2 id="set-h" class="text-sm font-ui font-semibold text-gray-900">{{ t('set.title') }}</h2>
+      <p class="text-[11px] text-gray-500 mt-0.5">{{ t('set.about') }}</p>
     </header>
 
     <p v-if="loadError" role="alert" class="px-5 py-4 text-[13px] text-brand-red">{{ loadError }}</p>
-    <div v-else-if="!s" class="px-5 py-6 text-[13px] text-gray-500" aria-busy="true">Loading…</div>
+    <div v-else-if="!s" class="px-5 py-6 text-[13px] text-gray-500" aria-busy="true">{{ t('loading') }}</div>
 
     <div v-else class="divide-y divide-gray-100">
       <div v-for="p in PARTS" :key="p.key">
@@ -18,8 +18,8 @@
           <button type="button" @click="open = open === p.key ? '' : p.key" :aria-expanded="open === p.key" :aria-controls="`set-${p.key}`"
             class="w-full flex items-center justify-between gap-3 px-5 py-3 text-left hover:bg-brand-surface transition-colors">
             <span class="min-w-0">
-              <span class="block text-[13px] font-semibold text-gray-900">{{ p.title }}</span>
-              <span class="block text-xs text-gray-600 mt-0.5">{{ p.about }}</span>
+              <span class="block text-[13px] font-semibold text-gray-900">{{ t(`set.part.${p.key}`) }}</span>
+              <span class="block text-xs text-gray-600 mt-0.5">{{ t(`set.part.${p.key}.about`) }}</span>
             </span>
             <FaIcon :name="open === p.key ? 'chevron-up' : 'chevron-down'" class="text-[10px] text-gray-400 flex-shrink-0" />
           </button>
@@ -29,31 +29,31 @@
           <!-- The words -->
           <template v-if="p.key === 'templates'">
             <p class="text-xs text-amber-900 bg-amber-50 rounded-lg px-3 py-2 leading-relaxed">
-              These are drafts until the firm approves the wording. A message only confirms receipt or asks the person to get in touch: no legal advice, no promise about a case, nothing that says the firm has taken them on.
+              {{ t('tpl.drafts') }}
             </p>
             <div class="grid gap-3 md:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] md:items-end">
               <div>
-                <label for="tpl-key" class="lbl">Message</label>
+                <label for="tpl-key" class="lbl">{{ t('tpl.message') }}</label>
                 <select id="tpl-key" v-model="tplKey" class="fld w-full">
-                  <option v-for="(t, key) in s.templates" :key="key" :value="key">{{ t.label }}</option>
+                  <option v-for="(tp, key) in s.templates" :key="key" :value="key">{{ tp.label }}</option>
                 </select>
               </div>
-              <div role="tablist" aria-label="Language" class="flex flex-wrap gap-1.5">
+              <div role="tablist" :aria-label="t('tpl.language')" class="flex flex-wrap gap-1.5">
                 <button v-for="l in LANGS" :key="l.key" type="button" role="tab" :aria-selected="tplLang === l.key" @click="tplLang = l.key"
                   :class="tplLang === l.key ? 'bg-brand-navy text-white' : 'text-gray-700 ring-1 ring-gray-300 hover:bg-brand-surface'"
-                  class="min-h-11 sm:min-h-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">{{ l.label }}</button>
+                  class="min-h-11 sm:min-h-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">{{ t(`set.lang.${l.key}`) }}</button>
               </div>
             </div>
             <div v-if="tpl.channel === 'email'">
-              <label for="tpl-subject" class="lbl">Subject</label>
+              <label for="tpl-subject" class="lbl">{{ t('tpl.subject') }}</label>
               <input id="tpl-subject" v-model="tpl.languages[tplLang].subject" type="text" maxlength="120" class="fld w-full" />
             </div>
             <div>
-              <label for="tpl-body" class="lbl">{{ tpl.channel === 'sms' ? 'Text message' : 'Email' }}</label>
+              <label for="tpl-body" class="lbl">{{ t(tpl.channel === 'sms' ? 'tpl.text' : 'tpl.email') }}</label>
               <textarea id="tpl-body" v-model="tpl.languages[tplLang].body" :rows="tpl.channel === 'sms' ? 5 : 12" class="fld w-full"></textarea>
               <p class="mt-1 text-xs text-gray-600">
-                <template v-if="tpl.channel === 'sms'"><span :class="{ 'text-brand-red font-semibold': tpl.languages[tplLang].body.length > smsMax }" class="tabular-nums">{{ tpl.languages[tplLang].body.length }} of {{ smsMax }} characters.</span> Must say how to stop them (STOP). </template>
-                It can use <code v-for="v in variables" :key="v" class="mx-0.5 px-1 rounded bg-gray-100 text-gray-800">{{ braces(v) }}</code>. A line with the booking link is left out when no link is set.
+                <template v-if="tpl.channel === 'sms'"><span :class="{ 'text-brand-red font-semibold': tpl.languages[tplLang].body.length > smsMax }" class="tabular-nums">{{ t('tpl.chars', { count: tpl.languages[tplLang].body.length, max: smsMax }) }}</span> {{ t('tpl.stop') }} </template>
+                {{ t('tpl.can_use') }} <code v-for="v in variables" :key="v" class="mx-0.5 px-1 rounded bg-gray-100 text-gray-800">{{ braces(v) }}</code>{{ t('tpl.link_note') }}
               </p>
             </div>
             <SaveRow :state="state.templates" :busy="busy" @save="save('templates', s.templates)" />
@@ -62,56 +62,56 @@
           <!-- When -->
           <template v-else-if="p.key === 'timing'">
             <fieldset class="space-y-2">
-              <legend class="lbl">Follow-up texts, while nobody has reached the lead</legend>
+              <legend class="lbl">{{ t('fu.legend') }}</legend>
               <p v-for="(st, i) in s.followup.steps" :key="st.key" class="flex flex-wrap items-center gap-2">
-                <label :for="`fu-${st.key}`">Follow-up {{ i + 1 }} after</label>
+                <label :for="`fu-${st.key}`">{{ t('fu.step', { n: i + 1 }) }}</label>
                 <input :id="`fu-${st.key}`" v-model.number="st.afterBusinessDays" type="number" min="1" max="30" class="num" />
-                <span>business {{ st.afterBusinessDays === 1 ? 'day' : 'days' }}, by text message</span>
+                <span>{{ t('fu.business_days', { count: st.afterBusinessDays }) }}</span>
               </p>
               <p class="flex flex-wrap items-center gap-2">
-                <label for="fu-nr">Mark “No response” after</label>
+                <label for="fu-nr">{{ t('fu.no_response') }}</label>
                 <input id="fu-nr" v-model.number="s.followup.noResponseAfterBusinessDays" type="number" min="1" max="60" class="num" />
-                <span>business days, if every follow-up went out and nothing came back</span>
+                <span>{{ t('fu.no_response_after') }}</span>
               </p>
-              <p class="text-xs text-gray-600">Follow-ups go by text only: a reply to an email lands in the office inbox, where the portal cannot see it, so it could not know to stop.</p>
+              <p class="text-xs text-gray-600">{{ t('fu.text_only') }}</p>
               <SaveRow :state="state.followup" :busy="busy" @save="save('followup', s.followup)" />
             </fieldset>
 
             <fieldset class="space-y-2 pt-3 border-t border-gray-100">
-              <legend class="lbl pt-3">How long something may wait before people are told (office minutes)</legend>
+              <legend class="lbl pt-3">{{ t('sla.legend') }}</legend>
               <div class="grid gap-x-6 gap-y-2 md:grid-cols-2">
-                <p class="flex flex-wrap items-center gap-2"><label for="sla-1">New lead, first notice after</label><input id="sla-1" v-model.number="s.sla.newLeadMinutes" type="number" min="15" class="num" /><span>min</span></p>
-                <p class="flex flex-wrap items-center gap-2"><label for="sla-2">then again after</label><input id="sla-2" v-model.number="s.sla.newLeadSecondMinutes" type="number" min="15" class="num" /><span>min</span></p>
-                <p class="flex flex-wrap items-center gap-2"><label for="sla-3">Missed caller, first notice after</label><input id="sla-3" v-model.number="s.sla.missedCallMinutes" type="number" min="15" class="num" /><span>min</span></p>
-                <p class="flex flex-wrap items-center gap-2"><label for="sla-4">then again after</label><input id="sla-4" v-model.number="s.sla.missedCallSecondMinutes" type="number" min="15" class="num" /><span>min</span></p>
+                <p class="flex flex-wrap items-center gap-2"><label for="sla-1">{{ t('sla.lead_first') }}</label><input id="sla-1" v-model.number="s.sla.newLeadMinutes" type="number" min="15" class="num" /><span>{{ t('sla.min') }}</span></p>
+                <p class="flex flex-wrap items-center gap-2"><label for="sla-2">{{ t('sla.again') }}</label><input id="sla-2" v-model.number="s.sla.newLeadSecondMinutes" type="number" min="15" class="num" /><span>{{ t('sla.min') }}</span></p>
+                <p class="flex flex-wrap items-center gap-2"><label for="sla-3">{{ t('sla.call_first') }}</label><input id="sla-3" v-model.number="s.sla.missedCallMinutes" type="number" min="15" class="num" /><span>{{ t('sla.min') }}</span></p>
+                <p class="flex flex-wrap items-center gap-2"><label for="sla-4">{{ t('sla.again') }}</label><input id="sla-4" v-model.number="s.sla.missedCallSecondMinutes" type="number" min="15" class="num" /><span>{{ t('sla.min') }}</span></p>
               </div>
               <div class="max-w-md">
-                <label for="sla-email" class="lbl">Email the second notice to (optional)</label>
-                <input id="sla-email" v-model.trim="s.sla.secondLevelEmail" type="email" class="fld w-full" placeholder="Nobody: the second notice stays in the portal" />
+                <label for="sla-email" class="lbl">{{ t('sla.email') }}</label>
+                <input id="sla-email" v-model.trim="s.sla.secondLevelEmail" type="email" class="fld w-full" :placeholder="t('sla.email_placeholder')" />
               </div>
               <SaveRow :state="state.sla" :busy="busy" @save="save('sla', s.sla)" />
             </fieldset>
 
             <fieldset class="space-y-2 pt-3 border-t border-gray-100">
-              <legend class="lbl pt-3">When automatic texts may go out (New Orleans time)</legend>
+              <legend class="lbl pt-3">{{ t('tx.legend') }}</legend>
               <p class="flex flex-wrap items-center gap-2">
-                <label for="tx-start">From</label><input id="tx-start" v-model="s.texting.start" type="time" class="fld w-32" />
-                <label for="tx-end">to</label><input id="tx-end" v-model="s.texting.end" type="time" class="fld w-32" />
-                <label for="tx-rate">at most</label><input id="tx-rate" v-model.number="s.texting.perMinute" type="number" min="1" max="30" class="num" /><span>a minute</span>
+                <label for="tx-start">{{ t('tx.from') }}</label><input id="tx-start" v-model="s.texting.start" type="time" class="fld w-32" />
+                <label for="tx-end">{{ t('tx.to') }}</label><input id="tx-end" v-model="s.texting.end" type="time" class="fld w-32" />
+                <label for="tx-rate">{{ t('tx.at_most') }}</label><input id="tx-rate" v-model.number="s.texting.perMinute" type="number" min="1" max="30" class="num" /><span>{{ t('tx.per_minute') }}</span>
               </p>
               <DayPicker v-model="s.texting.days" name="tx" />
               <SaveRow :state="state.texting" :busy="busy" @save="save('texting', s.texting)" />
             </fieldset>
 
             <fieldset class="space-y-2 pt-3 border-t border-gray-100">
-              <legend class="lbl pt-3">The acknowledgment, and the missed-call text</legend>
-              <label class="flex items-start gap-2"><input v-model="s.ack.smsRequiresFormConsent" type="checkbox" class="mt-0.5 rounded border-gray-300" /><span>Only text a lead who agreed on the form to be texted</span></label>
-              <label class="flex items-start gap-2"><input v-model="s.ack.smsOutsideHours" type="checkbox" class="mt-0.5 rounded border-gray-300" /><span>Send the acknowledgment text at any hour (otherwise it waits for the texting hours)</span></label>
-              <p class="flex flex-wrap items-center gap-2"><label for="ack-age">No acknowledgment for a message older than</label><input id="ack-age" v-model.number="s.ack.maxAgeHours" type="number" min="1" max="72" class="num" /><span>hours</span></p>
+              <legend class="lbl pt-3">{{ t('ack.legend') }}</legend>
+              <label class="flex items-start gap-2"><input v-model="s.ack.smsRequiresFormConsent" type="checkbox" class="mt-0.5 rounded border-gray-300" /><span>{{ t('ack.consent') }}</span></label>
+              <label class="flex items-start gap-2"><input v-model="s.ack.smsOutsideHours" type="checkbox" class="mt-0.5 rounded border-gray-300" /><span>{{ t('ack.any_hour') }}</span></label>
+              <p class="flex flex-wrap items-center gap-2"><label for="ack-age">{{ t('ack.max_age') }}</label><input id="ack-age" v-model.number="s.ack.maxAgeHours" type="number" min="1" max="72" class="num" /><span>{{ t('ack.hours') }}</span></p>
               <SaveRow :state="state.ack" :busy="busy" @save="save('ack', s.ack)" />
               <p class="flex flex-wrap items-center gap-2 pt-2">
-                <label for="mc-settle">Text a missed caller</label><input id="mc-settle" v-model.number="s.missedCall.settleMinutes" type="number" min="1" max="30" class="num" /><span>minutes after the call,</span>
-                <label for="mc-cool">once per number every</label><input id="mc-cool" v-model.number="s.missedCall.cooldownDays" type="number" min="1" max="90" class="num" /><span>days</span>
+                <label for="mc-settle">{{ t('mc.text_after') }}</label><input id="mc-settle" v-model.number="s.missedCall.settleMinutes" type="number" min="1" max="30" class="num" /><span>{{ t('mc.minutes_after') }}</span>
+                <label for="mc-cool">{{ t('mc.once_every') }}</label><input id="mc-cool" v-model.number="s.missedCall.cooldownDays" type="number" min="1" max="90" class="num" /><span>{{ t('mc.days') }}</span>
               </p>
               <SaveRow :state="state.missedCall" :busy="busy" @save="save('missedCall', s.missedCall)" />
             </fieldset>
@@ -120,61 +120,61 @@
           <!-- Booking -->
           <template v-else-if="p.key === 'scheduling'">
             <div>
-              <label for="sch-url" class="lbl">Booking link offered in messages</label>
+              <label for="sch-url" class="lbl">{{ t('sch.url') }}</label>
               <input id="sch-url" v-model.trim="s.scheduling.bookingUrl" type="url" class="fld w-full" placeholder="https://calendar.app.google/…" />
-              <p class="mt-1 text-xs text-gray-600">The firm’s own Google Calendar booking page. Empty: messages do not offer booking.</p>
+              <p class="mt-1 text-xs text-gray-600">{{ t('sch.url_note') }}</p>
             </div>
             <div>
-              <label for="sch-cal" class="lbl">Calendar the bookings land on (its ID)</label>
+              <label for="sch-cal" class="lbl">{{ t('sch.calendar') }}</label>
               <input id="sch-cal" v-model.trim="s.scheduling.calendarId" type="text" class="fld w-full" placeholder="office@camulaw.com" />
-              <p class="mt-1 text-xs text-gray-600">Read-only. A booking is linked to a lead when a guest’s email address is exactly the lead’s; only its time is kept, never its title or notes.</p>
+              <p class="mt-1 text-xs text-gray-600">{{ t('sch.calendar_note') }}</p>
             </div>
             <SaveRow :state="state.scheduling" :busy="busy" @save="save('scheduling', s.scheduling)" />
           </template>
 
           <!-- Vendors -->
           <template v-else-if="p.key === 'spam'">
-            <p class="text-xs text-gray-600 leading-relaxed">Only a sender listed here is ever archived on its own. A phrase only marks a lead “possible vendor message” for someone to look at; it stays in the inbox. Every mark can be undone from the lead.</p>
+            <p class="text-xs text-gray-600 leading-relaxed">{{ t('spam.about') }}</p>
             <div class="grid gap-4 md:grid-cols-3">
-              <div><label for="sp-senders" class="lbl">Sender addresses (one per line)</label><textarea id="sp-senders" v-model="lists.senders" rows="6" class="fld w-full" placeholder="sales@vendor.com"></textarea></div>
-              <div><label for="sp-domains" class="lbl">Sender domains (one per line)</label><textarea id="sp-domains" v-model="lists.domains" rows="6" class="fld w-full" placeholder="seo-agency.com"></textarea></div>
-              <div><label for="sp-phrases" class="lbl">Phrases, for review only (one per line)</label><textarea id="sp-phrases" v-model="lists.phrases" rows="6" class="fld w-full" placeholder="boost your google ranking"></textarea></div>
+              <div><label for="sp-senders" class="lbl">{{ t('spam.senders') }}</label><textarea id="sp-senders" v-model="lists.senders" rows="6" class="fld w-full" placeholder="sales@vendor.com"></textarea></div>
+              <div><label for="sp-domains" class="lbl">{{ t('spam.domains') }}</label><textarea id="sp-domains" v-model="lists.domains" rows="6" class="fld w-full" placeholder="seo-agency.com"></textarea></div>
+              <div><label for="sp-phrases" class="lbl">{{ t('spam.phrases') }}</label><textarea id="sp-phrases" v-model="lists.phrases" rows="6" class="fld w-full" placeholder="boost your google ranking"></textarea></div>
             </div>
             <SaveRow :state="state.spam" :busy="busy" @save="saveSpam">
-              <button type="button" @click="applySpam" :disabled="busy" class="min-h-11 sm:min-h-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-700 ring-1 ring-gray-300 hover:bg-brand-surface transition-colors disabled:opacity-50">Run over the leads still New</button>
+              <button type="button" @click="applySpam" :disabled="busy" class="min-h-11 sm:min-h-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-700 ring-1 ring-gray-300 hover:bg-brand-surface transition-colors disabled:opacity-50">{{ t('spam.apply') }}</button>
             </SaveRow>
           </template>
 
           <!-- People and the firm -->
           <template v-else-if="p.key === 'firm'">
             <div class="grid gap-4 md:grid-cols-2">
-              <div><label for="fm-name" class="lbl">The firm’s name in messages</label><input id="fm-name" v-model.trim="s.firm.name" type="text" maxlength="80" class="fld w-full" /></div>
-              <div><label for="fm-phone" class="lbl">Office phone in messages</label><input id="fm-phone" v-model.trim="s.firm.phone" type="text" maxlength="25" class="fld w-full" /></div>
+              <div><label for="fm-name" class="lbl">{{ t('firm.name') }}</label><input id="fm-name" v-model.trim="s.firm.name" type="text" maxlength="80" class="fld w-full" /></div>
+              <div><label for="fm-phone" class="lbl">{{ t('firm.phone') }}</label><input id="fm-phone" v-model.trim="s.firm.phone" type="text" maxlength="25" class="fld w-full" /></div>
             </div>
             <SaveRow :state="state.firm" :busy="busy" @save="save('firm', s.firm)" />
             <fieldset class="space-y-2 pt-3 border-t border-gray-100">
-              <legend class="lbl pt-3">Office hours (New Orleans time), used to count how long something has waited</legend>
+              <legend class="lbl pt-3">{{ t('hours.legend') }}</legend>
               <p class="flex flex-wrap items-center gap-2">
-                <label for="oh-start">Open</label><input id="oh-start" v-model="s.hours.start" type="time" class="fld w-32" />
-                <label for="oh-end">to</label><input id="oh-end" v-model="s.hours.end" type="time" class="fld w-32" />
+                <label for="oh-start">{{ t('hours.open') }}</label><input id="oh-start" v-model="s.hours.start" type="time" class="fld w-32" />
+                <label for="oh-end">{{ t('hours.to') }}</label><input id="oh-end" v-model="s.hours.end" type="time" class="fld w-32" />
               </p>
               <DayPicker v-model="s.hours.days" name="oh" />
               <SaveRow :state="state.hours" :busy="busy" @save="save('hours', s.hours)" />
             </fieldset>
             <fieldset class="space-y-2 pt-3 border-t border-gray-100">
-              <legend class="lbl pt-3">New leads</legend>
+              <legend class="lbl pt-3">{{ t('own.legend') }}</legend>
               <div class="max-w-md">
-                <label for="ow-owner" class="lbl">A new lead is followed up by</label>
+                <label for="ow-owner" class="lbl">{{ t('own.label') }}</label>
                 <select id="ow-owner" v-model="s.ownership.defaultLeadOwnerId" class="fld w-full">
-                  <option :value="null">The front desk (nobody in particular)</option>
+                  <option :value="null">{{ t('own.front_desk') }}</option>
                   <option v-for="a in people" :key="a.id" :value="a.id">{{ a.name }}</option>
                 </select>
               </div>
               <SaveRow :state="state.ownership" :busy="busy" @save="save('ownership', s.ownership)" />
-              <label class="flex items-start gap-2 pt-2"><input v-model="s.status.contactedOnClientReply" type="checkbox" class="mt-0.5 rounded border-gray-300" /><span>Count a lead’s text reply as “Contacted”. Off: the reply stops the follow-ups and asks for a person, and the lead stays New until someone at the firm reaches them.</span></label>
+              <label class="flex items-start gap-2 pt-2"><input v-model="s.status.contactedOnClientReply" type="checkbox" class="mt-0.5 rounded border-gray-300" /><span>{{ t('st.contacted_on_reply') }}</span></label>
               <p class="flex flex-wrap items-center gap-2">
-                <label for="st-secs">A call back counts as reaching them when it lasted at least</label>
-                <input id="st-secs" v-model.number="s.status.connectedCallSeconds" type="number" min="0" max="600" class="num" /><span>seconds (a call that goes to voicemail is “connected” too)</span>
+                <label for="st-secs">{{ t('st.call_secs') }}</label>
+                <input id="st-secs" v-model.number="s.status.connectedCallSeconds" type="number" min="0" max="600" class="num" /><span>{{ t('st.call_secs_after') }}</span>
               </p>
               <SaveRow :state="state.status" :busy="busy" @save="save('status', s.status)" />
             </fieldset>
@@ -190,12 +190,15 @@ import { ref, reactive, computed, onMounted, h } from 'vue'
 import FaIcon from '../../components/FaIcon.vue'
 import { useApi } from '../../composables/useApi.js'
 import { loadAssignees } from '../reminders/assignees.js'
+import { useT } from '../../i18n/translator.js'
+import { AUTOMATION } from '../../i18n/automation.js'
 
 defineProps({ health: { type: Object, default: null } })
 // 'saved': something was saved or applied; the page reloads its numbers.
 const emit = defineEmits(['saved'])
 
 const { get, put, post } = useApi()
+const { t } = useT(AUTOMATION)
 const s = ref(null)
 const loadError = ref('')
 const open = ref('')
@@ -208,14 +211,9 @@ const tplKey = ref('lead_ack_email')
 const tplLang = ref('es')
 const lists = reactive({ senders: '', domains: '', phrases: '' })
 
-const PARTS = [
-  { key: 'templates', title: 'Messages', about: 'The words of every automatic email and text, in Spanish, English and both.' },
-  { key: 'timing', title: 'Timing', about: 'Follow-up days, how long a lead or a caller may wait, and when texts may go out.' },
-  { key: 'scheduling', title: 'Booking link and calendar', about: 'The firm’s booking page, and the calendar the portal reads for bookings.' },
-  { key: 'spam', title: 'Vendor and spam rules', about: 'Senders that are archived on arrival, and phrases that ask for a second look.' },
-  { key: 'firm', title: 'The firm and its hours', about: 'Name and phone used in messages, office hours, who gets new leads.' },
-]
-const LANGS = [{ key: 'es', label: 'Spanish' }, { key: 'en', label: 'English' }, { key: 'bi', label: 'Language not known (both)' }]
+// Each part's title and line are set.part.<key> and set.part.<key>.about (i18n/automation.js).
+const PARTS = [{ key: 'templates' }, { key: 'timing' }, { key: 'scheduling' }, { key: 'spam' }, { key: 'firm' }]
+const LANGS = [{ key: 'es' }, { key: 'en' }, { key: 'bi' }]
 const braces = (v) => `{{${v}}}`
 const tpl = computed(() => s.value.templates[tplKey.value])
 const lines = (text) => String(text || '').split('\n').map((x) => x.trim()).filter(Boolean)
@@ -235,15 +233,15 @@ async function load() {
 
 async function save(section, value, after) {
   busy.value = true
-  state[section] = { ok: true, text: 'Saving…' }
+  state[section] = { ok: true, text: t('set.saving') }
   try {
     const r = await put(`/api/automation/settings/${section}`, value)
     s.value[section] = r.value
-    state[section] = { ok: true, text: 'Saved.' }
+    state[section] = { ok: true, text: t('set.saved') }
     await after?.()
     emit('saved', '')
   } catch (e) {
-    state[section] = { ok: false, text: `Not saved: ${e.message}` }
+    state[section] = { ok: false, text: t('set.not_saved', { error: e.message }) }
   } finally {
     busy.value = false
   }
@@ -253,10 +251,10 @@ async function applySpam() {
   busy.value = true
   try {
     const r = await post('/api/automation/spam/apply', {})
-    state.spam = { ok: true, text: `Done: ${r.spam} archived as vendor messages, ${r.possible} marked for a second look.` }
+    state.spam = { ok: true, text: t('set.spam_done', { spam: r.spam, possible: r.possible }) }
     emit('saved', '')
   } catch (e) {
-    state.spam = { ok: false, text: `Could not run: ${e.message}` }
+    state.spam = { ok: false, text: t('set.spam_failed', { error: e.message }) }
   } finally {
     busy.value = false
   }
@@ -267,7 +265,7 @@ const SaveRow = (props, { emit: fire, slots }) => h('div', { class: 'flex flex-w
   h('button', {
     type: 'button', disabled: props.busy, onClick: () => fire('save'),
     class: 'min-h-11 sm:min-h-0 px-4 py-1.5 rounded-lg bg-brand-navy text-white text-xs font-semibold hover:bg-brand-navy-dark transition-colors disabled:opacity-50',
-  }, 'Save'),
+  }, t('set.save')),
   slots.default?.(),
   props.state?.text ? h('p', { role: props.state.ok ? 'status' : 'alert', class: `text-xs ${props.state.ok ? 'text-green-700' : 'text-brand-red'}` }, props.state.text) : null,
 ])
@@ -275,14 +273,14 @@ SaveRow.props = ['state', 'busy']
 SaveRow.emits = ['save']
 
 // Monday to Sunday as checkboxes over an array of weekday numbers (0 = Sunday).
-const DAYS = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [0, 'Sun']]
-const DayPicker = (props, { emit: fire }) => h('p', { class: 'flex flex-wrap gap-x-4 gap-y-1', role: 'group', 'aria-label': 'Days' }, DAYS.map(([n, label]) =>
+const DAYS = [1, 2, 3, 4, 5, 6, 0]
+const DayPicker = (props, { emit: fire }) => h('p', { class: 'flex flex-wrap gap-x-4 gap-y-1', role: 'group', 'aria-label': t('set.days') }, DAYS.map((n) =>
   h('label', { class: 'inline-flex items-center gap-1.5 min-h-11 sm:min-h-0', key: n }, [
     h('input', {
       type: 'checkbox', class: 'rounded border-gray-300', checked: props.modelValue.includes(n), name: `${props.name}-day`,
       onChange: (e) => fire('update:modelValue', e.target.checked ? [...props.modelValue, n].sort() : props.modelValue.filter((d) => d !== n)),
     }),
-    label,
+    t(`day.${n}`),
   ])))
 DayPicker.props = ['modelValue', 'name']
 DayPicker.emits = ['update:modelValue']
