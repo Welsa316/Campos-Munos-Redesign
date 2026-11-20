@@ -106,6 +106,9 @@ export const ACTIONS = {
     details: (req) => ({ target: typeof body(req).target?.kind === 'string' ? body(req).target.kind : undefined, assigned: body(req).assignee != null }) },
   'PATCH /api/reminders/:id': { key: 'followups.changed', label: 'Changed a callback reminder', entity: 'followup',
     details: (req) => ({ time: body(req).dueAt !== undefined, assignee: body(req).assignee !== undefined, note: body(req).note !== undefined }) },
+  // A colour on a caller, a website lead or a reminder (id: the call, lead or reminder).
+  'PUT /api/colors': { key: 'colors.set', label: 'Changed the colour of a caller, lead or reminder',
+    details: (req) => ({ kind: body(req).kind, id: Number(body(req).id) || undefined, color: body(req).color ?? 'none' }) },
   'POST /api/reminders/:id/complete': { key: 'followups.done', label: 'Marked a callback reminder done', entity: 'followup' },
   'POST /api/reminders/:id/cancel': { key: 'followups.cancelled', label: 'Cancelled a callback reminder', entity: 'followup' },
   'POST /api/reminders/:id/snooze': { key: 'followups.snoozed', label: 'Snoozed a callback reminder', entity: 'followup',

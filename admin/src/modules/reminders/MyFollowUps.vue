@@ -21,7 +21,7 @@
       <div v-else-if="!loaded" class="px-5 py-4 text-[13px] text-gray-500" aria-busy="true">{{ t('fu.loading') }}</div>
       <ul v-else class="divide-y divide-gray-100">
         <li v-for="item in rows" :key="item.key">
-          <router-link :to="item.path"
+          <router-link :to="item.path" :data-entry-color="item.color || undefined"
             class="mf-row flex items-center gap-3 px-4 sm:px-5 py-3 min-h-14 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy">
             <span :class="TILE[item.tone]" class="w-9 h-9 flex-shrink-0 rounded-full inline-flex items-center justify-center text-[13px]" aria-hidden="true">
               <FaIcon :name="item.icon" />
@@ -49,10 +49,13 @@ import { useApi, latestOnly } from '../../composables/useApi.js'
 import { useVisiblePoll } from '../../composables/useVisiblePoll.js'
 import { workItemText } from './workQueueText.js'
 import { usePortalLang } from '../../composables/usePortalLang.js'
+import { ensureEntryColorStyles } from '../../data/entryColors.js'
 
 const { get } = useApi()
-// Shown on Home, so it follows Home's EN | ES switch.
+// Shown on Home, so it follows the portal's language switch.
 const { lang, t } = usePortalLang()
+// A reminder's shared colour shows on its row (components/colors/).
+ensureEntryColorStyles()
 const items = ref([])
 const hasMore = ref(false)
 const sections = ref({ calls: false, leads: false })

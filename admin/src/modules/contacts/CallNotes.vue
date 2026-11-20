@@ -2,41 +2,41 @@
   <!-- Internal notes about this caller, written from Calls. Staff only:
        never sent to the client or through any phone or email system. -->
   <div class="font-ui" data-call-notes>
-    <h3 ref="heading" tabindex="-1" class="label focus:outline-none">Notes <span class="font-normal normal-case tracking-normal text-gray-500">· staff only</span></h3>
-    <p v-if="loading" class="mt-2 text-[13px] text-gray-500"><FaIcon name="spinner" spin class="mr-1.5" />Loading…</p>
-    <p v-else-if="loadError" class="mt-2 text-[13px] text-gray-600">Could not load the notes. <button type="button" class="font-semibold text-brand-navy underline" @click="load">Try again</button></p>
+    <h3 ref="heading" tabindex="-1" class="label focus:outline-none">{{ t('notes.heading') }} <span class="font-normal normal-case tracking-normal text-gray-500">{{ t('notes.staff_only') }}</span></h3>
+    <p v-if="loading" class="mt-2 text-[13px] text-gray-500"><FaIcon name="spinner" spin class="mr-1.5" />{{ t('notes.loading') }}</p>
+    <p v-else-if="loadError" class="mt-2 text-[13px] text-gray-600">{{ t('notes.load_error') }} <button type="button" class="font-semibold text-brand-navy underline" @click="load">{{ t('notes.try_again') }}</button></p>
     <ol v-else-if="notes.length" class="mt-2 space-y-2">
       <li v-for="n in notes" :key="n.id" class="rounded-xl bg-gray-50 ring-1 ring-gray-200 px-3.5 py-2.5">
         <template v-if="editing === n.id">
-          <label :for="`note-edit-${n.id}`" class="sr-only">Edit note</label>
+          <label :for="`note-edit-${n.id}`" class="sr-only">{{ t('notes.edit_label') }}</label>
           <textarea :id="`note-edit-${n.id}`" v-model="draft" rows="2" maxlength="5000" class="field" @keydown="onKey($event, () => saveEdit(n))"></textarea>
           <div class="mt-2 flex gap-2">
-            <button type="button" class="btn btn-primary" :disabled="busy || !draft.trim()" @click="saveEdit(n)">{{ busy ? 'Saving…' : 'Save' }}</button>
-            <button type="button" class="btn btn-quiet" @click="stopEdit(n)">Cancel</button>
+            <button type="button" class="btn btn-primary" :disabled="busy || !draft.trim()" @click="saveEdit(n)">{{ busy ? t('notes.saving') : t('notes.save') }}</button>
+            <button type="button" class="btn btn-quiet" @click="stopEdit(n)">{{ t('notes.cancel') }}</button>
           </div>
         </template>
         <template v-else>
           <p class="text-[13.5px] text-gray-900 whitespace-pre-line break-words">{{ n.body }}</p>
           <p class="mt-1 flex flex-wrap items-center gap-x-2 text-[12px] text-gray-500 tabular-nums">
-            <span>{{ n.author || 'A former user' }} · {{ when(n.createdAt) }}<template v-if="n.edited"> · edited</template></span>
+            <span>{{ n.author || t('notes.former_user') }} · {{ whenText(n.createdAt) }}<template v-if="n.edited"> · {{ t('notes.edited') }}</template></span>
             <template v-if="n.mine && canWrite">
-              <button type="button" :data-note-edit="n.id" class="note-act text-brand-navy" :aria-label="`Edit your note from ${when(n.createdAt)}`" @click="startEdit(n)">Edit</button>
-              <button type="button" class="note-act text-brand-red" :aria-label="`Delete your note from ${when(n.createdAt)}`" @click="confirming = n.id">Delete</button>
+              <button type="button" :data-note-edit="n.id" class="note-act text-brand-navy" :aria-label="t('notes.edit_yours', { when: whenText(n.createdAt) })" @click="startEdit(n)">{{ t('notes.edit') }}</button>
+              <button type="button" class="note-act text-brand-red" :aria-label="t('notes.delete_yours', { when: whenText(n.createdAt) })" @click="confirming = n.id">{{ t('notes.delete') }}</button>
             </template>
-            <button v-else-if="canDeleteAny" type="button" class="note-act text-brand-red" :aria-label="`Delete the note by ${n.author || 'a former user'} from ${when(n.createdAt)}`" @click="confirming = n.id">Delete</button>
+            <button v-else-if="canDeleteAny" type="button" class="note-act text-brand-red" :aria-label="t('notes.delete_theirs', { name: n.author || t('notes.former_user_lower'), when: whenText(n.createdAt) })" @click="confirming = n.id">{{ t('notes.delete') }}</button>
           </p>
-          <ConfirmInline v-if="confirming === n.id" class="mt-2" title="Delete this note?" body="It is kept in the audit trail, but nobody will see it here." confirm-label="Delete note" :busy="busy" @confirm="remove(n)" @cancel="confirming = null" />
+          <ConfirmInline v-if="confirming === n.id" class="mt-2" :title="t('notes.confirm_title')" :body="t('notes.confirm_body')" :confirm-label="t('notes.confirm_label')" :cancel-label="t('notes.cancel')" :busy="busy" @confirm="remove(n)" @cancel="confirming = null" />
         </template>
       </li>
     </ol>
-    <p v-else class="mt-2 text-[13px] text-gray-600">No notes yet.</p>
+    <p v-else class="mt-2 text-[13px] text-gray-600">{{ t('notes.none') }}</p>
 
     <form v-if="canWrite" class="mt-3" @submit.prevent="add">
-      <label :for="`note-new-${callId}`" class="sr-only">Add a note</label>
-      <textarea ref="newField" :id="`note-new-${callId}`" v-model="body" rows="2" maxlength="5000" placeholder="Add a note, e.g. “Wants to speak to the attorney”" class="field" @keydown="onKey($event, add)"></textarea>
+      <label :for="`note-new-${callId}`" class="sr-only">{{ t('notes.add_label') }}</label>
+      <textarea ref="newField" :id="`note-new-${callId}`" v-model="body" rows="2" maxlength="5000" :placeholder="t('notes.placeholder')" class="field" @keydown="onKey($event, add)"></textarea>
       <div class="mt-2 flex items-center gap-2">
-        <button type="submit" class="btn btn-primary" :disabled="busy || !body.trim()">{{ busy && !editing ? 'Saving…' : 'Save note' }}</button>
-        <span class="text-[12px] text-gray-500 hidden sm:inline">Ctrl+Enter to save</span>
+        <button type="submit" class="btn btn-primary" :disabled="busy || !body.trim()">{{ busy && !editing ? t('notes.saving') : t('notes.save_note') }}</button>
+        <span class="text-[12px] text-gray-500 hidden sm:inline">{{ t('notes.shortcut') }}</span>
       </div>
     </form>
   </div>
@@ -48,7 +48,9 @@ import { useApi } from '../../composables/useApi.js'
 import { toast } from '../../composables/useToast.js'
 import FaIcon from '../../components/FaIcon.vue'
 import ConfirmInline from '../../components/ConfirmInline.vue'
-import { when } from '../calls/callsInbox.js'
+import { historyWhen } from './historyText.js'
+import { useT } from '../../i18n/translator.js'
+import { CONTACTS } from '../../i18n/contacts.js'
 
 const props = defineProps({
   callId: { type: Number, required: true },
@@ -57,6 +59,8 @@ const props = defineProps({
 })
 const emit = defineEmits(['changed'])
 const { get, post, del, patch } = useApi()
+const { t, lang } = useT(CONTACTS)
+const whenText = (d) => historyWhen(d, Date.now(), lang.value)
 
 const notes = ref([])
 const loading = ref(true)
@@ -100,10 +104,10 @@ async function add() {
     const n = await post('/api/contacts/notes', { callId: props.callId, body: body.value })
     notes.value = [...notes.value, n]
     body.value = ''
-    toast('Note saved.')
+    toast(t('notes.saved'))
     emit('changed')
   } catch (e) {
-    toast({ text: `The note was not saved: ${e.message}`, tone: 'error' })
+    toast({ text: t('notes.not_saved', { error: e.message }), tone: 'error' })
   } finally {
     busy.value = false
   }
@@ -121,9 +125,9 @@ async function saveEdit(n) {
     const updated = await patch(`/api/contacts/notes/${n.id}`, { body: draft.value })
     notes.value = notes.value.map((x) => (x.id === n.id ? { ...x, ...updated, author: x.author } : x))
     stopEdit(n)
-    toast('Note updated.')
+    toast(t('notes.updated'))
   } catch (e) {
-    toast({ text: `The note was not changed: ${e.message}`, tone: 'error' })
+    toast({ text: t('notes.not_changed', { error: e.message }), tone: 'error' })
   } finally {
     busy.value = false
   }
@@ -135,10 +139,10 @@ async function remove(n) {
     notes.value = notes.value.filter((x) => x.id !== n.id)
     confirming.value = null
     focusLater(() => newField.value || heading.value)
-    toast('Note deleted.')
+    toast(t('notes.deleted'))
     emit('changed')
   } catch (e) {
-    toast({ text: `The note was not deleted: ${e.message}`, tone: 'error' })
+    toast({ text: t('notes.not_deleted', { error: e.message }), tone: 'error' })
   } finally {
     busy.value = false
   }

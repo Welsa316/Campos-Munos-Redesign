@@ -10,7 +10,7 @@ import { loadAccount, profileJson } from '../auth/account.js'
 import { signSession, verifySession, revokeSession } from '../auth/session.js'
 import { PASSWORD_MAX_BYTES } from '../auth/team.js'
 import { parseAvatar, AVATAR_COLORS } from '../auth/avatars.js'
-import { THEMES } from '../auth/themes.js'
+import { THEMES, CUSTOM_THEME, parseCustomTheme } from '../auth/themes.js'
 import { audit } from '../billing/audit.js'
 
 const router = Router()
@@ -205,15 +205,23 @@ router.put(
 
 // Any signed-in account sets its own colour theme; it follows the person to
 // any computer they sign in on. Not audited: it changes nothing but colours.
+// 'custom' comes with the person's own colours ({ base, header, … }, only
+// the keys and #RRGGBB values server/auth/themes.js lists); they are kept
+// when the person goes back to a preset, so Custom still has them.
 router.put(
   '/theme',
   requireAuth,
-  body('theme').isIn(THEMES).withMessage('Choose one of the themes offered'),
+  body('theme').isIn([...THEMES, CUSTOM_THEME]).withMessage('Choose one of the themes offered'),
+  body('custom').custom((v, { req }) => (req.body.theme === CUSTOM_THEME ? Boolean(parseCustomTheme(v)) : v === undefined))
+    .withMessage('Those colours cannot be saved'),
   validate,
   async (req, res) => {
     try {
-      await getPool().query('UPDATE admin_users SET theme = $2 WHERE id = $1', [req.account.id, req.body.theme])
-      res.json({ theme: req.body.theme })
+      const custom = req.body.theme === CUSTOM_THEME ? parseCustomTheme(req.body.custom) : null
+      const { rows } = custom
+        ? await getPool().query('UPDATE admin_users SET theme = $2, custom_theme = $3 WHERE id = $1 RETURNING custom_theme', [req.account.id, CUSTOM_THEME, JSON.stringify(custom)])
+        : await getPool().query('UPDATE admin_users SET theme = $2 WHERE id = $1 RETURNING custom_theme', [req.account.id, req.body.theme])
+      res.json({ theme: req.body.theme, customTheme: parseCustomTheme(rows[0]?.custom_theme) })
     } catch (err) {
       req.log?.error({ err }, 'Theme update error')
       res.status(500).json({ error: 'Internal server error' })

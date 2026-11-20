@@ -14,7 +14,7 @@
         <section ref="cardRef" role="dialog" aria-modal="true" :aria-labelledby="`call-card-title-${call.id}`"
           class="call-card pointer-events-auto relative w-full sm:max-w-[640px] max-h-[88dvh] sm:max-h-[min(760px,calc(100dvh-3rem))] overflow-y-auto overscroll-contain bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl ring-1 ring-gray-200 font-ui pb-[env(safe-area-inset-bottom)] sm:pb-0">
           <div class="sm:hidden mx-auto mt-2.5 h-1 w-10 rounded-full bg-gray-300" aria-hidden="true"></div>
-          <header class="sticky top-0 z-10 bg-white px-5 sm:px-6 pt-4 sm:pt-5 pb-4 border-b border-gray-100 flex items-start gap-3">
+          <header :data-entry-color="color || undefined" class="sticky top-0 z-10 bg-white px-5 sm:px-6 pt-4 sm:pt-5 pb-4 border-b border-gray-100 flex items-start gap-3">
             <span :class="call.exclusion ? 'bg-gray-100 text-gray-500' : look.badge"
               class="w-10 h-10 flex-shrink-0 rounded-full inline-flex items-center justify-center" :title="look.label">
               <FaIcon :name="look.icon" />
@@ -23,13 +23,14 @@
               <h2 :id="`call-card-title-${call.id}`" ref="headingRef" tabindex="-1" class="font-ui text-[18px] font-semibold tracking-tight text-gray-900 outline-none truncate">{{ displayName }}</h2>
               <p class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-gray-600">
                 <a v-if="call.number" :href="telHref(call.number)" class="tabular-nums hover:text-brand-navy hover:underline">{{ phone(call.number) }}</a>
-                <span v-else>Number withheld</span>
-                <span v-if="call.fromFirm" class="tag bg-gray-100 text-gray-700">Firm</span>
-                <span v-else-if="call.client" class="tag bg-brand-navy/10 text-brand-navy">Client</span>
-                <span v-else-if="call.lead" class="tag bg-amber-100 text-amber-900">Website lead</span>
+                <span v-else>{{ t('caller.withheld') }}</span>
+                <span v-if="call.fromFirm" class="tag bg-gray-100 text-gray-700">{{ t('tag.firm') }}</span>
+                <span v-else-if="call.client" class="tag bg-brand-navy/10 text-brand-navy">{{ t('tag.client') }}</span>
+                <span v-else-if="call.lead" class="tag bg-amber-100 text-amber-900">{{ t('tag.lead') }}</span>
               </p>
             </div>
-            <button type="button" @click="close" aria-label="Close call details"
+            <ColorPickerButton v-if="canExclude && call.number" icon-only kind="caller" :id="call.id" :match="call.number" :color="call.color" :targets="[call]" class="-mt-1.5" />
+            <button type="button" @click="close" :aria-label="t('card.close')"
               class="w-11 h-11 -mr-2 -mt-1.5 flex-shrink-0 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-800 inline-flex items-center justify-center">
               <FaIcon name="xmark" />
             </button>
@@ -38,44 +39,44 @@
           <div class="px-5 sm:px-6 py-5 space-y-5">
             <!-- What happened: the evidence wording, unchanged from the row. -->
             <div>
-              <h3 class="label">What happened</h3>
+              <h3 class="label">{{ t('card.what') }}</h3>
               <p class="mt-1.5 text-[14px] text-gray-900">{{ status }}</p>
               <p class="mt-1 text-[12.5px] text-gray-600 tabular-nums">
-                {{ fullDate }} · {{ call.direction === 'inbound' ? 'incoming' : 'outgoing' }} · {{ durationText(call.durationSeconds) }}
+                {{ fullDate }} · {{ t(call.direction === 'inbound' ? 'card.incoming' : 'card.outgoing') }} · {{ durationText(call.durationSeconds) }}
               </p>
             </div>
 
             <!-- What is left to do. -->
             <div v-if="call.direction === 'inbound'" :class="BOX[line?.tone || 'quiet']" class="rounded-xl px-4 py-3.5">
-              <h3 class="label">Follow-up</h3>
+              <h3 class="label">{{ t('card.follow_up') }}</h3>
               <p v-if="call.exclusion" class="mt-1.5 text-[13.5px] text-gray-800">
-                No callback needed · {{ exclusionLabel(call.exclusion.reason) }}. {{ exclusionDetail }}.
+                {{ t('card.no_callback', { label: exclusionLabel(call.exclusion.reason, lang), detail: exclusionDetail }) }}
               </p>
               <p v-else class="mt-1.5 text-[13.5px] text-gray-800">{{ detail }}</p>
               <div class="mt-3 flex flex-wrap items-center gap-2">
                 <button v-if="canCall && call.number" type="button" @click="$emit('callback', call)"
                   :class="call.needsAttention ? 'btn-call' : 'btn-quiet'" class="btn">
-                  <FaIcon name="phone" />{{ call.needsAttention ? 'Call back' : 'Call' }}
+                  <FaIcon name="phone" />{{ call.needsAttention ? t('card.call_back') : t('act.call') }}
                 </button>
                 <button v-if="canExclude && (call.needsAttention || call.needsReview)" type="button" @click="$emit('handled', call)" :disabled="busy" :aria-busy="busy" class="btn btn-quiet">
-                  <FaIcon :name="busy ? 'spinner' : 'check'" :spin="busy" />{{ busy ? 'Saving…' : 'Mark handled' }}
+                  <FaIcon :name="busy ? 'spinner' : 'check'" :spin="busy" />{{ t(busy ? 'act.saving' : 'card.mark_handled') }}
                 </button>
                 <button v-if="canExclude && call.handled" type="button" @click="$emit('reopen', call)" :disabled="busy" class="btn btn-quiet">
-                  <FaIcon name="rotate-left" />Reopen follow-up
+                  <FaIcon name="rotate-left" />{{ t('menu.reopen') }}
                 </button>
                 <button v-if="canExclude && canMark && !call.exclusion && !call.handled" type="button" @click="$emit('exclude', call)" class="btn btn-quiet">
-                  <FaIcon name="ban" />No callback needed
+                  <FaIcon name="ban" />{{ t('act.no_callback') }}
                 </button>
                 <button v-if="canExclude && call.exclusion" type="button" @click="$emit('count-again', call)" :disabled="busy" class="btn btn-quiet">
-                  <FaIcon name="rotate-left" />{{ call.exclusion.scope === 'number' ? 'Count this number again' : 'Count it again' }}
+                  <FaIcon name="rotate-left" />{{ t(call.exclusion.scope === 'number' ? 'menu.count_number_again' : 'menu.count_again') }}
                 </button>
                 <router-link v-if="call.lead && canSeeLeads" :to="{ name: 'Inbox', query: { lead: call.lead.id } }" class="btn btn-quiet">
-                  <FaIcon name="inbox" />Website lead<span v-if="call.lead.matches > 1" class="text-gray-500">· {{ call.lead.matches }}</span>
+                  <FaIcon name="inbox" />{{ t('card.lead') }}<span v-if="call.lead.matches > 1" class="text-gray-500">· {{ call.lead.matches }}</span>
                 </router-link>
               </div>
             </div>
             <div v-else-if="canCall && call.number">
-              <button type="button" @click="$emit('callback', call)" class="btn btn-quiet"><FaIcon name="phone" />Call</button>
+              <button type="button" @click="$emit('callback', call)" class="btn btn-quiet"><FaIcon name="phone" />{{ t('act.call') }}</button>
             </div>
 
             <!-- Reminders on this call (any call with a number to call back). On
@@ -98,7 +99,7 @@
             <div v-if="call.direction === 'inbound'">
               <button type="button" @click="showEvidence = !showEvidence" :aria-expanded="showEvidence" :aria-controls="`call-evidence-${call.id}`"
                 class="inline-flex items-center gap-2 min-h-11 text-[13px] font-semibold text-brand-navy hover:underline">
-                <FaIcon :name="showEvidence ? 'chevron-up' : 'chevron-down'" class="text-[10px]" />What RingCentral recorded
+                <FaIcon :name="showEvidence ? 'chevron-up' : 'chevron-down'" class="text-[10px]" />{{ t('card.recorded') }}
               </button>
               <CallDetails v-if="showEvidence" :id="`call-evidence-${call.id}`" :call-id="call.id" :start="String(call.startedAt)" :reload-key="call" class="!mt-1" />
             </div>
@@ -118,6 +119,8 @@ import ContactHistory from '../contacts/ContactHistory.vue'
 import { can } from '../../composables/useAuth.js'
 import EpisodeCalls from './EpisodeCalls.vue'
 import FollowUpReminders from '../reminders/FollowUpReminders.vue'
+import ColorPickerButton from '../../components/colors/ColorPickerButton.vue'
+import { entryColor } from '../../components/colors/entryColorStore.js'
 import { telHref } from '../../utils/phone.js'
 import { statusLine } from './callEvidenceText.js'
 import { followUpLine, followUpDetail, outboundLine, when } from './callsInbox.js'
@@ -125,6 +128,8 @@ import { look as lookOf, phone, durationText } from './callLook.js'
 import { exclusionLabel } from './exclusionReasons.js'
 import { toDate } from '../../utils/text.js'
 import { FIRM_TIME_ZONE } from '../../utils/firmTime.js'
+import { useT } from '../../i18n/translator.js'
+import { CALLS } from '../../i18n/calls.js'
 
 const props = defineProps({
   call: { type: Object, default: null },
@@ -144,25 +149,29 @@ const props = defineProps({
 })
 const emit = defineEmits(['close', 'callback', 'handled', 'reopen', 'exclude', 'count-again', 'open-call', 'reminders-changed'])
 const canDeleteAnyNote = computed(() => can('team.manage'))
+const { t, lang, locale } = useT(CALLS)
 const historyRef = ref(null)
 
 const cardRef = ref(null)
 const headingRef = ref(null)
 const showEvidence = ref(false)
 
-const look = computed(() => lookOf(props.call))
-const displayName = computed(() => props.call.name || (props.call.number ? 'Unknown caller' : 'Private number'))
-const status = computed(() => (props.call.direction === 'inbound' ? statusLine(props.call) : outboundLine(props.call)))
-const line = computed(() => followUpLine(props.call, props.now))
-const detail = computed(() => followUpDetail(props.call, props.now) || 'Nothing to follow up.')
-const fullDate = computed(() => new Date(props.call.startedAt).toLocaleString('en-US', { timeZone: 'America/Chicago', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))
+const look = computed(() => lookOf(props.call, lang.value))
+// The caller's shared colour (components/colors/), on the card's header too.
+const color = computed(() => (props.call ? entryColor('caller', props.call.number, props.call.color) : null))
+const displayName = computed(() => props.call.name || t(props.call.number ? 'caller.unknown' : 'caller.private'))
+const status = computed(() => (props.call.direction === 'inbound' ? statusLine(props.call, lang.value) : outboundLine(props.call, lang.value)))
+const line = computed(() => followUpLine(props.call, props.now, lang.value))
+const detail = computed(() => followUpDetail(props.call, props.now, lang.value) || t('card.nothing'))
+const fullDate = computed(() => new Date(props.call.startedAt).toLocaleString(locale.value, { timeZone: 'America/Chicago', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))
 const exclusionDetail = computed(() => {
   const e = props.call.exclusion
   const parts = []
   if (e.note) parts.push(e.note)
-  if (e.scope === 'number') parts.push('Every call from this number')
+  if (e.scope === 'number') parts.push(t('card.every_call'))
   const at = toDate(e.at)
-  parts.push(`Marked by ${e.by || 'a former user'}${at ? `, ${at.toLocaleDateString('en-US', { timeZone: FIRM_TIME_ZONE, month: 'short', day: 'numeric' })}` : ''}`)
+  const by = e.by || t('detail.former_user')
+  parts.push(at ? t('card.marked_by_on', { by, date: at.toLocaleDateString(locale.value, { timeZone: FIRM_TIME_ZONE, month: 'short', day: 'numeric' }) }) : t('card.marked_by', { by }))
   return parts.join(' · ')
 })
 const BOX = { open: 'bg-amber-50 ring-1 ring-amber-200', done: 'bg-green-50 ring-1 ring-green-200', quiet: 'bg-gray-50 ring-1 ring-gray-200' }
@@ -184,7 +193,7 @@ watch(() => props.call?.id, (id) => { if (id) nextTick(focusHeading) })
 
 // Escape closes the card wherever focus is (it is the topmost layer).
 // A Remind me panel inside the card closes first.
-function onKey(e) { if (e.key === 'Escape' && props.call && !e.target.closest?.('[data-reminder-popover]')) { e.preventDefault(); e.stopImmediatePropagation(); close() } }
+function onKey(e) { if (e.key === 'Escape' && props.call && !e.target.closest?.('[data-reminder-popover], [data-color-picker]')) { e.preventDefault(); e.stopImmediatePropagation(); close() } }
 watch(() => Boolean(props.call), (open) => {
   if (open) document.addEventListener('keydown', onKey, true)
   else document.removeEventListener('keydown', onKey, true)

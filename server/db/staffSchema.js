@@ -29,6 +29,10 @@ export const STAFF_SCHEMA_SQL = `
   ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS avatar_bg TEXT;
   -- Portal colour theme (server/auth/themes.js); NULL = Campos Muños Classic.
   ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS theme TEXT;
+  -- A person's own colours when theme = 'custom' (Home → Themes → Custom):
+  -- { base, header, primary, … } with #RRGGBB values, validated by
+  -- server/auth/themes.js. Kept when they go back to a preset; NULL = none.
+  ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS custom_theme JSONB;
 
   -- Who wrote each lead note and sent each email reply. NULL on rows from
   -- before there was more than one account.

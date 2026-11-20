@@ -1,26 +1,40 @@
 // Callback reminders in words, and which ones belong where. Pure, tested in
 // admin/test/reminders.test.js.
+import { makeTranslate, clockCount } from '../../i18n/translator.js'
+import { REMINDERS } from '../../i18n/reminders.js'
+
+const tr = makeTranslate(REMINDERS)
 
 /**
  * What happened to a due reminder's email and notification, in one line, or
  * '' while it is not due yet. A final failure says so plainly: it is the
  * only trace of an email that never arrived.
  */
-export function deliveryNote(r, formatTime) {
+export function deliveryNote(r, formatTime, lang = 'en') {
   const e = r?.delivery?.email
   const p = r?.delivery?.push
   if (!e && !p) return ''
+  const t = (key, vars) => tr(lang, key, vars)
   const pushed = p?.status === 'sent'
-  if (e?.status === 'sent') return `Emailed${e.at ? ` ${formatTime(e.at)}` : ''}${pushed ? ' and sent as a notification' : ''}.`
+  if (e?.status === 'sent') {
+    if (e.at) {
+      const time = formatTime(e.at)
+      return t(pushed ? 'delivery.emailed_at_pushed' : 'delivery.emailed_at', { time, count: clockCount(time) })
+    }
+    return t(pushed ? 'delivery.emailed_pushed' : 'delivery.emailed')
+  }
   const parts = []
-  if (e?.status === 'pending' && e.nextAttemptAt) parts.push(`The email did not go through yet; trying again at ${formatTime(e.nextAttemptAt)}.`)
-  else if (e?.status === 'pending' || e?.status === 'sending') parts.push('Sending the email…')
-  else if (e?.status === 'failed') parts.push('The email could not be sent.')
-  else if (e?.status === 'skipped_no_email') parts.push('No email was sent: this account has no valid email address.')
-  else if (e?.status === 'skipped_disabled') parts.push('Nothing was sent: this account is disabled.')
-  else if (e?.status === 'skipped_allowlist') parts.push('No email was sent (this server only emails test addresses).')
-  else if (e?.status === 'not_configured') parts.push('No email was sent: email is not set up on the server.')
-  if (pushed) parts.push('A notification was sent.')
+  if (e?.status === 'pending' && e.nextAttemptAt) {
+    const time = formatTime(e.nextAttemptAt)
+    parts.push(t('delivery.retrying', { time, count: clockCount(time) }))
+  }
+  else if (e?.status === 'pending' || e?.status === 'sending') parts.push(t('delivery.sending'))
+  else if (e?.status === 'failed') parts.push(t('delivery.failed'))
+  else if (e?.status === 'skipped_no_email') parts.push(t('delivery.no_email'))
+  else if (e?.status === 'skipped_disabled') parts.push(t('delivery.disabled'))
+  else if (e?.status === 'skipped_allowlist') parts.push(t('delivery.allowlist'))
+  else if (e?.status === 'not_configured') parts.push(t('delivery.not_configured'))
+  if (pushed) parts.push(t('delivery.pushed'))
   return parts.join(' ')
 }
 

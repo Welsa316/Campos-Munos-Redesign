@@ -10,7 +10,7 @@
         <span v-for="t in THEMES.slice(0, 3)" :key="t.key" class="rounded-[5px]" :style="{ background: t.tokens['sidebar-bg'] }"></span>
         <span class="rounded-[5px] bg-white/80 flex items-center justify-center text-brand-navy"><FaIcon name="palette" class="text-[11px]" /></span>
       </span>
-      <span class="text-[11px] font-ui font-semibold text-gray-600 group-hover:text-gray-900">Themes</span>
+      <span class="text-[11px] font-ui font-semibold text-gray-600 group-hover:text-gray-900">{{ tr('folder.title') }}</span>
     </button>
 
     <div v-if="open" id="theme-folder-panel" ref="panelRef" role="dialog" aria-modal="false" aria-labelledby="theme-folder-title"
@@ -18,34 +18,35 @@
       @keydown.esc.stop.prevent="close(true)" @focusout="onFocusOut">
       <div ref="headRef" class="flex items-start justify-between gap-3 mb-3.5 px-1">
         <div>
-          <h2 id="theme-folder-title" class="text-[17px] font-semibold tracking-tight text-gray-900">Themes</h2>
-          <p class="text-[12px] text-gray-500 mt-0.5">Saved to your account; colleagues keep their own.</p>
+          <h2 id="theme-folder-title" class="text-[17px] font-semibold tracking-tight text-gray-900">{{ tr('folder.title') }}</h2>
+          <p class="text-[12px] text-gray-500 mt-0.5">{{ tr('folder.note') }}</p>
         </div>
-        <button type="button" @click="close(true)" aria-label="Close themes"
+        <button type="button" @click="close(true)" :aria-label="tr('folder.close')"
           class="w-8 h-8 rounded-full text-gray-500 hover:text-gray-800 hover:bg-gray-900/5 flex items-center justify-center transition-colors">
           <FaIcon name="xmark" class="text-sm" />
         </button>
       </div>
 
-      <div ref="gridRef" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3" role="group" aria-label="Theme" @keydown="onArrows">
-        <button v-for="(t, i) in THEMES" :key="t.key" type="button" :data-index="i"
-          :aria-pressed="current === t.key" :tabindex="focusIndex === i ? 0 : -1"
+      <div ref="gridRef" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3" role="group" :aria-label="tr('folder.group')" @keydown="onArrows">
+        <button v-for="(t, i) in tiles" :key="t.key" type="button" :data-index="i"
+          :aria-pressed="t.key === CUSTOM_THEME ? undefined : current === t.key" :aria-haspopup="t.key === CUSTOM_THEME ? 'dialog' : undefined"
+          :tabindex="focusIndex === i ? 0 : -1"
           @click="choose(t.key)" @focus="focusIndex = i"
           :class="current === t.key ? 'ring-2 ring-brand-navy' : 'ring-1 ring-gray-900/10 hover:ring-gray-900/25'"
           class="theme-option group/opt text-left rounded-[18px] bg-white/70 p-2 transition-[box-shadow,background-color] duration-200 hover:bg-white/90 hover:ring-1 hover:ring-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy">
           <!-- Miniature dashboard: rail, greeting, the two summary cards, the section cards. -->
-          <span class="block h-[84px] rounded-[12px] overflow-hidden flex"
+          <span v-if="t.tokens" class="block h-[84px] rounded-[12px] overflow-hidden flex"
             :style="{ background: t.tokens['app-bg'], boxShadow: `inset 0 0 0 1px ${t.tokens.border}` }" aria-hidden="true">
             <span class="w-[20%] h-full flex flex-col items-center gap-[5px] pt-2.5" :style="{ background: t.tokens['sidebar-bg'] }">
-              <!-- Literal white: bg-white would become the current theme's surface. -->
-              <span class="w-2.5 h-2.5 rounded-full" style="background: rgb(255 255 255 / 0.8)"></span>
-              <span v-for="n in 3" :key="n" class="w-3.5 h-[3px] rounded-full" style="background: rgb(255 255 255 / 0.35)"></span>
+              <!-- The header's own text colour (literal: bg-white would become the current theme's surface). -->
+              <span class="w-2.5 h-2.5 rounded-full" :style="{ background: t.tokens['text-on-sidebar'], opacity: 0.8 }"></span>
+              <span v-for="n in 3" :key="n" class="w-3.5 h-[3px] rounded-full" :style="{ background: t.tokens['text-on-sidebar'], opacity: 0.35 }"></span>
             </span>
             <span class="flex-1 p-2 flex flex-col gap-[5px] min-w-0">
               <span class="h-[5px] w-[55%] rounded-full" :style="{ background: t.tokens['text-primary'], opacity: 0.75 }"></span>
               <span class="flex gap-[5px] h-[24px]">
-                <span class="flex-[7] rounded-[6px]" :style="{ background: t.tokens['error-soft'] }"></span>
-                <span class="flex-[5] rounded-[6px]" :style="{ background: t.tokens.primary }"></span>
+                <span class="flex-[7] rounded-[6px]" :style="{ background: t.tokens['summary-a-bg'] }"></span>
+                <span class="flex-[5] rounded-[6px]" :style="{ background: t.key === CUSTOM_THEME ? t.tokens['summary-b-bg'] : t.tokens.primary }"></span>
               </span>
               <span class="flex gap-[5px] flex-1">
                 <span v-for="n in 3" :key="n" class="flex-1 rounded-[6px] p-[4px]" :style="{ background: t.tokens.surface, boxShadow: `inset 0 0 0 1px ${t.tokens.border}` }">
@@ -54,15 +55,27 @@
               </span>
             </span>
           </span>
+          <!-- No colours of their own yet: an invitation instead of a miniature. -->
+          <span v-else class="h-[84px] rounded-[12px] border-[1.5px] border-dashed border-gray-300 flex flex-col items-center justify-center gap-1.5" aria-hidden="true">
+            <span class="flex -space-x-1.5">
+              <span v-for="c in INVITE" :key="c" class="w-4 h-4 rounded-full ring-2 ring-white" :style="{ background: c }"></span>
+            </span>
+            <FaIcon name="palette" class="text-[13px] text-gray-500" />
+          </span>
           <span class="block mt-2 px-1 text-[13px] font-semibold text-gray-900 leading-tight">{{ t.name }}</span>
           <span class="block px-1 mt-0.5 text-[11px] text-gray-500 leading-snug min-h-[28px]">{{ t.description }}</span>
           <span v-if="current === t.key" class="flex items-center gap-1 px-1 mt-1 text-[11px] font-semibold text-brand-navy">
-            <FaIcon name="circle-check" class="text-[11px]" />Selected
+            <FaIcon name="circle-check" class="text-[11px]" />{{ tr('tile.selected') }}
+          </span>
+          <span v-else-if="t.key === CUSTOM_THEME && t.tokens" class="flex items-center gap-1 px-1 mt-1 text-[11px] font-semibold text-gray-600">
+            <FaIcon name="pen" class="text-[10px]" />{{ tr('tile.edit') }}
           </span>
         </button>
       </div>
       <p v-if="error" role="alert" class="mt-3 px-1 text-[12px] text-brand-red">{{ error }}</p>
     </div>
+
+    <CustomThemeEditor :visible="editorOpen" @close="closeEditor" />
   </div>
 </template>
 
@@ -72,17 +85,33 @@
 // (a clip-path from the folder's box to the full panel, so nothing inside is
 // stretched), the folder fades as it does, and the previews spring in one
 // after another. Closing runs it backwards into the folder.
-import { ref, nextTick, onBeforeUnmount } from 'vue'
+import { ref, computed, nextTick, onBeforeUnmount } from 'vue'
 import { gsap } from 'gsap'
-import { THEMES, DEFAULT_THEME } from '../data/themes.js'
+import { THEMES, DEFAULT_THEME, CUSTOM_THEME, buildCustomTheme } from '../data/themes.js'
 import { useAuth, setTheme } from '../composables/useAuth.js'
 import { rawFetch, goToLogin } from '../composables/useApi.js'
 import FaIcon from './FaIcon.vue'
+import CustomThemeEditor from './CustomThemeEditor.vue'
+import { useT } from '../i18n/translator.js'
+import { THEME_WORDS } from '../i18n/themes.js'
 
 const { profile } = useAuth()
 const open = ref(false)
 const current = ref(profile.value.theme || DEFAULT_THEME)
 const focusIndex = ref(0)
+const editorOpen = ref(false)
+const { t: tr } = useT(THEME_WORDS)
+
+// The six presets, then the person's own colours (a miniature of them once
+// they have made some).
+const INVITE = ['#003F8D', '#E8A33D', '#176F6A', '#C2185B']
+const tiles = computed(() => {
+  const own = buildCustomTheme(profile.value.customTheme)
+  return [
+    ...THEMES.map((th) => ({ ...th, description: tr(`desc.${th.key}`) })),
+    { key: CUSTOM_THEME, name: tr('tile.name'), description: own ? tr('tile.yours') : tr('tile.new'), tokens: own?.tokens || null },
+  ]
+})
 const error = ref('')
 const rootRef = ref(null)
 const tileRef = ref(null)
@@ -109,7 +138,7 @@ function toggle() { open.value ? close(true) : show() }
 async function show() {
   if (open.value || busy) return
   current.value = profile.value.theme || DEFAULT_THEME
-  focusIndex.value = Math.max(0, THEMES.findIndex((t) => t.key === current.value))
+  focusIndex.value = Math.max(0, tiles.value.findIndex((t) => t.key === current.value))
   error.value = ''
   open.value = true
   await nextTick()
@@ -172,12 +201,26 @@ function onArrows(e) {
   const moves = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols, Home: -99, End: 99 }
   if (!(e.key in moves)) return
   e.preventDefault()
-  const next = e.key === 'Home' ? 0 : e.key === 'End' ? THEMES.length - 1 : Math.min(THEMES.length - 1, Math.max(0, focusIndex.value + moves[e.key]))
+  const last = tiles.value.length - 1
+  const next = e.key === 'Home' ? 0 : e.key === 'End' ? last : Math.min(last, Math.max(0, focusIndex.value + moves[e.key]))
   focusIndex.value = next
   gridRef.value?.children[next]?.focus()
 }
 
+// Custom opens the colour editor (over the page, so the folder folds away
+// first); Save there switches to it.
+function openEditor() {
+  close(false)
+  editorOpen.value = true
+}
+function closeEditor() {
+  editorOpen.value = false
+  current.value = profile.value.theme || DEFAULT_THEME
+  nextTick(() => tileRef.value?.focus({ preventScroll: true }))
+}
+
 async function choose(key) {
+  if (key === CUSTOM_THEME) return openEditor()
   if (key === current.value) {
     close(true)
     return

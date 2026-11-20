@@ -14,12 +14,12 @@
       <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
         <div class="px-6 pt-6 pb-4 border-b border-gray-100 flex items-start justify-between">
           <div>
-            <h2 id="change-password-title" class="font-heading text-xl text-brand-navy">Change password</h2>
-            <p class="text-gray-500 text-sm font-ui mt-1">Use at least 10 characters.</p>
+            <h2 id="change-password-title" class="font-heading text-xl text-brand-navy">{{ t('pw.title') }}</h2>
+            <p class="text-gray-500 text-sm font-ui mt-1">{{ t('pw.hint') }}</p>
           </div>
           <button ref="closeBtnRef" @click="close" type="button"
             class="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700 flex items-center justify-center transition-colors"
-            aria-label="Close">
+            :aria-label="t('pw.close')">
             <i class="fa-solid fa-xmark text-sm" aria-hidden="true"></i>
           </button>
         </div>
@@ -27,21 +27,21 @@
         <form @submit.prevent="submit" class="px-6 py-5 space-y-4">
           <div>
             <label for="change-current-password" class="block text-xs font-ui font-semibold tracking-wide uppercase text-gray-500 mb-1.5">
-              Current password
+              {{ t('pw.current') }}
             </label>
             <input id="change-current-password" v-model="form.currentPassword" type="password" required autocomplete="current-password"
               class="w-full px-3 py-2.5 rounded-lg bg-brand-surface border border-gray-200 focus:border-brand-navy/40 focus:ring-2 focus:ring-brand-navy/10 focus:outline-none text-sm font-ui text-gray-800" />
           </div>
           <div>
             <label for="change-new-password" class="block text-xs font-ui font-semibold tracking-wide uppercase text-gray-500 mb-1.5">
-              New password
+              {{ t('pw.new') }}
             </label>
             <input id="change-new-password" v-model="form.newPassword" type="password" required minlength="10" autocomplete="new-password"
               class="w-full px-3 py-2.5 rounded-lg bg-brand-surface border border-gray-200 focus:border-brand-navy/40 focus:ring-2 focus:ring-brand-navy/10 focus:outline-none text-sm font-ui text-gray-800" />
           </div>
           <div>
             <label for="change-confirm-password" class="block text-xs font-ui font-semibold tracking-wide uppercase text-gray-500 mb-1.5">
-              Confirm new password
+              {{ t('pw.confirm') }}
             </label>
             <input id="change-confirm-password" v-model="form.confirmPassword" type="password" required minlength="10" autocomplete="new-password"
               class="w-full px-3 py-2.5 rounded-lg bg-brand-surface border border-gray-200 focus:border-brand-navy/40 focus:ring-2 focus:ring-brand-navy/10 focus:outline-none text-sm font-ui text-gray-800" />
@@ -52,7 +52,7 @@
           </p>
           <div role="status">
             <p v-if="success" class="text-green-600 text-xs font-ui">
-              <i class="fa-solid fa-check-circle mr-1" aria-hidden="true"></i>Password updated. You'll need to use it next time you sign in.
+              <i class="fa-solid fa-check-circle mr-1" aria-hidden="true"></i>{{ t('pw.updated') }}
             </p>
           </div>
 
@@ -62,12 +62,12 @@
             <button type="button" ref="cancelBtnRef" @click="close"
               :class="success ? 'bg-brand-navy hover:bg-brand-navy-dark text-white font-bold border-transparent' : 'text-gray-500 hover:text-gray-800 font-medium border-gray-200 hover:border-gray-300'"
               class="flex-1 py-2.5 rounded-lg text-sm font-ui border transition-colors">
-              {{ success ? 'Done' : 'Cancel' }}
+              {{ success ? t('pw.done') : t('pw.cancel') }}
             </button>
             <button v-if="!success" type="submit" :disabled="loading"
               class="flex-1 py-2.5 rounded-lg bg-brand-navy hover:bg-brand-navy-dark text-white text-sm font-ui font-bold tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-              <span v-if="loading"><i class="fa-solid fa-spinner fa-spin mr-1.5 text-xs" aria-hidden="true"></i>Updating…</span>
-              <span v-else>Update password</span>
+              <span v-if="loading"><i class="fa-solid fa-spinner fa-spin mr-1.5 text-xs" aria-hidden="true"></i>{{ t('pw.updating') }}</span>
+              <span v-else>{{ t('pw.update') }}</span>
             </button>
           </div>
         </form>
@@ -79,6 +79,10 @@
 <script setup>
 import { ref, watch, nextTick } from 'vue'
 import { rawFetch } from '../../composables/useApi.js'
+import { useT } from '../../i18n/translator.js'
+import { PORTAL } from '../../i18n/portal.js'
+
+const { t } = useT(PORTAL)
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -140,15 +144,15 @@ async function submit() {
   success.value = false
 
   if (form.value.newPassword !== form.value.confirmPassword) {
-    error.value = 'New password and confirmation do not match.'
+    error.value = t('pw.mismatch')
     return
   }
   if (form.value.newPassword.length < 10) {
-    error.value = 'New password must be at least 10 characters.'
+    error.value = t('pw.too_short')
     return
   }
   if (form.value.newPassword === form.value.currentPassword) {
-    error.value = 'New password must be different from the current one.'
+    error.value = t('pw.same')
     return
   }
 
@@ -164,14 +168,14 @@ async function submit() {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
-      throw new Error(data.error || 'Failed to update password')
+      throw new Error(data.error || t('pw.failed'))
     }
 
     success.value = true
     form.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
     nextTick(() => cancelBtnRef.value?.focus())
   } catch (err) {
-    error.value = err.message || 'Failed to update password'
+    error.value = err.message || t('pw.failed')
   } finally {
     loading.value = false
   }

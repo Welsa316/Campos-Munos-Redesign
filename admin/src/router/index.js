@@ -5,8 +5,8 @@ import { reloadForStaleBuild, clearStaleBuildMark } from './staleBuild.js'
 import { prefetchSections } from './prefetch.js'
 import { nextTick } from 'vue'
 import { movesFocus, focusMainHeading } from '../utils/routeFocus.js'
-
-const BRAND = 'Campos Muños Law'
+import { routeTitle } from './title.js'
+import { usePortalLang } from '../composables/usePortalLang.js'
 
 const router = createRouter({
   // BASE_URL is '/' on admin.camulaw.com and '/admin/' in the transitional
@@ -54,7 +54,9 @@ router.afterEach((to, from, failure) => {
   if (typeof document === 'undefined') return
   if (!failure) clearStaleBuildMark(window.sessionStorage)
   // Views that own a live title (the inbox's unread count) set their own.
-  if (to.meta?.title) document.title = `${to.meta.title} | ${BRAND}`
+  // In the language chosen on the switch.
+  const title = routeTitle(to, usePortalLang().lang.value)
+  if (title) document.title = title
   // A new section: focus its heading once it has rendered (routeFocus.js).
   if (!failure && movesFocus(to, from)) nextTick(() => focusMainHeading())
   // Signed in: fetch the other sections' code while the browser is idle.

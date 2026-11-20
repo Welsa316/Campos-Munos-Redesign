@@ -9,10 +9,10 @@
       <form @submit.prevent="save" class="relative w-full max-w-[440px] max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white rounded-3xl shadow-2xl font-ui">
         <div class="px-6 pt-6 pb-1 flex items-start justify-between gap-3">
           <div class="min-w-0">
-            <h2 id="exclude-dialog-title" class="text-[19px] font-semibold tracking-tight text-gray-900">No callback needed</h2>
-            <p class="text-[13px] text-gray-600 mt-0.5 tabular-nums truncate">{{ who }} · {{ several ? `${call.callIds.length} calls, last ${when}` : when }}</p>
+            <h2 id="exclude-dialog-title" class="text-[19px] font-semibold tracking-tight text-gray-900">{{ t('excl.title') }}</h2>
+            <p class="text-[13px] text-gray-600 mt-0.5 tabular-nums [overflow-wrap:anywhere]">{{ who }} · {{ several ? t('excl.several', { count: call.callIds.length, when }) : when }}</p>
           </div>
-          <button @click="close" type="button" aria-label="Close"
+          <button @click="close" type="button" :aria-label="t('dialog.close')"
             class="w-8 h-8 flex-shrink-0 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700 flex items-center justify-center transition-colors">
             <FaIcon name="xmark" />
           </button>
@@ -20,7 +20,7 @@
 
         <div class="px-6 pb-6 pt-3 space-y-4">
           <fieldset>
-            <legend class="text-[12px] font-semibold text-gray-700 mb-2">Why doesn't it need a callback?</legend>
+            <legend class="text-[12px] font-semibold text-gray-700 mb-2">{{ t('excl.why') }}</legend>
             <div class="space-y-1.5">
               <label v-for="r in REASONS" :key="r.key"
                 :class="reason === r.key ? 'ring-2 ring-brand-navy bg-brand-surface' : 'ring-1 ring-gray-200 hover:bg-gray-50'"
@@ -36,31 +36,31 @@
 
           <div>
             <label for="exclude-note" class="block text-[12px] font-semibold text-gray-700 mb-1.5">
-              Note <span class="font-normal text-gray-500">{{ reason === 'other' ? '(required)' : '(optional)' }}</span>
+              {{ t('excl.note') }} <span class="font-normal text-gray-500">{{ t(reason === 'other' ? 'excl.required' : 'excl.optional') }}</span>
             </label>
             <input id="exclude-note" v-model="note" type="text" maxlength="200" autocomplete="off"
-              :placeholder="reason === 'staff_test' ? 'e.g. Ana testing the main line' : ''"
+              :placeholder="reason === 'staff_test' ? t('excl.note_placeholder') : ''"
               class="w-full px-3.5 py-2.5 rounded-xl bg-brand-surface border border-gray-200 focus:border-brand-navy/40 focus:ring-2 focus:ring-brand-navy/10 focus:outline-none text-[14px]" />
           </div>
 
           <label v-if="call.number" class="flex items-start gap-3 rounded-xl bg-brand-surface px-3.5 py-3 cursor-pointer">
             <input v-model="wholeNumber" type="checkbox" class="mt-0.5 w-4 h-4 accent-brand-navy" />
             <span class="min-w-0">
-              <span class="block text-[13px] font-semibold text-gray-900">Every call from <span class="tabular-nums whitespace-nowrap">{{ phone(call.number) }}</span></span>
-              <span class="block text-[12px] text-gray-600 leading-snug">For a number that keeps calling, such as a staff member's mobile. Covers its past and future missed calls.</span>
+              <span class="block text-[13px] font-semibold text-gray-900">{{ t('excl.every_call_from') }} <span class="tabular-nums whitespace-nowrap">{{ phone(call.number) }}</span></span>
+              <span class="block text-[12px] text-gray-600 leading-snug">{{ t('excl.every_call_help') }}</span>
             </span>
           </label>
 
           <p v-if="error" role="alert" class="text-[13px] text-brand-red">{{ error }}</p>
 
           <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
-            <button type="button" @click="close" class="px-5 py-2.5 rounded-full text-[13px] font-semibold text-gray-600 hover:bg-gray-100">Cancel</button>
+            <button type="button" @click="close" class="px-5 py-2.5 rounded-full text-[13px] font-semibold text-gray-600 hover:bg-gray-100">{{ t('excl.cancel') }}</button>
             <button type="submit" :disabled="!canSave"
               class="px-5 py-2.5 rounded-full bg-gray-900 text-white text-[13px] font-semibold hover:bg-black disabled:opacity-50">
-              {{ busy ? 'Saving…' : 'Leave out of missed calls' }}
+              {{ t(busy ? 'act.saving' : 'excl.save') }}
             </button>
           </div>
-          <p class="text-[11px] text-gray-500 leading-snug">It stays in the call log with your name and the reason, and can be counted again at any time.</p>
+          <p class="text-[11px] text-gray-500 leading-snug">{{ t('excl.footer') }}</p>
         </div>
       </form>
     </div>
@@ -74,15 +74,18 @@ import { FIRM_TIME_ZONE } from '../../utils/firmTime.js'
 import { useApi } from '../../composables/useApi.js'
 import { formatPhone } from '../../utils/phone.js'
 import FaIcon from '../../components/FaIcon.vue'
-import { EXCLUSION_REASONS } from './exclusionReasons.js'
+import { exclusionReasons } from './exclusionReasons.js'
+import { useT } from '../../i18n/translator.js'
+import { CALLS } from '../../i18n/calls.js'
 
 // call: { id, number, name, startedAt, callIds? } or null (closed). callIds:
 // every call of the caller's episode, each marked on its own.
 const props = defineProps({ call: { type: Object, default: null } })
 const emit = defineEmits(['close', 'saved'])
 const { post } = useApi()
+const { t, lang, locale } = useT(CALLS)
 
-const REASONS = EXCLUSION_REASONS
+const REASONS = computed(() => exclusionReasons(lang.value))
 const reason = ref('')
 const note = ref('')
 const wholeNumber = ref(false)
@@ -95,10 +98,10 @@ const phone = (n) => {
   const s = String(n || '')
   return /^\+1\d{10}$/.test(s) ? formatPhone(s.slice(2)) : formatPhone(s)
 }
-const who = computed(() => props.call?.name || (props.call?.number ? phone(props.call.number) : 'Number withheld'))
+const who = computed(() => props.call?.name || (props.call?.number ? phone(props.call.number) : t('caller.withheld')))
 const when = computed(() => {
   const d = toDate(props.call?.startedAt)
-  return d ? d.toLocaleString('en-US', { timeZone: FIRM_TIME_ZONE, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''
+  return d ? d.toLocaleString(locale.value, { timeZone: FIRM_TIME_ZONE, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''
 })
 const several = computed(() => (props.call?.callIds?.length || 0) > 1)
 const canSave = computed(() => !busy.value && reason.value && (reason.value !== 'other' || note.value.trim()))
