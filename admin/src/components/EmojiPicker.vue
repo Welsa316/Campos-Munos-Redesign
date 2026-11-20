@@ -8,13 +8,13 @@
        reply form, given `relative`), not against this button, so it lines up
        with the form's right edge and stays on screen on a phone. -->
   <button ref="toggle" type="button" @click="open ? close(true) : show()" :disabled="disabled"
-    :aria-expanded="open" :aria-controls="panelId" aria-label="Add an emoji" title="Add an emoji"
+    :aria-expanded="open" :aria-controls="panelId" :aria-label="t('emoji.add')" :title="t('emoji.add')"
     :class="open ? 'bg-brand-surface text-brand-navy' : 'text-gray-500 hover:text-brand-navy hover:bg-brand-surface'"
     class="flex-shrink-0 w-11 h-11 inline-flex items-center justify-center rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
     <FaIcon name="face-smile" class="text-lg" />
   </button>
 
-  <div v-if="open" :id="panelId" ref="panel" role="dialog" aria-label="Emoji" @keydown.esc.stop.prevent="close(true)" @mousedown="keepFocus"
+  <div v-if="open" :id="panelId" ref="panel" role="dialog" :aria-label="t('emoji.panel')" @keydown.esc.stop.prevent="close(true)" @mousedown="keepFocus"
     class="ep absolute bottom-full right-0 z-30 mb-2 w-[21rem] max-w-full rounded-xl bg-white ring-1 ring-gray-200 shadow-lg p-2 font-ui">
     <!-- Each group is one Tab stop (Recently used, then all); the arrow keys
          move inside a group, Enter or Space puts the emoji in. -->
@@ -36,6 +36,8 @@
 import { ref, computed, nextTick, onBeforeUnmount, useId } from 'vue'
 import FaIcon from './FaIcon.vue'
 import { EMOJI, insertEmoji, pushRecent, cleanRecent, gridIndex, emojiName, GRID_COLUMNS } from '../utils/emoji.js'
+import { useT } from '../i18n/translator.js'
+import { COMPONENTS } from '../i18n/components.js'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
@@ -46,6 +48,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:modelValue'])
 
+const { t } = useT(COMPONENTS)
 const panelId = `emoji-${useId()}`
 const open = ref(false)
 const toggle = ref(null)
@@ -65,8 +68,8 @@ const readRecent = () => {
 const recent = ref([])
 
 const groups = computed(() => [
-  ...(recent.value.length ? [{ key: 'recent', label: 'Recently used', items: recent.value }] : []),
-  { key: 'all', label: 'Emoji', items: EMOJI.map((e) => e.char) },
+  ...(recent.value.length ? [{ key: 'recent', label: t('emoji.recent'), items: recent.value }] : []),
+  { key: 'all', label: t('emoji.all'), items: EMOJI.map((e) => e.char) },
 ])
 
 // Where the caret was in the box when the panel opened, then after each
@@ -113,7 +116,7 @@ function onOutside(e) {
 function pick(char) {
   const out = insertEmoji(props.modelValue, caret.start, caret.end, char, props.maxlength)
   if (!out) {
-    note.value = 'The reply is at its length limit.'
+    note.value = t('emoji.limit')
     return
   }
   note.value = ''

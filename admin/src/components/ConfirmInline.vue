@@ -11,7 +11,7 @@
       <button type="button" @click="$emit('confirm')" :disabled="busy"
         :class="tone === 'danger' ? 'bg-brand-red hover:bg-brand-red-light' : 'bg-brand-navy hover:bg-brand-navy-dark'"
         class="px-3 py-1.5 rounded-lg text-white font-semibold transition-colors disabled:opacity-50">{{ confirmLabel }}</button>
-      <button type="button" data-autofocus @click="$emit('cancel')" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-white transition-colors">{{ cancelLabel }}</button>
+      <button type="button" data-autofocus @click="$emit('cancel')" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-white transition-colors">{{ cancelLabel || t('confirm.cancel') }}</button>
     </div>
   </div>
 </template>
@@ -19,18 +19,22 @@
 <script setup>
 import { useId } from 'vue'
 import { vAlertFocus } from '../directives/alertFocus.js'
+import { useT } from '../i18n/translator.js'
+import { COMPONENTS } from '../i18n/components.js'
 
 defineProps({
   title: { type: String, required: true },
   body: { type: String, default: '' },
   confirmLabel: { type: String, required: true },
-  cancelLabel: { type: String, default: 'Cancel' },
+  // Cancel, in the portal's language, unless the caller names it.
+  cancelLabel: { type: String, default: '' },
   // danger: a red action (cancel, unlink, opt out); otherwise navy.
   tone: { type: String, default: 'danger' },
   busy: { type: Boolean, default: false },
 })
 defineEmits(['confirm', 'cancel'])
 
+const { t } = useT(COMPONENTS)
 const uid = useId()
 const titleId = `${uid}-q`
 const bodyId = `${uid}-d`
