@@ -20,8 +20,9 @@ export const ACTIONS = {
   'POST /api/auth/logout': { key: 'auth.sign_out', label: 'Signed out', entity: 'account' },
   'POST /api/auth/change-password': { key: 'auth.password_changed', label: 'Changed their own password', entity: 'account' },
   'PUT /api/auth/avatar': { key: 'auth.avatar_changed', label: 'Changed their profile picture', entity: 'account' },
-  // Colours only; not worth a line.
+  // Colours and text size only; not worth a line.
   'PUT /api/auth/theme': { skip: true },
+  'PUT /api/auth/text-size': { skip: true },
 
   // Desktop notifications (their own computers only)
   'POST /api/push/subscriptions': { key: 'push.enabled', label: 'Turned on desktop notifications on a computer', entity: 'account' },

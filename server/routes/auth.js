@@ -11,6 +11,7 @@ import { signSession, verifySession, revokeSession } from '../auth/session.js'
 import { PASSWORD_MAX_BYTES } from '../auth/team.js'
 import { parseAvatar, AVATAR_COLORS } from '../auth/avatars.js'
 import { THEMES, CUSTOM_THEME, parseCustomTheme } from '../auth/themes.js'
+import { TEXT_SIZES } from '../auth/textSizes.js'
 import { audit } from '../billing/audit.js'
 
 const router = Router()
@@ -224,6 +225,25 @@ router.put(
       res.json({ theme: req.body.theme, customTheme: parseCustomTheme(rows[0]?.custom_theme) })
     } catch (err) {
       req.log?.error({ err }, 'Theme update error')
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  }
+)
+
+// How large this person reads chat text (server/auth/textSizes.js). Their
+// own setting, saved to the account; not audited, like the theme.
+router.put(
+  '/text-size',
+  requireAuth,
+  // isString first: isIn alone checks each item of an array, so ['large'] would pass.
+  body('size').isString().withMessage('Choose one of the text sizes offered').bail().isIn(TEXT_SIZES).withMessage('Choose one of the text sizes offered'),
+  validate,
+  async (req, res) => {
+    try {
+      await getPool().query('UPDATE admin_users SET text_size = $2 WHERE id = $1', [req.account.id, req.body.size])
+      res.json({ textSize: req.body.size })
+    } catch (err) {
+      req.log?.error({ err }, 'Text size update error')
       res.status(500).json({ error: 'Internal server error' })
     }
   }

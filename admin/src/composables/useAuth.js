@@ -4,13 +4,14 @@ import { sessionExpired } from './appStatus.js'
 import { toast } from './useToast.js'
 import { signOutReached } from '../utils/session.js'
 import { applyTheme, cacheTheme, DEFAULT_THEME } from '../data/themes.js'
+import { DEFAULT_TEXT_SIZE, textSizeFor } from '../data/textSizes.js'
 
 const isAuthenticated = ref(false)
 const adminEmail = ref('')
 // Who is signed in and what they may do (server/auth/capabilities.js). The
 // portal only uses this to decide what to show; the API checks every
 // request on its own.
-const profile = ref({ name: '', displayName: '', role: '', roleLabel: '', capabilities: [], avatar: null, theme: DEFAULT_THEME, customTheme: null })
+const profile = ref({ name: '', displayName: '', role: '', roleLabel: '', capabilities: [], avatar: null, theme: DEFAULT_THEME, customTheme: null, textSize: DEFAULT_TEXT_SIZE })
 const loading = ref(false)
 let verified = false
 
@@ -32,6 +33,8 @@ function applyProfile(data) {
     // The person's own colours (Themes → Custom), kept even while a preset
     // is on so they can go back to them; null until they make one.
     customTheme: data.customTheme || null,
+    // How large they read chat text (data/textSizes.js); saved to the account.
+    textSize: textSizeFor(data.textSize),
   }
   applyTheme(profile.value.theme, profile.value.customTheme)
   cacheTheme(profile.value.theme, profile.value.customTheme)
@@ -55,6 +58,11 @@ export function setTheme(key, custom) {
   profile.value = { ...profile.value, theme: key, customTheme }
   applyTheme(key, customTheme)
   cacheTheme(key, customTheme)
+}
+
+/** Show chats at this size now (the caller saves it). */
+export function setTextSize(key) {
+  profile.value = { ...profile.value, textSize: textSizeFor(key) }
 }
 
 /** True when the signed-in account has every named capability. */
