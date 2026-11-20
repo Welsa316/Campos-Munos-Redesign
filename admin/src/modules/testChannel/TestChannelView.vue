@@ -1,52 +1,52 @@
 <template>
   <div class="h-dvh flex flex-col bg-brand-surface overflow-hidden">
-    <PortalHeader title="Test channel" current="test-channel" />
+    <PortalHeader :title="t('page.title')" current="test-channel" />
 
     <div class="flex-1 overflow-y-auto">
       <div class="max-w-[1180px] mx-auto px-4 sm:px-6 py-6 space-y-5 font-ui">
         <div>
-          <h2 class="text-base font-semibold text-gray-900">Test channel</h2>
-          <p class="text-xs text-gray-500 mt-0.5 max-w-2xl">Send test forms through the real website. They go through the same checks as a client’s, then land here instead of the inbox: no lead, no office email, and no notification for anyone but you.</p>
+          <h2 class="text-base font-semibold text-gray-900">{{ t('page.title') }}</h2>
+          <p class="text-xs text-gray-500 mt-0.5 max-w-2xl">{{ t('intro') }}</p>
         </div>
 
         <!-- Said once for the whole page, and again on everything a test produces. -->
         <p class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-amber-50 ring-1 ring-amber-300 px-4 py-3 text-xs text-amber-900" data-test-banner>
           <span class="inline-flex items-center gap-2 font-semibold tracking-[0.06em]"><FaIcon name="flask" class="text-[11px]" />{{ TEST_BANNER }}</span>
-          <span>Everything on this page stays in the test channel. Leads, clients, staff, reminders and billing are never touched. A real email or text goes only to the address and phone you type for a test.</span>
+          <span>{{ t('banner') }}</span>
         </p>
 
         <!-- Send a test -->
         <section class="bg-white rounded-xl ring-1 ring-gray-200 px-4 sm:px-5 py-4" aria-labelledby="tc-send">
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div class="min-w-0">
-              <h3 id="tc-send" class="text-sm font-semibold text-gray-900">Send a test</h3>
-              <p class="text-xs text-gray-500 mt-0.5">Open a test link, then fill in the contact form or start a chat. The site shows “Test mode” while it is on.</p>
+              <h3 id="tc-send" class="text-sm font-semibold text-gray-900">{{ t('send.title') }}</h3>
+              <p class="text-xs text-gray-500 mt-0.5">{{ t('send.about') }}</p>
             </div>
             <button type="button" @click="makeLink" :disabled="linking"
               class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-navy hover:bg-brand-navy-dark text-white text-sm font-semibold transition-colors disabled:opacity-50">
-              <FaIcon :name="linking ? 'spinner' : 'flask'" :spin="linking" class="text-xs" />{{ testLink ? 'New test link' : 'Get a test link' }}
+              <FaIcon :name="linking ? 'spinner' : 'flask'" :spin="linking" class="text-xs" />{{ t(testLink ? 'send.new_link' : 'send.get_link') }}
             </button>
           </div>
           <p v-if="linkError" role="alert" class="mt-3 text-sm text-brand-red bg-red-50 rounded-lg px-3 py-2">{{ linkError }}</p>
 
           <div v-if="testLink" class="mt-4 grid gap-2 sm:grid-cols-2">
             <div v-for="l in links" :key="l.key" class="rounded-lg ring-1 ring-gray-200 bg-brand-surface px-3.5 py-3 min-w-0">
-              <p class="text-xs font-semibold text-gray-800">{{ l.label }}</p>
-              <p class="text-[11px] text-gray-500 mt-0.5">{{ l.hint }}</p>
+              <p class="text-xs font-semibold text-gray-800">{{ t(`link.${l.key}`) }}</p>
+              <p class="text-[11px] text-gray-500 mt-0.5">{{ t(`link.${l.key}_hint`) }}</p>
               <div class="mt-2.5 flex flex-wrap gap-2">
                 <a :href="l.url" target="_blank" rel="noopener"
                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-navy hover:bg-brand-navy-dark text-white text-xs font-semibold transition-colors">
-                  Open the website<FaIcon name="arrow-right" class="text-[10px]" />
+                  {{ t('link.open') }}<FaIcon name="arrow-right" class="text-[10px]" />
                 </a>
                 <button type="button" @click="copy(l)"
                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg ring-1 ring-gray-300 bg-white text-gray-700 hover:bg-brand-surface text-xs font-semibold transition-colors">
-                  <FaIcon :name="copied === l.key ? 'check' : 'copy'" class="text-[10px]" />{{ copied === l.key ? 'Copied' : 'Copy link' }}
+                  <FaIcon :name="copied === l.key ? 'check' : 'copy'" class="text-[10px]" />{{ t(copied === l.key ? 'link.copied' : 'link.copy') }}
                 </button>
               </div>
             </div>
             <p class="sm:col-span-2 text-[11px] text-gray-500">
-              Works until <time :datetime="testLink.expiresAt" class="tabular-nums">{{ clock(testLink.expiresAt) }}</time>, in the browser tab it opens.
-              Changing your password or signing out everywhere ends it sooner.
+              {{ t('link.works_until', { count: clockCount(clock(testLink.expiresAt)) }) }} <time :datetime="testLink.expiresAt" class="tabular-nums">{{ clock(testLink.expiresAt) }}</time>{{ t('link.works_until_after') }}
+              {{ t('link.ends_sooner') }}
             </p>
           </div>
         </section>
@@ -56,14 +56,14 @@
         <TestAutomationStart v-if="overview" :overview="overview" @started="onStarted" @options="(o) => (startOptions = o)" />
 
         <section v-if="overview?.pending.length" class="bg-white rounded-xl ring-1 ring-gray-200 overflow-hidden" aria-labelledby="ta-waiting">
-          <h3 id="ta-waiting" class="px-4 sm:px-5 py-3 border-b border-gray-100 text-sm font-semibold text-gray-900">Waiting to run <span class="text-gray-500 font-normal tabular-nums">({{ overview.pending.length }})</span></h3>
+          <h3 id="ta-waiting" class="px-4 sm:px-5 py-3 border-b border-gray-100 text-sm font-semibold text-gray-900">{{ t('waiting.title') }} <span class="text-gray-500 font-normal tabular-nums">({{ overview.pending.length }})</span></h3>
           <ul class="divide-y divide-gray-100" aria-live="polite">
             <li v-for="p in overview.pending" :key="p.testId">
               <button type="button" @click="open(p.testId, true)" class="w-full text-left px-4 sm:px-5 py-2.5 min-h-11 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs hover:bg-brand-surface/60 transition-colors">
-                <span class="font-semibold text-gray-900">{{ p.testName || `Test ${p.testId}` }}</span>
-                <span class="text-gray-600">next: {{ stepLabel(p.nextStep) }}</span>
-                <span class="text-amber-800 font-semibold tabular-nums">{{ dueText(p.nextDueAt, now) }}</span>
-                <span class="ml-auto text-gray-500 tabular-nums">{{ p.pending }} waiting</span>
+                <span class="font-semibold text-gray-900">{{ p.testName || t('list.test', { id: p.testId }) }}</span>
+                <span class="text-gray-600">{{ t('waiting.next', { step: stepLabel(p.nextStep, lang) }) }}</span>
+                <span class="text-amber-800 font-semibold tabular-nums">{{ dueText(p.nextDueAt, now, lang) }}</span>
+                <span class="ml-auto text-gray-500 tabular-nums">{{ t('waiting.count', { count: p.pending }) }}</span>
               </button>
             </li>
           </ul>
@@ -72,83 +72,83 @@
         <!-- What came in -->
         <section class="bg-white rounded-xl ring-1 ring-gray-200 overflow-hidden" aria-labelledby="tc-received" :aria-busy="loading">
           <div class="flex flex-wrap items-center gap-3 px-4 sm:px-5 py-3 border-b border-gray-100">
-            <h3 id="tc-received" class="text-sm font-semibold text-gray-900">Received <span class="text-gray-500 font-normal tabular-nums">({{ items.length }})</span></h3>
+            <h3 id="tc-received" class="text-sm font-semibold text-gray-900">{{ t('received.title') }} <span class="text-gray-500 font-normal tabular-nums">({{ items.length }})</span></h3>
             <div class="ml-auto flex items-center gap-2">
-              <button type="button" @click="load" :disabled="loading" aria-label="Refresh" title="Refresh"
+              <button type="button" @click="load" :disabled="loading" :aria-label="t('refresh')" :title="t('refresh')"
                 class="p-2 rounded-lg text-gray-500 hover:text-brand-navy hover:bg-brand-surface transition-colors disabled:opacity-50">
                 <FaIcon name="rotate-right" :spin="loading" class="text-xs" />
               </button>
               <button v-if="items.length && !confirmClear" type="button" @click="confirmClear = true"
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-red ring-1 ring-red-200 hover:bg-red-50 transition-colors">
-                <FaIcon name="trash" class="text-[10px]" />Reset test data
+                <FaIcon name="trash" class="text-[10px]" />{{ t('reset') }}
               </button>
             </div>
-            <ConfirmInline v-if="confirmClear" class="basis-full" :title="`Remove all ${items.length} test form${items.length === 1 ? '' : 's'}?`"
-              body="Every test form goes, with its automation test, anything still waiting to run and the test history. Leads in the inbox are not touched." confirm-label="Reset test data" :busy="clearing"
+            <ConfirmInline v-if="confirmClear" class="basis-full" :title="t('reset.q', { count: items.length })"
+              :body="t('reset.body')" :confirm-label="t('reset')" :busy="clearing"
               @confirm="clearAll" @cancel="confirmClear = false" />
           </div>
 
           <p v-if="error" role="alert" class="m-4 text-sm text-brand-red bg-red-50 rounded-lg px-4 py-3">{{ error }}</p>
-          <p v-if="loading && !loaded" class="py-12 text-center text-sm text-gray-500">Loading…</p>
+          <p v-if="loading && !loaded" class="py-12 text-center text-sm text-gray-500">{{ t('loading') }}</p>
           <div v-else-if="loaded && !items.length" class="py-12 px-6 text-center">
             <FaIcon name="flask" class="text-3xl text-gray-200" />
-            <p class="mt-3 text-sm text-gray-700">No test forms yet.</p>
-            <p class="mt-1 text-xs text-gray-500">Get a test link above and send one from the website. It shows here when you come back to this tab.</p>
+            <p class="mt-3 text-sm text-gray-700">{{ t('empty') }}</p>
+            <p class="mt-1 text-xs text-gray-500">{{ t('empty.hint') }}</p>
           </div>
 
           <div v-else-if="items.length" class="lg:grid lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:min-h-[420px]">
             <!-- The list; on a phone it gives way to the open test. -->
             <ol :class="selected ? 'hidden lg:block' : ''" class="divide-y divide-gray-100 lg:border-r lg:border-gray-100 lg:max-h-[640px] lg:overflow-y-auto">
-              <li v-for="t in items" :key="t.id">
-                <button type="button" @click="open(t.id)" :aria-current="selectedId === t.id ? 'true' : undefined"
-                  :class="selectedId === t.id ? 'bg-brand-surface' : 'hover:bg-brand-surface/60'"
+              <li v-for="f in items" :key="f.id">
+                <button type="button" @click="open(f.id)" :aria-current="selectedId === f.id ? 'true' : undefined"
+                  :class="selectedId === f.id ? 'bg-brand-surface' : 'hover:bg-brand-surface/60'"
                   class="w-full text-left px-4 sm:px-5 py-3 transition-colors">
                   <span class="flex items-center gap-2">
-                    <span class="truncate text-sm font-semibold text-gray-900">{{ t.first_name }} {{ t.last_name }}</span>
-                    <span :class="t.source === 'chat' ? 'bg-brand-navy/10 text-brand-navy' : 'bg-gray-100 text-gray-600'"
-                      class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider">{{ SOURCE[t.source] || 'Form' }}</span>
-                    <time :datetime="t.created_at" class="ml-auto shrink-0 text-[11px] text-gray-500 tabular-nums">{{ when(t.created_at) }}</time>
+                    <span class="truncate text-sm font-semibold text-gray-900">{{ f.first_name }} {{ f.last_name }}</span>
+                    <span :class="f.source === 'chat' ? 'bg-brand-navy/10 text-brand-navy' : 'bg-gray-100 text-gray-600'"
+                      class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider">{{ t(SOURCES.includes(f.source) ? `source.${f.source}` : 'source.other') }}</span>
+                    <time :datetime="f.created_at" class="ml-auto shrink-0 text-[11px] text-gray-500 tabular-nums">{{ when(f.created_at) }}</time>
                   </span>
-                  <span class="block mt-0.5 truncate text-xs text-gray-500">{{ t.message || '(no message)' }}</span>
-                  <span v-if="listNote(t)" :class="t.automation_pending ? 'text-amber-800' : 'text-gray-500'" class="block mt-0.5 truncate text-[11px] font-semibold">{{ listNote(t) }}</span>
+                  <span class="block mt-0.5 truncate text-xs text-gray-500">{{ f.message || t('no_message') }}</span>
+                  <span v-if="listNote(f)" :class="f.automation_pending ? 'text-amber-800' : 'text-gray-500'" class="block mt-0.5 truncate text-[11px] font-semibold">{{ listNote(f, lang) }}</span>
                 </button>
               </li>
             </ol>
 
             <!-- The open test -->
             <div :class="selected ? '' : 'hidden lg:flex'" class="min-w-0 lg:flex lg:flex-col">
-              <div v-if="!selected" class="flex-1 flex items-center justify-center py-12 text-sm text-gray-500">Select a test form to see it.</div>
-              <article v-else class="px-4 sm:px-6 py-5" :aria-label="`Test form from ${selected.first_name} ${selected.last_name}`">
+              <div v-if="!selected" class="flex-1 flex items-center justify-center py-12 text-sm text-gray-500">{{ t('select') }}</div>
+              <article v-else class="px-4 sm:px-6 py-5" :aria-label="t('form_from', { name: `${selected.first_name} ${selected.last_name}` })">
                 <button type="button" @click="close" class="lg:hidden mb-3 inline-flex items-center gap-1.5 text-xs font-semibold text-brand-navy">
-                  <FaIcon name="arrow-left" class="text-[10px]" />All test forms
+                  <FaIcon name="arrow-left" class="text-[10px]" />{{ t('all_forms') }}
                 </button>
                 <div class="flex flex-wrap items-start gap-3">
                   <div class="min-w-0">
                     <h4 class="font-heading text-xl text-gray-900 break-words">{{ selected.first_name }} {{ selected.last_name }}</h4>
                     <p class="text-xs text-gray-500 mt-0.5">
-                      {{ SOURCE_LONG[selected.source] || 'Contact form' }} · <time :datetime="selected.created_at">{{ fullTime(selected.created_at) }}</time>
+                      {{ t(SOURCES.includes(selected.source) ? `source_long.${selected.source}` : 'source_long.other') }} · <time :datetime="selected.created_at">{{ fullTime(selected.created_at) }}</time>
                     </p>
                   </div>
                   <button v-if="!confirmRemove" type="button" @click="confirmRemove = true"
                     class="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-600 ring-1 ring-gray-300 hover:text-brand-red hover:ring-red-200 hover:bg-red-50 transition-colors">
-                    <FaIcon name="trash" class="text-[10px]" />Remove
+                    <FaIcon name="trash" class="text-[10px]" />{{ t('remove') }}
                   </button>
                 </div>
-                <ConfirmInline v-if="confirmRemove" class="mt-3" title="Remove this test form?" confirm-label="Remove" :busy="removing"
+                <ConfirmInline v-if="confirmRemove" class="mt-3" :title="t('remove.q')" :confirm-label="t('remove')" :busy="removing"
                   @confirm="remove(selected.id)" @cancel="confirmRemove = false" />
 
                 <dl class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                  <div class="min-w-0"><dt class="text-[11px] font-semibold text-gray-500">Email</dt><dd class="text-gray-900 break-all">{{ selected.email }}</dd></div>
-                  <div><dt class="text-[11px] font-semibold text-gray-500">Phone</dt><dd class="text-gray-900 tabular-nums">{{ formatPhone(selected.phone) }}</dd></div>
-                  <div><dt class="text-[11px] font-semibold text-gray-500">Service</dt><dd class="text-gray-900">{{ consultationLabel(selected.consultation_type) }}</dd></div>
-                  <div><dt class="text-[11px] font-semibold text-gray-500">Location</dt><dd class="text-gray-900">{{ selected.location ? countryLabel(selected.location, adminLocale()) : '—' }}</dd></div>
-                  <div><dt class="text-[11px] font-semibold text-gray-500">Form language</dt><dd class="text-gray-900">{{ LANGUAGE[selected.language] || 'Not known' }}</dd></div>
-                  <div><dt class="text-[11px] font-semibold text-gray-500">Agreed to text messages</dt><dd class="text-gray-900">{{ selected.sms_consent ? 'Yes, ticked on the form' : 'No' }}</dd></div>
+                  <div class="min-w-0"><dt class="text-[11px] font-semibold text-gray-500">{{ t('field.email') }}</dt><dd class="text-gray-900 break-all">{{ selected.email }}</dd></div>
+                  <div><dt class="text-[11px] font-semibold text-gray-500">{{ t('field.phone') }}</dt><dd class="text-gray-900 tabular-nums">{{ formatPhone(selected.phone) }}</dd></div>
+                  <div><dt class="text-[11px] font-semibold text-gray-500">{{ t('field.service') }}</dt><dd class="text-gray-900">{{ consultationLabel(selected.consultation_type, lang) }}</dd></div>
+                  <div><dt class="text-[11px] font-semibold text-gray-500">{{ t('field.location') }}</dt><dd class="text-gray-900">{{ selected.location ? countryLabel(selected.location, lang) : '—' }}</dd></div>
+                  <div><dt class="text-[11px] font-semibold text-gray-500">{{ t('field.language') }}</dt><dd class="text-gray-900">{{ t(['es', 'en'].includes(selected.language) ? `language.${selected.language}` : 'language.unknown') }}</dd></div>
+                  <div><dt class="text-[11px] font-semibold text-gray-500">{{ t('field.sms') }}</dt><dd class="text-gray-900">{{ t(selected.sms_consent ? 'sms.yes' : 'sms.no') }}</dd></div>
                 </dl>
 
                 <div class="mt-5 space-y-3">
                   <div class="bg-brand-surface rounded-2xl rounded-tl-sm p-4">
-                    <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap break-words">{{ selected.message || '(no message)' }}</p>
+                    <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap break-words">{{ selected.message || t('no_message') }}</p>
                   </div>
                   <div v-for="m in selected.chat_messages" :key="m.id">
                     <div class="bg-brand-surface rounded-2xl rounded-tl-sm p-4">
@@ -168,10 +168,10 @@
         <!-- Everything any test did: the test-only history -->
         <section v-if="overview" class="bg-white rounded-xl ring-1 ring-gray-200 overflow-hidden" aria-labelledby="ta-history">
           <div class="px-4 sm:px-5 py-3 border-b border-gray-100">
-            <h3 id="ta-history" class="text-sm font-semibold text-gray-900">Test history <span class="text-gray-500 font-normal tabular-nums">({{ overview.history.length }})</span></h3>
-            <p class="text-[11px] text-gray-500 mt-0.5">What every automation test sent, showed or was told, newest first. Kept here only: none of it is in the staff activity log.</p>
+            <h3 id="ta-history" class="text-sm font-semibold text-gray-900">{{ t('history.title') }} <span class="text-gray-500 font-normal tabular-nums">({{ overview.history.length }})</span></h3>
+            <p class="text-[11px] text-gray-500 mt-0.5">{{ t('history.about') }}</p>
           </div>
-          <p v-if="!overview.history.length" class="py-8 px-6 text-center text-xs text-gray-500">Nothing yet. Start an automation test above.</p>
+          <p v-if="!overview.history.length" class="py-8 px-6 text-center text-xs text-gray-500">{{ t('history.empty') }}</p>
           <TestEventList v-else :events="overview.history" show-test class="px-4 sm:px-5 max-h-[28rem] overflow-y-auto" @open="(id) => open(id, true)" />
         </section>
       </div>
@@ -185,7 +185,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../../composables/useApi.js'
 import { consultationLabel } from '../../data/consultationTypes.js'
 import { countryLabel } from '../../data/countries.js'
-import { adminLocale } from '../../utils/locale.js'
 import { formatPhone } from '../../utils/phone.js'
 import PortalHeader from '../../components/portal/PortalHeader.vue'
 import FaIcon from '../../components/FaIcon.vue'
@@ -194,12 +193,14 @@ import TestAutomationStart from './TestAutomationStart.vue'
 import TestAutomationPanel from './TestAutomationPanel.vue'
 import TestEventList from './TestEventList.vue'
 import { TEST_BANNER, stepLabel, dueText, listNote } from './testAutomationText.js'
+import { useT, clockCount } from '../../i18n/translator.js'
+import { TEST_CHANNEL } from '../../i18n/testChannel.js'
 
-const SOURCE = { chat: 'Chat', contact: 'Form', portal: 'Portal' }
-const LANGUAGE = { es: 'Spanish', en: 'English' }
-const SOURCE_LONG = { chat: 'Chat', contact: 'Contact form', portal: 'Started from the portal' }
+// Where a test came from: source.<key> and source_long.<key> (i18n/testChannel.js).
+const SOURCES = ['chat', 'contact', 'portal']
 
 const { get, post, del } = useApi()
+const { t, lang, locale } = useT(TEST_CHANNEL)
 const route = useRoute()
 const router = useRouter()
 
@@ -219,16 +220,17 @@ const clearing = ref(false)
 const confirmRemove = ref(false)
 const removing = ref(false)
 
+// Each link's name and hint are link.<key> and link.<key>_hint (i18n/testChannel.js).
 const links = computed(() => testLink.value ? [
-  { key: 'contact', label: 'Contact form', hint: 'The consultation page, ready to fill in.', url: testLink.value.contactUrl },
-  { key: 'chat', label: 'Chat', hint: 'The home page; open the chat bubble in the corner.', url: testLink.value.siteUrl },
+  { key: 'contact', url: testLink.value.contactUrl },
+  { key: 'chat', url: testLink.value.siteUrl },
 ] : [])
 
-const clock = (d) => new Date(d).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-const fullTime = (d) => new Date(d).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
+const clock = (d) => new Date(d).toLocaleTimeString(locale.value, { hour: 'numeric', minute: '2-digit' })
+const fullTime = (d) => new Date(d).toLocaleString(locale.value, { dateStyle: 'medium', timeStyle: 'short' })
 function when(d) {
   const date = new Date(d)
-  return date.toDateString() === new Date().toDateString() ? clock(d) : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return date.toDateString() === new Date().toDateString() ? clock(d) : date.toLocaleDateString(locale.value, { month: 'short', day: 'numeric' })
 }
 
 // quiet: the refresh a running test does on its own, with no spinner.
@@ -239,9 +241,9 @@ async function load({ quiet = false } = {}) {
     items.value = (await get('/api/test-channel')).items
     loaded.value = true
     // The open one may have been removed meanwhile.
-    if (selected.value && !items.value.some((t) => t.id === selected.value.id)) selected.value = null
+    if (selected.value && !items.value.some((x) => x.id === selected.value.id)) selected.value = null
   } catch (err) {
-    if (!quiet) error.value = `Could not load the test channel: ${err.message}`
+    if (!quiet) error.value = t('error.load', { error: err.message })
   } finally {
     if (!quiet) loading.value = false
   }
@@ -256,7 +258,7 @@ async function open(id, reveal = false) {
     if (String(route.query.test || '') !== String(id)) router.replace({ query: { test: id } })
     if (reveal) nextTick(() => panelEl.value?.$el?.scrollIntoView?.({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'nearest' }))
   } catch (err) {
-    error.value = `Could not open that test form: ${err.message}`
+    error.value = t('error.open', { error: err.message })
     selected.value = null
   }
 }
@@ -281,7 +283,7 @@ async function loadOverview() {
     overview.value = await get('/api/test-channel/automation')
     overviewError.value = ''
   } catch (err) {
-    if (!overview.value) overviewError.value = `Could not load test automation: ${err.message}`
+    if (!overview.value) overviewError.value = t('error.overview', { error: err.message })
   }
 }
 
@@ -313,7 +315,7 @@ async function startOn(confirmKnown) {
     await Promise.all([open(selected.value.id), loadOverview(), load()])
   } catch (err) {
     if (err.code === 'address_on_a_lead') askKnown.value = err.message
-    else panelError.value = `Could not start the test: ${err.message}`
+    else panelError.value = t('error.start', { error: err.message })
   } finally {
     acting.value = false
   }
@@ -328,7 +330,7 @@ async function act(action) {
     selected.value = { ...selected.value, automation: r.automation }
     await Promise.all([loadOverview(), load()])
   } catch (err) {
-    panelError.value = `That did not work: ${err.message}`
+    panelError.value = t('error.action', { error: err.message })
   } finally {
     acting.value = false
   }
@@ -358,7 +360,7 @@ async function makeLink() {
   try {
     testLink.value = await post('/api/test-channel/link', {})
   } catch (err) {
-    linkError.value = `Could not make a test link: ${err.message}`
+    linkError.value = t('link.error', { error: err.message })
   } finally {
     linking.value = false
   }
@@ -372,7 +374,7 @@ async function copy(l) {
     clearTimeout(copiedTimer)
     copiedTimer = setTimeout(() => { copied.value = '' }, 2000)
   } catch {
-    linkError.value = 'Could not copy the link. Use “Open the website” instead.'
+    linkError.value = t('link.copy_failed')
   }
 }
 
@@ -384,7 +386,7 @@ async function remove(id) {
     close()
     await Promise.all([load(), loadOverview()])
   } catch (err) {
-    error.value = `Could not remove it: ${err.message}`
+    error.value = t('error.remove', { error: err.message })
   } finally {
     removing.value = false
   }
@@ -398,7 +400,7 @@ async function clearAll() {
     close()
     await Promise.all([load(), loadOverview()])
   } catch (err) {
-    error.value = `Could not clear the test channel: ${err.message}`
+    error.value = t('error.clear', { error: err.message })
   } finally {
     clearing.value = false
   }

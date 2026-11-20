@@ -9,8 +9,8 @@
 
       <div class="relative w-full max-w-[520px] max-h-[calc(100dvh-2rem)] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden font-ui">
         <div class="px-6 pt-6 pb-4 flex items-start justify-between">
-          <h2 id="avatar-picker-title" class="text-[19px] font-semibold tracking-tight text-gray-900">Choose your picture</h2>
-          <button ref="closeBtnRef" @click="close" type="button" aria-label="Close"
+          <h2 id="avatar-picker-title" class="text-[19px] font-semibold tracking-tight text-gray-900">{{ t('avatar.title') }}</h2>
+          <button ref="closeBtnRef" @click="close" type="button" :aria-label="t('avatar.close')"
             class="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700 flex items-center justify-center transition-colors">
             <i class="fa-solid fa-xmark text-sm" aria-hidden="true"></i>
           </button>
@@ -18,22 +18,22 @@
 
         <!-- Live preview -->
         <div class="flex flex-col items-center pb-4">
-          <UserAvatar :avatar="draft" :size="104" label="Preview" class="shadow-md ring-4 ring-white" />
+          <UserAvatar :avatar="draft" :size="104" :label="t('avatar.preview')" class="shadow-md ring-4 ring-white" />
         </div>
 
         <div class="px-6">
-          <div class="inline-flex w-full bg-brand-surface rounded-xl p-1" role="tablist" aria-label="Picture style" @keydown="rovingKeydown">
-            <button v-for="t in TABS" :key="t.key" :id="`avatar-tab-${t.key}`" type="button" role="tab" :aria-selected="tab === t.key"
-              aria-controls="avatar-panel" :tabindex="tab === t.key ? 0 : -1" @click="tab = t.key"
-              :class="tab === t.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-800'"
-              class="flex-1 py-1.5 rounded-lg text-[13px] font-semibold transition-colors">{{ t.label }}</button>
+          <div class="inline-flex w-full bg-brand-surface rounded-xl p-1" role="tablist" :aria-label="t('avatar.style')" @keydown="rovingKeydown">
+            <button v-for="tb in TABS" :key="tb.key" :id="`avatar-tab-${tb.key}`" type="button" role="tab" :aria-selected="tab === tb.key"
+              aria-controls="avatar-panel" :tabindex="tab === tb.key ? 0 : -1" @click="tab = tb.key"
+              :class="tab === tb.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-800'"
+              class="flex-1 py-1.5 rounded-lg text-[13px] font-semibold transition-colors">{{ t(`avatar.tab.${tb.key}`) }}</button>
           </div>
         </div>
 
         <div class="flex-1 overflow-y-auto px-6 py-4">
           <!-- Each group is one Tab stop; the arrow keys pick inside it. -->
           <div id="avatar-panel" role="tabpanel" :aria-labelledby="`avatar-tab-${tab}`">
-          <div v-if="tab === 'fluent'" class="grid grid-cols-4 sm:grid-cols-8 gap-2" role="radiogroup" aria-label="3D animals" @keydown="rovingKeydown">
+          <div v-if="tab === 'fluent'" class="grid grid-cols-4 sm:grid-cols-8 gap-2" role="radiogroup" :aria-label="t('avatar.animals')" @keydown="rovingKeydown">
             <button v-for="(a, i) in FLUENT_AVATARS" :key="a.key" type="button" role="radio"
               :aria-checked="isPicked('fluent', a.key)" :aria-label="a.label" :title="a.label"
               :tabindex="rovingTabindex(isPicked('fluent', a.key), i, draft.kind === 'fluent')"
@@ -43,7 +43,7 @@
               <img :src="fluentSrc(a.key)" alt="" width="128" height="128" loading="lazy" decoding="async" class="w-[78%] h-[78%]" draggable="false" />
             </button>
           </div>
-          <div v-else class="grid grid-cols-6 sm:grid-cols-8 gap-2" role="radiogroup" aria-label="Emoji" @keydown="rovingKeydown">
+          <div v-else class="grid grid-cols-6 sm:grid-cols-8 gap-2" role="radiogroup" :aria-label="t('avatar.emoji')" @keydown="rovingKeydown">
             <button v-for="(e, i) in EMOJI_AVATARS" :key="e" type="button" role="radio"
               :aria-checked="isPicked('emoji', e)" :aria-label="e"
               :tabindex="rovingTabindex(isPicked('emoji', e), i, draft.kind === 'emoji')"
@@ -53,11 +53,11 @@
               {{ e }}
             </button>
           </div>
-          <p v-if="tab === 'emoji'" class="text-[11px] text-gray-500 mt-3">Emoji are drawn by each computer, so they look slightly different on a Mac and on Windows.</p>
+          <p v-if="tab === 'emoji'" class="text-[11px] text-gray-500 mt-3">{{ t('avatar.emoji_note') }}</p>
           </div>
 
-          <p class="text-[12px] font-semibold text-gray-700 mt-5 mb-2">Background</p>
-          <div class="flex flex-wrap gap-2.5" role="radiogroup" aria-label="Background colour" @keydown="rovingKeydown">
+          <p class="text-[12px] font-semibold text-gray-700 mt-5 mb-2">{{ t('avatar.background') }}</p>
+          <div class="flex flex-wrap gap-2.5" role="radiogroup" :aria-label="t('avatar.background_colour')" @keydown="rovingKeydown">
             <button v-for="(c, i) in AVATAR_COLORS" :key="c.key" type="button" role="radio"
               :aria-checked="draft.bg === c.key" :aria-label="c.label" :title="c.label"
               :tabindex="rovingTabindex(draft.bg === c.key, i, AVATAR_COLORS.some((x) => x.key === draft.bg))"
@@ -71,10 +71,10 @@
         <div class="px-6 py-4 border-t border-gray-100 flex items-center gap-3">
           <p v-if="error" role="alert" class="text-[12px] text-brand-red flex-1">{{ error }}</p>
           <div class="ml-auto flex gap-2">
-            <button type="button" @click="close" class="px-4 py-2 rounded-full text-[13px] font-semibold text-gray-600 hover:bg-gray-100">Cancel</button>
+            <button type="button" @click="close" class="px-4 py-2 rounded-full text-[13px] font-semibold text-gray-600 hover:bg-gray-100">{{ t('avatar.cancel') }}</button>
             <button type="button" @click="save" :disabled="saving"
               class="px-5 py-2 rounded-full bg-gray-900 text-white text-[13px] font-semibold hover:bg-black disabled:opacity-50">
-              {{ saving ? 'Saving…' : 'Save' }}
+              {{ t(saving ? 'avatar.saving' : 'avatar.save') }}
             </button>
           </div>
         </div>
@@ -89,6 +89,8 @@ import { rawFetch, goToLogin } from '../composables/useApi.js'
 import { FLUENT_AVATARS, EMOJI_AVATARS, AVATAR_COLORS, fluentSrc } from '../data/avatars.js'
 import UserAvatar from './UserAvatar.vue'
 import { rovingKeydown, rovingTabindex } from '../utils/roving.js'
+import { useT } from '../i18n/translator.js'
+import { COMPONENTS } from '../i18n/components.js'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -96,7 +98,9 @@ const props = defineProps({
 })
 const emit = defineEmits(['close', 'saved'])
 
-const TABS = [{ key: 'fluent', label: '3D animals' }, { key: 'emoji', label: 'Emoji' }]
+const { t } = useT(COMPONENTS)
+// Each tab's name is avatar.tab.<key> (i18n/components.js).
+const TABS = [{ key: 'fluent' }, { key: 'emoji' }]
 const tab = ref('fluent')
 const draft = ref({ kind: 'fluent', key: 'monkey', bg: 'sky' })
 const saving = ref(false)
@@ -146,7 +150,7 @@ async function save() {
     })
     if (res.status === 401) { goToLogin(); return }
     const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.error || 'Could not save your picture')
+    if (!res.ok) throw new Error(data.error || t('avatar.save_failed'))
     emit('saved', data)
     emit('close')
   } catch (e) {

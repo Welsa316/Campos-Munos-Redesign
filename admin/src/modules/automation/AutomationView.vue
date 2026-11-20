@@ -6,18 +6,18 @@
        can only pause one that is on. -->
   <div class="h-dvh flex flex-col bg-brand-surface overflow-hidden">
     <!-- Icons only below 2xl: an administrator has ten sections, and their labels push Sign out off a laptop screen. -->
-    <PortalHeader title="Automation" current="automation" label-at="2xl" actions-label-at="2xl" :notifications="false" />
+    <PortalHeader :title="t('page.title')" current="automation" label-at="2xl" actions-label-at="2xl" :notifications="false" />
 
     <div class="flex-1 overflow-y-auto">
       <div class="max-w-[1080px] mx-auto px-4 sm:px-6 py-6 space-y-5 font-ui">
         <LoadError v-if="error && !health" :message="error" @retry="load" />
         <div v-else-if="!health" class="bg-white rounded-xl ring-1 ring-gray-200 px-5 py-10 text-center text-sm text-gray-500" aria-busy="true">
-          <FaIcon name="spinner" spin class="mr-2" />Loading…
+          <FaIcon name="spinner" spin class="mr-2" />{{ t('loading') }}
         </div>
 
         <template v-else>
           <!-- The three things to know before anything else. -->
-          <section class="bg-white rounded-xl ring-1 ring-gray-200 grid md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-gray-100" aria-label="At a glance">
+          <section class="bg-white rounded-xl ring-1 ring-gray-200 grid md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-gray-100" :aria-label="t('glance.label')">
             <div v-for="c in glance" :key="c.key" class="px-5 py-4">
               <p class="text-[11px] text-gray-500">{{ c.label }}</p>
               <p class="mt-1 text-[15px] font-semibold tracking-tight" :class="c.tone">{{ c.value }}</p>
@@ -31,22 +31,22 @@
           <!-- Failed automatic work nobody has dealt with. -->
           <section class="bg-white rounded-xl ring-1 ring-gray-200" aria-labelledby="ex-h">
             <header class="px-5 py-4 border-b border-gray-100 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <h2 id="ex-h" class="text-sm font-ui font-semibold text-gray-900">Needs someone</h2>
-              <p class="text-[11px] text-gray-500">Automatic steps that failed. The portal does not try them again by itself.</p>
+              <h2 id="ex-h" class="text-sm font-ui font-semibold text-gray-900">{{ t('ex.title') }}</h2>
+              <p class="text-[11px] text-gray-500">{{ t('ex.about') }}</p>
             </header>
             <p v-if="!exceptions.length" class="px-5 py-4 text-[13px] text-gray-700 flex items-center gap-2.5">
-              <FaIcon name="circle-check" class="text-green-700" />Nothing has failed.
+              <FaIcon name="circle-check" class="text-green-700" />{{ t('ex.none') }}
             </p>
             <ul v-else class="divide-y divide-gray-100">
               <li v-for="x in exceptions" :key="x.id" class="px-5 py-3 grid gap-x-4 gap-y-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-center text-[13px]">
                 <div class="min-w-0">
-                  <p class="text-gray-900"><span class="font-semibold">{{ jobLabel(x.type) }}</span><span v-if="x.name"> to {{ x.name }}</span></p>
-                  <p class="text-xs text-gray-600 mt-0.5">{{ capital(reasonText(x.reason)) }} · {{ when(x.at) }}</p>
+                  <p class="text-gray-900"><span class="font-semibold">{{ jobLabel(x.type, lang) }}</span><span v-if="x.name">{{ t('ex.to', { name: x.name }) }}</span></p>
+                  <p class="text-xs text-gray-600 mt-0.5">{{ capital(reasonText(x.reason, MESSAGE_REASONS, lang)) }} · {{ when(x.at) }}</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                  <router-link v-if="x.path" :to="x.path" class="btn-quiet">Open</router-link>
-                  <button v-if="x.reason !== 'unknown_delivery' && x.reason !== 'not_delivered'" type="button" @click="retry(x)" :disabled="Boolean(busy)" class="btn-quiet">Try again</button>
-                  <button type="button" @click="dismiss(x)" :disabled="Boolean(busy)" class="btn-quiet">Dismiss</button>
+                  <router-link v-if="x.path" :to="x.path" class="btn-quiet">{{ t('ex.open') }}</router-link>
+                  <button v-if="x.reason !== 'unknown_delivery' && x.reason !== 'not_delivered'" type="button" @click="retry(x)" :disabled="Boolean(busy)" class="btn-quiet">{{ t('ex.retry') }}</button>
+                  <button type="button" @click="dismiss(x)" :disabled="Boolean(busy)" class="btn-quiet">{{ t('ex.dismiss') }}</button>
                 </div>
               </li>
             </ul>
@@ -59,20 +59,20 @@
               <p v-if="g.stats" class="text-xs text-gray-600 mt-1 leading-relaxed">{{ g.stats }}</p>
               <p v-if="g.problem" class="text-xs text-amber-900 bg-amber-50 rounded-lg px-3 py-2 mt-2 leading-relaxed">{{ g.problem }}</p>
               <button v-if="g.key === 'phone'" type="button" @click="checkSms" :disabled="Boolean(busy)" class="btn-quiet mt-2">
-                <FaIcon name="arrows-rotate" :spin="busy === 'sms'" class="text-[11px]" />Ask RingCentral now
+                <FaIcon name="arrows-rotate" :spin="busy === 'sms'" class="text-[11px]" />{{ t('ask_rc') }}
               </button>
             </header>
             <ul class="divide-y divide-gray-100">
               <li v-for="f in g.flags" :key="f.key" class="px-5 py-3 grid gap-x-4 gap-y-1.5 md:grid-cols-[minmax(0,17rem)_5.5rem_minmax(0,1fr)_auto] md:items-center">
-                <p class="text-[13px] font-semibold text-gray-900">{{ f.label }}<span v-if="f.sends" class="ml-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-500">sends</span></p>
-                <p><span :class="CHIP[flagChip(f).tone]" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold">{{ flagChip(f).label }}</span></p>
+                <p class="text-[13px] font-semibold text-gray-900">{{ f.label }}<span v-if="f.sends" class="ml-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-500">{{ t('flag.sends') }}</span></p>
+                <p><span :class="CHIP[flagChip(f, lang).tone]" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold">{{ flagChip(f, lang).label }}</span></p>
                 <div class="text-xs leading-relaxed">
                   <p class="text-gray-600">{{ f.about }}</p>
-                  <p v-if="!f.on && flagWhy(f, health.flags)" class="text-gray-700 font-medium mt-0.5">{{ flagWhy(f, health.flags) }}</p>
+                  <p v-if="!f.on && flagWhy(f, health.flags, lang)" class="text-gray-700 font-medium mt-0.5">{{ flagWhy(f, health.flags, lang) }}</p>
                 </div>
                 <p class="md:text-right">
-                  <button v-if="f.on || f.paused" type="button" @click="setPaused(f, !f.paused)" :disabled="Boolean(busy)" :aria-label="`${f.paused ? 'Resume' : 'Pause'} ${f.label}`" class="btn-quiet">
-                    <FaIcon :name="f.paused ? 'play' : 'pause'" class="text-[10px]" />{{ f.paused ? 'Resume' : 'Pause' }}
+                  <button v-if="f.on || f.paused" type="button" @click="setPaused(f, !f.paused)" :disabled="Boolean(busy)" :aria-label="t(f.paused ? 'flag.resume_aria' : 'flag.pause_aria', { label: f.label })" class="btn-quiet">
+                    <FaIcon :name="f.paused ? 'play' : 'pause'" class="text-[10px]" />{{ t(f.paused ? 'flag.resume' : 'flag.pause') }}
                   </button>
                 </p>
               </li>
@@ -84,29 +84,29 @@
           <!-- Who gets no automatic messages. -->
           <section class="bg-white rounded-xl ring-1 ring-gray-200" aria-labelledby="so-h">
             <header class="px-5 py-4 border-b border-gray-100">
-              <h2 id="so-h" class="text-sm font-ui font-semibold text-gray-900">No automatic messages</h2>
-              <p class="text-[11px] text-gray-500 mt-0.5">People who replied STOP, or whom the firm listed. Checked right before every automatic message. A number that opted out of the WhatsApp payment reminders is not texted either.</p>
+              <h2 id="so-h" class="text-sm font-ui font-semibold text-gray-900">{{ t('so.title') }}</h2>
+              <p class="text-[11px] text-gray-500 mt-0.5">{{ t('so.about') }}</p>
             </header>
             <form @submit.prevent="addSuppression" class="px-5 py-4 flex flex-wrap items-end gap-3 border-b border-gray-100">
               <div class="flex-1 min-w-[14rem]">
-                <label for="so-address" class="block text-[11px] font-semibold text-gray-700 mb-1">Phone number or email address</label>
-                <input id="so-address" v-model.trim="newAddress" type="text" maxlength="254" autocomplete="off" class="fld w-full" placeholder="(504) 555-0100 or name@example.com" />
+                <label for="so-address" class="block text-[11px] font-semibold text-gray-700 mb-1">{{ t('so.address') }}</label>
+                <input id="so-address" v-model.trim="newAddress" type="text" maxlength="254" autocomplete="off" class="fld w-full" :placeholder="t('so.placeholder')" />
               </div>
-              <button type="submit" :disabled="Boolean(busy) || !newAddress" class="min-h-11 sm:min-h-0 px-4 py-2 rounded-lg bg-brand-navy text-white text-[13px] font-semibold hover:bg-brand-navy-dark transition-colors disabled:opacity-50">Add</button>
+              <button type="submit" :disabled="Boolean(busy) || !newAddress" class="min-h-11 sm:min-h-0 px-4 py-2 rounded-lg bg-brand-navy text-white text-[13px] font-semibold hover:bg-brand-navy-dark transition-colors disabled:opacity-50">{{ t('so.add') }}</button>
             </form>
-            <p v-if="!suppressions.length" class="px-5 py-4 text-[13px] text-gray-600">Nobody is on the list.</p>
+            <p v-if="!suppressions.length" class="px-5 py-4 text-[13px] text-gray-600">{{ t('so.empty') }}</p>
             <ul v-else class="divide-y divide-gray-100 max-h-72 overflow-y-auto">
               <li v-for="s in suppressions" :key="s.id" class="px-5 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
                 <span class="font-semibold text-gray-900 tabular-nums break-all">{{ s.address }}</span>
-                <span class="text-xs text-gray-600">{{ SUPPRESSION[s.reason] || s.reason }} · {{ s.channel === 'sms' ? 'texts' : s.channel === 'email' ? 'email' : 'texts and email' }} · {{ when(s.at) }}<template v-if="s.by"> · {{ s.by }}</template></span>
-                <button type="button" @click="removeSuppression(s)" :disabled="Boolean(busy)" :aria-label="`Remove ${s.address} from the list`" class="btn-quiet ml-auto">Remove</button>
+                <span class="text-xs text-gray-600">{{ SUPPRESSION.includes(s.reason) ? t(`so.reason.${s.reason}`) : s.reason }} · {{ t(s.channel === 'sms' ? 'so.channel.sms' : s.channel === 'email' ? 'so.channel.email' : 'so.channel.both') }} · {{ when(s.at) }}<template v-if="s.by"> · {{ s.by }}</template></span>
+                <button type="button" @click="removeSuppression(s)" :disabled="Boolean(busy)" :aria-label="t('so.remove_aria', { address: s.address })" class="btn-quiet ml-auto">{{ t('so.remove') }}</button>
               </li>
             </ul>
           </section>
 
           <p class="text-xs text-gray-600 px-1">
-            Everything the portal did on its own is in the
-            <router-link :to="{ name: 'Activity', query: { actor: 'system' } }" class="font-semibold text-brand-navy underline">activity log</router-link>, with why.
+            {{ t('footer.before') }}
+            <router-link :to="{ name: 'Activity', query: { actor: 'system' } }" class="font-semibold text-brand-navy underline">{{ t('footer.link') }}</router-link>{{ t('footer.after') }}
           </p>
         </template>
       </div>
@@ -121,9 +121,12 @@ import FaIcon from '../../components/FaIcon.vue'
 import LoadError from '../../components/LoadError.vue'
 import AutomationSettings from './AutomationSettings.vue'
 import { useApi } from '../../composables/useApi.js'
-import { flagChip, flagWhy, jobLabel, reasonText } from './automationText.js'
+import { flagChip, flagWhy, jobLabel, reasonText, MESSAGE_REASONS } from './automationText.js'
+import { useT } from '../../i18n/translator.js'
+import { AUTOMATION } from '../../i18n/automation.js'
 
 const { get, post, put, del } = useApi()
+const { t, lang, locale } = useT(AUTOMATION)
 const health = ref(null)
 const exceptions = ref([])
 const suppressions = ref([])
@@ -133,14 +136,14 @@ const busy = ref(null)
 const newAddress = ref('')
 
 const CHIP = { good: 'bg-emerald-50 text-emerald-800', warn: 'bg-amber-50 text-amber-800', quiet: 'bg-gray-100 text-gray-600' }
-const SUPPRESSION = { opt_out: 'Opted out', staff: 'Listed by the firm', invalid: 'Cannot receive' }
+const SUPPRESSION = ['opt_out', 'staff', 'invalid']
 const capital = (s) => s.charAt(0).toUpperCase() + s.slice(1)
 
 function when(value) {
-  if (!value) return 'never'
-  return new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  if (!value) return t('never')
+  return new Date(value).toLocaleString(locale.value, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
-const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
+const plural = (key, count) => t(key, { count })
 
 async function load() {
   error.value = ''
@@ -168,14 +171,14 @@ async function act(label, fn, done) {
     busy.value = null
   }
 }
-const setPaused = (f, paused) => act(`flag-${f.key}`, () => put(`/api/automation/flags/${f.key}`, { paused }), paused ? `${f.label} is paused. Nothing it had queued is sent while it is.` : `${f.label} is running again.`)
-const retry = (x) => act(`job-${x.id}`, () => post(`/api/automation/jobs/${x.id}/retry`, {}), 'Queued again. It runs within a minute.')
+const setPaused = (f, paused) => act(`flag-${f.key}`, () => put(`/api/automation/flags/${f.key}`, { paused }), t(paused ? 'notice.paused' : 'notice.resumed', { label: f.label }))
+const retry = (x) => act(`job-${x.id}`, () => post(`/api/automation/jobs/${x.id}/retry`, {}), t('notice.retried'))
 const dismiss = (x) => act(`job-${x.id}`, () => post(`/api/automation/jobs/${x.id}/acknowledge`, {}))
-const checkSms = () => act('sms', () => post('/api/automation/sms/check', {}), (r) => (r.available ? `RingCentral can send text messages from ${r.sender}.` : `Text messages cannot be sent: ${r.reasonText || r.reason}`))
+const checkSms = () => act('sms', () => post('/api/automation/sms/check', {}), (r) => (r.available ? t('sms.can', { sender: r.sender }) : t('sms.cannot', { why: r.reasonText || r.reason })))
 const removeSuppression = (s) => act(`so-${s.id}`, () => del(`/api/automation/suppressions/${s.id}`))
 async function addSuppression() {
   const address = newAddress.value
-  await act('so-add', () => post('/api/automation/suppressions', { channel: address.includes('@') ? 'email' : 'sms', address, reason: 'staff' }), 'Added to the list.')
+  await act('so-add', () => post('/api/automation/suppressions', { channel: address.includes('@') ? 'email' : 'sms', address, reason: 'staff' }), t('notice.added'))
   if (!error.value) newAddress.value = ''
 }
 function onSaved(text) {
@@ -192,16 +195,16 @@ const glance = computed(() => {
   const ran = h.worker?.lastSuccessAt
   const failing = exceptions.value.length
   const where = h.recipients.mode === 'everyone'
-    ? { value: 'Clients', detail: 'This is the live server: automatic messages go to real people when their switch is on.', tone: 'text-gray-900' }
+    ? { value: t('glance.clients'), detail: t('glance.clients_detail'), tone: 'text-gray-900' }
     : h.recipients.mode === 'test_list'
-      ? { value: `Only ${plural(h.recipients.count, 'test address', 'test addresses')}`, detail: 'AUTOMATION_TEST_RECIPIENTS is set: nobody else receives anything.', tone: 'text-amber-800' }
-      : { value: 'Nobody', detail: 'This server is not the live one, and no test addresses are set.', tone: 'text-gray-900' }
+      ? { value: plural('glance.test_only', h.recipients.count), detail: t('glance.test_detail'), tone: 'text-amber-800' }
+      : { value: t('glance.nobody'), detail: t('glance.nobody_detail'), tone: 'text-gray-900' }
   return [
-    { key: 'worker', label: 'The worker', value: worker.on ? 'Running' : worker.paused ? 'Paused' : 'Off', tone: worker.on ? 'text-emerald-800' : 'text-gray-900',
-      detail: worker.on ? `Last ran ${when(ran)}. ${plural(on, 'automation')} switched on.` : flagWhy(worker, h.flags) || 'Nothing below runs while it is off.' },
-    { key: 'where', label: 'Messages can go to', ...where },
-    { key: 'failed', label: 'Needs someone', value: failing ? plural(failing, 'failed step') : 'Nothing', tone: failing ? 'text-amber-800' : 'text-gray-900',
-      detail: failing ? 'Listed below, with what to do.' : 'No automatic step is waiting for a person.' },
+    { key: 'worker', label: t('glance.worker'), value: t(worker.on ? 'glance.running' : worker.paused ? 'glance.paused' : 'glance.off'), tone: worker.on ? 'text-emerald-800' : 'text-gray-900',
+      detail: worker.on ? t('glance.worker_on', { when: when(ran), count: on }) : flagWhy(worker, h.flags, lang.value) || t('glance.worker_off') },
+    { key: 'where', label: t('glance.where'), ...where },
+    { key: 'failed', label: t('glance.failed'), value: failing ? plural('glance.failed_count', failing) : t('glance.nothing'), tone: failing ? 'text-amber-800' : 'text-gray-900',
+      detail: failing ? t('glance.failed_detail') : t('glance.none_detail') },
   ]
 })
 
@@ -212,19 +215,19 @@ const groups = computed(() => {
   const sms = h.sms
   const cal = h.scheduling
   return [
-    { key: 'core', title: 'Worker', flags: of('core'), stats: null },
-    { key: 'leads', title: 'Website leads', flags: of('leads'),
-      stats: `Last 7 days: ${plural(sent('lead_ack'), 'acknowledgment')} and ${plural(sent('lead_followup'), 'follow-up')} sent. ${plural(h.leadFollowup.pending, 'follow-up step')} queued, ${plural(h.escalation.pending, 'deadline')} being watched.`,
-      problem: !h.email.configured ? `Email cannot be sent from this server: ${h.email.problems.join('; ')}.` : null },
-    { key: 'phone', title: 'Text messages (RingCentral)', flags: of('phone'),
+    { key: 'core', title: t('group.core'), flags: of('core'), stats: null },
+    { key: 'leads', title: t('group.leads'), flags: of('leads'),
+      stats: t('stats.leads', { acks: plural('n.ack', sent('lead_ack')), followups: plural('n.followup', sent('lead_followup')), steps: plural('n.followup_step', h.leadFollowup.pending), deadlines: plural('n.deadline', h.escalation.pending) }),
+      problem: !h.email.configured ? t('problem.email', { problems: h.email.problems.join('; ') }) : null },
+    { key: 'phone', title: t('group.phone'), flags: of('phone'),
       stats: sms.checkedAt
-        ? (sms.available ? `Texts go out from ${sms.sender}. Last asked ${when(sms.checkedAt)}. Last 7 days: ${plural(sent('missed_call'), 'missed-call text')} sent.` : `Last asked ${when(sms.checkedAt)}.`)
-        : 'RingCentral has not been asked yet whether this connection can send text messages.',
-      problem: [sms.checkedAt && !sms.available ? `Text messages cannot be sent: ${sms.reasonText || sms.reason}.` : null,
-        sms.inbound?.lastError ? `Reading replies failed (${sms.inbound.lastError}, ${when(sms.inbound.lastFailureAt)}).` : null].filter(Boolean).join(' ') || null },
-    { key: 'scheduling', title: 'Consultation bookings', flags: of('scheduling'),
-      stats: cal.configured ? `Calendar last read ${when(cal.lastSuccessAt)}. ${cal.bookingLinkSet ? 'The booking link is offered in messages.' : 'No booking link is set, so messages do not offer one.'}` : null,
-      problem: !cal.configured ? `The calendar cannot be read yet: ${cal.problems.join('; ')}.` : cal.lastError ? `Reading the calendar failed (${cal.lastError}, ${when(cal.lastFailureAt)}).` : null },
+        ? (sms.available ? t('stats.sms', { sender: sms.sender, when: when(sms.checkedAt), texts: plural('n.missed_text', sent('missed_call')) }) : t('stats.sms_last_asked', { when: when(sms.checkedAt) }))
+        : t('stats.sms_never'),
+      problem: [sms.checkedAt && !sms.available ? `${t('sms.cannot', { why: sms.reasonText || sms.reason })}.` : null,
+        sms.inbound?.lastError ? t('problem.replies', { error: sms.inbound.lastError, when: when(sms.inbound.lastFailureAt) }) : null].filter(Boolean).join(' ') || null },
+    { key: 'scheduling', title: t('group.scheduling'), flags: of('scheduling'),
+      stats: cal.configured ? `${t('stats.calendar', { when: when(cal.lastSuccessAt) })} ${t(cal.bookingLinkSet ? 'stats.link_set' : 'stats.link_unset')}` : null,
+      problem: !cal.configured ? t('problem.calendar', { problems: cal.problems.join('; ') }) : cal.lastError ? t('problem.calendar_failed', { error: cal.lastError, when: when(cal.lastFailureAt) }) : null },
   ].filter((g) => g.flags.length)
 })
 
