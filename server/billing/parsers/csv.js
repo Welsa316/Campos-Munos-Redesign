@@ -6,7 +6,7 @@
 // it too, so both formats behave identically after cell extraction.
 
 const DELIMITERS = [',', ';', '\t', '|']
-const HEADER_SCAN_ROWS = 10
+const HEADER_SCAN_ROWS = 20
 const WIDTH_SCAN_ROWS = 50
 const HEADER_MIN_SHARE = 0.6
 
@@ -129,6 +129,15 @@ export function sniffDelimiter(text) {
 
 const isBlankRow = (r) => r.every((c) => String(c).trim() === '')
 const nonEmpty = (r) => r.reduce((k, c) => k + (String(c).trim() === '' ? 0 : 1), 0)
+// A cell that is only a figure, money or a date: a header row has none.
+const isFigure = (c) => /^[\s$€£(),.%:/+-]*\d[\d\s$€£(),.%:/+-]*$/.test(String(c).trim())
+const isLabelRow = (r) => !r.some((c) => String(c).trim() !== '' && isFigure(c))
+/** How many non-blank rows follow row i before the first blank one. */
+function blockAfter(recs, i) {
+  let n = 0
+  while (i + 1 + n < recs.length && !isBlankRow(recs[i + 1 + n])) n++
+  return n
+}
 
 /**
  * Raw records → ParsedTable. Drops trailing blank rows (interior blank rows
@@ -154,9 +163,18 @@ export function buildTable(records, { sheetName = null, meta = {}, reportShortRo
   for (let i = lead; i < Math.min(recs.length, lead + WIDTH_SCAN_ROWS); i++) {
     widest = Math.max(widest, nonEmpty(recs[i]))
   }
+  // The header is the first row filling most of the width, unless a later
+  // row of labels has more data under it. Formatted reports often open with
+  // a summary strip (labels over a single row of totals) above the real
+  // table; the table's header is the one followed by the rows.
   let headerIndex = -1
+  let headerBlock = -1
   for (let i = lead; i < Math.min(recs.length, lead + HEADER_SCAN_ROWS); i++) {
-    if (nonEmpty(recs[i]) >= HEADER_MIN_SHARE * widest) { headerIndex = i; break }
+    if (nonEmpty(recs[i]) < HEADER_MIN_SHARE * widest) continue
+    if (headerIndex === -1) { headerIndex = i; headerBlock = blockAfter(recs, i); continue }
+    if (!isLabelRow(recs[i])) continue
+    const block = blockAfter(recs, i)
+    if (block > headerBlock) { headerIndex = i; headerBlock = block }
   }
   if (headerIndex === -1) headerIndex = lead
   const titleRows = recs.slice(lead, headerIndex).filter((r) => !isBlankRow(r)).map((r) => r.filter((c) => c.trim() !== '').join(' '))

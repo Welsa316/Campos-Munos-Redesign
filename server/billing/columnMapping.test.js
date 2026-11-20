@@ -170,3 +170,10 @@ test('a phone column maps to the client phone without taking the client name', (
   assert.equal(fieldsOf(['Contact', 'Contact Phone']).clientName, 0)
   assert.equal(fieldsOf(['Contact', 'Contact Phone']).clientPhone, 1)
 })
+
+test('payment plan tracker headers: balance remaining and monthly payment', () => {
+  const f = fieldsOf(['Client Name', 'Invoice #', 'Balance Remaining', 'Monthly Payment', 'Paid This Month'])
+  assert.equal(f.balanceAmount, 2)
+  assert.equal(f.nextInstallmentAmount, 3)
+  assert.equal(f.paidAmount, undefined, 'paid this month is not the total paid')
+})

@@ -52,7 +52,7 @@ export const HEADER_ALIASES = {
   balanceAmount: [
     'Balance Due', 'Amount Due', 'Balance', 'Outstanding', 'Outstanding Balance', 'Remaining Balance',
     'Open Balance', 'Current Balance', 'Amount Outstanding', 'Remaining', 'Saldo', 'Saldo Pendiente',
-    'Saldo Adeudado', 'Saldo Restante', 'Monto Adeudado', 'Monto Pendiente',
+    'Saldo Adeudado', 'Saldo Restante', 'Monto Adeudado', 'Monto Pendiente', 'Balance Remaining',
   ],
   invoiceStatus: [
     'Status', 'Invoice Status', 'Payment Status', 'Estado', 'Estatus', 'Estado de Factura', 'Estado del Pago',
@@ -63,7 +63,7 @@ export const HEADER_ALIASES = {
     'Fecha del Proximo Pago', 'Proximo Pago', 'Proxima Cuota', 'Fecha de Proxima Cuota',
   ],
   nextInstallmentAmount: [
-    'Next Installment Amount', 'Next Installment', 'Next Payment Amount', 'Installment Amount',
+    'Next Installment Amount', 'Next Installment', 'Next Payment Amount', 'Installment Amount', 'Monthly Payment',
     'Monto de la Proxima Cuota', 'Monto del Proximo Pago', 'Monto de Cuota', 'Cuota',
   ],
   lastPaymentDate: [

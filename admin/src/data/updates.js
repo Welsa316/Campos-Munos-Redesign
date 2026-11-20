@@ -23,6 +23,18 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'import-finds-the-table',
+    at: '2026-11-20T03:45:00Z',
+    section: 'billing',
+    any: ['billing.import'],
+    title: 'Imports find the table under a summary',
+    summary: 'A spreadsheet that opens with a row of totals above the table now shows the table’s own columns when you map it.',
+    points: [
+      'Before, the totals row was read as the column names, so the column lists showed labels like PAID and PENDING instead of the real columns.',
+      'Balance Remaining and Monthly Payment are now recognised as the balance and the installment amount.',
+    ],
+  },
+  {
     id: 'language-switch-everywhere',
     at: '2026-11-19T21:36:00Z',
     section: 'everyone',
