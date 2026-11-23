@@ -155,6 +155,11 @@ test('bad colours, unknown keys and oversized payloads are refused and change no
     { theme: 'custom', custom: { ...GOOD, summaryA: undefined } },
     { theme: 'violet', custom: GOOD },
     { theme: 'neon', custom: GOOD },
+    // A list where one name is expected: the validator checks each item of
+    // a list on its own, so ['violet'] passed and was stored as '{violet}'.
+    { theme: ['violet'] },
+    { theme: ['classic', 'violet'] },
+    { theme: ['custom'], custom: GOOD },
   ]
   for (const b of refused) {
     const res = await put(me, b)
