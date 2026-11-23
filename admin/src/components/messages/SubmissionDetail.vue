@@ -44,6 +44,15 @@
               <ColorPickerButton v-if="canRemind" kind="lead" :id="submission.id" :color="submission.color" :targets="[submission]" />
             </div>
 
+            <!-- The campaign link that brought them, when there was one -->
+            <dl v-if="campaign.length" data-campaign class="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs font-ui mt-2.5">
+              <div v-for="row in campaign" :key="row.key" class="flex items-baseline gap-1.5 min-w-0">
+                <dt class="text-gray-500 whitespace-nowrap">{{ t(`campaign.${row.key}`) }}</dt>
+                <!-- Whoever built the link chose the length: two lines at most, the rest on hover and in the export -->
+                <dd class="text-gray-900 font-medium [overflow-wrap:anywhere] line-clamp-2" :title="row.value">{{ row.value }}</dd>
+              </div>
+            </dl>
+
             <!-- Pipeline status -->
             <div class="relative mt-3 inline-block">
               <button
@@ -253,6 +262,7 @@ import { countryLabel } from '../../data/countries.js'
 import { useT } from '../../i18n/translator.js'
 import { MESSAGES } from '../../i18n/messages.js'
 import { threadDate } from './messagesText.js'
+import { campaignRows } from './campaignText.js'
 import { formatPhone, telHref } from '../../utils/phone.js'
 import ReplyBox from './ReplyBox.vue'
 import ContactHistory from '../../modules/contacts/ContactHistory.vue'
@@ -285,6 +295,9 @@ const canManage = computed(() => can('crm.manage'))
 const canRemind = computed(() => can('crm.view') && (can('crm.manage') || can('calls.exclude')))
 // The lead's shared colour (components/colors/); the same people can change it.
 const color = computed(() => (props.submission ? entryColor('lead', props.submission.id, props.submission.color) : null))
+
+// The ad campaign whose link brought this lead (campaignText.js); [] for most.
+const campaign = computed(() => campaignRows(props.submission))
 
 // --- Pipeline status ---
 const statusOpen = ref(false)

@@ -23,6 +23,20 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'lead-campaign-link',
+    at: '2026-11-23T23:30:00Z',
+    section: 'messages',
+    any: ['crm.view'],
+    title: 'See which ad brought a lead',
+    summary: 'When someone reaches the website through one of the firm’s ad links and then sends the form or starts a chat, the lead now says which campaign it was.',
+    points: [
+      'Open the lead: under the service and country, a line reads Came from, with the campaign, the ad and the page they landed on.',
+      'Most leads have no such line. It only appears for people who arrived through a tagged ad link in the last 30 days, on the same phone or computer.',
+      'The email the office gets for a new lead has the same line, and the export has new columns for it at the end.',
+      'Calls and WhatsApp messages do not carry it: it is only for the website form and chat.',
+    ],
+  },
+  {
     id: 'whatsapp-firm-numbers-hidden',
     at: '2026-11-23T21:45:00Z',
     section: 'whatsapp',
