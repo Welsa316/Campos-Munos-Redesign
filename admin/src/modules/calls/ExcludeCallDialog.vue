@@ -50,6 +50,11 @@
               <span class="block text-[12px] text-gray-600 leading-snug">{{ t('excl.every_call_help') }}</span>
             </span>
           </label>
+          <!-- Calls' "someone from the firm" numbers are also kept out of the
+               WhatsApp inbox (server/whatsapp/hiddenSql.js): say so before saving. -->
+          <p v-if="call.number && wholeNumber && reason === 'staff_test'" role="status" class="-mt-1.5 flex items-start gap-2 text-[12px] text-gray-700 leading-snug">
+            <FaIcon name="comments" class="mt-0.5 flex-shrink-0 text-[11px] text-brand-navy/70" /><span>{{ t('excl.every_call_whatsapp') }}</span>
+          </p>
 
           <p v-if="error" role="alert" class="text-[13px] text-brand-red">{{ error }}</p>
 
