@@ -189,7 +189,8 @@ router.put(
   '/avatar',
   requireAuth,
   body('avatar').custom((v) => Boolean(parseAvatar(v))).withMessage('Choose one of the pictures offered'),
-  body('bg').isIn(AVATAR_COLORS).withMessage('Choose one of the colours offered'),
+  body('bg').isString().withMessage('Choose one of the colours offered').bail()
+    .isIn(AVATAR_COLORS).withMessage('Choose one of the colours offered'),
   validate,
   async (req, res) => {
     try {
