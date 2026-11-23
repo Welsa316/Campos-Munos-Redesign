@@ -24,7 +24,7 @@ export const SECTIONS = {
 export const UPDATES = [
   {
     id: 'whatsapp-firm-numbers-hidden',
-    at: '2026-11-23T23:00:00Z',
+    at: '2026-11-23T21:45:00Z',
     section: 'whatsapp',
     any: ['whatsapp.delete'],
     title: 'Coworkers’ numbers stay out of WhatsApp, and you can hide a number by typing it',
