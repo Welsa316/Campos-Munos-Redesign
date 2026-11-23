@@ -3,6 +3,7 @@
 // across restarts and across instances, which the router's in-memory guard
 // does not.
 import getPool from './pool.js'
+import { hiddenSql } from '../whatsapp/hiddenSql.js'
 
 /**
  * Insert one event. Resolves true when it was new, false when the key was
@@ -14,14 +15,14 @@ import getPool from './pool.js'
  * backfilled by the staff schema at boot: db/staffSchema.js.)
  */
 export async function recordEvent(evt) {
-  // A message from a number staff hid from the portal (wa_hidden_numbers:
-  // a coworker, a personal chat) is kept only as a deleted row, so a
-  // redelivery is still recognised and nothing it said is stored. It opens
-  // no conversation. Billing still sees the event in memory (an opt-out
-  // still counts).
+  // A message from a number kept out of the portal (whatsapp/hiddenSql.js:
+  // one staff hid, or one Calls has marked as someone from the firm) is kept
+  // only as a deleted row, so a redelivery is still recognised and nothing
+  // it said is stored. It opens no conversation. Billing still sees the
+  // event in memory (an opt-out still counts).
   const result = await getPool().query(
     `WITH hidden AS (
-       SELECT EXISTS (SELECT 1 FROM wa_hidden_numbers WHERE wa_id = $5::text AND $2::text = 'message') AS yes
+       SELECT ($2::text = 'message' AND ${hiddenSql('$5::text')}) AS yes
      ), ins AS (
        INSERT INTO whatsapp_events
          (event_key, kind, wa_message_id, status, from_wa_id, contact_name, recipient_wa_id,

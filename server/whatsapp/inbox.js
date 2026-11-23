@@ -23,6 +23,7 @@ import { classifyInbound, phoneVariants } from '../billing/whatsappInbound.js'
 import { whatsappSendingEnabled } from '../billing/providers/whatsapp/index.js'
 import { displayName, accountsWith } from '../auth/account.js'
 import inTransaction from '../db/transaction.js'
+import { hiddenSql, firmNumberSql, waKeySql } from './hiddenSql.js'
 
 export const WINDOW_HOURS = 24
 export const MAX_NOTE_LENGTH = 2000
@@ -53,6 +54,8 @@ const VIEWS = {
 
 // Every number that has written to the firm has a conversation row, created
 // when its first message is stored (db/whatsappEvents.js). Listing only reads.
+// A number kept out of the portal (hiddenSql.js) can still have a row from
+// before it was marked in Calls: it is not listed and cannot be opened.
 export async function listConversations(db, { view = 'open', accountId }) {
   const where = VIEWS[view] || VIEWS.open
   const { rows } = await db.query(
@@ -79,7 +82,7 @@ export async function listConversations(db, { view = 'open', accountId }) {
        FROM wa_conversations c
        LEFT JOIN last l ON l.conversation_id = c.id
        LEFT JOIN admin_users u ON u.id = c.assigned_to
-      WHERE ${where}
+      WHERE ${where} AND NOT ${hiddenSql('c.wa_id')}
       ORDER BY l.at DESC NULLS LAST, c.id DESC
       LIMIT 200`,
     view === 'mine' ? [accountId] : []
@@ -106,8 +109,8 @@ export async function listConversations(db, { view = 'open', accountId }) {
 }
 
 async function loadConversation(db, id) {
-  const c = (await db.query('SELECT * FROM wa_conversations WHERE id = $1', [id])).rows[0]
-  if (!c) throw new InboxError('Conversation not found', 404, 'not_found')
+  const c = (await db.query(`SELECT c.*, ${hiddenSql('c.wa_id')} AS hidden FROM wa_conversations c WHERE c.id = $1`, [id])).rows[0]
+  if (!c || c.hidden) throw new InboxError('Conversation not found', 404, 'not_found')
   return c
 }
 
@@ -423,23 +426,81 @@ export async function deleteConversation(db, conversationId, { account, hide = f
   })
 }
 
-/** Numbers kept out of the portal, newest first. */
+/**
+ * Numbers kept out of the portal, newest first. source 'manual': someone hid
+ * it here. source 'firm': Calls has it marked as someone from the firm, and
+ * it is shown again there, by counting its calls again.
+ */
 export async function listHiddenNumbers(db) {
   const { rows } = await db.query(
-    `SELECT h.wa_id, h.hidden_at, ${NAME_SQL('u')} AS hidden_by_name
+    `SELECT h.wa_id AS phone, h.hidden_at AS at, ${NAME_SQL('u')} AS by_name, 'manual' AS source, NULL AS note
        FROM wa_hidden_numbers h LEFT JOIN admin_users u ON u.id = h.hidden_by
-      ORDER BY h.hidden_at DESC`
+      WHERE NOT ${firmNumberSql('h.wa_id')}
+     UNION ALL
+     SELECT regexp_replace(COALESCE(NULLIF(f.number, ''), f.counterpart_key), '[^0-9]', '', 'g'), f.created_at, ${NAME_SQL('u')}, 'firm', f.note
+       FROM rc_ignored_numbers f LEFT JOIN admin_users u ON u.id = f.created_by
+      WHERE f.reason = 'staff_test'
+      ORDER BY at DESC`
   )
-  return rows.map((r) => ({ phone: r.wa_id, hiddenAt: r.hidden_at, hiddenBy: r.hidden_by_name ?? null }))
+  return rows.map((r) => ({
+    phone: asWaId(r.phone), hiddenAt: r.at, hiddenBy: r.by_name ?? null, source: r.source, note: r.note ?? null,
+  }))
+}
+
+// A number as WhatsApp writes it: digits with the country code. Ten digits
+// are a US number written the way people here write them.
+const asWaId = (raw) => {
+  const digits = String(raw ?? '').replace(/\D/g, '')
+  return digits.length === 10 ? `1${digits}` : digits
+}
+
+/**
+ * Hide a number someone typed, before or after it has written. When the
+ * number already has a chat, nothing happens until the caller says to delete
+ * it (deleteChat): the refusal names the chat, so a mistyped number is seen
+ * before a client's messages are gone.
+ */
+export async function hideNumber(db, rawPhone, { account, deleteChat = false }) {
+  const typed = typeof rawPhone === 'string' ? rawPhone.trim() : ''
+  const phone = asWaId(typed)
+  if (!typed || typed.length > 40 || !/^[\d\s()+.-]+$/.test(typed) || !/^\d{8,15}$/.test(phone)) {
+    throw new InboxError('Enter the whole number. Outside the United States, start with the country code.', 400, 'bad_number')
+  }
+  const already = (await db.query(`SELECT ${firmNumberSql('$1::text')} AS firm, ${hiddenSql('$1::text')} AS hidden`, [phone])).rows[0]
+  if (already.hidden) {
+    throw new InboxError(
+      already.firm ? 'That number is already hidden: Calls has it marked as someone from the firm.' : 'That number is already hidden.',
+      409, 'already_hidden'
+    )
+  }
+  const chats = (await db.query(`SELECT c.id FROM wa_conversations c WHERE ${waKeySql('c.wa_id')} = ${waKeySql('$1::text')} ORDER BY c.id`, [phone])).rows
+  if (chats.length && !deleteChat) {
+    const chat = await getConversation(db, chats[0].id)
+    const err = new InboxError('That number has a chat in the portal. Hiding the number deletes the chat.', 409, 'has_chat')
+    err.details = { chat: { id: chat.id, phone: chat.phone, name: chat.clients[0]?.name || chat.profileName || null } }
+    throw err
+  }
+  // The chat's own form of the number is the one WhatsApp reports.
+  for (const c of chats) await deleteConversation(db, c.id, { account, hide: true })
+  if (!chats.length) {
+    await db.query('INSERT INTO wa_hidden_numbers (wa_id, hidden_by) VALUES ($1, $2) ON CONFLICT (wa_id) DO NOTHING', [phone, account.id])
+  }
+  await audit(db, { actorId: account.id, action: 'whatsapp.number_hidden', entityType: 'whatsapp_number', entityId: null, details: { last4: phone.slice(-4), chatDeleted: chats.length > 0 } })
+  return { phone, chatDeleted: chats.length > 0 }
 }
 
 /**
  * Show a hidden number again. Its next message opens a chat; what was
- * deleted stays deleted.
+ * deleted stays deleted. A number Calls marks as someone from the firm is
+ * shown again there, not here.
  */
 export async function unhideNumber(db, waId, { account }) {
   const phone = String(waId ?? '')
   if (!/^\d{6,20}$/.test(phone)) throw new InboxError('Invalid number', 400, 'bad_number')
+  const firm = (await db.query(`SELECT ${firmNumberSql('$1::text')} AS yes`, [phone])).rows[0].yes
+  if (firm) {
+    throw new InboxError('Calls has this number marked as someone from the firm. To show it here again, open one of its calls in Calls and choose Count it again.', 409, 'firm_number')
+  }
   const { rowCount } = await db.query('DELETE FROM wa_hidden_numbers WHERE wa_id = $1', [phone])
   if (!rowCount) throw new InboxError('That number is not hidden', 404, 'not_found')
   await audit(db, { actorId: account.id, action: 'whatsapp.number_shown', entityType: 'whatsapp_number', entityId: null, details: { last4: phone.slice(-4) } })
@@ -447,5 +508,5 @@ export async function unhideNumber(db, waId, { account }) {
 
 export default {
   listConversations, getConversation, sendReply, addNote, assign, setStatus, listAssignees, replyBlocker,
-  deleteMessage, deleteConversation, listHiddenNumbers, unhideNumber,
+  deleteMessage, deleteConversation, listHiddenNumbers, hideNumber, unhideNumber,
 }

@@ -67,10 +67,11 @@
             </button>
           </li>
         </ul>
-        <!-- Numbers someone hid (a coworker, a personal chat): only when there are any. -->
-        <button v-if="can('whatsapp.delete') && hiddenCount > 0" type="button" @click="hiddenOpen = true"
+        <!-- Numbers kept out of the portal (a coworker, a personal chat), and
+             the place to hide one before it writes: always there. -->
+        <button v-if="can('whatsapp.delete')" type="button" @click="hiddenOpen = true"
           class="flex-shrink-0 border-t border-gray-100 px-5 py-2.5 text-left text-xs font-ui font-medium text-gray-600 hover:text-brand-navy hover:bg-brand-surface transition-colors">
-          <FaIcon name="eye-slash" class="mr-1.5 text-[11px]" />{{ t('hidden.link', { count: hiddenCount }) }}
+          <FaIcon name="eye-slash" class="mr-1.5 text-[11px]" />{{ hiddenCount > 0 ? t('hidden.link', { count: hiddenCount }) : t('hidden.link_none') }}
         </button>
       </div>
 
@@ -239,7 +240,7 @@
 
     <DeleteChatDialog :open="deleteOpen" :conversation-id="detail?.id ?? null" :name="title" :phone="detail ? waPhone(detail.phone) : ''"
       @close="deleteOpen = false" @deleted="onChatDeleted" />
-    <HiddenNumbersDialog :open="hiddenOpen" :wa-phone="waPhone" @close="hiddenOpen = false" @changed="(n) => { hiddenCount = n }" />
+    <HiddenNumbersDialog :open="hiddenOpen" :wa-phone="waPhone" @close="hiddenOpen = false" @changed="onHiddenChanged" />
   </div>
 </template>
 
@@ -442,6 +443,15 @@ function onChatDeleted({ hidden }) {
   if (hidden) hiddenCount.value += 1
   toast({ text: t(hidden ? 'chat.deleted_hidden' : 'chat.deleted') })
   closeThread()
+  loadList({ silent: true })
+}
+
+// Hiding a typed number can delete its chat: drop it from the list, and
+// leave the thread if that chat was the one open.
+function onHiddenChanged({ count, chatDeleted, phone }) {
+  hiddenCount.value = count
+  if (!chatDeleted) return
+  if (detail.value?.phone === phone) closeThread()
   loadList({ silent: true })
 }
 
