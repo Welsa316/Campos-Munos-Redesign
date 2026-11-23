@@ -416,6 +416,37 @@ unknown (timeout after sending) is shown as such and is never retried
 automatically. `WHATSAPP_PROVIDER=mock` (the default) sends to a simulator:
 nothing reaches anyone, and the portal says so on every screen.
 
+### Numbers kept out of the portal
+
+The firm's WhatsApp number is also used from a phone, for coworkers and
+personal chats, and those are nobody else's business. A number is kept out
+of the portal when either of these holds (the one rule is in
+`server/whatsapp/hiddenSql.js`, applied where messages are stored and where
+the inbox reads):
+
+- **Calls has it marked "someone from the firm" for every call from the
+  number** (`docs/ringcentral-call-log.md`). Nothing more to do: a colleague's
+  phone marked there is hidden here. Its chat, if it had one, is no longer
+  listed and cannot be opened, but nothing already stored is deleted, so
+  choosing **Count it again** on one of its calls brings the chat back. Other
+  reasons a call needs no callback (spam, a verification code) hide nothing.
+- **Someone hid it** (`whatsapp.delete`): **Delete chat → Also hide this
+  number**, or **Hidden numbers** under the chat list, where a number can be
+  typed before it has ever written. Typing a number that already has a chat
+  is refused until the person confirms deleting that chat, which the portal
+  names first. **Show again** undoes it; what was deleted stays deleted.
+
+Either way, a new message from the number is stored without its text or the
+sender's name (the row is kept only so Meta's redelivery is recognised) and
+opens no chat. Numbers are compared in one form, so `(504) 555-0100`,
+`+1 504 555 0100` and WhatsApp's `15045550100` are the same number, as are
+the two forms of Mexican and Argentine mobiles. An opt-out word from a hidden
+number still reaches Billing.
+
+Messages typed on the phone itself do not reach the portal at all today. If
+that is added later (WhatsApp's coexistence mode), it must apply the same
+rule to the other party's number.
+
 ## Upgrading an existing deployment
 
 Nothing to do by hand. `npm start` runs the migration on every deploy

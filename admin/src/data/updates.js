@@ -23,6 +23,21 @@ export const SECTIONS = {
 
 export const UPDATES = [
   {
+    id: 'whatsapp-firm-numbers-hidden',
+    at: '2026-11-23T23:00:00Z',
+    section: 'whatsapp',
+    any: ['whatsapp.delete'],
+    title: 'Coworkers’ numbers stay out of WhatsApp, and you can hide a number by typing it',
+    summary: 'A number marked in Calls as someone from the firm is now kept out of WhatsApp in the portal too. Any other number can be hidden under Hidden numbers, before or after it writes.',
+    points: [
+      'From the firm: when a number is marked in Calls as Someone from the firm, for every call from that number, its WhatsApp chat no longer appears in the portal, and what it writes from then on is not saved.',
+      'To show one of those numbers again, open one of its calls in Calls and choose Count it again. Its chat comes back as it was.',
+      'Any other number (a coworker who has not called, a personal chat): open Hidden numbers under the chat list, type the number and press Hide. It works before the number has ever written.',
+      'If the number you type already has a chat, the portal names the chat and asks before deleting it.',
+      'Nothing changes on the phone: the chats are still there in WhatsApp itself.',
+    ],
+  },
+  {
     id: 'spanish-billing-admin',
     at: '2026-11-20T21:03:00Z',
     section: 'everyone',
