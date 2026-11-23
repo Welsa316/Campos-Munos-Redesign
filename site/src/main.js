@@ -1,6 +1,9 @@
 // First: takes the administrator's test link (#cm-test=…) out of the address
 // before the router reads it (utils/testMode.js).
 import './utils/testMode.js'
+// Remembers the campaign tags on the address the visitor arrived at, before
+// the first in-site navigation leaves them behind (utils/attribution.js).
+import './utils/attribution.js'
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'

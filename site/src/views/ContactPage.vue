@@ -234,6 +234,7 @@ import { useI18n } from 'vue-i18n'
 import { useScrollReveal } from '../composables/useScrollReveal.js'
 import { rawFetch } from '../utils/publicApi.js'
 import { currentTestToken, endTestMode, isTestLinkRefusal } from '../utils/testMode.js'
+import { currentCampaign } from '../utils/attribution.js'
 import { CONSULTATION_KEYS, consultationLabel } from '../data/consultationTypes.js'
 import { MAPS_PROFILE_URL } from '../data/contact.js'
 import { COUNTRIES } from '../data/countries.js'
@@ -286,11 +287,13 @@ async function submitForm() {
   try {
     // The administrator's test link, when this tab has one (utils/testMode.js).
     const testToken = currentTestToken()
+    // The ad campaign whose link brought this visitor, if any (utils/attribution.js).
+    const attribution = currentCampaign()
     const res = await rawFetch('/api/submissions', {
       method: 'POST',
       // language: the site language this was written in, so the firm's
       // automatic acknowledgment goes out in it (never guessed from a name).
-      body: JSON.stringify({ ...form.value, language: locale.value === 'en' ? 'en' : 'es', conversionEventId, ...(testToken ? { testToken } : {}) }),
+      body: JSON.stringify({ ...form.value, language: locale.value === 'en' ? 'en' : 'es', conversionEventId, ...(attribution ? { attribution } : {}), ...(testToken ? { testToken } : {}) }),
     })
 
     if (!res.ok) {
