@@ -24,7 +24,7 @@ export const SECTIONS = {
 export const UPDATES = [
   {
     id: 'lead-campaign-link',
-    at: '2026-11-23T23:30:00Z',
+    at: '2026-11-23T22:40:00Z',
     section: 'messages',
     any: ['crm.view'],
     title: 'See which ad brought a lead',
