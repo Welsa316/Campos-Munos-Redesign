@@ -220,13 +220,15 @@ router.post(
   // Message is optional on the contact form but required for chat — a chat session without text is meaningless.
   body('message').if(body('source').equals('chat')).trim().notEmpty().withMessage('Message is required for chat'),
   body('message').optional({ values: 'falsy' }).trim().isLength({ max: 5000 }).withMessage('Message too long (max 5000 chars)'),
-  body('source').optional().isIn(['contact', 'chat']).withMessage('Invalid source'),
-  body('consultationType').optional({ values: 'falsy' }).trim().isIn(CONSULTATION_TYPES).withMessage('Invalid consultation type'),
+  // isString before each isIn: isIn alone checks each item of an array, so
+  // a list such as ["es"] would pass and be stored as '{es}'.
+  body('source').optional().isString().withMessage('Invalid source').bail().isIn(['contact', 'chat']).withMessage('Invalid source'),
+  body('consultationType').optional({ values: 'falsy' }).isString().withMessage('Invalid consultation type').bail().trim().isIn(CONSULTATION_TYPES).withMessage('Invalid consultation type'),
   body('location').optional({ values: 'falsy' }).trim().matches(COUNTRY_CODE_REGEX).withMessage('Invalid country'),
   // Shared with the browser pixel so OpenAI deduplicates the two lead_created events.
   body('conversionEventId').optional({ values: 'falsy' }).isUUID().withMessage('Invalid conversion event id'),
   // The website's current language, and (when the form asks) agreement to be texted.
-  body('language').optional({ values: 'falsy' }).isIn(['es', 'en']).withMessage('Invalid language'),
+  body('language').optional({ values: 'falsy' }).isString().withMessage('Invalid language').bail().isIn(['es', 'en']).withMessage('Invalid language'),
   body('smsConsent').optional({ values: 'null' }).isBoolean({ strict: true }).withMessage('Invalid consent'),
   // The administrator's test link (testChannel/token.js). Checked after all
   // of the above, so a test goes through the same validation as a lead.
@@ -655,7 +657,7 @@ router.patch(
   requireAuth,
   requireCapability('crm.manage'),
   param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid submission ID'),
-  body('status').isIn(LEAD_STATUSES).withMessage('Invalid status'),
+  body('status').isString().withMessage('Invalid status').bail().isIn(LEAD_STATUSES).withMessage('Invalid status'),
   validate,
   async (req, res) => {
     try {
@@ -955,7 +957,7 @@ router.put('/:id/owner', requireAuth, requireCapability('crm.manage'), leadId,
 
 // Admin — "Not spam" (back to the inbox, never marked again) or "Spam".
 router.post('/:id/spam', requireAuth, requireCapability('crm.manage'), leadId,
-  body('state').isIn(['cleared', 'spam']).withMessage('Choose spam or not spam'), validate,
+  body('state').isString().withMessage('Choose spam or not spam').bail().isIn(['cleared', 'spam']).withMessage('Choose spam or not spam'), validate,
   async (req, res) => {
     try {
       const row = await setSpamState(getPool(), req.params.id, req.body.state)

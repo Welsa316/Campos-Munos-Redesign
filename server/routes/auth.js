@@ -189,7 +189,8 @@ router.put(
   '/avatar',
   requireAuth,
   body('avatar').custom((v) => Boolean(parseAvatar(v))).withMessage('Choose one of the pictures offered'),
-  body('bg').isIn(AVATAR_COLORS).withMessage('Choose one of the colours offered'),
+  body('bg').isString().withMessage('Choose one of the colours offered').bail()
+    .isIn(AVATAR_COLORS).withMessage('Choose one of the colours offered'),
   validate,
   async (req, res) => {
     try {
@@ -212,7 +213,9 @@ router.put(
 router.put(
   '/theme',
   requireAuth,
-  body('theme').isIn([...THEMES, CUSTOM_THEME]).withMessage('Choose one of the themes offered'),
+  // isString first: isIn alone checks each item of an array, so ['violet'] would pass.
+  body('theme').isString().withMessage('Choose one of the themes offered').bail()
+    .isIn([...THEMES, CUSTOM_THEME]).withMessage('Choose one of the themes offered'),
   body('custom').custom((v, { req }) => (req.body.theme === CUSTOM_THEME ? Boolean(parseCustomTheme(v)) : v === undefined))
     .withMessage('Those colours cannot be saved'),
   validate,
