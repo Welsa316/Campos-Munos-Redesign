@@ -10,7 +10,9 @@
 //
 // The clock: last Monday, 10:30 AM in New Orleans. Relative to today rather
 // than a fixed date, because a few queries look back from the database's own
-// clock (leads of the last 90 days).
+// clock (leads of the last 90 days). Last Monday is up to eight days back, so
+// what the database counts over a shorter stretch (the health report's seven
+// days) is timed from RECENT instead.
 import { test, before, after, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { join, dirname } from 'path'
@@ -54,6 +56,10 @@ const MONDAY = lastMonday()
 /** The instant the firm's clock reads h:mi on Monday + days. */
 const at = (days, h, mi = 0) => { const d = new Date(MONDAY.getTime() + days * 864e5); return firmInstant(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate(), h, mi) }
 const T0 = at(0, 10, 30)
+// The latest weekday before today, in days after MONDAY: yesterday, or Friday
+// after a weekend. Always between half a day and four days old, where T0 is
+// more than seven days old from 10:30 on a Monday until midnight.
+const RECENT = (() => { const w = firmWall(Date.now()); return Math.min((Date.UTC(w.year, w.month - 1, w.day) - MONDAY.getTime()) / 864e5 - 1, 4) })()
 
 // Push: every send recorded.
 const pushed = []
@@ -1042,8 +1048,12 @@ test('a caller is confirmed as a lead only when the number and the email both ag
 
 test('health says what is on, what ran and what failed, without anyone’s details', { skip: SKIP }, async () => {
   assert.equal((await http('GET', '/api/automation/health')).status, 403)
-  await newLead({ email: 'health@example.test', phone: '504-555-0195' })
-  await run(new Date(T0.getTime() + MIN))
+  // "Sent in the last seven days" is counted back from the database's clock,
+  // and a message is dated by the worker's. So this lead writes in on a recent
+  // weekday: on a Monday afternoon T0 is already outside those seven days.
+  const when = at(RECENT, 10, 30)
+  await newLead({ when, email: 'health@example.test', phone: '504-555-0195' })
+  await run(new Date(when.getTime() + MIN))
   const h = (await http('GET', '/api/automation/health', undefined, u.owner)).json
   assert.equal(h.flags.find((f) => f.key === 'lead_ack').on, true)
   // Payment reminders are not automated: there is no switch for them at all.
