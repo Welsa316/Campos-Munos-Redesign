@@ -23,6 +23,9 @@ const DB_NAME = `${baseName}_leads`
 const URL_ = (() => { try { const u = new URL(BASE_URL); u.pathname = `/${DB_NAME}`; return u.toString() } catch { return '' } })()
 
 let server, base, db, resendServer, cookie
+// Lets a test post as a visitor of its own (httpSecurity.js), so the form's
+// hourly limit per visitor does not run out across the file.
+const PROXY_SECRET = 'leads-proxy-secret-0123456789abcdef'
 const emails = []
 
 before(async () => {
@@ -64,7 +67,7 @@ before(async () => {
   cookie = `token=${jwt.sign({ id: me.id, email: 'desk@example.test', tv: me.token_version }, process.env.JWT_SECRET)}`
 
   const { createApp, addFallbackHandlers } = await import('./app.js')
-  server = addFallbackHandlers(createApp({ env: { NODE_ENV: 'test', JWT_SECRET: process.env.JWT_SECRET }, log: pino({ level: 'silent' }) })).listen(0)
+  server = addFallbackHandlers(createApp({ env: { NODE_ENV: 'test', JWT_SECRET: process.env.JWT_SECRET, SITE_PROXY_SECRET: PROXY_SECRET }, log: pino({ level: 'silent' }) })).listen(0)
   await new Promise((r) => server.once('listening', r))
   base = `http://127.0.0.1:${server.address().port}`
 })
@@ -248,4 +251,90 @@ test('unread count: inbox leads not yet read, and the oldest of them', { skip: S
   // Same gate as the list.
   const anon = await fetch(`${base}/api/submissions/unread-count`)
   assert.equal(anon.status, 401)
+})
+
+// --- Campaign links (utils/attribution.js) ---
+// Each form from a different visitor: these tests send more than one visitor may in an hour.
+let visitor = 0
+const visitorPost = async (path, body) => {
+  const res = await fetch(base + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CM-Proxy-Secret': PROXY_SECRET, 'X-CM-Client-IP': `198.51.100.${(visitor++ % 250) + 1}` },
+    body: JSON.stringify(body),
+  })
+  return { status: res.status, json: await res.json().catch(() => null) }
+}
+const AD = { source: 'youtube', medium: 'paid_video', campaign: 'demand-gen-daca', content: 'sitelink-daca', landingPath: '/servicios/daca' }
+const campaignOf = async (id) => (await db.query(
+  'SELECT utm_source, utm_medium, utm_campaign, utm_content, utm_term, landing_path FROM submissions WHERE id = $1', [id]
+)).rows[0]
+
+test('a lead who arrived by a campaign link says so: on the lead, in the office email and in the export', { skip: SKIP }, async () => {
+  await db.query('TRUNCATE submissions RESTART IDENTITY CASCADE')
+  const before = emails.length
+  const sent = await visitorPost('/api/submissions', inquiry({ consultationType: 'daca', attribution: AD }))
+  assert.equal(sent.status, 201)
+  const plain = await visitorPost('/api/submissions', inquiry({ email: 'sin@example.test' }))
+  await settleEmails()
+
+  const detail = await call('GET', `/api/submissions/${sent.json.id}`)
+  assert.equal(detail.status, 200)
+  const shown = Object.fromEntries(['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'landing_path'].map((k) => [k, detail.json[k]]))
+  assert.deepEqual(shown, {
+    utm_source: 'youtube', utm_medium: 'paid_video', utm_campaign: 'demand-gen-daca', utm_content: 'sitelink-daca', utm_term: null, landing_path: '/servicios/daca',
+  })
+  // A lead with no campaign link has none of it, and its email no such line.
+  assert.deepEqual(await campaignOf(plain.json.id), { utm_source: null, utm_medium: null, utm_campaign: null, utm_content: null, utm_term: null, landing_path: null })
+
+  const [tagged, untagged] = emails.slice(before)
+  assert.match(tagged.html, /Came from:<\/td><td>youtube \/ paid_video · demand-gen-daca · sitelink-daca<\/td>/)
+  assert.doesNotMatch(untagged.html, /Came from/)
+
+  const csv = (await call('GET', '/api/submissions/export/csv')).text.trim().split('\n')
+  assert.match(csv[0], /,Submitted,Source,Medium,Campaign,Ad,Keyword,Landing Page$/)
+  assert.equal(csv.length, 3)
+  const row = csv.find((line) => line.includes('rosa@example.test'))
+  assert.match(row, /,"youtube","paid_video","demand-gen-daca","sitelink-daca",,"\/servicios\/daca"$/)
+  assert.match(csv.find((line) => line.includes('sin@example.test')), /Z",,,,,,$/, 'empty campaign columns')
+})
+
+test('campaign tags never cost the firm a lead: what cannot be used is dropped and the form goes through', { skip: SKIP }, async () => {
+  await db.query('TRUNCATE submissions RESTART IDENTITY CASCADE')
+  const junk = [
+    'youtube', 42, null, ['youtube'],
+    { source: { nested: true }, campaign: 7 },
+    { content: 'only-an-ad-name', landingPath: '/servicios/daca' },
+    { source: '<b></b>', campaign: '   ', medium: 'paid_video' },
+  ]
+  for (const [i, attribution] of junk.entries()) {
+    const res = await visitorPost('/api/submissions', inquiry({ email: `junk${i}@example.test`, attribution }))
+    assert.equal(res.status, 201, `attribution ${JSON.stringify(attribution)} was refused`)
+    assert.deepEqual(Object.values(await campaignOf(res.json.id)).filter((v) => v !== null), [], JSON.stringify(attribution))
+  }
+  assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM submissions')).rows[0].n, junk.length)
+})
+
+test('campaign text is written by strangers: cut to size, kept on this site, harmless in the email and the spreadsheet', { skip: SKIP }, async () => {
+  await db.query('TRUNCATE submissions RESTART IDENTITY CASCADE')
+  const before = emails.length
+  const sent = await visitorPost('/api/submissions', inquiry({ attribution: {
+    source: '  You<b>Tube</b>\n& "Shorts"  ',
+    medium: 'x'.repeat(500),
+    campaign: '=HYPERLINK("http://evil.example","pay")',
+    landingPath: '//evil.example/servicios?x=1',
+  } }))
+  assert.equal(sent.status, 201)
+  await settleEmails()
+  const stored = await campaignOf(sent.json.id)
+  assert.equal(stored.utm_source, 'YouTube & "Shorts"')
+  assert.equal(stored.utm_medium.length, 150)
+  assert.equal(stored.landing_path, null, 'an address on another site is not a landing page here')
+  assert.match(emails.at(-1).html, /YouTube &amp; &quot;Shorts&quot;/)
+  assert.equal(emails.length, before + 1)
+  const csv = (await call('GET', '/api/submissions/export/csv')).text
+  assert.match(csv, /"'=HYPERLINK\(""http:\/\/evil\.example"",""pay""\)"/, 'a formula is exported as text')
+
+  // The page keeps its path only: no query, no fragment.
+  const second = await visitorPost('/api/submissions', inquiry({ email: 'dos@example.test', attribution: { source: 'youtube', landingPath: '/servicios/vawa?utm_source=youtube#video' } }))
+  assert.equal((await campaignOf(second.json.id)).landing_path, '/servicios/vawa')
 })
