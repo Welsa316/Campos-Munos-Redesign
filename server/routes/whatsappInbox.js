@@ -2,7 +2,8 @@
 //
 // Reading needs whatsapp.view; replying whatsapp.send; assigning, notes and
 // closing whatsapp.manage; deleting messages and chats, and hiding or
-// showing numbers, whatsapp.delete. Payment status beside a conversation is included
+// showing numbers, whatsapp.delete. Which numbers stay out of the portal,
+// and why, is in whatsapp/hiddenSql.js. Payment status beside a conversation is included
 // only for accounts with billing.status. The webhook that receives messages
 // is a separate router (routes/whatsapp.js) at /webhooks/whatsapp.
 import { Router } from 'express'
@@ -14,7 +15,7 @@ import validate from '../middleware/validate.js'
 import { createWhatsAppProvider, whatsappSendingEnabled, whatsappProviderMode } from '../billing/providers/whatsapp/index.js'
 import {
   listConversations, getConversation, sendReply, addNote, assign, setStatus, listAssignees, InboxError,
-  deleteMessage, deleteConversation, listHiddenNumbers, unhideNumber,
+  deleteMessage, deleteConversation, listHiddenNumbers, hideNumber, unhideNumber,
 } from '../whatsapp/inbox.js'
 
 const idParam = param('id').isInt({ min: 1, max: 2147483647 }).withMessage('Invalid id')
@@ -41,7 +42,7 @@ export function createWhatsappInboxRouter({ db = null, env = process.env, whatsa
     try {
       await fn(req, res)
     } catch (err) {
-      if (err instanceof InboxError) return res.status(err.status).json({ error: err.message, code: err.code })
+      if (err instanceof InboxError) return res.status(err.status).json({ error: err.message, code: err.code, ...err.details })
       req.log?.error({ err }, 'WhatsApp inbox route error')
       res.status(500).json({ error: 'Internal server error' })
     }
@@ -105,6 +106,12 @@ export function createWhatsappInboxRouter({ db = null, env = process.env, whatsa
 
   router.get('/hidden-numbers', need('whatsapp.delete'), wrap(async (_req, res) => {
     res.json(await listHiddenNumbers(pool()))
+  }))
+
+  // { phone, deleteChat }: hide a typed number. A number that already has a
+  // chat is refused (409 has_chat, naming the chat) until deleteChat is true.
+  router.post('/hidden-numbers', need('whatsapp.delete'), wrap(async (req, res) => {
+    res.status(201).json(await hideNumber(pool(), req.body?.phone, { account: req.account, deleteChat: req.body?.deleteChat === true }))
   }))
 
   router.delete('/hidden-numbers/:phone', need('whatsapp.delete'), wrap(async (req, res) => {

@@ -217,6 +217,122 @@ test('a hidden number stays out of the portal, stores nothing it says, and can b
   assert.deepEqual(bodies((await call('GET', `/api/whatsapp/conversations/${back.id}`)).json), ['Back again'], 'what was deleted stays deleted')
 })
 
+// What staff do in Calls when they tick "Someone from the firm" and "Every
+// call from this number" (integrations/ringcentral/callExclusions.js).
+const markInCalls = (number, reason = 'staff_test', note = null) => db.query(
+  `INSERT INTO rc_ignored_numbers (counterpart_key, number, reason, note, created_by)
+   VALUES (cm_phone_key($1), $1, $2, $3, (SELECT id FROM admin_users WHERE email = 'front@example.test'))`,
+  [number, reason, note]
+)
+const hiddenRow = async (phone) => (await call('GET', '/api/whatsapp/hidden-numbers')).json.find((h) => h.phone === phone)
+
+test('a number marked in Calls as someone from the firm stays out of WhatsApp, and comes back when the mark is removed', { skip: SKIP }, async () => {
+  const phone = '15045550108'
+  await inbound(phone, 'Written before anyone marked the number')
+  const conv = await listed(phone)
+  assert.ok(conv)
+
+  await markInCalls('+1 (504) 555-0108', 'staff_test', 'Diana, mobile')
+
+  // The chat is gone from the list and cannot be opened or written in.
+  assert.equal(await listed(phone), undefined)
+  assert.equal(await listed(phone, cookies.manager), undefined)
+  assert.equal((await call('GET', `/api/whatsapp/conversations/${conv.id}`)).status, 404)
+  assert.equal((await call('POST', `/api/whatsapp/conversations/${conv.id}/notes`, { body: { body: 'A note' } })).status, 404)
+  assert.equal((await call('POST', `/api/whatsapp/conversations/${conv.id}/messages`, { body: { body: 'Hi', clientKey: 'reply-0000108' } })).status, 404)
+
+  // New messages: recognised, but no chat and no text, across a deploy.
+  assert.equal(await inbound(phone, 'Coworker: lunch at the usual place?'), true)
+  assert.equal(await listed(phone), undefined)
+  assert.equal(await textStored('usual place'), false)
+  migrate()
+  assert.equal(await listed(phone), undefined, 'a deploy does not bring a firm number back')
+
+  // Hidden numbers says why it is hidden; it is undone in Calls, not here.
+  const row = await hiddenRow(phone)
+  assert.equal(row?.source, 'firm')
+  assert.equal(row.note, 'Diana, mobile')
+  const show = await call('DELETE', `/api/whatsapp/hidden-numbers/${phone}`)
+  assert.equal(show.status, 409)
+  assert.equal(show.json.code, 'firm_number')
+  assert.equal(await listed(phone), undefined)
+
+  // Removing the mark in Calls shows the number again; nothing was deleted.
+  await db.query(`DELETE FROM rc_ignored_numbers WHERE counterpart_key = cm_phone_key($1)`, [phone])
+  const back = await listed(phone)
+  assert.equal(back?.id, conv.id)
+  assert.deepEqual(bodies((await call('GET', `/api/whatsapp/conversations/${conv.id}`)).json), ['Written before anyone marked the number'])
+  assert.equal(await hiddenRow(phone), undefined)
+})
+
+test('only "someone from the firm" hides a number: a spam or verification mark in Calls does not', { skip: SKIP }, async () => {
+  const spam = '15045550109'
+  const code = '15045550119'
+  await markInCalls(`+${spam}`, 'spam')
+  await markInCalls(`+${code}`, 'verification')
+  await inbound(spam, 'A client whose call was once marked spam')
+  await inbound(code, 'A client whose call was a verification code')
+  assert.ok(await listed(spam))
+  assert.ok(await listed(code))
+  assert.equal(await textStored('once marked spam'), true)
+  assert.equal(await hiddenRow(spam), undefined)
+})
+
+test('a number can be hidden by typing it, before it ever writes', { skip: SKIP }, async () => {
+  const phone = '15045550110'
+  const added = await call('POST', '/api/whatsapp/hidden-numbers', { body: { phone: '(504) 555-0110' } })
+  assert.equal(added.status, 201)
+  assert.deepEqual(added.json, { phone, chatDeleted: false })
+
+  assert.equal(await inbound(phone, 'Personal: are you home?'), true)
+  assert.equal(await listed(phone), undefined)
+  assert.equal(await textStored('are you home'), false)
+  const row = await hiddenRow(phone)
+  assert.equal(row?.source, 'manual')
+  assert.equal(row.hiddenBy, 'Front')
+
+  const again = await call('POST', '/api/whatsapp/hidden-numbers', { body: { phone: '+1 504 555 0110' } })
+  assert.equal(again.status, 409)
+  assert.equal(again.json.code, 'already_hidden')
+  for (const bad of ['', '123', 'not a number', '1'.repeat(30), null]) {
+    assert.equal((await call('POST', '/api/whatsapp/hidden-numbers', { body: { phone: bad } })).status, 400, `refuses ${JSON.stringify(bad)}`)
+  }
+
+  // Meta reports a Mexican mobile as 521… when people write it 52….
+  assert.equal((await call('POST', '/api/whatsapp/hidden-numbers', { body: { phone: '+52 55 1234 5678' } })).status, 201)
+  await inbound('5215512345678', 'Familia: llegamos el sabado')
+  assert.equal(await listed('5215512345678'), undefined)
+  assert.equal(await textStored('llegamos el sabado'), false)
+
+  assert.equal((await call('DELETE', `/api/whatsapp/hidden-numbers/${phone}`)).status, 200)
+  await inbound(phone, 'Shown again')
+  assert.ok(await listed(phone))
+})
+
+test('hiding a typed number that already has a chat asks first, naming the chat, then deletes it', { skip: SKIP }, async () => {
+  const phone = '15045550111'
+  await inbound(phone, 'Personal: pick up the kids', { name: 'Rio' })
+  const conv = await listed(phone)
+
+  const asked = await call('POST', '/api/whatsapp/hidden-numbers', { body: { phone: '504-555-0111' } })
+  assert.equal(asked.status, 409)
+  assert.equal(asked.json.code, 'has_chat')
+  assert.equal(asked.json.chat.name, 'Rio')
+  assert.ok(await listed(phone), 'nothing is deleted until someone says so')
+  assert.equal(await hiddenRow(phone), undefined)
+
+  const done = await call('POST', '/api/whatsapp/hidden-numbers', { body: { phone: '504-555-0111', deleteChat: true } })
+  assert.equal(done.status, 201)
+  assert.deepEqual(done.json, { phone, chatDeleted: true })
+  assert.equal(await listed(phone), undefined)
+  assert.equal((await call('GET', `/api/whatsapp/conversations/${conv.id}`)).status, 404)
+  assert.equal(await textStored('pick up the kids'), false)
+  await inbound(phone, 'Personal: running late')
+  assert.equal(await listed(phone), undefined)
+  assert.equal(await textStored('running late'), false)
+  assert.equal((await hiddenRow(phone))?.source, 'manual')
+})
+
 test('only accounts with whatsapp.delete may delete or manage hidden numbers', { skip: SKIP }, async () => {
   const phone = '15045550107'
   await inbound(phone, 'Keep me')
@@ -228,6 +344,8 @@ test('only accounts with whatsapp.delete may delete or manage hidden numbers', {
   assert.equal((await call('DELETE', `/api/whatsapp/conversations/${conv.id}?hide=true`, nd)).status, 403)
   assert.equal((await call('GET', '/api/whatsapp/hidden-numbers', nd)).status, 403)
   assert.equal((await call('DELETE', `/api/whatsapp/hidden-numbers/${phone}`, nd)).status, 403)
+  assert.equal((await call('POST', '/api/whatsapp/hidden-numbers', { ...nd, body: { phone: '5045550199' } })).status, 403)
+  assert.equal((await db.query(`SELECT 1 FROM wa_hidden_numbers WHERE wa_id = '15045550199'`)).rowCount, 0)
   assert.deepEqual(bodies((await call('GET', `/api/whatsapp/conversations/${conv.id}`, nd)).json), ['Keep me'])
 
   // The office manager (manages, never replies) may.

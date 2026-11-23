@@ -82,6 +82,8 @@ export const ACTIONS = {
   'DELETE /api/whatsapp/conversations/:id/messages/:key': { key: 'whatsapp.message_deleted', label: 'Deleted a WhatsApp message from the portal', entity: 'conversation' },
   'DELETE /api/whatsapp/conversations/:id': { key: 'whatsapp.conversation_deleted', label: 'Deleted a WhatsApp chat from the portal', entity: 'conversation',
     details: (req) => ({ hidden: req.query?.hide === 'true' }) },
+  'POST /api/whatsapp/hidden-numbers': { key: 'whatsapp.number_hidden', label: 'Hid a WhatsApp number from the portal',
+    details: (req) => ({ number: last4(body(req).phone), chatDeleted: body(req).deleteChat === true }) },
   'DELETE /api/whatsapp/hidden-numbers/:phone': { key: 'whatsapp.number_shown', label: 'Let a hidden WhatsApp number back into the portal',
     details: (req) => ({ number: last4(req.params?.phone) }) },
 
