@@ -8,6 +8,7 @@ import requireAuth from '../middleware/auth.js'
 import requireCapability from '../middleware/requireCapability.js'
 import validate from '../middleware/validate.js'
 import { stripHtml, escapeHtml, escapeCsvField } from '../utils/sanitize.js'
+import { cleanAttribution, attributionLine } from '../utils/attribution.js'
 import { sendLeadConversion } from '../utils/openaiConversions.js'
 import { clientKey } from '../httpSecurity.js'
 import { emailConfigProblems } from '../utils/emailConfig.js'
@@ -134,6 +135,9 @@ function submittedFields(b) {
     language: b.language === 'es' || b.language === 'en' ? b.language : null,
     // True only when the form carried the person's agreement to be texted.
     smsConsent: b.smsConsent === true,
+    // The campaign link that brought them, when there was one. Never
+    // validated into a refusal: see utils/attribution.js.
+    attribution: cleanAttribution(b.attribution),
   }
 }
 
@@ -240,7 +244,7 @@ router.post(
       // link never turns into one.
       if (req.body.testToken) return await handleTestSubmission(req, res)
 
-      const { firstName, lastName, email, phone, message, source, consultationType, location, language, smsConsent } = submittedFields(req.body)
+      const { firstName, lastName, email, phone, message, source, consultationType, location, language, smsConsent, attribution } = submittedFields(req.body)
 
       const duplicate = (await getPool().query(
         `SELECT id, created_at, chat_token FROM submissions
@@ -259,9 +263,11 @@ router.post(
       const chatToken = source === 'chat' ? crypto.randomBytes(24).toString('base64url') : null
 
       const result = await getPool().query(
-        `INSERT INTO submissions (first_name, last_name, email, phone, message, source, consultation_type, location, chat_token, language, sms_consent_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CASE WHEN $11::boolean THEN NOW() END) RETURNING id, created_at`,
-        [firstName, lastName, email, phone, message, source, consultationType, location, chatToken, language, smsConsent]
+        `INSERT INTO submissions (first_name, last_name, email, phone, message, source, consultation_type, location, chat_token, language, sms_consent_at,
+                                  utm_source, utm_medium, utm_campaign, utm_content, utm_term, landing_path)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CASE WHEN $11::boolean THEN NOW() END, $12, $13, $14, $15, $16, $17) RETURNING id, created_at`,
+        [firstName, lastName, email, phone, message, source, consultationType, location, chatToken, language, smsConsent,
+          attribution.source, attribution.medium, attribution.campaign, attribution.content, attribution.term, attribution.landingPath]
       )
 
       // Return chat_token only when this is a chat session — the widget needs it to post follow-ups
@@ -298,6 +304,11 @@ router.post(
         if (adminEmail && process.env.RESEND_API_KEY) {
           const resend = new Resend(process.env.RESEND_API_KEY)
           const subjectPrefix = source === 'chat' ? 'New chat from' : 'New inquiry from'
+          // Only for a lead that arrived by a campaign link.
+          const cameFrom = attributionLine(attribution)
+          const cameFromRow = cameFrom
+            ? `<tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Came from:</td><td>${escapeHtml(cameFrom)}</td></tr>`
+            : ''
           // Resend does NOT throw on API errors (unverified domain, bad key, etc.) —
           // it returns { error }. Check it, or the failure is silently swallowed.
           const { error: sendError } = await resend.emails.send({
@@ -318,6 +329,7 @@ router.post(
                   <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Phone:</td><td>${escapeHtml(phone)}</td></tr>
                   <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Service:</td><td>${escapeHtml(consultationType)}</td></tr>
                   <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Location:</td><td>${escapeHtml(location)}</td></tr>
+                  ${cameFromRow}
                 </table>
                 <div style="background: #f0f2f7; border-radius: 8px; padding: 16px; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${message ? escapeHtml(message) : '<em style="color: #9ca3af;">(no message provided)</em>'}</div>
                 <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0 12px;" />
@@ -442,6 +454,7 @@ router.get(
       const [submissionResult, repliesResult, chatMessagesResult, notesResult] = await Promise.all([
         getPool().query(
           `SELECT id, first_name, last_name, email, phone, message, is_read, is_archived, source, consultation_type, location, status, created_at,
+                  utm_source, utm_medium, utm_campaign, utm_content, utm_term, landing_path,
                   (SELECT ec.color FROM entry_colors ec WHERE ec.kind = 'lead' AND ec.key = submissions.id::text) AS color
              FROM submissions WHERE id = $1`,
           [req.params.id]
@@ -749,6 +762,7 @@ router.get('/export/csv', requireAuth, requireCapability('crm.export'), async (r
       `DECLARE submissions_csv_cursor CURSOR FOR
        SELECT s.first_name, s.last_name, s.email, s.phone, s.message, s.consultation_type, s.location,
               s.status, s.is_read, s.is_archived, s.created_at,
+              s.utm_source, s.utm_medium, s.utm_campaign, s.utm_content, s.utm_term, s.landing_path,
               COALESCE((
                 SELECT string_agg(
                   to_char(n.created_at, 'YYYY-MM-DD') || ': ' || n.body,
@@ -765,12 +779,13 @@ router.get('/export/csv', requireAuth, requireCapability('crm.export'), async (r
     // First fetch succeeded — now commit to the response and stream.
     res.setHeader('Content-Type', 'text/csv')
     res.setHeader('Content-Disposition', `attachment; filename="submissions-${new Date().toISOString().slice(0, 10)}.csv"`)
-    res.write('First Name,Last Name,Email,Phone,Message,Service,Location,Status,Notes,Read,Archived,Submitted\n')
+    // The campaign columns go last, so a spreadsheet built on the earlier ones still lines up.
+    res.write('First Name,Last Name,Email,Phone,Message,Service,Location,Status,Notes,Read,Archived,Submitted,Source,Medium,Campaign,Ad,Keyword,Landing Page\n')
 
     while (batch.rows.length > 0) {
       const chunk = batch.rows.map(r => {
         const date = new Date(r.created_at).toISOString()
-        return `${escapeCsvField(r.first_name)},${escapeCsvField(r.last_name)},${escapeCsvField(r.email)},${escapeCsvField(r.phone)},${escapeCsvField(r.message)},${escapeCsvField(r.consultation_type)},${escapeCsvField(r.location)},${escapeCsvField(humanStatus(r.status))},${escapeCsvField(r.notes)},${r.is_read},${r.is_archived},"${date}"`
+        return `${escapeCsvField(r.first_name)},${escapeCsvField(r.last_name)},${escapeCsvField(r.email)},${escapeCsvField(r.phone)},${escapeCsvField(r.message)},${escapeCsvField(r.consultation_type)},${escapeCsvField(r.location)},${escapeCsvField(humanStatus(r.status))},${escapeCsvField(r.notes)},${r.is_read},${r.is_archived},"${date}",${escapeCsvField(r.utm_source)},${escapeCsvField(r.utm_medium)},${escapeCsvField(r.utm_campaign)},${escapeCsvField(r.utm_content)},${escapeCsvField(r.utm_term)},${escapeCsvField(r.landing_path)}`
       }).join('\n')
       res.write(chunk + '\n')
       if (batch.rows.length < BATCH) break

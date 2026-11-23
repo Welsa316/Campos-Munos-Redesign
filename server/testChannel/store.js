@@ -16,6 +16,7 @@ export const TEST_ALERT = Object.freeze({
 
 export async function storeTestSubmission(db, fields, { sentBy }) {
   const { firstName, lastName, email, phone, message, source, consultationType, location, language = null, smsConsent = false } = fields
+  const a = fields.attribution || {}
   const duplicate = (await db.query(
     `SELECT id, created_at, chat_token FROM test_submissions
       WHERE LOWER(email) = LOWER($1) AND message = $2 AND source = $3
@@ -27,9 +28,11 @@ export async function storeTestSubmission(db, fields, { sentBy }) {
 
   const chatToken = source === 'chat' ? crypto.randomBytes(24).toString('base64url') : null
   const row = (await db.query(
-    `INSERT INTO test_submissions (first_name, last_name, email, phone, message, source, consultation_type, location, chat_token, sent_by, language, sms_consent)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id, created_at, chat_token`,
-    [firstName, lastName, email, phone, message, source, consultationType, location, chatToken, sentBy, language, Boolean(smsConsent)]
+    `INSERT INTO test_submissions (first_name, last_name, email, phone, message, source, consultation_type, location, chat_token, sent_by, language, sms_consent,
+                                   utm_source, utm_medium, utm_campaign, utm_content, utm_term, landing_path)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING id, created_at, chat_token`,
+    [firstName, lastName, email, phone, message, source, consultationType, location, chatToken, sentBy, language, Boolean(smsConsent),
+      a.source ?? null, a.medium ?? null, a.campaign ?? null, a.content ?? null, a.term ?? null, a.landingPath ?? null]
   )).rows[0]
   return { ...row, duplicate: false }
 }
@@ -45,7 +48,7 @@ export function notifyTestSender(db, { accountId, testId, source = 'contact' }, 
   }, opts)
 }
 
-const COLUMNS = 'id, first_name, last_name, email, phone, message, source, consultation_type, location, created_at, language, sms_consent'
+const COLUMNS = 'id, first_name, last_name, email, phone, message, source, consultation_type, location, created_at, language, sms_consent, utm_source, utm_medium, utm_campaign, utm_content, utm_term, landing_path'
 
 export async function listTestSubmissions(db) {
   return (await db.query(

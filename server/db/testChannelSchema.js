@@ -38,6 +38,13 @@ export const TEST_CHANNEL_SCHEMA_SQL = `
   -- the activity log or anything a staff member works from.
   ALTER TABLE test_submissions ADD COLUMN IF NOT EXISTS language VARCHAR(5);
   ALTER TABLE test_submissions ADD COLUMN IF NOT EXISTS sms_consent BOOLEAN NOT NULL DEFAULT FALSE;
+  -- The campaign tags a test form arrived with, as a lead's are kept.
+  ALTER TABLE test_submissions ADD COLUMN IF NOT EXISTS utm_source VARCHAR(150);
+  ALTER TABLE test_submissions ADD COLUMN IF NOT EXISTS utm_medium VARCHAR(150);
+  ALTER TABLE test_submissions ADD COLUMN IF NOT EXISTS utm_campaign VARCHAR(150);
+  ALTER TABLE test_submissions ADD COLUMN IF NOT EXISTS utm_content VARCHAR(150);
+  ALTER TABLE test_submissions ADD COLUMN IF NOT EXISTS utm_term VARCHAR(150);
+  ALTER TABLE test_submissions ADD COLUMN IF NOT EXISTS landing_path VARCHAR(300);
   -- 'portal': a test started from the Test channel page itself, not the website.
   DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'test_submissions_source_check' AND pg_get_constraintdef(oid) LIKE '%portal%') THEN

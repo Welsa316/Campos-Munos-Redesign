@@ -269,6 +269,21 @@ test('a test sent twice within minutes is stored and announced once', { skip: SK
   assert.equal((await notificationsFor(ids.admin)).length, 1)
 })
 
+test('a test form sent from a campaign link keeps its campaign, so the link can be checked without making a lead', { skip: SKIP }, async () => {
+  await reset()
+  const token = await link()
+  const attribution = { source: 'youtube', medium: 'paid_video', campaign: 'demand-gen-daca', content: 'sitelink-daca', landingPath: '/servicios/daca' }
+  const sent = await publicPost('/api/submissions', inquiry({ testToken: token, attribution }))
+  assert.equal(sent.status, 201, sent.text)
+  const opened = await call('GET', `/api/test-channel/${sent.json.id}`, { cookie: cookies.admin })
+  assert.equal(opened.status, 200)
+  const { utm_source, utm_medium, utm_campaign, utm_content, utm_term, landing_path } = opened.json
+  assert.deepEqual({ utm_source, utm_medium, utm_campaign, utm_content, utm_term, landing_path }, {
+    utm_source: 'youtube', utm_medium: 'paid_video', utm_campaign: 'demand-gen-daca', utm_content: 'sitelink-daca', utm_term: null, landing_path: '/servicios/daca',
+  })
+  assert.equal(await count('submissions'), 0, 'still not a lead')
+})
+
 test('the administrator lists, opens, removes and clears test forms', { skip: SKIP }, async () => {
   await reset()
   const token = await link()

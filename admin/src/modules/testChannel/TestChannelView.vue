@@ -144,6 +144,7 @@
                   <div><dt class="text-[11px] font-semibold text-gray-500">{{ t('field.location') }}</dt><dd class="text-gray-900">{{ selected.location ? countryLabel(selected.location, lang) : '—' }}</dd></div>
                   <div><dt class="text-[11px] font-semibold text-gray-500">{{ t('field.language') }}</dt><dd class="text-gray-900">{{ t(['es', 'en'].includes(selected.language) ? `language.${selected.language}` : 'language.unknown') }}</dd></div>
                   <div><dt class="text-[11px] font-semibold text-gray-500">{{ t('field.sms') }}</dt><dd class="text-gray-900">{{ t(selected.sms_consent ? 'sms.yes' : 'sms.no') }}</dd></div>
+                  <div class="min-w-0 sm:col-span-2"><dt class="text-[11px] font-semibold text-gray-500">{{ t('field.campaign') }}</dt><dd class="text-gray-900 break-all">{{ campaignLine(selected) || '—' }}</dd></div>
                 </dl>
 
                 <div class="mt-5 space-y-3">
@@ -186,6 +187,7 @@ import { useApi } from '../../composables/useApi.js'
 import { consultationLabel } from '../../data/consultationTypes.js'
 import { countryLabel } from '../../data/countries.js'
 import { formatPhone } from '../../utils/phone.js'
+import { campaignLine } from '../../components/messages/campaignText.js'
 import PortalHeader from '../../components/portal/PortalHeader.vue'
 import FaIcon from '../../components/FaIcon.vue'
 import ConfirmInline from '../../components/ConfirmInline.vue'

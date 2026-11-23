@@ -105,6 +105,16 @@ async function migrate() {
 
       CREATE INDEX IF NOT EXISTS idx_submissions_status ON submissions(status);
 
+      -- The campaign link that brought the lead: the utm_ tags on the address
+      -- they landed on and the page it was (utils/attribution.js). All null
+      -- for a lead that did not arrive by a tagged link.
+      ALTER TABLE submissions ADD COLUMN IF NOT EXISTS utm_source VARCHAR(150);
+      ALTER TABLE submissions ADD COLUMN IF NOT EXISTS utm_medium VARCHAR(150);
+      ALTER TABLE submissions ADD COLUMN IF NOT EXISTS utm_campaign VARCHAR(150);
+      ALTER TABLE submissions ADD COLUMN IF NOT EXISTS utm_content VARCHAR(150);
+      ALTER TABLE submissions ADD COLUMN IF NOT EXISTS utm_term VARCHAR(150);
+      ALTER TABLE submissions ADD COLUMN IF NOT EXISTS landing_path VARCHAR(300);
+
       -- Internal running log per lead. A table rather than a single text column
       -- so entries are timestamped and append-only — staff can see the history
       -- of a lead instead of overwriting each other's note.

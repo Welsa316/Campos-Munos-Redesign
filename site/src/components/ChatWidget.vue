@@ -226,6 +226,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { rawFetch } from '../utils/publicApi.js'
+import { currentCampaign } from '../utils/attribution.js'
 import { currentTestToken, endTestMode, isTestLinkRefusal } from '../utils/testMode.js'
 import { CONSULTATION_KEYS, consultationLabel } from '../data/consultationTypes.js'
 import { COUNTRIES } from '../data/countries.js'
@@ -401,6 +402,8 @@ async function startChat() {
   // The administrator's test link, when this tab has one (utils/testMode.js).
   const testToken = currentTestToken()
   let refusedTestLink = false
+  // The ad campaign whose link brought this visitor, if any (utils/attribution.js).
+  const attribution = currentCampaign()
   try {
     const res = await rawFetch('/api/submissions', {
       method: 'POST',
@@ -418,6 +421,7 @@ async function startChat() {
         // Only their own tick counts as agreeing to text messages.
         smsConsent: f.smsConsent === true,
         website: f.website,
+        ...(attribution ? { attribution } : {}),
         ...(testToken ? { testToken } : {}),
       }),
     })
